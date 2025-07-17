@@ -1,61 +1,64 @@
 # 📘 MetaVox – Metadata for Nextcloud
 
 **MetaVox** ("Vox” = voice. Metadata as 'the voice of the document’.) is an open-source Nextcloud app developed by the University of Amsterdam and the Amsterdam University of Applied Sciences.  
+Originally built for education, MetaVox is broadly applicable across government, non-profit, and other professional sectors.
+
 It adds a semantic metadata layer to documents stored in Nextcloud, making them easier to organize, interpret, and retrieve.
 
 ## 🎯 Purpose
 
-The goal of MetaVox is to enrich digital documents with contextual metadata — such as topic, author intent, academic relevance, or curriculum linkage — in a way that is:
+The goal of MetaVox is to enrich digital documents with contextual metadata — such as topic, author intent, relevance, or classification — in a way that is:
 
 - **Structured** and machine-readable  
 - **Non-intrusive** (no changes to file content)  
 - **Compatible** with existing Nextcloud workflows  
-- **Designed for education and research environments**
+- **Designed for flexible use across education, government, and other document-driven environments**
 
-## 👩‍🏫 Target Users
+## 👥 Target Users
 
-MetaVox is designed primarily for:
+MetaVox is suitable for:
 
-- Universities and educational institutions  
-- Researchers and lecturers  
-- Students working in document-heavy environments  
-- Educational IT admins integrating Nextcloud
+- **Universities and educational institutions**  
+- **Government organizations**  
+- **Knowledge workers in research, legal, and administrative fields**  
+- **IT admins and architects deploying metadata-enhanced cloud infrastructure**
 
 ## 🌱 Why MetaVox?
 
-While Nextcloud provides basic metadata capabilities (tags, comments, etc.), MetaVox introduces **rich, domain-specific semantic metadata** to support use cases such as:
+While Nextcloud provides basic metadata capabilities (tags, comments, etc.), MetaVox introduces **rich, structured semantic metadata** to support use cases such as:
 
-- Curriculum tagging  
-- Academic document classification  
+- Curriculum and course tagging  
+- Policy and compliance classification  
 - Research annotation  
-- Educational version tracking
+- Document lifecycle and role-specific categorization  
 
-# Metavox - Metadata Management Requirements
+# MetaVox - Metadata Management Requirements
 
 ## Scope
-Metavox is a Nextcloud app designed to manage metadata specifically for **Teamfolders**. The goal is to offer controlled, role-based metadata definition and editing, with a clear distinction between **Teamfolder metadata** and **Document-specific metadata**.
+MetaVox is a Nextcloud app designed to manage metadata specifically for **Team folders**. The goal is to offer controlled, role-based metadata definition and editing, with a clear distinction between **Team folder metadata** and **Document-specific metadata**.
 
 ---
 
 ## Functional Requirements
 
 ### 1. Metadata Scope and Visibility
-- [ ] Metadata can only be assigned to **Teamfolders** and documents **within Teamfolders**.
+- [ ] Metadata can only be assigned to **Team folders** and documents **within Team folders**.
 - [ ] Metadata must **not** be assignable to personal folders or files.
 - [ ] For each document inside a Teamfolder, the following must be shown:
-  - [ ] Inherited Teamfolder metadata (read-only).
+  - [ ] Team folder metadata (read-only).
+    - [ ] Not stored with the document
   - [ ] Document-specific metadata (editable depending on permissions).
 
 ### 2. Teamfolder Metadata Management
 - [ ] Only **administrators** can define or modify Teamfolder metadata.
-- [ ] Metadata types for Teamfolders must be configurable per folder.
+- [ ] Metadata types for Team folders must be configurable per folder.
 - [ ] Each metadata field may have an optional **default value**.
-- [ ] Teamfolder metadata definitions are created independently of document metadata definitions.
-- [ ] Admins can import Teamfolder metadata definitions via a predefined `.json` format.
-- [ ] Admins can export Teamfolder metadata definitions into a predefined `.json` format.
+- [ ] Team folder metadata definitions are created independently of document metadata definitions.
+- [ ] Admins can import Team folder metadata definitions via a predefined `.json` format.
+- [ ] Admins can export Team folder metadata definitions into a predefined `.json` format.
 
-### 3. Document Metadata within Teamfolders
-- [ ] Metadata can be assigned to individual documents inside Teamfolders.
+### 3. Document Metadata within Team folders
+- [ ] Metadata can be assigned to individual documents inside Team folders.
 - [ ] Only users with **edit permissions** on the document may edit document-specific metadata.
 - [ ] Users with **read-only access** may view but **not** modify metadata.
 - [ ] Metadata editing rights should **inherit the document’s permissions**.
@@ -66,15 +69,15 @@ Metavox is a Nextcloud app designed to manage metadata specifically for **Teamfo
 ---
 
 ## Permissions & Roles
-- [ ] Metadata definitions (Teamfolder and document level) can only be created/modified by users with the **admin role**.
+- [ ] Metadata definitions (Team folder and document level) can only be created/modified by users with the **admin role**.
 - [ ] Regular users may only **view or edit** document metadata based on their **access level** to the document.
 
 ---
 
 ## User Interface Requirements
-- [ ] Metadata associated with a Teamfolder must be **clearly visible** when browsing the folder.
+- [ ] Metadata associated with a Team folder must be **clearly visible** when browsing the folder.
 - [ ] When viewing a document, the interface must distinguish between:
-  - [ ] Metadata inherited from the Teamfolder (read-only).
+  - [ ] Metadata shown from the Team folder (read-only).
   - [ ] Metadata specific to the document (editable if user has permission).
 - [ ] Default values should be prefilled in forms when present.
 
