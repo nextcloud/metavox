@@ -44,15 +44,14 @@ MetaVox is a Nextcloud app designed to manage metadata specifically for **Team f
 ### 1. Metadata Scope and Visibility
 - [ ] Metadata can only be assigned to **Team folders** and documents **within Team folders**.
 - [ ] Metadata must **not** be assignable to personal folders or files.
-- [ ] For each document inside a Teamfolder, the following must be shown:
+- [ ] For each document inside a Team folder, the following must be shown:
   - [ ] Team folder metadata (read-only).
     - [ ] Not stored with the document
   - [ ] Document-specific metadata (editable depending on permissions).
 
-### 2. Teamfolder Metadata Management
-- [ ] Only **administrators** can define or modify Teamfolder metadata.
+### 2. Team folder Metadata Management
+- [ ] Only **administrators** can define or modify Team folder metadata.
 - [ ] Metadata types for Team folders must be configurable per folder.
-- [ ] Each metadata field may have an optional **default value**.
 - [ ] Team folder metadata definitions are created independently of document metadata definitions.
 - [ ] Admins can import Team folder metadata definitions via a predefined `.json` format.
 - [ ] Admins can export Team folder metadata definitions into a predefined `.json` format.
@@ -62,7 +61,6 @@ MetaVox is a Nextcloud app designed to manage metadata specifically for **Team f
 - [ ] Only users with **edit permissions** on the document may edit document-specific metadata.
 - [ ] Users with **read-only access** may view but **not** modify metadata.
 - [ ] Metadata editing rights should **inherit the document’s permissions**.
-- [ ] When a metadata field has a default value, this value is pre-filled but can be changed by authorized users.
 - [ ] Admins can import Document metadata definitions via a predefined `.json` format.
 - [ ] Admins can export Document metadata definitions into a predefined `.json` format.
 
@@ -79,12 +77,11 @@ MetaVox is a Nextcloud app designed to manage metadata specifically for **Team f
 - [ ] When viewing a document, the interface must distinguish between:
   - [ ] Metadata shown from the Team folder (read-only).
   - [ ] Metadata specific to the document (editable if user has permission).
-- [ ] Default values should be prefilled in forms when present.
 
 ---
 
 ## Technical Requirements
-- [ ] JSON schema must be defined for importing metadata definitions, including optional default values.
+- [ ] JSON schema must be defined for importing metadata definitions
 - [ ] App must ensure metadata integrity and prevent unauthorized changes.
 - [ ] Integration with Nextcloud’s permission system is required.
 
@@ -98,6 +95,8 @@ MetaVox is a Nextcloud app designed to manage metadata specifically for **Team f
 ---
 
 ## Future Considerations
+- [ ] Each metadata field may have an optional **default value**.
+  - [ ] JSON import support for default values  
 - [ ] Versioning of metadata definitions.
 - [ ] Audit logs for metadata changes.
 - [ ] Metadata must be **searchable** via Nextcloud’s global search.
