@@ -5,6 +5,9 @@ Originally built for education, MetaVox is broadly applicable across government,
 
 It adds metadata to documents stored in Nextcloud, making them easier to organize, interpret, and retrieve.
 
+<img width="1546" height="1384" alt="image" src="https://github.com/user-attachments/assets/99291679-c1b3-40e9-814d-94ca599ad044" />
+
+
 ## 🎯 Purpose
 
 The goal of MetaVox is to enrich digital documents with contextual metadata — such as topic, author intent, relevance, or classification — in a way that is:
