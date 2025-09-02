@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<info xmlns:xsi= "http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+    <id>metavox</id>
+    <name>MetaVox</name>
+    <summary>Metadata for Nextcloud</summary>
+    <description>Metadata for documents stored in Nextcloud, making them easier to organize, interpret, and retrieve.</description>
+    <version>0.1</version>
+    <licence>AGPL-3.0-or-later</licence>
+    <author>Sam Ditmeijer</author>
+    <author>Rik Dekker</author>
+    <category>office</category>
+    <bugs>https://github.com/nextcloud/metavox/issues</bugs>
+    <dependencies>
+        <nextcloud min-version="31"/>
+    </dependencies>
+</info>
