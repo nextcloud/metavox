@@ -5,7 +5,7 @@ Originally built for education, MetaVox is broadly applicable across government,
 
 It adds metadata to documents stored in Nextcloud, making them easier to organize, interpret, and retrieve.
 
-<img width="1546" height="1384" alt="image" src="https://github.com/user-attachments/assets/99291679-c1b3-40e9-814d-94ca599ad044" />
+<img width="1503" height="832" alt="image" src="https://github.com/nextcloud/metavox/blob/main/screenshots/MetaVox%20v1.0.0.png" />
 
 
 ## 🎯 Purpose
