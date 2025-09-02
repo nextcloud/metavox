@@ -12,6 +12,6 @@
     <category>office</category>
     <bugs>https://github.com/nextcloud/metavox/issues</bugs>
     <dependencies>
-        <nextcloud min-version="31"/>
+        <nextcloud min-version="32"/>
     </dependencies>
 </info>
