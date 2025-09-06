@@ -6,12 +6,16 @@
     <summary>Custom metadata management with configurable fields</summary>
     <description>A customizable metadata app that allows you to define your own metadata fields for files.
           
-      The goal of MetaVox is to enrich digital documents with contextual metadata — such as topic, author intent, relevance, or classification — in a way that is:
+        The goal of MetaVox is to enrich digital documents with contextual metadata 
+        – such as topic, author intent, relevance, or classification – in a way that is:
       
-      - **Structured** and machine-readable  
-      - **Non-intrusive** (no changes to file content)  
-      - **Compatible** with existing Nextcloud workflows  
-      - **Designed for flexible use across education, government, and other document-driven environments**
+        <ul>
+          <li><strong>Structured</strong> and machine–readable</li>
+          <li><strong>Non-intrusive</strong> (no changes to file content)</li>
+          <li><strong>Compatible</strong> with existing Nextcloud workflows</li>
+          <li><strong>Designed</strong> for flexible use across education, 
+              government, and other document-driven environments</li>
+        </ul>
     </description>
     <version>1.0.3</version>
     <licence>AGPL-3.0-or-later</licence>
