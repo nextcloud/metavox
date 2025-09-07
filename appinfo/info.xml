@@ -4,16 +4,32 @@
     <id>metavox</id>
     <name>MetaVox</name>
     <summary>Custom metadata management with configurable fields</summary>
-    <description>A customizable metadata app that allows you to define your own metadata fields for files</description>
-    <version>1.0.0</version>
+    <description>A customizable metadata app that allows you to define your own metadata fields for files.
+          
+      The goal of MetaVox is to enrich digital documents with contextual metadata — such as topic, author intent, relevance, or classification — in a way that is:
+      
+      - **Structured** and machine-readable  
+      - **Non-intrusive** (no changes to file content)  
+      - **Compatible** with existing Nextcloud workflows  
+      - **Designed for flexible use across education, government, and other document-driven environments**
+    </description>
+    <version>1.0.6</version>
     <licence>AGPL-3.0-or-later</licence>
-    <author mail="s.d.ditmeijer@hva.nl" homepage="">Sam Ditmeijer</author>
-    <author mail="j.m.dekker2@hva.nl" homepage="">Rik Dekker</author>
+    <author mail="s.d.ditmeijer@hva.nl">Sam Ditmeijer</author>
+    <author mail="j.m.dekker2@hva.nl">Rik Dekker</author>
     <namespace>MetaVox</namespace>
+    <documentation>
+        <user>https://github.com/nextcloud/metavox/blob/main/README.md</user>
+    </documentation>  
     <category>files</category>
-    <bugs>https://github.com/nextcloud/metavox/tree/main/issues</bugs>
+    <website>https://github.com/nextcloud/metavox</website>
+    <screenshot>https://raw.githubusercontent.com/nextcloud/metavox/main/screenshots/Manage%20team%20metadata.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/nextcloud/metavox/main/screenshots/MetaVox%20v1.0.0.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/nextcloud/metavox/main/screenshots/Teamfolder%20metadata.png</screenshot>
+    <repository type="git">https://github.com/nextcloud/metavox.git</repository>
+    <bugs>https://github.com/nextcloud/metavox/issues</bugs>
     <dependencies>
-        <nextcloud min-version="32"/>
+        <nextcloud min-version="31" max-version="31"/>
     </dependencies>
     <settings>
         <admin>OCA\MetaVox\Settings\Admin</admin>

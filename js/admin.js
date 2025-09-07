@@ -1120,14 +1120,25 @@ console.log('🔧 TesterMeta Admin - Deel 4: Compleet met Metadata Editor');
                         '<button class="edit-metadata" data-groupfolder-id="' + groupfolder.id + '">✏️ Edit Metadata</button>' +
                     '</div>' +
                 '</div>' +
-                '<div class="metadata-form" id="metadata-form-' + groupfolder.id + '">' +
-                    '<div class="loading">Loading metadata...</div>' +
-                '</div>' +
-                '<div class="groupfolder-fields-config" id="fields-config-' + groupfolder.id + '" style="display: none;"></div>' +
+                '<div class="metadata-form active" id="metadata-form-' + groupfolder.id + '" style="display: block !important; visibility: visible !important;">' +
+    '<div class="metadata-form" id="metadata-form-' + groupfolder.id + '">' +
+'</div>' +
+                '<div class="groupfolder-fields-config" id="fields-config-' + groupfolder.id + '"></div>' +
             '</div>';
             
-            groupfoldersContainer.append(groupfolderHtml);
-        });
+           groupfoldersContainer.append(groupfolderHtml);
+
+// Debug: Check if element was actually added to DOM
+setTimeout(() => {
+    const checkDiv = $('#fields-config-' + groupfolder.id);
+    console.log('After append - element exists:', checkDiv.length > 0);
+    if (checkDiv.length === 0) {
+        console.error('Element was not added to DOM despite append call');
+        // Check if parent container exists
+        console.log('Parent container exists:', $('#groupfolders-list').length > 0);
+        console.log('Groupfolders container exists:', groupfoldersContainer.length > 0);
+    }
+}, 10);});
         
         // Bind search functionality
         const searchInput = $('#groupfolder-search');
@@ -1180,33 +1191,50 @@ console.log('🔧 TesterMeta Admin - Deel 4: Compleet met Metadata Editor');
             }
         });
         
-        // Bind events for groupfolder actions
-        $(document).off('click', '.configure-fields').on('click', '.configure-fields', function() {
-            const groupfolderId = $(this).data('groupfolder-id');
-            console.log('⚙️ Configure fields for groupfolder:', groupfolderId);
-            toggleFieldsConfiguration(groupfolderId);
-        });
+// Bind events for groupfolder actions
+$(document).off('click', '.configure-fields').on('click', '.configure-fields', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const groupfolderId = $(this).data('groupfolder-id');
+    console.log('Configure fields for groupfolder:', groupfolderId);
+    toggleFieldsConfiguration(groupfolderId);
+});
+
+$(document).off('click', '.edit-metadata').on('click', '.edit-metadata', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const groupfolderId = $(this).data('groupfolder-id');
+    console.log('Edit metadata for groupfolder:', groupfolderId);
+    toggleMetadataEditor(groupfolderId);
+});
         
-        $(document).off('click', '.edit-metadata').on('click', '.edit-metadata', function() {
-            const groupfolderId = $(this).data('groupfolder-id');
-            console.log('✏️ Edit metadata for groupfolder:', groupfolderId);
-            toggleMetadataEditor(groupfolderId);
-        });
+      $(document).off('click', '.edit-metadata').on('click', '.edit-metadata', function() {
+    const groupfolderId = $(this).data('groupfolder-id');
+    console.log('✏️ Edit metadata for groupfolder:', groupfolderId);
+    
+    // Close only other groupfolder metadata editors, not this one
+    $('.metadata-form').not('#metadata-form-' + groupfolderId).removeClass('active');
+    
+    toggleMetadataEditor(groupfolderId);
+});
         
         console.log('✅ Groupfolders rendered with search functionality for', groupfolders.length, 'folders');
     }
     
-    function toggleFieldsConfiguration(groupfolderId) {
-        const configDiv = $('#fields-config-' + groupfolderId);
-        
-        // Close all other config panels
-        $('.groupfolder-fields-config').not('#fields-config-' + groupfolderId).hide();
-        $('.metadata-form').removeClass('active');
-        
-        if (configDiv.is(':visible')) {
-            configDiv.hide();
-            return;
-        }
+function toggleFieldsConfiguration(groupfolderId) {
+    console.log('=== FIELDS CONFIG START ===', groupfolderId);
+    const metadataDiv = $('#metadata-form-' + groupfolderId);
+    console.log('Metadata div active before fields config:', metadataDiv.hasClass('active'));
+    
+    const configDiv = $('#fields-config-' + groupfolderId); // <-- Deze regel was waarschijnlijk weg
+    
+    // Close other field config panels only
+    $('.groupfolder-fields-config').not('#fields-config-' + groupfolderId).hide();
+    
+    if (configDiv.is(':visible')) {
+        configDiv.hide();
+        return;
+    }
         
         console.log('📋 Loading fields configuration for groupfolder:', groupfolderId);
         
@@ -1235,10 +1263,30 @@ console.log('🔧 TesterMeta Admin - Deel 4: Compleet met Metadata Editor');
     }
     
     // IMPROVED: Compact field configuration with search functionality
-    function renderFieldsConfiguration(groupfolderId, allFields, assignedFieldIds) {
-        const configDiv = $('#fields-config-' + groupfolderId);
+function renderFieldsConfiguration(groupfolderId, allFields, assignedFieldIds) {
+    console.log('=== FIELDS CONFIG START ===', groupfolderId);
+    
+    // Always create the config div if it doesn't exist
+    let configDiv = $('#fields-config-' + groupfolderId);
+    
+    if (configDiv.length === 0) {
+        console.log('Creating config div for groupfolder:', groupfolderId);
+        configDiv = $('<div class="groupfolder-fields-config" id="fields-config-' + groupfolderId + '"></div>');
         
-        let html = '<div class="fields-config-container compact">' +
+        // Insert after the metadata form
+        const metadataForm = $('#metadata-form-' + groupfolderId);
+        if (metadataForm.length > 0) {
+            metadataForm.after(configDiv);
+        } else {
+            // Fallback: append to the groupfolder item
+            $('[data-groupfolder-id="' + groupfolderId + '"]').append(configDiv);
+        }
+        
+        console.log('Config div created and added to DOM');
+    }
+    
+    // Continue with rest of function...
+    let html = '<div class="fields-config-container compact">' +
             '<div class="config-header">' +
                 '<h4>⚙️ Configure Fields for this Team folder</h4>' +
                 '<div class="field-stats">' +
@@ -1366,10 +1414,34 @@ console.log('🔧 TesterMeta Admin - Deel 4: Compleet met Metadata Editor');
         
         html += '</div>';
         configDiv.html(html);
+
+        
         
         // Bind search functionality
         const searchInput = $('#field-search-' + groupfolderId);
         const searchCount = $('#search-count-' + groupfolderId);
+
+        {
+    
+ configDiv.html(html);
+    configDiv.show();
+
+    // Force visibility with aggressive CSS
+configDiv.attr('style', 'display: block !important; visibility: visible !important;');
+
+
+console.log('Config div final check:', {
+    exists: configDiv.length > 0,
+    visible: configDiv.is(':visible'),
+    display: configDiv.css('display'),
+    position: configDiv.position(),
+    html_length: configDiv.html().length
+});
+    
+    console.log('After show - is visible:', configDiv.is(':visible'));
+}
+
+
         
         function updateSearchResults() {
             const searchTerm = searchInput.val().toLowerCase().trim();
@@ -1486,23 +1558,56 @@ console.log('🔧 TesterMeta Admin - Deel 4: Compleet met Metadata Editor');
         });
     }
     
-    function toggleMetadataEditor(groupfolderId) {
-        const metadataDiv = $('#metadata-form-' + groupfolderId);
+function toggleMetadataEditor(groupfolderId) {
+    console.log('=== METADATA EDITOR START ===', groupfolderId);
+    const metadataDiv = $('#metadata-form-' + groupfolderId);
+    console.log('Metadata div active before:', metadataDiv.hasClass('active'));
+    
+    // Only close OTHER groupfolder editors, not this one
+    $('.metadata-form').not('#metadata-form-' + groupfolderId).removeClass('active');
+    $('.groupfolder-fields-config').not('#fields-config-' + groupfolderId).hide();
+    
+    // If this specific editor is already active with content, don't reload
+    if (metadataDiv.hasClass('active') && metadataDiv.find('.field-list').length > 0) {
+        return; // Already loaded and active
+    }
+    // Always proceed with loading - remove the early return
+    console.log('📁 Loading metadata for groupfolder:', groupfolderId);
+    
+    // Always add active class and load content
+    metadataDiv.addClass('active');
+    metadataDiv.html('<div class="loading">Loading metadata...</div>');
+    
+    // Add CSS fix for metadata editor visibility
+    addMetadataEditorCSS();
+    
+    // Load groupfolder metadata
+    $.ajax({
+        url: OC.generateUrl('/apps/metavox/api/groupfolders/' + groupfolderId + '/metadata'),
+        method: 'GET'
+    }).then(function(allFields) {
+        console.log('✅ Groupfolder metadata loaded:', allFields);
         
-        // Close all other metadata panels and field config panels
-        $('.metadata-form').not('#metadata-form-' + groupfolderId).removeClass('active');
-        $('.groupfolder-fields-config').hide();
+        // Filter for groupfolder-only fields (applies_to_groupfolder = 1)
+        const groupfolderOnlyFields = allFields.filter(field => {
+            const appliesTo = field.applies_to_groupfolder || 0;
+            return appliesTo === 1;
+        });
         
-        if (metadataDiv.hasClass('active')) {
-            metadataDiv.removeClass('active');
-            return;
+        if (groupfolderOnlyFields.length === 0) {
+            renderMetadataEditorWithInstructions(groupfolderId, allFields);
+        } else {
+            renderMetadataEditor(groupfolderId, groupfolderOnlyFields);
         }
         
-        console.log('📝 Loading metadata for groupfolder:', groupfolderId);
+    }).catch(function(error) {
+        console.error('❌ Error loading metadata:', error);
+        metadataDiv.html('<div class="error-message">Error loading metadata: ' + error + '</div>');
+    });
         
-        // Show loading state
-        metadataDiv.html('<div class="loading">Loading metadata...</div>');
-        metadataDiv.addClass('active');
+       // Show active state immediately
+metadataDiv.addClass('active');
+metadataDiv.html(''); // Clear any existing content
         
         // Add CSS fix for metadata editor visibility
         addMetadataEditorCSS();
@@ -1580,16 +1685,14 @@ console.log('🔧 TesterMeta Admin - Deel 4: Compleet met Metadata Editor');
             $('[data-tab="groupfolder-metadata-fields"]').click();
         });
         
-        $('#toggle-fields-config-' + groupfolderId).off('click').on('click', function(e) {
-            e.preventDefault();
-            console.log('⚙️ Toggling fields configuration for groupfolder:', groupfolderId);
-            const configDiv = $('#fields-config-' + groupfolderId);
-            if (configDiv.is(':visible')) {
-                configDiv.hide();
-            } else {
-                $('.configure-fields[data-groupfolder-id="' + groupfolderId + '"]').click();
-            }
-        });
+  $('#toggle-fields-config-' + groupfolderId).off('click').on('click', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('⚙️ Direct toggle fields configuration for groupfolder:', groupfolderId);
+    
+    // Call toggleFieldsConfiguration directly instead of triggering click
+    toggleFieldsConfiguration(groupfolderId);
+});
         
         console.log('✅ Metadata editor instructions rendered with working buttons for groupfolder:', groupfolderId);
     }
@@ -1617,10 +1720,13 @@ console.log('🔧 TesterMeta Admin - Deel 4: Compleet met Metadata Editor');
             saveGroupfolderMetadata(groupfolderId);
         });
         
-        // Bind cancel button
-        $(document).off('click', '.cancel-metadata').on('click', '.cancel-metadata', function() {
-            metadataDiv.removeClass('active');
-        });
+      // Bind cancel button with specific groupfolder ID
+$(document).off('click', '#metadata-form-' + groupfolderId + ' .cancel-metadata')
+          .on('click', '#metadata-form-' + groupfolderId + ' .cancel-metadata', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    $('#metadata-form-' + groupfolderId).removeClass('active').html('');
+});
         
         console.log('✅ Metadata editor rendered for groupfolder', groupfolderId, 'with', fields.length, 'fields');
     }

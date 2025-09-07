@@ -5,7 +5,7 @@ Originally built for education, MetaVox is broadly applicable across government,
 
 It adds metadata to documents stored in Nextcloud, making them easier to organize, interpret, and retrieve.
 
-<img width="1546" height="1384" alt="image" src="https://github.com/user-attachments/assets/99291679-c1b3-40e9-814d-94ca599ad044" />
+<img width="1503" height="832" alt="image" src="https://github.com/nextcloud/metavox/blob/main/screenshots/MetaVox%20v1.0.0.png" />
 
 
 ## 🎯 Purpose
@@ -106,22 +106,15 @@ MetaVox is a Nextcloud app designed to manage metadata specifically for **Team f
 - [ ] Metadata must be **filterable** in search results (e.g., by metadata field values).
 
 ## Visuals
-ToDo
+<img alt="image" src="https://github.com/nextcloud/metavox/blob/main/screenshots/Teamfolder%20metadata.png" />
+<img alt="image" src="https://github.com/nextcloud/metavox/blob/main/screenshots/File%20metadata.png" />
+<img alt="image" src="https://github.com/nextcloud/metavox/blob/main/screenshots/Manage%20team%20metadata.png" />
 
 ## Installation
-ToDo
-
-## Usage
-ToDo
-
-## Support
-ToDo
+Add the app via the Nextcloud app store under Office & text apps
 
 ## Roadmap
-ToDo
-
-## Contributing
-ToDo
+Retention policies
 
 ## Authors and acknowledgment
 Initial version created by Sam Ditmeijer and Rik Dekker
@@ -130,6 +123,3 @@ Initial version created by Sam Ditmeijer and Rik Dekker
 
 This project is licensed under the [GNU Affero General Public License v3 (AGPLv3)](https://www.gnu.org/licenses/agpl-3.0.html).  
 You are free to use, modify, and distribute this software under the terms of the AGPL license.
-
-## Project status
-Beta
