@@ -1934,4 +1934,31 @@ small {
         font-size: 14px !important;
     }
 }
+/* Force metadata forms to always be visible */
+.metadata-form {
+    display: block !important;
+    min-height: 50px !important;
+    background: #f9fafb !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 6px !important;
+    padding: 15px !important;
+    margin: 15px 0 !important;
+}
+/* Force field config forms to be visible when shown */
+.groupfolder-fields-config {
+    /* Remove any display: none !important that might be hiding it */
+}
+
+.fields-config-container {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.metadata-form:empty::before {
+    content: "Click 'Edit Metadata' to manage this folder's metadata.";
+    color: #6b7280;
+    font-style: italic;
+    font-size: 14px;
+}
 <style>
