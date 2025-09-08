@@ -1,18 +1,5 @@
 /* TesterMeta Enhanced User Interface CSS - Met Dropdown Fix */
 
-/* In your app's CSS file */
-.testermeta-metadata-icon {
-    background-image: url('../img/metadata.svg');
-    background-size: 16px 16px;
-    background-repeat: no-repeat;
-    background-position: center;
-    opacity: 0.7;
-    transition: opacity 0.2s ease;
-}
-
-.testermeta-metadata-icon:hover {
-    opacity: 1;
-}
 /* DROPDOWN FIX - HOOGSTE PRIORITEIT */
 .metadata-field select,
 .form-group select,
