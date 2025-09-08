@@ -5,6 +5,10 @@ return [
         // Admin page route
         ['name' => 'admin#index', 'url' => '/admin', 'verb' => 'GET'],
         
+        // ========================================
+        // 📋 FIELD MANAGEMENT ROUTES
+        // ========================================
+        
         // Global field management routes
         ['name' => 'field#getFields', 'url' => '/api/fields', 'verb' => 'GET'],
         ['name' => 'field#createField', 'url' => '/api/fields', 'verb' => 'POST'],
@@ -38,5 +42,43 @@ return [
         // Field overrides voor groupfolder-specifieke configuraties
         ['name' => 'field#saveFieldOverride', 'url' => '/api/groupfolders/{groupfolderId}/field-overrides', 'verb' => 'POST'],
         ['name' => 'field#getFieldOverrides', 'url' => '/api/groupfolders/{groupfolderId}/field-overrides', 'verb' => 'GET'],
+
+        // ========================================
+        // 🔄 RETENTION WORKFLOW ROUTES - FIXED!
+        // ========================================
+        
+        // Retention Policies (Admin Management)
+        ['name' => 'Retention#getPolicies', 'url' => '/api/retention/policies', 'verb' => 'GET'],
+        ['name' => 'Retention#getPolicy', 'url' => '/api/retention/policies/{id}', 'verb' => 'GET'],
+        ['name' => 'Retention#createPolicy', 'url' => '/api/retention/policies', 'verb' => 'POST'],
+        ['name' => 'Retention#updatePolicy', 'url' => '/api/retention/policies/{id}', 'verb' => 'PUT'],
+        ['name' => 'Retention#deletePolicy', 'url' => '/api/retention/policies/{id}', 'verb' => 'DELETE'],
+        ['name' => 'Retention#togglePolicy', 'url' => '/api/retention/policies/{id}/toggle', 'verb' => 'POST'],
+        ['name'=> 'Retention#getGroupfoldersWithoutPolicy', 'url' => '/api/retention/groupfolders-without-policy', 'verb' => 'GET'],
+        ['name' => 'retention#getGroupfoldersForPolicy', 'url' => '/api/retention/policies/{policyId}/groupfolders', 'verb' => 'GET'],
+        ['name' => 'retention#assignPoliciesToFolder', 'url' => '/api/retention/policies/assign-to-folder', 'verb' => 'POST'],
+        
+        // File Retention (User Management)
+        ['name' => 'Retention#getFileRetention', 'url' => '/api/retention/files/{fileId}', 'verb' => 'GET'],
+        ['name' => 'Retention#setFileRetention', 'url' => '/api/retention/files/{fileId}', 'verb' => 'POST'],
+        ['name' => 'Retention#removeFileRetention', 'url' => '/api/retention/files/{fileId}', 'verb' => 'DELETE'],
+        ['name' => 'Retention#checkRetentionBatch', 'url' => '/api/retention/check-batch', 'verb' => 'POST'],
+        ['name' => 'retention#getGroupfolderPolicies', 'url' => '/api/retention/groupfolders/{groupfolderId}/policies', 'verb' => 'GET'],
+        
+        // Groupfolder Policy Access (User Needs)
+        ['name' => 'Retention#getGroupfolderPolicy', 'url' => '/api/retention/groupfolders/{groupfolderId}/policy', 'verb' => 'GET'],
+        
+        // User Retention Overview
+        ['name' => 'Retention#getUserRetentionOverview', 'url' => '/api/retention/user/overview', 'verb' => 'GET'],
+        
+        // Processing & Monitoring (Admin)
+        ['name' => 'Retention#getProcessingLogs', 'url' => '/api/retention/logs', 'verb' => 'GET'],
+        ['name' => 'Retention#getUpcomingActions', 'url' => '/api/retention/upcoming', 'verb' => 'GET'],
+        ['name' => 'Retention#processRetentionActions', 'url' => '/api/retention/process', 'verb' => 'POST'],
+        ['name' => 'Retention#getRetentionStats', 'url' => '/api/retention/stats', 'verb' => 'GET'],
+        
+        // Utility Functions
+        ['name' => 'Retention#validateRetentionSettings', 'url' => '/api/retention/validate', 'verb' => 'POST'],
+        ['name' => 'Retention#previewRetentionDate', 'url' => '/api/retention/preview', 'verb' => 'POST'],
     ]
 ];
