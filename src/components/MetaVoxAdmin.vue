@@ -35,7 +35,8 @@
 
 				<ManageGroupfolders
 					v-if="activeTab === 'groupfolders'"
-					@notification="showNotification" />
+					@notification="showNotification"
+					@switch-tab="handleTabSwitch" />
 
 				<RetentionManager
 					v-if="activeTab === 'retention'"
@@ -89,9 +90,39 @@ export default {
 			this.activeTab = tab
 		},
 		
+		handleTabSwitch(tabId) {
+			// Handle tab switch request from child components
+			// Map the old naming convention to the new one if needed
+			const tabMapping = {
+				'groupfolder-metadata-fields': 'groupfolder-metadata',
+				'file-metadata-fields': 'file-metadata',
+				// Add more mappings if needed
+			}
+			
+			const mappedTab = tabMapping[tabId] || tabId
+			
+			// Check if the tab exists
+			if (this.tabs.find(tab => tab.id === mappedTab)) {
+				this.setActiveTab(mappedTab)
+			} else {
+				console.warn(`Tab "${tabId}" not found`)
+			}
+		},
+		
 		showNotification(notification) {
-			// Simple console log for now, later we can add proper Nextcloud notifications
-			console.log(`${notification.type}: ${notification.message}`)
+			// Use Nextcloud's notification system if available
+			if (typeof OC !== 'undefined' && OC.Notification) {
+				if (notification.type === 'success') {
+					OC.Notification.showTemporary(notification.message)
+				} else if (notification.type === 'error') {
+					OC.Notification.showTemporary(notification.message)
+				} else {
+					OC.Notification.showTemporary(notification.message)
+				}
+			} else {
+				// Fallback to console log
+				console.log(`${notification.type}: ${notification.message}`)
+			}
 		},
 	},
 }
@@ -130,6 +161,7 @@ export default {
 	cursor: pointer;
 	border-bottom: 2px solid transparent;
 	color: var(--color-text-lighter);
+	transition: all 0.2s ease;
 	
 	&.active {
 		border-bottom-color: var(--color-primary);
@@ -137,7 +169,7 @@ export default {
 		background: var(--color-primary-element-light);
 	}
 	
-	&:hover {
+	&:hover:not(.active) {
 		background: var(--color-background-hover);
 	}
 }
@@ -153,11 +185,19 @@ export default {
 @media (max-width: 768px) {
 	.tab-navigation {
 		flex-direction: column;
+		gap: 0;
 	}
 	
 	.tab-button {
 		width: 100%;
 		justify-content: flex-start;
+		border-bottom: none;
+		border-left: 2px solid transparent;
+		
+		&.active {
+			border-bottom: none;
+			border-left-color: var(--color-primary);
+		}
 	}
 }
 </style>
