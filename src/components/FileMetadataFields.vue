@@ -1220,46 +1220,54 @@ async confirmImport() {
       }
     },
 
-    async exportFields() {
-      if (this.fields.length === 0) return
-      
-      this.exporting = true
-      
-      try {
-        // Prepare data for export
-        const exportData = this.fields.map(field => ({
-          field_name: field.field_name,
-          field_label: field.field_label,
-          field_type: field.field_type,
-          field_description: field.field_description,
-          is_required: field.is_required,
-          field_options: field.field_options,
-          sort_order: field.sort_order,
-          applies_to_groupfolder: field.applies_to_groupfolder
-        }))
-        
-        // Create JSON string
-        const jsonString = JSON.stringify(exportData, null, 2)
-        
-        // Create download link
-        const blob = new Blob([jsonString], { type: 'application/json' })
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `teamfolder-metadata-fields-${new Date().toISOString().slice(0, 10)}.json`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        URL.revokeObjectURL(url)
-        
-        showSuccess(this.t('metavox', 'Exported {count} fields', { count: this.fields.length }))
-      } catch (error) {
-        console.error('Export failed:', error)
-        showError(this.t('metavox', 'Failed to export fields'))
-      } finally {
-        this.exporting = false
+async exportFields() {
+  if (this.fields.length === 0) return
+  
+  this.exporting = true
+  
+  try {
+    // Prepare data for export
+    const exportData = this.fields.map(field => {
+      // Remove file_gf_ prefix from field_name for export
+      let exportFieldName = field.field_name
+      if (exportFieldName && exportFieldName.startsWith('file_gf_')) {
+        exportFieldName = exportFieldName.substring(8)
       }
-    },
+      
+      return {
+        field_name: exportFieldName,
+        field_label: field.field_label,
+        field_type: field.field_type,
+        field_description: field.field_description,
+        is_required: field.is_required,
+        field_options: field.field_options,
+        sort_order: field.sort_order,
+        applies_to_groupfolder: field.applies_to_groupfolder
+      }
+    })
+    
+    // Create JSON string
+    const jsonString = JSON.stringify(exportData, null, 2)
+    
+    // Create download link
+    const blob = new Blob([jsonString], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `file-metadata-fields-${new Date().toISOString().slice(0, 10)}.json`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    
+    showSuccess(this.t('metavox', 'Exported {count} fields', { count: this.fields.length }))
+  } catch (error) {
+    console.error('Export failed:', error)
+    showError(this.t('metavox', 'Failed to export fields'))
+  } finally {
+    this.exporting = false
+  }
+},
     
     readFileAsText(file) {
       return new Promise((resolve, reject) => {

@@ -1247,16 +1247,24 @@ export default {
       
       try {
         // Prepare data for export
-        const exportData = this.fields.map(field => ({
-          field_name: field.field_name,
-          field_label: field.field_label,
-          field_type: field.field_type,
-          field_description: field.field_description,
-          is_required: field.is_required,
-          field_options: field.field_options,
-          sort_order: field.sort_order,
-          applies_to_groupfolder: field.applies_to_groupfolder
-        }))
+        const exportData = this.fields.map(field => {
+          // Remove gf_ prefix from field_name for export
+          let exportFieldName = field.field_name
+          if (exportFieldName && exportFieldName.startsWith('gf_')) {
+            exportFieldName = exportFieldName.substring(3)
+          }
+          
+          return {
+            field_name: exportFieldName,
+            field_label: field.field_label,
+            field_type: field.field_type,
+            field_description: field.field_description,
+            is_required: field.is_required,
+            field_options: field.field_options,
+            sort_order: field.sort_order,
+            applies_to_groupfolder: field.applies_to_groupfolder
+          }
+        })
         
         // Create JSON string
         const jsonString = JSON.stringify(exportData, null, 2)
