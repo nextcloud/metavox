@@ -265,9 +265,6 @@
           <FolderIcon :size="64" class="empty-icon" />
           <h4>{{ t('metavox', 'No metadata fields configured') }}</h4>
           <p>{{ t('metavox', 'Add your first metadata field to get started organizing your team folders.') }}</p>
-          <NcButton @click="showAddForm = true" type="primary">
-            {{ t('metavox', 'Add First Field') }}
-          </NcButton>
         </div>
 
         <!-- Fields List -->
