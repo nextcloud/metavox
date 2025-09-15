@@ -1,14 +1,14 @@
 /* Alleen basis variabelen en overrides */
 :root {
-    --color-main-background: #ffffff;
-    --color-main-text: #222222;
-    --color-border: #e0e0e0;
+    --color-main-background: var(--color-background-dark);
+    --color-main-text: var(--color-primary-text)
+    --color-border: var(--color-border)
     /* etc. */
 }
 
 [data-theme-dark] {
-    --color-main-background: #181818;
-    --color-main-text: #e6e6e6;
+    --color-main-background: var(--color-background-dark);
+    --color-main-text: var(--color-primary-text)
     /* etc. */
 }
 
