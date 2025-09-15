@@ -1,0 +1,14 @@
+/* TesterMeta Enhanced User Interface CSS - Met Dropdown Fix */
+.testermeta-metadata-icon {
+  background-image: url('../img/metadata.svg');
+  background-size: 16px 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+  filter: var(--background-invert-if-dark);
+}
+
+.testermeta-metadata-icon:hover {
+  opacity: 1;
+}
