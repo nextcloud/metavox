@@ -41,7 +41,6 @@ console.log('🧩 files-plugin.js gestart (Enhanced Version - Team folder + Side
 	border-color: var(--color-primary-element);
 }
 
-.select-trigger:focus,
 .select-trigger.focus,
 .select-trigger.open {
 	border-color: var(--color-primary-element);
@@ -293,25 +292,30 @@ console.log('🧩 files-plugin.js gestart (Enhanced Version - Team folder + Side
 			padding-bottom: 8px;
 		}
 
-		/* Use Nextcloud button styling */
-		.metavox-sidebar-button {
-			display: inline-block;
-			padding: 12px 24px;
-			background: var(--color-primary-element);
-			border: none;
-			border-radius: var(--border-radius-pill);
-			color: var(--color-primary-element-text);
-			font-weight: 600;
-			font-size: var(--default-font-size);
-			cursor: pointer;
-			margin-top: 16px;
-			width: 100%;
-			transition: background 0.1s ease-in-out;
-		}
+/* Use Nextcloud button styling */
+.metavox-sidebar-button {
+  display: inline-block;
+  padding: 12px 24px;
+  background: var(--color-primary-element);
+  border: none;
+  border-radius: var(--border-radius-pill);
+  color: var(--color-primary-element-text);
+  font-weight: 600;
+  font-size: var(--default-font-size);
+  cursor: pointer;
+  margin-top: 16px;
+  width: 100%;
+  transition: background 0.1s ease-in-out;
+}
 
-		.metavox-sidebar-button:hover:enabled {
-			background: var(--color-primary-element-hover);
-		}
+.metavox-sidebar-button:hover {
+  background: var(--color-primary-element-hover);
+}
+
+.metavox-sidebar-button:active {
+  background: var(--color-primary-element-hover);
+  transform: translateY(1px);
+}
 
 		.metavox-sidebar-button:disabled {
 			background: var(--color-text-maxcontrast);
