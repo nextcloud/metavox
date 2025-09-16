@@ -3,7 +3,7 @@
 This document outlines the planned development of Metavox.  
 The roadmap is a living document: priorities and scope may change based on feedback, contributions, and new insights.
 
-👉 Have feedback or ideas? Open an [issue](https://github.com/nextcloud/metavox/issues) or start a [discussion](https://github.com/nextcloud/metavox/discussions).
+👉 Have feedback or ideas? Open an [issue](https://github.com/nextcloud/metavox/issues).
 
 ---
 
