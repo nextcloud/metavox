@@ -48,8 +48,3 @@ Status: *almost ready* (not yet live)
 - Potential funding applications to support advanced metadata-driven voice archiving and compliance use cases  
 - Position Metavox within next-generation telecommunications and cloud ecosystems  
 
----
-
-## Contributing
-Want to contribute to Metavox?  
-Check out our (soon-to-be-added) [contributing guidelines](CONTRIBUTING.md) and open a PR or issue.
