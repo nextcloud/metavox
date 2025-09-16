@@ -35,7 +35,8 @@ Status: *almost ready* (not yet live)
 - Advanced metadata-based search  
 - Integration with Nextcloud Flow for automated actions  
 - Reporting on usage and retention  
-- More granular permissions and policy options  
+- More granular permissions and policy options
+- AI-powered metadata extraction (automatically generate metadata based on document contents) 
 
 ---
 
