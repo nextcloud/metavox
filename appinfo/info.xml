@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+    <id>metavox</id>
+    <name>MetaVox</name>
+    <summary>Custom metadata management with configurable fields</summary>
+    <description>A customizable metadata app that allows you to define your own metadata fields for files</description>
+    <version>1.1.0</version>
+    <licence>agpl</licence>
+    <author mail="s.d.ditmeijer@hva.nl" homepage="">Sam Ditmeijer</author>
+    <author mail="j.m.dekker2@hva.nl" homepage="">Rik Dekker</author>
+    <namespace>MetaVox</namespace>
+    <category>files</category>
+    <bugs>https://uva-hva.gitlab.host/nextcloud/metavox</bugs>
+    <dependencies>
+        <nextcloud min-version="25" max-version="32"/>
+    </dependencies>
+    <settings>
+        <admin>OCA\MetaVox\Settings\Admin</admin>
+        <admin-section>OCA\MetaVox\Settings\AdminSection</admin-section>
+    </settings>
+</info>
