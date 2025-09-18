@@ -12,13 +12,10 @@ The roadmap is a living document: priorities and scope may change based on feedb
 
 ---
 
-## 🚧 In Progress
-### v1.1 – Nextcloud Controls
+### v1.1 – Nextcloud Controls --> Released 2025-09-18
 - Use native Nextcloud controls for better integration and UX  
 - Improved consistency with the Nextcloud interface  
 - Increased stability and maintainability  
-
-Status: *almost ready* (not yet live)
 
 ---
 
