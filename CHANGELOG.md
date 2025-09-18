@@ -6,6 +6,13 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.1] - 2025-09-18
+
+### Fixed
+- Fixed an issue where it was not possible to add columns.
+
+---
+
 ## [1.1.0] - 2025-09-18
 ### Added
 - Native Nextcloud controls for improved integration and consistency with the Nextcloud design system
