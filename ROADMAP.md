@@ -27,6 +27,10 @@ The roadmap is a living document: priorities and scope may change based on feedb
 ---
 
 ## 📌 Planned
+
+### Advanced metadata-based search 
+- Search on the MetaVox fields from the Nectcloud unified search
+  
 ### Retention Policies
 - Archive or delete data based on metadata  
 - Configurable policies (e.g. time-based or type-based)  
@@ -35,8 +39,7 @@ The roadmap is a living document: priorities and scope may change based on feedb
 ---
 
 ## 💡 Future Ideas
-*(Not scheduled yet, under consideration)*  
-- Advanced metadata-based search  
+*(Not scheduled yet, under consideration)*   
 - Integration with Nextcloud Flow for automated actions  
 - Reporting on usage and retention  
 - More granular permissions and policy options
