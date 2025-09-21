@@ -6,6 +6,13 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.2] - 2025-09-21
+
+### Added
+- Possibility to connect externally with the API
+
+---
+
 ## [1.1.1] - 2025-09-18
 
 ### Fixed
