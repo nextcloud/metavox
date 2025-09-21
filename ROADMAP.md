@@ -19,7 +19,7 @@ The roadmap is a living document: priorities and scope may change based on feedb
 
 ---
 
-### v1.2 – API --> Released 2025-09-21
+### v1.1.2 – API --> Released 2025-09-21
 - Using scripts to automatically fill metadata fields
 - Creating new fields directly through the API
 - Enabling advanced migration scenarios 
