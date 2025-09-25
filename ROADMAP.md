@@ -30,6 +30,9 @@ The roadmap is a living document: priorities and scope may change based on feedb
 
 ### Advanced metadata-based search 
 - Search on the MetaVox fields from the Nectcloud unified search
+
+### Retaining metadata on copy action 
+- When a folder (with all folders and files in it) or file is copied, the metadata is also copied
   
 ### Retention Policies
 - Archive or delete data based on metadata  
