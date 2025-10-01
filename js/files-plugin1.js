@@ -532,6 +532,10 @@ class TesterMetaTab {
 		this.updateMultiselectDisplay = this.updateMultiselectDisplay.bind(this);
 	}
 
+	sanitizeForSelector(str) {
+    return str.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
 	enabled(fileInfo, context) {
 		// Only enable for files/folders in groupfolders
 		return true; // Initial check, will be refined in mount/update
@@ -646,84 +650,78 @@ class TesterMetaTab {
 		this.loadAndRenderMetadata();
 	}
 
-	// Initialize multiselect events
-// Initialize multiselect events
 initMultiselectEvents() {
-	const triggers = this.el.querySelectorAll('.multiselect-trigger:not([data-disabled="true"])');
-	
-	triggers.forEach(trigger => {
-		const fieldName = trigger.getAttribute('data-field');
-		const dropdown = this.el.querySelector('#dropdown-' + 'file-gf-field-' + fieldName);
-		
-		// Click trigger to toggle dropdown
-		trigger.addEventListener('click', (e) => {
-			e.stopPropagation();
-			
-			// Close other multiselect dropdowns
-			this.el.querySelectorAll('.multiselect-dropdown-options').forEach(dd => {
-				if (dd !== dropdown) {
-					dd.style.display = 'none';
-					const otherTrigger = dd.parentNode.querySelector('.multiselect-trigger');
-					if (otherTrigger) otherTrigger.classList.remove('open');
-				}
-			});
-			
-			// Close select dropdowns too
-			this.el.querySelectorAll('.select-dropdown-options').forEach(dd => {
-				dd.style.display = 'none';
-				const otherTrigger = dd.parentNode.querySelector('.select-trigger');
-				if (otherTrigger) otherTrigger.classList.remove('open');
-			});
-			
-			// Toggle current dropdown
-			const isOpen = dropdown.style.display === 'block';
-			
-			if (!isOpen) {
-				// SMART POSITIONING: Check if there's enough space below
-				const triggerRect = trigger.getBoundingClientRect();
-				const viewportHeight = window.innerHeight;
-				const dropdownMaxHeight = 120; // Same as CSS max-height
-				const spaceBelow = viewportHeight - triggerRect.bottom;
-				const spaceAbove = triggerRect.top;
-				
-				// Reset positioning classes
-				dropdown.classList.remove('dropdown-up');
-				
-				// If not enough space below but enough above, flip it
-				if (spaceBelow < dropdownMaxHeight && spaceAbove > dropdownMaxHeight) {
-					dropdown.classList.add('dropdown-up');
-					console.log('Dropdown flipped up for field:', fieldName);
-				}
-				
-				dropdown.style.display = 'block';
-			} else {
-				dropdown.style.display = 'none';
-			}
-			
-			trigger.classList.toggle('open', !isOpen);
-		});
-		
-		// Handle checkbox changes
-		dropdown.addEventListener('change', (e) => {
-			if (e.target.type === 'checkbox') {
-				this.updateMultiselectDisplay(fieldName);
-			}
-		});
-	});
+    const triggers = this.el.querySelectorAll('.multiselect-trigger:not([data-disabled="true"])');
+    
+    triggers.forEach(trigger => {
+        const fieldName = trigger.getAttribute('data-field');
+        const sanitizedFieldId = this.sanitizeForSelector('file-gf-field-' + fieldName);
+        const dropdown = this.el.querySelector('#dropdown-' + sanitizedFieldId);
+        
+        // Controleer of dropdown bestaat
+        if (!dropdown) {
+            console.warn('Multiselect dropdown not found for field:', fieldName);
+            return;
+        }
+        
+        // Rest van je bestaande code blijft hetzelfde...
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            
+            // Je bestaande click handler code
+            this.el.querySelectorAll('.multiselect-dropdown-options').forEach(dd => {
+                if (dd !== dropdown) {
+                    dd.style.display = 'none';
+                    const otherTrigger = dd.parentNode.querySelector('.multiselect-trigger');
+                    if (otherTrigger) otherTrigger.classList.remove('open');
+                }
+            });
+            
+            // Je bestaande toggle code
+            const isOpen = dropdown.style.display === 'block';
+            
+            if (!isOpen) {
+                const triggerRect = trigger.getBoundingClientRect();
+                const viewportHeight = window.innerHeight;
+                const dropdownMaxHeight = 120;
+                const spaceBelow = viewportHeight - triggerRect.bottom;
+                const spaceAbove = triggerRect.top;
+                
+                dropdown.classList.remove('dropdown-up');
+                
+                if (spaceBelow < dropdownMaxHeight && spaceAbove > dropdownMaxHeight) {
+                    dropdown.classList.add('dropdown-up');
+                }
+                
+                dropdown.style.display = 'block';
+            } else {
+                dropdown.style.display = 'none';
+            }
+            
+            trigger.classList.toggle('open', !isOpen);
+        });
+        
+        dropdown.addEventListener('change', (e) => {
+            if (e.target.type === 'checkbox') {
+                this.updateMultiselectDisplay(fieldName);
+            }
+        });
+    });
 }
 
 // Initialize single select events
 initSelectEvents() {
-	const triggers = this.el.querySelectorAll('.select-trigger:not([data-disabled="true"])');
-	
-	triggers.forEach(trigger => {
-		const fieldName = trigger.getAttribute('data-field');
-		const dropdown = this.el.querySelector('#select-dropdown-file-gf-field-' + fieldName);
-		
-		if (!dropdown) {
-			console.warn('Select dropdown not found for field:', fieldName);
-			return;
-		}
+    const triggers = this.el.querySelectorAll('.select-trigger:not([data-disabled="true"])');
+    
+    triggers.forEach(trigger => {
+        const fieldName = trigger.getAttribute('data-field');
+        const sanitizedFieldId = this.sanitizeForSelector('file-gf-field-' + fieldName);
+        const dropdown = this.el.querySelector('#select-dropdown-' + sanitizedFieldId);
+        
+        if (!dropdown) {
+            console.warn('Select dropdown not found for field:', fieldName);
+            return;
+        }
 		
 		// Click trigger to toggle dropdown
 		trigger.addEventListener('click', (e) => {
@@ -800,58 +798,52 @@ initSelectEvents() {
 
 // Update multiselect display and hidden input
 updateMultiselectDisplay(fieldName) {
-	const hiddenInput = this.el.querySelector('#file-gf-field-' + fieldName);
-	const trigger = this.el.querySelector('.multiselect-trigger[data-field="' + fieldName + '"]');
-	const checkboxes = this.el.querySelectorAll('#dropdown-file-gf-field-' + fieldName + ' input[type="checkbox"]');
-	
-	if (!hiddenInput || !trigger) return;
-	
-	const selectedValues = [];
-	checkboxes.forEach(checkbox => {
-		if (checkbox.checked) {
-			selectedValues.push(checkbox.value);
-		}
-	});
-	
-	// Update hidden input
-	hiddenInput.value = selectedValues.join(',');
-	
-	// Update display
-	const display = trigger.querySelector('.multiselect-display');
-	if (display) {
-		display.textContent = selectedValues.length > 0 ? selectedValues.join(', ') : 'Select options...';
-	}
+    const sanitizedFieldId = this.sanitizeForSelector('file-gf-field-' + fieldName);
+    const hiddenInput = this.el.querySelector('#' + sanitizedFieldId);
+    const trigger = this.el.querySelector('.multiselect-trigger[data-field="' + fieldName + '"]');
+    const checkboxes = this.el.querySelectorAll('#dropdown-' + sanitizedFieldId + ' input[type="checkbox"]');
+    
+    if (!hiddenInput || !trigger) return;
+    
+    const selectedValues = [];
+    checkboxes.forEach(checkbox => {
+        if (checkbox.checked) {
+            selectedValues.push(checkbox.value);
+        }
+    });
+    
+    hiddenInput.value = selectedValues.join(',');
+    
+    const display = trigger.querySelector('.multiselect-display');
+    if (display) {
+        display.textContent = selectedValues.length > 0 ? selectedValues.join(', ') : 'Select options...';
+    }
 
-	// IMPORTANT: Don't re-render the entire form, just update the display
-	// This prevents the save button and form from disappearing
-	console.log('Multiselect updated for field:', fieldName, 'values:', selectedValues.join(','));
+    console.log('Multiselect updated for field:', fieldName, 'values:', selectedValues.join(','));
 }
 
-// Update single select display and hidden input
 updateSelectDisplay(fieldName, selectedValue) {
-	const hiddenInput = this.el.querySelector('#file-gf-field-' + fieldName);
-	const trigger = this.el.querySelector('.select-trigger[data-field="' + fieldName + '"]');
-	const dropdown = this.el.querySelector('#select-dropdown-file-gf-field-' + fieldName);
-	
-	if (!hiddenInput || !trigger) return;
-	
-	// Update hidden input
-	hiddenInput.value = selectedValue;
-	
-	// Update display
-	const display = trigger.querySelector('.select-display');
-	if (display) {
-		display.textContent = selectedValue || 'Select...';
-	}
-	
-	// Update selected state in dropdown
-	if (dropdown) {
-		dropdown.querySelectorAll('.select-option').forEach(option => {
-			option.classList.remove('selected');
-			if (option.getAttribute('data-value') === selectedValue) {
-				option.classList.add('selected');
-			}
-		});
+    const sanitizedFieldId = this.sanitizeForSelector('file-gf-field-' + fieldName);
+    const hiddenInput = this.el.querySelector('#' + sanitizedFieldId);
+    const trigger = this.el.querySelector('.select-trigger[data-field="' + fieldName + '"]');
+    const dropdown = this.el.querySelector('#select-dropdown-' + sanitizedFieldId);
+    
+    if (!hiddenInput || !trigger) return;
+    
+    hiddenInput.value = selectedValue;
+    
+    const display = trigger.querySelector('.select-display');
+    if (display) {
+        display.textContent = selectedValue || 'Select...';
+    }
+    
+    if (dropdown) {
+        dropdown.querySelectorAll('.select-option').forEach(option => {
+            option.classList.remove('selected');
+            if (option.getAttribute('data-value') === selectedValue) {
+                option.classList.add('selected');
+            }
+        });
 
 	// Close dropdowns when clicking outside (in initMultiselectEvents functie)
 document.addEventListener('click', (e) => {
@@ -1551,124 +1543,116 @@ if (showMetadataMessage) {
 		return value;
 	}
 
-	createFieldInputHtml(field, prefix, isEditable = true) {
-		prefix = prefix || '';
-		const inputId = prefix + field.field_name;
-		const value = field.value || '';
-		const required = field.is_required ? 'required' : '';
-		const disabled = !isEditable ? 'disabled' : '';
+createFieldInputHtml(field, prefix, isEditable = true) {
+    prefix = prefix || '';
+    const inputId = prefix + field.field_name;
+    const sanitizedInputId = this.sanitizeForSelector(inputId);
+    const value = field.value || '';
+    const required = field.is_required ? 'required' : '';
+    const disabled = !isEditable ? 'disabled' : '';
 
-		switch (field.field_type) {
-			case 'textarea':
-				return '<textarea id="' + inputId + '" name="' + field.field_name + '" placeholder="' + field.field_label + '" ' + required + ' ' + disabled + '>' + value + '</textarea>';
-			case 'number':
-				return '<input type="number" id="' + inputId + '" name="' + field.field_name + '" placeholder="' + field.field_label + '" value="' + value + '" ' + required + ' ' + disabled + '>';
-			case 'date':
-				return '<input type="date" id="' + inputId + '" name="' + field.field_name + '" value="' + value + '" ' + required + ' ' + disabled + '>';
-			// Update de createFieldInputHtml functie - vervang de 'select' case:
-case 'select':
-	// NIEUWE CUSTOM DROPDOWN VOOR SINGLE SELECT (zoals multiselect)
-	let singleSelectHtml = '<div class="select-wrapper">';
-	
-	// Parse current value
-	const currentValue = value || '';
-	
-	// Hidden input to store the actual value
-	singleSelectHtml += '<input type="hidden" id="' + inputId + '" name="' + field.field_name + '" value="' + currentValue + '" ' + disabled + '>';
-	
-	// Display button/trigger
-	const selectDisplayText = currentValue || 'Select...';
-	singleSelectHtml += '<div class="select-trigger" data-field="' + field.field_name + '" ' + (disabled ? 'data-disabled="true"' : '') + '>' +
-		'<span class="select-display">' + selectDisplayText + '</span>' +
-		'<span class="select-arrow">▼</span>' +
-	'</div>';
-	
-	// Dropdown with options
-	singleSelectHtml += '<div class="select-dropdown-options" id="select-dropdown-' + inputId + '" style="display: none;">';
-	
-	// Empty option
-	singleSelectHtml += '<div class="select-option" data-value="">' +
-		'<span>Select...</span>' +
-	'</div>';
-	
-	// Get options
-	let selectOptions = [];
-	if (field.field_options) {
-		if (typeof field.field_options === 'string') {
-			selectOptions = field.field_options.split('\n').filter(opt => opt.trim() !== '').map(opt => opt.trim());
-		} else if (Array.isArray(field.field_options)) {
-			selectOptions = field.field_options;
-		}
-	}
-	
-	selectOptions.forEach(function(option) {
-		const isSelected = currentValue === option;
-		singleSelectHtml += '<div class="select-option' + (isSelected ? ' selected' : '') + '" data-value="' + option + '">' +
-			'<span>' + option + '</span>' +
-		'</div>';
-	});
-	
-	singleSelectHtml += '</div>' + '</div>';
-	
-	return singleSelectHtml;
+    switch (field.field_type) {
+        case 'textarea':
+            return '<textarea id="' + sanitizedInputId + '" name="' + field.field_name + '" placeholder="' + field.field_label + '" ' + required + ' ' + disabled + '>' + value + '</textarea>';
+        case 'number':
+            return '<input type="number" id="' + sanitizedInputId + '" name="' + field.field_name + '" placeholder="' + field.field_label + '" value="' + value + '" ' + required + ' ' + disabled + '>';
+        case 'date':
+            return '<input type="date" id="' + sanitizedInputId + '" name="' + field.field_name + '" value="' + value + '" ' + required + ' ' + disabled + '>';
 
-			case 'multiselect':
-				// IMPROVED MULTISELECT - Custom dropdown with checkboxes
-				let multiselectHtml = '<div class="multiselect-wrapper">';
-				
-				// Parse current values
-				let selectedValues = [];
-				if (value && value.trim()) {
-					selectedValues = value.split(',').map(v => v.trim()).filter(v => v);
-				}
-				
-				// Hidden input to store the actual values
-				multiselectHtml += '<input type="hidden" id="' + inputId + '" name="' + field.field_name + '" value="' + value + '" ' + disabled + '>';
-				
-				// Display button/trigger
-				const displayText = selectedValues.length > 0 ? selectedValues.join(', ') : 'Select options...';
-				multiselectHtml += '<div class="multiselect-trigger" data-field="' + field.field_name + '" ' + (disabled ? 'data-disabled="true"' : '') + '>' +
-					'<span class="multiselect-display">' + displayText + '</span>' +
-					'<span class="multiselect-arrow">▼</span>' +
-				'</div>';
-				
-				// Dropdown with checkboxes
-				multiselectHtml += '<div class="multiselect-dropdown-options" id="dropdown-' + inputId + '" style="display: none;">';
-				
-				// Get options
-				let multiselectOptions = [];
-				if (field.field_options) {
-					if (typeof field.field_options === 'string') {
-						multiselectOptions = field.field_options.split('\n').filter(opt => opt.trim() !== '').map(opt => opt.trim());
-					} else if (Array.isArray(field.field_options)) {
-						multiselectOptions = field.field_options;
-					}
-				}
-				
-				multiselectOptions.forEach(function(option, index) {
-					const isChecked = selectedValues.includes(option);
-					const checkboxId = inputId + '-option-' + index;
-					multiselectHtml += '<label class="multiselect-option" for="' + checkboxId + '">' +
-						'<input type="checkbox" id="' + checkboxId + '" value="' + option + '" ' + 
-						(isChecked ? 'checked' : '') + ' ' + (disabled ? 'disabled' : '') + '>' +
-						'<span>' + option + '</span>' +
-					'</label>';
-				});
-				
-				multiselectHtml += '</div>' + '</div>';
-				
-				return multiselectHtml;
+        case 'select':
+            let singleSelectHtml = '<div class="select-wrapper">';
+            const currentValue = value || '';
+            
+            // Gebruik gesanitized ID
+            singleSelectHtml += '<input type="hidden" id="' + sanitizedInputId + '" name="' + field.field_name + '" value="' + currentValue + '" ' + disabled + '>';
+            
+            const selectDisplayText = currentValue || 'Select...';
+            singleSelectHtml += '<div class="select-trigger" data-field="' + field.field_name + '" ' + (disabled ? 'data-disabled="true"' : '') + '>' +
+                '<span class="select-display">' + selectDisplayText + '</span>' +
+                '<span class="select-arrow">▼</span>' +
+            '</div>';
+            
+            // Gebruik gesanitized field name voor dropdown
+            singleSelectHtml += '<div class="select-dropdown-options" id="select-dropdown-' + this.sanitizeForSelector('file-gf-field-' + field.field_name) + '" style="display: none;">';
+            
+            // Rest van de code...
+            singleSelectHtml += '<div class="select-option" data-value="">' +
+                '<span>Select...</span>' +
+            '</div>';
+            
+            let selectOptions = [];
+            if (field.field_options) {
+                if (typeof field.field_options === 'string') {
+                    selectOptions = field.field_options.split('\n').filter(opt => opt.trim() !== '').map(opt => opt.trim());
+                } else if (Array.isArray(field.field_options)) {
+                    selectOptions = field.field_options;
+                }
+            }
+            
+            selectOptions.forEach(function(option) {
+                const isSelected = currentValue === option;
+                singleSelectHtml += '<div class="select-option' + (isSelected ? ' selected' : '') + '" data-value="' + option + '">' +
+                    '<span>' + option + '</span>' +
+                '</div>';
+            });
+            
+            singleSelectHtml += '</div>' + '</div>';
+            return singleSelectHtml;
 
-			case 'checkbox':
-                const checked = (value === '1' || value === 'true' || value === true) ? 'checked' : '';
-                return '<div class="checkbox-container">' +
-               '<input type="checkbox" id="' + inputId + '" name="' + field.field_name + '" value="1" ' + checked + ' ' + disabled + '>' +
-               '<span class="checkbox-checkmark"></span>' +
-           '</div>';
-			default:
-				return '<input type="text" id="' + inputId + '" name="' + field.field_name + '" placeholder="' + field.field_label + '" value="' + value + '" ' + required + ' ' + disabled + '>';
-		}
-	}
+        case 'multiselect':
+            let multiselectHtml = '<div class="multiselect-wrapper">';
+            
+            let selectedValues = [];
+            if (value && value.trim()) {
+                selectedValues = value.split(',').map(v => v.trim()).filter(v => v);
+            }
+            
+            // Gebruik gesanitized ID
+            multiselectHtml += '<input type="hidden" id="' + sanitizedInputId + '" name="' + field.field_name + '" value="' + value + '" ' + disabled + '>';
+            
+            const displayText = selectedValues.length > 0 ? selectedValues.join(', ') : 'Select options...';
+            multiselectHtml += '<div class="multiselect-trigger" data-field="' + field.field_name + '" ' + (disabled ? 'data-disabled="true"' : '') + '>' +
+                '<span class="multiselect-display">' + displayText + '</span>' +
+                '<span class="multiselect-arrow">▼</span>' +
+            '</div>';
+            
+            // Gebruik gesanitized field name voor dropdown
+            multiselectHtml += '<div class="multiselect-dropdown-options" id="dropdown-' + this.sanitizeForSelector('file-gf-field-' + field.field_name) + '" style="display: none;">';
+            
+            // Rest van de code...
+            let multiselectOptions = [];
+            if (field.field_options) {
+                if (typeof field.field_options === 'string') {
+                    multiselectOptions = field.field_options.split('\n').filter(opt => opt.trim() !== '').map(opt => opt.trim());
+                } else if (Array.isArray(field.field_options)) {
+                    multiselectOptions = field.field_options;
+                }
+            }
+            
+            multiselectOptions.forEach(function(option, index) {
+                const isChecked = selectedValues.includes(option);
+                const checkboxId = sanitizedInputId + '-option-' + index;
+                multiselectHtml += '<label class="multiselect-option" for="' + checkboxId + '">' +
+                    '<input type="checkbox" id="' + checkboxId + '" value="' + option + '" ' + 
+                    (isChecked ? 'checked' : '') + ' ' + (disabled ? 'disabled' : '') + '>' +
+                    '<span>' + option + '</span>' +
+                '</label>';
+            });
+            
+            multiselectHtml += '</div>' + '</div>';
+            return multiselectHtml;
+
+        case 'checkbox':
+            const checked = (value === '1' || value === 'true' || value === true) ? 'checked' : '';
+            return '<div class="checkbox-container">' +
+                '<input type="checkbox" id="' + sanitizedInputId + '" name="' + field.field_name + '" value="1" ' + checked + ' ' + disabled + '>' +
+                '<span class="checkbox-checkmark"></span>' +
+            '</div>';
+
+        default:
+            return '<input type="text" id="' + sanitizedInputId + '" name="' + field.field_name + '" placeholder="' + field.field_label + '" value="' + value + '" ' + required + ' ' + disabled + '>';
+    }
+}
 
 	async saveFileInGroupfolderMetadata(fields) {
 		if (!this.hasMetadataPermission()) {
