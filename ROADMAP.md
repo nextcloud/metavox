@@ -1,4 +1,4 @@
-# Metavox Roadmap
+# MetaVox Roadmap
 
 This document outlines the planned development of Metavox.  
 The roadmap is a living document: priorities and scope may change based on feedback, contributions, and new insights.
@@ -7,8 +7,8 @@ The roadmap is a living document: priorities and scope may change based on feedb
 
 ---
 
-## ✅ Current Release
-**v1.0** – First public release of Metavox for Nextcloud
+### v1.0.2  --> Released 2025-09-03
+- First public release of Metavox for Nextcloud
 
 ---
 
@@ -19,8 +19,22 @@ The roadmap is a living document: priorities and scope may change based on feedb
 
 ---
 
+### v1.1.2 – API --> Released 2025-09-21
+- Using scripts to automatically fill metadata fields
+- Creating new fields directly through the API
+- Enabling advanced migration scenarios 
+
+---
+
 ## 📌 Planned
-### v2.0 – Retention Policies
+
+### Advanced metadata-based search 
+- Search on the MetaVox fields from the Nectcloud unified search
+
+### Retaining metadata on copy action 
+- When a folder (with all folders and files in it) or file is copied, the metadata is also copied
+  
+### Retention Policies
 - Archive or delete data based on metadata  
 - Configurable policies (e.g. time-based or type-based)  
 - Administrative controls for compliance and data management  
@@ -28,8 +42,7 @@ The roadmap is a living document: priorities and scope may change based on feedb
 ---
 
 ## 💡 Future Ideas
-*(Not scheduled yet, under consideration)*  
-- Advanced metadata-based search  
+*(Not scheduled yet, under consideration)*   
 - Integration with Nextcloud Flow for automated actions  
 - Reporting on usage and retention  
 - More granular permissions and policy options

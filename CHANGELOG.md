@@ -6,17 +6,6 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.1.3] - 2025-10-01
-
-### Added
-- Support for NextCloud 32.
-
-### Fixed
-- Resolved an issue where values could not be selected in the multi-select component when spaces were present.
-- Resolved an issue in the external API that prevented retrieving fields associated with a group folder.
-
----
-
 ## [1.1.2] - 2025-09-21
 
 ### Added
