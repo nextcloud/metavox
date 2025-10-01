@@ -6,20 +6,20 @@ return [
         ['name' => 'admin#index', 'url' => '/admin', 'verb' => 'GET'],
         
         // ========================================
-        // 📋 FIELD MANAGEMENT ROUTES
+        // 📋 FIELD MANAGEMENT ROUTES (Web Interface)
         // ========================================
         
         // Global field management routes
         ['name' => 'field#getFields', 'url' => '/api/fields', 'verb' => 'GET'],
         ['name' => 'field#createField', 'url' => '/api/fields', 'verb' => 'POST'],
-        ['name' => 'field#getField', 'url' => '/api/fields/{id}', 'verb' => 'GET'], // 🆕 GET single field
-        ['name' => 'field#updateField', 'url' => '/api/fields/{id}', 'verb' => 'PUT'], // ✅ Already exists
+        ['name' => 'field#getField', 'url' => '/api/fields/{id}', 'verb' => 'GET'],
+        ['name' => 'field#updateField', 'url' => '/api/fields/{id}', 'verb' => 'PUT'],
         ['name' => 'field#deleteField', 'url' => '/api/fields/{id}', 'verb' => 'DELETE'],
         
         // Groupfolder field management routes
         ['name' => 'field#getGroupfolderFields', 'url' => '/api/groupfolder-fields', 'verb' => 'GET'],
         ['name' => 'field#createGroupfolderField', 'url' => '/api/groupfolder-fields', 'verb' => 'POST'],
-        ['name' => 'field#updateGroupfolderField', 'url' => '/api/groupfolder-fields/{id}', 'verb' => 'PUT'], // 🆕 UPDATE route
+        ['name' => 'field#updateGroupfolderField', 'url' => '/api/groupfolder-fields/{id}', 'verb' => 'PUT'],
         ['name' => 'field#deleteGroupfolderField', 'url' => '/api/groupfolder-fields/{id}', 'verb' => 'DELETE'],
         
         // File metadata routes
@@ -44,7 +44,7 @@ return [
         ['name' => 'field#getFieldOverrides', 'url' => '/api/groupfolders/{groupfolderId}/field-overrides', 'verb' => 'GET'],
 
         // ========================================
-        // 🔄 RETENTION WORKFLOW ROUTES - FIXED!
+        // 📄 RETENTION WORKFLOW ROUTES
         // ========================================
         
         // Retention Policies (Admin Management)
@@ -80,5 +80,36 @@ return [
         // Utility Functions
         ['name' => 'Retention#validateRetentionSettings', 'url' => '/api/retention/validate', 'verb' => 'POST'],
         ['name' => 'Retention#previewRetentionDate', 'url' => '/api/retention/preview', 'verb' => 'POST'],
+    ],
+
+    // ========================================
+    // 🔌 OCS API ROUTES (CSRF-Free for External APIs)
+    // ========================================
+    'ocs' => [
+        
+        // File metadata routes
+        ['name' => 'apiField#getFileMetadata', 'url' => '/api/v1/files/{fileId}/metadata', 'verb' => 'GET'],
+        ['name' => 'apiField#saveFileMetadata', 'url' => '/api/v1/files/{fileId}/metadata', 'verb' => 'POST'],
+        
+        // Groupfolder routes
+        ['name' => 'apiField#getGroupfolders', 'url' => '/api/v1/groupfolders', 'verb' => 'GET'],
+        ['name' => 'apiField#getGroupfolderMetadata', 'url' => '/api/v1/groupfolders/{groupfolderId}/metadata', 'verb' => 'GET'],
+        ['name' => 'apiField#saveGroupfolderMetadata', 'url' => '/api/v1/groupfolders/{groupfolderId}/metadata', 'verb' => 'POST'],
+        
+        // Groupfolder field management routes
+        ['name' => 'apiField#getGroupfolderFields', 'url' => '/api/v1/groupfolder-fields', 'verb' => 'GET'],
+        ['name' => 'apiField#createGroupfolderField', 'url' => '/api/v1/groupfolder-fields', 'verb' => 'POST'],
+        
+        // Groupfolder file metadata routes
+        ['name' => 'apiField#getGroupfolderFileMetadata', 'url' => '/api/v1/groupfolders/{groupfolderId}/files/{fileId}/metadata', 'verb' => 'GET'],
+        ['name' => 'apiField#saveGroupfolderFileMetadata', 'url' => '/api/v1/groupfolders/{groupfolderId}/files/{fileId}/metadata', 'verb' => 'POST'],
+        
+        // Groupfolder field assignment routes
+        ['name' => 'apiField#getGroupfolderAssignedFields', 'url' => '/api/v1/groupfolders/{groupfolderId}/fields', 'verb' => 'GET'],
+        ['name' => 'apiField#setGroupfolderFields', 'url' => '/api/v1/groupfolders/{groupfolderId}/fields', 'verb' => 'POST'],
+        
+        // Field overrides routes
+        ['name' => 'apiField#saveFieldOverride', 'url' => '/api/v1/groupfolders/{groupfolderId}/field-overrides', 'verb' => 'POST'],
+        ['name' => 'apiField#getFieldOverrides', 'url' => '/api/v1/groupfolders/{groupfolderId}/field-overrides', 'verb' => 'GET'],
     ]
 ];
