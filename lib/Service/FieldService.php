@@ -656,6 +656,61 @@ public function getGroupfolderMetadata(int $groupfolderId): array {
         return $fieldIds;
     }
 
+    /**
+ * Get full field data for assigned fields in a groupfolder
+ */
+public function getAssignedFieldsWithDataForGroupfolder(int $groupfolderId): array {
+    try {
+        // Get assigned field IDs
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('field_id')
+           ->from('metavox_gf_assigns')
+           ->where($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)));
+
+        $result = $qb->execute();
+        $fieldIds = [];
+        while ($row = $result->fetch()) {
+            $fieldIds[] = (int)$row['field_id'];
+        }
+        $result->closeCursor();
+
+        if (empty($fieldIds)) {
+            return [];
+        }
+
+        // Get full field data for these IDs
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('*')
+           ->from('metavox_gf_fields')
+           ->where($qb->expr()->in('id', $qb->createNamedParameter($fieldIds, IQueryBuilder::PARAM_INT_ARRAY)))
+           ->orderBy('sort_order', 'ASC');
+
+        $result = $qb->execute();
+        $fields = [];
+        while ($row = $result->fetch()) {
+            $fields[] = [
+                'id' => (int)$row['id'],
+                'field_name' => $row['field_name'],
+                'field_label' => $row['field_label'],
+                'field_type' => $row['field_type'],
+                'field_description' => $row['field_description'] ?? '',
+                'field_options' => $row['field_options'] ? json_decode($row['field_options'], true) : [],
+                'is_required' => (bool)$row['is_required'],
+                'sort_order' => (int)$row['sort_order'],
+                'scope' => 'groupfolder',
+                'applies_to_groupfolder' => isset($row['applies_to_groupfolder']) ? (int)$row['applies_to_groupfolder'] : 0,
+            ];
+        }
+        $result->closeCursor();
+
+        return $fields;
+        
+    } catch (\Exception $e) {
+        error_log('FieldService getAssignedFieldsWithDataForGroupfolder error: ' . $e->getMessage());
+        return [];
+    }
+}
+
     public function setGroupfolderFields(int $groupfolderId, array $fieldIds): bool {
         $qb = $this->db->getQueryBuilder();
         $qb->delete('metavox_gf_assigns')
