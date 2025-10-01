@@ -3,18 +3,20 @@
       xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
     <id>metavox</id>
     <name>MetaVox</name>
-<summary>Custom metadata management with configurable fields</summary>
+    <summary>Custom metadata management with configurable fields</summary>
 <description>
-  A customizable metadata app that allows you to define your own metadata fields for files.
+A customizable metadata app that allows you to define your own metadata fields for files.
 
-  The goal of MetaVox is to enrich digital documents with contextual metadata — such as topic, author intent, relevance, or classification — in a way that is:
+The goal of <b>MetaVox</b> is to enrich digital documents with contextual metadata — such as topic, author intent, relevance, or classification — in a way that is:
 
-  • Structured and machine-readable  
-  • Non-intrusive (no changes to file content)  
-  • Compatible with existing Nextcloud workflows  
-  • Designed for flexible use across education, government, and other document-driven environments
+<ul>
+  <li><b>Structured</b> and machine-readable</li>
+  <li><b>Non-intrusive</b> (no changes to file content)</li>
+  <li><b>Compatible</b> with existing Nextcloud workflows</li>
+  <li><b>Designed for flexible use across education, government, and other document-driven environments</li>
+</ul>
 </description>
-    <version>1.1.3</version>
+    <version>1.1.2</version>
     <licence>AGPL-3.0-or-later</licence>
     <author mail="s.d.ditmeijer@hva.nl">Sam Ditmeijer</author>
     <author mail="j.m.dekker2@hva.nl">Rik Dekker</author>
@@ -30,7 +32,7 @@
     <repository type="git">https://github.com/nextcloud/metavox.git</repository>
     <bugs>https://github.com/nextcloud/metavox/issues</bugs>
     <dependencies>
-        <nextcloud min-version="31" max-version="32"/>
+        <nextcloud min-version="31" max-version="31"/>
     </dependencies>
     <settings>
         <admin>OCA\MetaVox\Settings\Admin</admin>

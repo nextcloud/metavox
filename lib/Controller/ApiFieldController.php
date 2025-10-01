@@ -266,18 +266,14 @@ class ApiFieldController extends OCSController {
      * @NoCSRFRequired
      * @CORS
      */
-public function getGroupfolderFields(): DataResponse {
-    try {
-        $fields = $this->fieldService->getFieldsByScope('groupfolder');
-        
-        // Zorg ervoor dat het een proper indexed array is
-        $result = array_values($fields);
-        
-        return new DataResponse($result, Http::STATUS_OK);
-    } catch (\Exception $e) {
-        return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+    public function getGroupfolderFields(): DataResponse {
+        try {
+            $fields = $this->fieldService->getFieldsByScope('groupfolder');
+            return new DataResponse($fields, Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
     }
-}
 
     /**
      * Create groupfolder field
@@ -363,24 +359,14 @@ public function getGroupfolderFields(): DataResponse {
      * @NoCSRFRequired
      * @CORS
      */
-/**
- * Get assigned fields for groupfolder
- * 
- * @NoAdminRequired
- * @NoCSRFRequired
- * @CORS
- */
-public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
-    try {
-        // Use the new method that returns full field data
-        $fields = $this->fieldService->getAssignedFieldsWithDataForGroupfolder($groupfolderId);
-        
-        return new DataResponse($fields, Http::STATUS_OK);
-    } catch (\Exception $e) {
-        error_log('ApiFieldController ERROR: ' . $e->getMessage());
-        return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+    public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
+        try {
+            $fields = $this->fieldService->getAssignedFieldsForGroupfolder($groupfolderId);
+            return new DataResponse($fields, Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
     }
-}
 
     /**
      * Set groupfolder fields
