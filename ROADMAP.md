@@ -58,7 +58,7 @@ The roadmap is a living document: priorities and scope may change based on feedb
 ### More granular permissions
 - Team folder owners can configure metadata fields for their own team folders
 
-### Infinite Scrolling for Team Folders
+### Infinite scrolling for Team Folders
 - Add infinite scrolling to Team Folders to improve performance with large folder sets
   
 ---
