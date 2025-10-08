@@ -60,7 +60,10 @@ The roadmap is a living document: priorities and scope may change based on feedb
 
 ### Infinite scrolling for Team Folders
 - Add infinite scrolling to Team Folders to improve performance with large folder sets
-  
+
+### API Bulk Metadata Operations
+- Enable bulk **Retrieve/Update** actions on multiple files via the API to avoid one round trip per file.  
+
 ---
 
 ## 💡 Future Ideas
