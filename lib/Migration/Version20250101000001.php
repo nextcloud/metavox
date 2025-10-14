@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\metavox\Migration;
 
 use OCP\DB\ISchemaWrapper;
+use OCP\IDBConnection;
 use OCP\Migration\IOutput;
 use OCP\Migration\SimpleMigrationStep;
 
@@ -12,6 +13,10 @@ use OCP\Migration\SimpleMigrationStep;
  * Complete Metavox schema with short table names
  */
 class Version20250101000001 extends SimpleMigrationStep {
+	public function __construct(
+		private IDBConnection $db,
+	) {
+	}
 
     /**
      * @param IOutput $output
@@ -253,27 +258,25 @@ class Version20250101000001 extends SimpleMigrationStep {
      * @param array $options
      */
     public function postSchemaChange(IOutput $output, \Closure $schemaClosure, array $options): void {
-        $connection = \OC::$server->getDatabaseConnection();
-        
         try {
             // Update existing records to set default scope
             $output->info('Setting default scope for existing fields...');
-            
-            $qb = $connection->getQueryBuilder();
+
+            $qb = $this->db->getQueryBuilder();
             $qb->update('metavox_fields')
                ->set('scope', $qb->createNamedParameter('global'))
                ->where($qb->expr()->orX(
                    $qb->expr()->isNull('scope'),
                    $qb->expr()->eq('scope', $qb->createNamedParameter(''))
                ));
-            
-            $affected = $qb->execute();
+
+            $affected = $qb->executeStatement();
             $output->info("Updated $affected existing fields with scope 'global'");
-            
+
         } catch (\Exception $e) {
             $output->warning('Could not update existing records: ' . $e->getMessage());
         }
-        
+
         $output->info('Metavox database schema created successfully!');
     }
 }
