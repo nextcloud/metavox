@@ -4,7 +4,7 @@
 
 All API endpoints are relative to your Nextcloud installation:
 
-https://your-nextcloud-domain.com/ocs/v2.php/apps/metavox/api/
+https://your-nextcloud-domain.com/ocs/v2.php/apps/metavox/api/v1/
 
 ## 1.2. Authentication
 
@@ -189,9 +189,11 @@ This way:
 
 Retrieve metadata for a specific file.
 
-**Endpoint:** GET /files/{fileId}/metadata
+**Endpoint:** GET /groupfolders/{groupFolderId}/files/{fileId}/metadata
 
 **Parameters:**
+
+-   groupFolderId (path parameter): Metavox team group folder ID (integer)
 
 -   fileId (path parameter): Nextcloud file ID (integer)
 
