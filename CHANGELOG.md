@@ -6,7 +6,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.1.3] - 2025-10-01
+## [1.6.6] - 2025-12-10
+
+### Fixed
+- Fixed database table prefix retrieval for NC32+ compatibility in MySQL FULLTEXT index migration
+
+---
+
+## [1.6.5] - 2025-10-01
 
 ### Added
 - Support for NextCloud 32.
