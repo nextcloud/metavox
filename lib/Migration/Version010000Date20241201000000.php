@@ -95,8 +95,8 @@ class Version010000Date20241201000000 extends SimpleMigrationStep {
         // Add FULLTEXT index for MySQL after table creation
         if ($connection->getDatabasePlatform() instanceof \Doctrine\DBAL\Platforms\MySqlPlatform) {
             try {
-                // Get the actual table name with prefix
-                $tablePrefix = $connection->getPrefix();
+                // Get the actual table name with prefix (NC32+ compatible)
+                $tablePrefix = \OC::$server->getConfig()->getSystemValue('dbtableprefix', 'oc_');
                 $tableName = $tablePrefix . 'metavox_search_index';
 
                 // Check if FULLTEXT index already exists
