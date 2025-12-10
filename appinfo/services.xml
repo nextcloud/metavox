@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<container xmlns="http://symfony.com/schema/dic/services">
+    <services>
+        <!-- Register FieldService -->
+        <service id="OCA\MetaVox\Service\FieldService">
+            <argument type="service" id="OCP\IDBConnection"/>
+        </service>
+        
+        <!-- RegisterFileCopyListener  -->
+        <service id="OCA\MetaVox\Listener\FileCopyListener">
+            <argument type="service" id="OCA\MetaVox\Service\FieldService"/>
+            <argument type="service" id="DatabaseConnection"/>
+            <tag name="event.listener"/>
+        </service>
+    </services>
+</container>

@@ -1,0 +1,46 @@
+{
+  "name": "metavox",
+  "description": "MetaVox - Custom Metadata Fields for Nextcloud",
+  "version": "1.0.0",
+  "author": "Sam Ditmeijer",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "scripts": {
+    "build": "NODE_OPTIONS='--openssl-legacy-provider' npx webpack --mode production",
+    "dev": "NODE_OPTIONS='--openssl-legacy-provider' npx webpack --mode development",
+    "watch": "NODE_OPTIONS='--openssl-legacy-provider' npx webpack --mode development --watch",
+    "serve": "NODE_OPTIONS='--openssl-legacy-provider' npx webpack serve --mode development"
+  },
+  "dependencies": {
+    "@nextcloud/auth": "^2.0.0",
+    "@nextcloud/axios": "^2.4.0",
+    "@nextcloud/initial-state": "^2.0.0",
+    "@nextcloud/l10n": "^2.2.0",
+    "@nextcloud/router": "^3.0.0",
+    "@nextcloud/vue": "^7.12.0",
+    "buffer": "^6.0.3",
+    "build": "^0.1.4",
+    "process": "^0.11.10",
+    "run": "^1.5.0",
+    "stream-browserify": "^3.0.0",
+    "vue": "^2.7.16",
+    "vue-material-design-icons": "^5.2.0",
+    "vue-virtual-scroll-list": "^2.3.5"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.22.0",
+    "@babel/preset-env": "^7.22.0",
+    "@nextcloud/browserslist-config": "^2.2.0",
+    "babel-loader": "^9.1.0",
+    "css-loader": "^6.8.0",
+    "sass": "^1.80.0",
+    "sass-loader": "^13.3.0",
+    "stream-http": "^3.2.0",
+    "style-loader": "^3.3.0",
+    "vue-loader": "^15.11.1",
+    "vue-template-compiler": "^2.7.16",
+    "webpack": "^5.88.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^4.15.0"
+  }
+}

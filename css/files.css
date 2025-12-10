@@ -1,0 +1,33 @@
+/* TesterMeta Enhanced User Interface CSS - Met Dropdown Fix */
+.testermeta-metadata-icon {
+  background-image: url('../img/metadata.svg');
+  background-size: 16px 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+  filter: var(--background-invert-if-dark);
+}
+
+.testermeta-metadata-icon:hover {
+  opacity: 1;
+}
+
+/* MetaVox Sidebar Tab Icon Fix */
+.app-sidebar-tabs__nav .app-sidebar-tabs__tab[data-id='metavox-metadata'] .app-sidebar-tabs__icon,
+.app-sidebar-tabs__nav .app-sidebar-tabs__tab[data-id='metavox-metadata'] svg,
+.app-sidebar-tabs__nav button[aria-controls='metavox-metadata'] svg,
+.app-sidebar-tabs__nav button[aria-controls='metavox-metadata'] .app-sidebar-tabs__icon {
+  width: 20px !important;
+  height: 20px !important;
+  max-width: 20px !important;
+  max-height: 20px !important;
+  display: block !important;
+}
+
+/* Ensure proper scaling for any SVG icon in MetaVox tab */
+.app-sidebar-tabs__nav [id*='metavox'] svg {
+  width: 20px !important;
+  height: 20px !important;
+  overflow: visible !important;
+}
