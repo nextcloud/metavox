@@ -1,0 +1,20 @@
+/* MetaVox Navigation Icon Styling */
+#app-navigation-vue .app-navigation-entry__icon[style*='app.svg'] {
+    background-size: 20px 20px !important;
+    background-position: center !important;
+}
+
+.app-menu .app-menu-entry__icon[style*='metavox/img/app.svg'] {
+    background-size: 20px 20px !important;
+    background-position: center !important;
+}
+
+/* Alternative selectors for different Nextcloud versions */
+#appmenu li[data-id='metavox'] a .app-icon,
+#appmenu li[data-id='metavox'] img,
+.app-menu-entry[data-app-id='metavox'] .app-icon {
+    width: 20px !important;
+    height: 20px !important;
+    background-size: 20px 20px !important;
+    background-position: center !important;
+}
