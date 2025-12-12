@@ -169,7 +169,7 @@
           <div v-if="showOptionsField" class="form-row">
             <label class="field-label">{{ t('metavox', 'Dropdown Options') }}</label>
             <div class="options-container">
-              <div v-for="(option, index) in formData.options" :key="`option-add-${index}-${option.value || ''}`" class="option-row">
+              <div v-for="(option, index) in formData.options" :key="`option-add-${index}`" class="option-row">
                 <NcTextField
                   :value="option.value"
                   @update:value="option.value = $event"
@@ -394,7 +394,7 @@
           <div v-if="(editingField.field_type || editingField.type) === 'select' || (editingField.field_type || editingField.type) === 'multiselect'" class="form-row">
             <label class="field-label">{{ t('metavox', 'Dropdown Options') }}</label>
             <div class="options-container">
-              <div v-for="(option, index) in editData.options" :key="`option-edit-${index}-${option.value || ''}`" class="option-row">
+              <div v-for="(option, index) in editData.options" :key="`option-edit-${index}`" class="option-row">
                 <NcTextField
                   :value="option.value"
                   @update:value="option.value = $event"
