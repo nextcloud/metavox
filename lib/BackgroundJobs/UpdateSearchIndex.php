@@ -1,25 +1,52 @@
 <?php
+
 declare(strict_types=1);
 
 namespace OCA\MetaVox\BackgroundJobs;
 
-use OCP\BackgroundJob\QueuedJob;
 use OCA\MetaVox\Service\SearchIndexService;
+use OCP\AppFramework\Utility\ITimeFactory;
+use OCP\BackgroundJob\QueuedJob;
+use Psr\Log\LoggerInterface;
 
+/**
+ * Background job to update the search index for a specific file
+ */
 class UpdateSearchIndex extends QueuedJob {
-    
-    protected function run($argument) {
+    public function __construct(
+        ITimeFactory $time,
+        private readonly SearchIndexService $searchIndexService,
+        private readonly LoggerInterface $logger
+    ) {
+        parent::__construct($time);
+    }
+
+    /**
+     * @param array{file_id?: int|null} $argument
+     */
+    protected function run(mixed $argument): void {
         $fileId = $argument['file_id'] ?? null;
-        
-        if (!$fileId) {
+
+        if ($fileId === null) {
+            $this->logger->warning('MetaVox: UpdateSearchIndex called without file_id', [
+                'app' => 'metavox'
+            ]);
             return;
         }
 
         try {
-            $searchIndexService = \OC::$server->get(SearchIndexService::class);
-            $searchIndexService->updateFileIndex((int)$fileId);
+            $this->searchIndexService->updateFileIndex((int)$fileId);
+
+            $this->logger->debug('MetaVox: Search index updated', [
+                'file_id' => $fileId,
+                'app' => 'metavox'
+            ]);
         } catch (\Exception $e) {
-            error_log('MetaVox background job error: ' . $e->getMessage());
+            $this->logger->error('MetaVox: Background job error', [
+                'file_id' => $fileId,
+                'exception' => $e,
+                'app' => 'metavox'
+            ]);
         }
     }
 }

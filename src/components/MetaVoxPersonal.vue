@@ -389,16 +389,12 @@ import { generateUrl } from '@nextcloud/router'
 const showSuccess = (message) => {
   if (typeof OC !== 'undefined' && OC.Notification) {
     OC.Notification.showTemporary(message)
-  } else {
-    console.log('Success:', message)
   }
 }
 
 const showError = (message) => {
   if (typeof OC !== 'undefined' && OC.Notification) {
     OC.Notification.showTemporary(message)
-  } else {
-    console.error('Error:', message)
   }
 }
 
@@ -441,24 +437,24 @@ export default {
       accessibleGroupfolders: [],
       allFields: [],
       searchQuery: '',
-      
+
       // Expanded states
       expandedFields: {},
-      
+
       // Loading states
       loadingFields: {},
       savingFields: {},
-      
+
       // Data storage
       metadataValues: {},
       metadataFields: {},
       assignedFields: {},
       tempAssignedFields: {},
-      
+
       // Field search and filter
       fieldSearchQuery: {},
       fieldTypeFilter: {},
-      
+
       // Metadata modal state
       showMetadataModal: false,
       currentGroupfolderId: null,
@@ -468,7 +464,10 @@ export default {
       multiSelectValues: {},
       savingMetadata: false,
       modalTitle: '',
-      selectKey: 0
+      selectKey: 0,
+
+      // Cache for field options
+      fieldOptionsCache: new Map()
     }
   },
   
@@ -606,8 +605,6 @@ async loadAccessibleGroupfolders() {
     },
     
     updateFieldAssignment(groupfolderId, fieldId, checked) {
-      console.log(`Updating field assignment: GroupFolder ${groupfolderId}, Field ${fieldId}, Checked: ${checked}`)
-      
       const fields = [...(this.tempAssignedFields[groupfolderId] || [])]
       
       if (checked) {
@@ -679,15 +676,11 @@ async loadAccessibleGroupfolders() {
     },
     
     async loadGroupfolderMetadata(groupfolderId) {
-      console.log('Loading metadata for groupfolder:', groupfolderId)
-      
       try {
         const response = await axios.get(
           generateUrl(`/apps/metavox/api/groupfolders/${groupfolderId}/metadata`)
         )
-        
-        console.log('Metadata API response:', response.data)
-        
+
         const metadataData = response.data || []
         const values = {}
         
@@ -699,17 +692,15 @@ async loadAccessibleGroupfolders() {
           })
         }
         
-        console.log('Processed metadata values:', values)
         this.$set(this.metadataValues, groupfolderId, values)
-        
+
         const assignedFieldIds = this.assignedFields[groupfolderId] || []
         const assignedGroupfolderFields = metadataData.filter(field => {
           const isAssigned = assignedFieldIds.includes(field.id)
           const isGroupfolderField = field.applies_to_groupfolder === 1 || field.applies_to_groupfolder === '1'
           return isAssigned && isGroupfolderField
         })
-        
-        console.log('Assigned groupfolder fields with metadata:', assignedGroupfolderFields)
+
         this.$set(this.metadataFields, groupfolderId, assignedGroupfolderFields)
         
         return { fields: assignedGroupfolderFields, values }
@@ -723,8 +714,6 @@ async loadAccessibleGroupfolders() {
     },
     
     async editGroupfolderMetadata(groupfolder) {
-      console.log('Opening metadata editor for:', groupfolder.mount_point)
-      
       this.showMetadataModal = true
       this.currentGroupfolderId = groupfolder.id
       this.modalTitle = this.t('metavox', 'Edit metadata for {groupfolder}', { groupfolder: groupfolder.mount_point })
@@ -759,10 +748,6 @@ async loadAccessibleGroupfolders() {
         
         this.$nextTick(() => {
           this.selectKey++
-          console.log('Modal initialized with:', {
-            fields: this.currentMetadataFields,
-            values: this.currentMetadataValues
-          })
         })
       } catch (error) {
         console.error('Error loading metadata:', error)
@@ -793,28 +778,17 @@ async loadAccessibleGroupfolders() {
     },
     
     handleSelectChange(fieldName, value) {
-      console.log(`Select change: ${fieldName} = ${value}`)
       this.$set(this.selectValues, fieldName, value)
       this.$set(this.currentMetadataValues, fieldName, value || '')
-      
-      this.$nextTick(() => {
-        console.log(`Select value after change: ${this.selectValues[fieldName]}`)
-      })
     },
     
     handleMultiSelectChange(fieldName, values) {
-      console.log(`MultiSelect change: ${fieldName} = ${values}`)
       this.$set(this.multiSelectValues, fieldName, values || [])
       const joinedValue = Array.isArray(values) ? values.join(';#') : ''
       this.$set(this.currentMetadataValues, fieldName, joinedValue)
-      
-      this.$nextTick(() => {
-        console.log(`MultiSelect value after change: ${this.multiSelectValues[fieldName]}`)
-      })
     },
     
     updateMetadataValue(field, value) {
-      console.log(`Updating ${field.field_name} = "${value}"`)
       this.$set(this.currentMetadataValues, field.field_name, value)
     },
     
@@ -829,9 +803,7 @@ async loadAccessibleGroupfolders() {
     
     async saveGroupfolderMetadata() {
       if (!this.currentGroupfolderId) return false
-      
-      console.log('Saving metadata for groupfolder:', this.currentGroupfolderId)
-      
+
       // Sync all select values
       this.currentMetadataFields.forEach(field => {
         if (field.field_type === 'select') {
@@ -843,18 +815,14 @@ async loadAccessibleGroupfolders() {
           this.$set(this.currentMetadataValues, field.field_name, joinedValue)
         }
       })
-      
-      console.log('Final values to save:', this.currentMetadataValues)
-      
+
       this.savingMetadata = true
-      
+
       try {
         const response = await axios.post(
           generateUrl(`/apps/metavox/api/groupfolders/${this.currentGroupfolderId}/metadata`),
           { metadata: this.currentMetadataValues }
         )
-        
-        console.log('Save response:', response.data)
         
         if (response.data.success) {
           this.$set(this.metadataValues, this.currentGroupfolderId, {...this.currentMetadataValues})
@@ -885,23 +853,30 @@ async loadAccessibleGroupfolders() {
     
     getFieldOptions(field) {
       if (!field.field_options) {
-        console.log(`No options for field ${field.field_name}`)
         return []
       }
-      
+
+      // Check cache using field.id + field.field_options as key
+      const cacheKey = `${field.id}_${field.field_options}`
+      if (this.fieldOptionsCache.has(cacheKey)) {
+        return this.fieldOptionsCache.get(cacheKey)
+      }
+
       let options = []
       if (typeof field.field_options === 'string') {
         options = field.field_options.split('\n').filter(o => o.trim())
       } else if (Array.isArray(field.field_options)) {
         options = field.field_options.filter(o => o && o.trim())
       }
-      
+
       const formattedOptions = options.map(option => ({
         label: option.trim(),
         value: option.trim()
       }))
-      
-      console.log(`Options for field ${field.field_name}:`, formattedOptions)
+
+      // Cache the result
+      this.fieldOptionsCache.set(cacheKey, formattedOptions)
+
       return formattedOptions
     },
 

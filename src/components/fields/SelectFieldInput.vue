@@ -5,6 +5,7 @@
     label="label"
     track-by="value"
     :searchable="false"
+    :required="required"
     :clearable="!required"
     @input="onSelectChange" />
 </template>

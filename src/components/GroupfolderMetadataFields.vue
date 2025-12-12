@@ -169,7 +169,7 @@
           <div v-if="showOptionsField" class="form-row">
             <label class="field-label">{{ t('metavox', 'Dropdown Options') }}</label>
             <div class="options-container">
-              <div v-for="(option, index) in formData.options" :key="index" class="option-row">
+              <div v-for="(option, index) in formData.options" :key="`option-add-${index}-${option.value || ''}`" class="option-row">
                 <NcTextField
                   :value="option.value"
                   @update:value="option.value = $event"
@@ -394,7 +394,7 @@
           <div v-if="(editingField.field_type || editingField.type) === 'select' || (editingField.field_type || editingField.type) === 'multiselect'" class="form-row">
             <label class="field-label">{{ t('metavox', 'Dropdown Options') }}</label>
             <div class="options-container">
-              <div v-for="(option, index) in editData.options" :key="index" class="option-row">
+              <div v-for="(option, index) in editData.options" :key="`option-edit-${index}-${option.value || ''}`" class="option-row">
                 <NcTextField
                   :value="option.value"
                   @update:value="option.value = $event"
@@ -459,7 +459,7 @@
         </div>
         
         <div class="import-preview-list">
-          <div v-for="(field, index) in importPreviewData" :key="index" class="import-preview-item">
+          <div v-for="(field, index) in importPreviewData" :key="field.field_name || field.name || `import-${index}`" class="import-preview-item">
             <div class="preview-field-icon">
               <component :is="getFieldIcon(field.field_type || 'text')" :size="20" />
             </div>
@@ -510,16 +510,12 @@ import { generateUrl } from '@nextcloud/router'
 const showSuccess = (message) => {
   if (typeof OC !== 'undefined' && OC.Notification) {
     OC.Notification.showTemporary(message)
-  } else {
-    console.log('SUCCESS:', message)
   }
 }
 
 const showError = (message) => {
   if (typeof OC !== 'undefined' && OC.Notification) {
     OC.Notification.showTemporary(message)
-  } else {
-    console.error('ERROR:', message)
   }
 }
 
@@ -760,12 +756,9 @@ export default {
         // Check cache (15 minuten geldig)
         const now = Date.now()
         if (this.usageCountsCache && this.usageCountsExpiry && this.usageCountsExpiry > now) {
-          console.log('Using cached usage counts (expires in', Math.round((this.usageCountsExpiry - now) / 1000), 'seconds)')
           this.applyUsageCountsFromCache(this.usageCountsCache)
           return
         }
-        
-        console.log('Loading fresh usage counts from server')
         
         // Haal alle groupfolders op
         const groupfoldersResponse = await axios.get(generateUrl('/apps/metavox/api/groupfolders'))
@@ -775,7 +768,6 @@ export default {
           // Cache lege resultaat ook (15 minuten)
           this.usageCountsCache = new Map()
           this.usageCountsExpiry = now + (15 * 60 * 1000)
-          console.log('No groupfolders found, cached empty result')
           return
         }
         
@@ -810,17 +802,14 @@ export default {
         // Cache het resultaat (15 minuten geldig)
         this.usageCountsCache = usageMap
         this.usageCountsExpiry = now + (15 * 60 * 1000)
-        
-        console.log('Usage counts loaded and cached for 15 minutes')
-        
+
         // Pas de counts toe
         this.applyUsageCountsFromCache(usageMap)
-        
+
       } catch (error) {
         console.error('Failed to load usage counts in background:', error)
         // Bij error, cache niet updaten maar wel oude cache gebruiken als beschikbaar
         if (this.usageCountsCache && this.usageCountsExpiry > Date.now()) {
-          console.log('Using stale cache due to error')
           this.applyUsageCountsFromCache(this.usageCountsCache)
         }
       }
@@ -841,7 +830,6 @@ export default {
     invalidateUsageCountsCache() {
       this.usageCountsCache = null
       this.usageCountsExpiry = null
-      console.log('Usage counts cache invalidated')
     },
 
     async addField() {

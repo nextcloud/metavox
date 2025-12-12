@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace OCA\MetaVox\Tests\Performance;
 
 use OCA\MetaVox\Service\FieldService;
-use OCA\MetaVox\Service\FilterService;
 use OCA\MetaVox\Service\SearchIndexService;
 use OCP\IDBConnection;
 use OCP\IUserSession;
@@ -24,7 +23,6 @@ use OCP\Files\IRootFolder;
 abstract class PerformanceTestBase {
 
     protected FieldService $fieldService;
-    protected FilterService $filterService;
     protected SearchIndexService $searchService;
     protected IDBConnection $db;
     protected IUserSession $userSession;
@@ -36,7 +34,6 @@ abstract class PerformanceTestBase {
 
     public function __construct(
         FieldService $fieldService,
-        FilterService $filterService,
         SearchIndexService $searchService,
         IDBConnection $db,
         IUserSession $userSession,
@@ -44,7 +41,6 @@ abstract class PerformanceTestBase {
         $logger  // No type hint - Nextcloud logger interface varies
     ) {
         $this->fieldService = $fieldService;
-        $this->filterService = $filterService;
         $this->searchService = $searchService;
         $this->db = $db;
         $this->userSession = $userSession;

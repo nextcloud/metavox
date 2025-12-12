@@ -2,6 +2,7 @@
   <NcCheckboxRadioSwitch
     :checked="isChecked"
     @update:checked="onUpdate"
+    :required="required"
     type="checkbox">
     {{ field.field_label }}
   </NcCheckboxRadioSwitch>

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace OCA\MetaVox\Controller;
 
 use OCA\MetaVox\Service\FieldService;
-use OCA\MetaVox\Service\FilterService;
 use OCA\MetaVox\Service\SearchIndexService;
 use OCP\AppFramework\OCSController;
 use OCP\AppFramework\Http;
@@ -25,7 +24,6 @@ use Psr\Log\LoggerInterface;
 class PerformanceTestController extends OCSController {
 
     private FieldService $fieldService;
-    private FilterService $filterService;
     private SearchIndexService $searchService;
     private IDBConnection $db;
     private IUserSession $userSession;
@@ -43,7 +41,6 @@ class PerformanceTestController extends OCSController {
         string $appName,
         IRequest $request,
         FieldService $fieldService,
-        FilterService $filterService,
         SearchIndexService $searchService,
         IDBConnection $db,
         IUserSession $userSession,
@@ -52,7 +49,6 @@ class PerformanceTestController extends OCSController {
     ) {
         parent::__construct($appName, $request);
         $this->fieldService = $fieldService;
-        $this->filterService = $filterService;
         $this->searchService = $searchService;
         $this->db = $db;
         $this->userSession = $userSession;
@@ -488,7 +484,6 @@ if ($user) {
 }
 
 $fieldService = $container->get(\OCA\MetaVox\Service\FieldService::class);
-$filterService = $container->get(\OCA\MetaVox\Service\FilterService::class);
 $searchService = $container->get(\OCA\MetaVox\Service\SearchIndexService::class);
 $db = $container->get(\OCP\IDBConnection::class);
 $rootFolder = $container->get(\OCP\Files\IRootFolder::class);
@@ -499,7 +494,6 @@ $controller = new \OCA\MetaVox\Controller\PerformanceTestController(
     'metavox',
     $container->get(\OCP\IRequest::class),
     $fieldService,
-    $filterService,
     $searchService,
     $db,
     $userSession,
@@ -582,7 +576,6 @@ PHP;
             // Instantiate the test with all dependencies and config
             $test = new $fullClassName(
                 $this->fieldService,
-                $this->filterService,
                 $this->searchService,
                 $this->db,
                 $this->userSession,

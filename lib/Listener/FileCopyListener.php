@@ -343,56 +343,12 @@ class FileCopyListener implements IEventListener {
     
     /**
      * Copy global file metadata
+     * Note: Global metadata table has been removed, this now returns 0
      */
     private function copyGlobalFileMetadata(int $sourceFileId, int $targetFileId): int {
-        try {
-            // Get source file's global metadata
-            $qb = $this->db->getQueryBuilder();
-            $qb->select('field_id', 'value')
-               ->from('metavox_metadata')
-               ->where($qb->expr()->eq('file_id', $qb->createNamedParameter($sourceFileId, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
-               ->andWhere($qb->expr()->isNotNull('value'))
-               ->andWhere($qb->expr()->neq('value', $qb->createNamedParameter('')));
-
-            $result = $qb->executeQuery();
-            $sourceMetadata = [];
-            while ($row = $result->fetch()) {
-                if (!empty(trim($row['value']))) {
-                    $sourceMetadata[] = $row;
-                }
-            }
-            $result->closeCursor();
-            
-            if (empty($sourceMetadata)) {
-                return 0;
-            }
-            
-            // Delete any existing metadata for target file
-            $qb = $this->db->getQueryBuilder();
-            $qb->delete('metavox_metadata')
-               ->where($qb->expr()->eq('file_id', $qb->createNamedParameter($targetFileId, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)));
-            $qb->executeStatement();
-            
-            // Copy metadata to target file
-            $copiedCount = 0;
-            foreach ($sourceMetadata as $metadata) {
-                $success = $this->fieldService->saveFieldValue(
-                    $targetFileId,
-                    (int)$metadata['field_id'],
-                    $metadata['value']
-                );
-                
-                if ($success) {
-                    $copiedCount++;
-                }
-            }
-            
-            return $copiedCount;
-            
-        } catch (\Exception $e) {
-            error_log("MetaVox: Global metadata copy error: " . $e->getMessage());
-            return 0;
-        }
+        // Global metadata table (metavox_metadata) has been removed
+        // All metadata is now stored in metavox_file_gf_meta and copied via copyGroupfolderFileMetadata
+        return 0;
     }
     
     /**

@@ -31,13 +31,10 @@ public function getAllFields(): array {
         return $this->fieldsCache;
     }
 
+    // Only groupfolder fields are supported now
     $qb = $this->db->getQueryBuilder();
-    $qb->select('*')  // Dit is al correct - haalt alle kolommen op inclusief field_description
-       ->from('metavox_fields')
-       ->where($qb->expr()->orX(
-           $qb->expr()->isNull('scope'),
-           $qb->expr()->eq('scope', $qb->createNamedParameter('global'))
-       ))
+    $qb->select('*')
+       ->from('metavox_gf_fields')
        ->orderBy('sort_order', 'ASC');
 
     $result = $qb->executeQuery();
@@ -48,11 +45,12 @@ public function getAllFields(): array {
             'field_name' => $row['field_name'],
             'field_label' => $row['field_label'],
             'field_type' => $row['field_type'],
-            'field_description' => $row['field_description'] ?? '', // ← ADD THIS LINE
+            'field_description' => $row['field_description'] ?? '',
             'field_options' => $row['field_options'] ? json_decode($row['field_options'], true) : [],
             'is_required' => (bool)$row['is_required'],
             'sort_order' => (int)$row['sort_order'],
-            'scope' => $row['scope'] ?? 'global',
+            'scope' => 'groupfolder',
+            'applies_to_groupfolder' => isset($row['applies_to_groupfolder']) ? (int)$row['applies_to_groupfolder'] : 0,
         ];
     }
     $result->closeCursor();
@@ -66,51 +64,23 @@ public function getAllFields(): array {
     // Get single field by ID (for edit modal)
 public function getFieldById(int $id): ?array {
     try {
-        error_log('MetaVox getFieldById called with ID: ' . $id);
-        
-        // Try metavox_fields first (global fields)
+        // Only groupfolder fields are supported now
         $qb = $this->db->getQueryBuilder();
-        $qb->select('*')  // Dit is al correct
-           ->from('metavox_fields')
-           ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
-        
-        $result = $qb->executeQuery();
-        $row = $result->fetch();
-        $result->closeCursor();
-        
-        if ($row) {
-            error_log('MetaVox getFieldById: Found global field');
-            return [
-                'id' => (int)$row['id'],
-                'field_name' => $row['field_name'],
-                'field_label' => $row['field_label'],
-                'field_type' => $row['field_type'],
-                'field_description' => $row['field_description'] ?? '', // ← ADD THIS LINE
-                'field_options' => $row['field_options'] ? json_decode($row['field_options'], true) : [],
-                'is_required' => (bool)$row['is_required'],
-                'sort_order' => (int)$row['sort_order'],
-                'scope' => $row['scope'] ?? 'global',
-            ];
-        }
-        
-        // Try metavox_gf_fields (groupfolder fields)
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('*')  // Dit is al correct
+        $qb->select('*')
            ->from('metavox_gf_fields')
            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
-        
+
         $result = $qb->executeQuery();
         $row = $result->fetch();
         $result->closeCursor();
-        
+
         if ($row) {
-            error_log('MetaVox getFieldById: Found groupfolder field');
             return [
                 'id' => (int)$row['id'],
                 'field_name' => $row['field_name'],
                 'field_label' => $row['field_label'],
                 'field_type' => $row['field_type'],
-                'field_description' => $row['field_description'] ?? '', // ← ADD THIS LINE
+                'field_description' => $row['field_description'] ?? '',
                 'field_options' => $row['field_options'] ? json_decode($row['field_options'], true) : [],
                 'is_required' => (bool)$row['is_required'],
                 'sort_order' => (int)$row['sort_order'],
@@ -118,12 +88,10 @@ public function getFieldById(int $id): ?array {
                 'applies_to_groupfolder' => isset($row['applies_to_groupfolder']) ? (int)$row['applies_to_groupfolder'] : 0,
             ];
         }
-        
-        error_log('MetaVox getFieldById: Field not found with ID: ' . $id);
+
         return null;
-        
+
     } catch (\Exception $e) {
-        error_log('MetaVox getFieldById error: ' . $e->getMessage());
         return null;
     }
 }
@@ -134,19 +102,11 @@ public function getFieldsByScope(string $scope = 'global'): array {
         return $this->fieldsByScopeCache[$scope];
     }
 
+    // Only groupfolder fields are supported now
     $qb = $this->db->getQueryBuilder();
-
-    // Check which table to use based on scope
-    $tableName = $scope === 'groupfolder' ? 'metavox_gf_fields' : 'metavox_fields';
-
-    $qb->select('*')  // Dit is al correct
-       ->from($tableName)
+    $qb->select('*')
+       ->from('metavox_gf_fields')
        ->orderBy('sort_order', 'ASC');
-
-    // Only add scope filter for metavox_fields table
-    if ($tableName === 'metavox_fields') {
-        $qb->where($qb->expr()->eq('scope', $qb->createNamedParameter($scope)));
-    }
 
     $result = $qb->executeQuery();
     $fields = [];
@@ -156,19 +116,13 @@ public function getFieldsByScope(string $scope = 'global'): array {
             'field_name' => $row['field_name'],
             'field_label' => $row['field_label'],
             'field_type' => $row['field_type'],
-            'field_description' => $row['field_description'] ?? '', // ← ADD THIS LINE
+            'field_description' => $row['field_description'] ?? '',
             'field_options' => $row['field_options'] ? json_decode($row['field_options'], true) : [],
             'is_required' => (bool)$row['is_required'],
             'sort_order' => (int)$row['sort_order'],
-            'scope' => $scope,
+            'scope' => 'groupfolder',
+            'applies_to_groupfolder' => isset($row['applies_to_groupfolder']) ? (int)$row['applies_to_groupfolder'] : 0,
         ];
-
-        // Add applies_to_groupfolder if it exists in the row
-        if (isset($row['applies_to_groupfolder'])) {
-            $fieldData['applies_to_groupfolder'] = (int)$row['applies_to_groupfolder'];
-        } else {
-            $fieldData['applies_to_groupfolder'] = 0; // Default value
-        }
 
         $fields[] = $fieldData;
     }
@@ -192,43 +146,23 @@ public function getFieldsByScope(string $scope = 'global'): array {
         $this->fieldsByScopeCache = [];
     }
 
-    // Universal update method that handles both table types
+    // Universal update method - only groupfolder fields supported now
 public function updateField(int $id, array $fieldData): bool {
     try {
-        error_log('MetaVox updateField called with ID: ' . $id . ', data: ' . json_encode($fieldData));
-        
-        // First determine which table this field is in
-        $isGroupfolderField = false;
-        
-        // Check metavox_fields first
+        // Verify field exists in metavox_gf_fields
         $qb = $this->db->getQueryBuilder();
         $qb->select('id')
-           ->from('metavox_fields')
+           ->from('metavox_gf_fields')
            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
-        
+
         $result = $qb->executeQuery();
         $exists = $result->fetchColumn();
         $result->closeCursor();
-        
+
         if (!$exists) {
-            // Check metavox_gf_fields
-            $qb = $this->db->getQueryBuilder();
-            $qb->select('id')
-               ->from('metavox_gf_fields')
-               ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
-            
-            $result = $qb->executeQuery();
-            $exists = $result->fetchColumn();
-            $result->closeCursor();
-            
-            if ($exists) {
-                $isGroupfolderField = true;
-            } else {
-                error_log('MetaVox updateField: Field not found with ID: ' . $id);
-                return false;
-            }
+            return false;
         }
-        
+
         // Process field_options
         $fieldOptions = '';
         if (isset($fieldData['field_options'])) {
@@ -238,33 +172,29 @@ public function updateField(int $id, array $fieldData): bool {
                 $fieldOptions = $fieldData['field_options'];
             }
         }
-        
-        // Update the appropriate table
-        $tableName = $isGroupfolderField ? 'metavox_gf_fields' : 'metavox_fields';
-        
+
         $qb = $this->db->getQueryBuilder();
-        $qb->update($tableName)
+        $qb->update('metavox_gf_fields')
            ->set('field_name', $qb->createNamedParameter($fieldData['field_name']))
            ->set('field_label', $qb->createNamedParameter($fieldData['field_label']))
            ->set('field_type', $qb->createNamedParameter($fieldData['field_type']))
-           ->set('field_description', $qb->createNamedParameter($fieldData['field_description'] ?? '')) // ← ADD THIS LINE
+           ->set('field_description', $qb->createNamedParameter($fieldData['field_description'] ?? ''))
            ->set('field_options', $qb->createNamedParameter(json_encode(array_filter(explode("\n", $fieldOptions)))))
            ->set('is_required', $qb->createNamedParameter($fieldData['is_required'] ? 1 : 0, IQueryBuilder::PARAM_INT))
            ->set('sort_order', $qb->createNamedParameter($fieldData['sort_order'] ?? 0, IQueryBuilder::PARAM_INT))
            ->set('updated_at', $qb->createNamedParameter(date('Y-m-d H:i:s')))
            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
-        
-        // Add applies_to_groupfolder for groupfolder fields if it exists
-        if ($isGroupfolderField && isset($fieldData['applies_to_groupfolder'])) {
+
+        // Add applies_to_groupfolder if it exists
+        if (isset($fieldData['applies_to_groupfolder'])) {
             try {
                 $qb->set('applies_to_groupfolder', $qb->createNamedParameter($fieldData['applies_to_groupfolder'], IQueryBuilder::PARAM_INT));
             } catch (\Exception $e) {
-                error_log('MetaVox updateField: applies_to_groupfolder column does not exist, skipping...');
+                // Column might not exist
             }
         }
 
         $result = $qb->executeStatement() > 0;
-        error_log('MetaVox updateField: Update result: ' . ($result ? 'success' : 'failed') . ' (table: ' . $tableName . ')');
 
         // Clear cache after successful update
         if ($result) {
@@ -272,54 +202,14 @@ public function updateField(int $id, array $fieldData): bool {
         }
 
         return $result;
-        
+
     } catch (\Exception $e) {
-        error_log('MetaVox updateField error: ' . $e->getMessage());
-        error_log('MetaVox updateField error trace: ' . $e->getTraceAsString());
         return false;
     }
 }
 public function createField(array $fieldData): int {
-    try {
-        error_log('Metavox createField called with: ' . json_encode($fieldData));
-        
-        $scope = $fieldData['scope'] ?? 'global';
-        
-        if ($scope === 'groupfolder') {
-            // Use metavox_gf_fields table for groupfolder fields
-            return $this->createGroupfolderField($fieldData);
-        } else {
-            // Use metavox_fields table for global fields
-            $qb = $this->db->getQueryBuilder();
-            $qb->insert('metavox_fields')
-               ->values([
-                   'field_name' => $qb->createNamedParameter($fieldData['field_name']),
-                   'field_label' => $qb->createNamedParameter($fieldData['field_label']),
-                   'field_type' => $qb->createNamedParameter($fieldData['field_type']),
-                   'field_description' => $qb->createNamedParameter($fieldData['field_description'] ?? ''), // ← ADD THIS LINE
-                   'field_options' => $qb->createNamedParameter(json_encode($fieldData['field_options'] ?? [])),
-                   'is_required' => $qb->createNamedParameter($fieldData['is_required'] ? 1 : 0, IQueryBuilder::PARAM_INT),
-                   'sort_order' => $qb->createNamedParameter($fieldData['sort_order'] ?? 0, IQueryBuilder::PARAM_INT),
-                   'scope' => $qb->createNamedParameter($scope),
-                   'created_at' => $qb->createNamedParameter(date('Y-m-d H:i:s')),
-                   'updated_at' => $qb->createNamedParameter(date('Y-m-d H:i:s')),
-               ]);
-
-            $result = $qb->executeStatement();
-            $insertId = (int) $this->db->lastInsertId('metavox_fields');
-
-            // Clear cache after successful create
-            $this->clearFieldCache();
-
-            error_log('Metavox createField (global) success: ' . $insertId);
-            return $insertId;
-        }
-        
-    } catch (\Exception $e) {
-        error_log('Metavox createField error: ' . $e->getMessage());
-        error_log('Metavox createField error trace: ' . $e->getTraceAsString());
-        throw $e;
-    }
+    // Only groupfolder fields are supported now
+    return $this->createGroupfolderField($fieldData);
 }
 
     /**
@@ -395,137 +285,73 @@ private function createGroupfolderField(array $fieldData): int {
 
 public function deleteField(int $id): bool {
     $this->db->beginTransaction();
-    
+
     try {
-        error_log('Metavox deleteField called with ID: ' . $id);
-        
-        // Determine which table this field is in
-        $fieldName = null;
-        $isGroupfolderField = false;
-        
-        // Try metavox_fields first
+        // Only groupfolder fields supported now
         $qb = $this->db->getQueryBuilder();
         $qb->select('field_name')
-           ->from('metavox_fields')
+           ->from('metavox_gf_fields')
            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
-        
+
         $result = $qb->executeQuery();
         $fieldName = $result->fetchColumn();
         $result->closeCursor();
-        
+
         if (!$fieldName) {
-            // Try metavox_gf_fields
-            $qb = $this->db->getQueryBuilder();
-            $qb->select('field_name')
-               ->from('metavox_gf_fields')
-               ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
-            
-            $result = $qb->executeQuery();
-            $fieldName = $result->fetchColumn();
-            $result->closeCursor();
-            $isGroupfolderField = true;
-        }
-        
-        if (!$fieldName) {
-            error_log('Metavox deleteField: Field not found with ID: ' . $id);
             $this->db->rollBack();
             return false;
         }
-        
-        error_log('Metavox deleteField: Deleting field: ' . $fieldName . ' (groupfolder: ' . ($isGroupfolderField ? 'yes' : 'no') . ')');
-        
-        if ($isGroupfolderField) {
-            // Delete groupfolder field and related data (all in transaction)
-            
-            // 1. Delete groupfolder metadata values
-            $qb = $this->db->getQueryBuilder();
-            $qb->delete('metavox_gf_metadata')
-               ->where($qb->expr()->eq('field_name', $qb->createNamedParameter($fieldName)));
-            $deleted1 = $qb->executeStatement();
-            error_log('Metavox deleteField: Deleted ' . $deleted1 . ' groupfolder metadata records');
 
-            // 2. Delete file-in-groupfolder metadata
-            $qb = $this->db->getQueryBuilder();
-            $qb->delete('metavox_file_gf_meta')
-               ->where($qb->expr()->eq('field_name', $qb->createNamedParameter($fieldName)));
-            $deleted2 = $qb->executeStatement();
-            error_log('Metavox deleteField: Deleted ' . $deleted2 . ' file-gf metadata records');
+        // 1. Delete groupfolder metadata values
+        $qb = $this->db->getQueryBuilder();
+        $qb->delete('metavox_gf_metadata')
+           ->where($qb->expr()->eq('field_name', $qb->createNamedParameter($fieldName)));
+        $qb->executeStatement();
 
-            // 3. Delete groupfolder field assignments
-            $qb = $this->db->getQueryBuilder();
-            $qb->delete('metavox_gf_assigns')
-               ->where($qb->expr()->eq('field_id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
-            $deleted3 = $qb->executeStatement();
-            error_log('Metavox deleteField: Deleted ' . $deleted3 . ' groupfolder assignments');
+        // 2. Delete file-in-groupfolder metadata
+        $qb = $this->db->getQueryBuilder();
+        $qb->delete('metavox_file_gf_meta')
+           ->where($qb->expr()->eq('field_name', $qb->createNamedParameter($fieldName)));
+        $qb->executeStatement();
 
-            // 4. Delete field overrides
-            $qb = $this->db->getQueryBuilder();
-            $qb->delete('metavox_gf_overrides')
-               ->where($qb->expr()->eq('field_name', $qb->createNamedParameter($fieldName)));
-            $deleted4 = $qb->executeStatement();
-            error_log('Metavox deleteField: Deleted ' . $deleted4 . ' field override records');
+        // 3. Delete groupfolder field assignments
+        $qb = $this->db->getQueryBuilder();
+        $qb->delete('metavox_gf_assigns')
+           ->where($qb->expr()->eq('field_id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
+        $qb->executeStatement();
 
-            // 5. Delete the groupfolder field itself
-            $qb = $this->db->getQueryBuilder();
-            $qb->delete('metavox_gf_fields')
-               ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
-            
-            $deleted = $qb->executeStatement();
-            error_log('Metavox deleteField: Groupfolder field deletion result: ' . $deleted);
-            
-            if ($deleted === 0) {
-                throw new \Exception('Field deletion failed - no rows affected');
-            }
-            
-        } else {
-            // Delete global field and related data (all in transaction)
-            
-            // 1. Delete file metadata values
-            $qb = $this->db->getQueryBuilder();
-            $qb->delete('metavox_metadata')
-               ->where($qb->expr()->eq('field_id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
-            $deleted1 = $qb->executeStatement();
-            error_log('Metavox deleteField: Deleted ' . $deleted1 . ' file metadata records');
+        // 4. Delete the groupfolder field itself
+        $qb = $this->db->getQueryBuilder();
+        $qb->delete('metavox_gf_fields')
+           ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
 
-            // 2. Delete the global field itself
-            $qb = $this->db->getQueryBuilder();
-            $qb->delete('metavox_fields')
-               ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
-            
-            $deleted = $qb->executeStatement();
-            error_log('Metavox deleteField: Global field deletion result: ' . $deleted);
-            
-            if ($deleted === 0) {
-                throw new \Exception('Field deletion failed - no rows affected');
-            }
+        $deleted = $qb->executeStatement();
+
+        if ($deleted === 0) {
+            throw new \Exception('Field deletion failed - no rows affected');
         }
-        
+
         // Commit transaction - all or nothing
         $this->db->commit();
 
         // Clear cache after successful delete
         $this->clearFieldCache();
 
-        error_log('Metavox deleteField: Transaction committed successfully');
         return true;
-        
+
     } catch (\Exception $e) {
         // Rollback on any error
         $this->db->rollBack();
-        error_log('Metavox deleteField error (rolled back): ' . $e->getMessage());
-        error_log('Metavox deleteField error trace: ' . $e->getTraceAsString());
         return false;
     }
 }
 public function getFieldMetadata(int $fileId): array {
+        // Only groupfolder file metadata is supported now
+        // This returns metadata from metavox_file_gf_meta joined with metavox_gf_fields
         $qb = $this->db->getQueryBuilder();
-        $qb->select('f.id', 'f.field_name', 'f.field_label', 'f.field_type', 'f.field_options', 'f.is_required', 'v.value')
-           ->from('metavox_fields', 'f')
-           ->leftJoin('f', 'metavox_metadata', 'v', 'f.id = v.field_id AND v.file_id = :file_id')
-           ->where($qb->expr()->orX(
-               $qb->expr()->isNull('f.scope'),
-               $qb->expr()->eq('f.scope', $qb->createNamedParameter('global'))
-           ))
+        $qb->select('f.id', 'f.field_name', 'f.field_label', 'f.field_type', 'f.field_options', 'f.is_required', 'v.field_value as value')
+           ->from('metavox_gf_fields', 'f')
+           ->leftJoin('f', 'metavox_file_gf_meta', 'v', 'f.field_name = v.field_name AND v.file_id = :file_id')
            ->setParameter('file_id', $fileId)
            ->orderBy('f.sort_order', 'ASC');
 
@@ -549,46 +375,52 @@ public function getFieldMetadata(int $fileId): array {
 
 public function saveFieldValue(int $fileId, int $fieldId, string $value): bool {
     try {
-        $platform = $this->db->getDatabasePlatform();
-        
-        if ($platform instanceof \Doctrine\DBAL\Platforms\MySqlPlatform) {
-            // MySQL: INSERT ... ON DUPLICATE KEY UPDATE
-            $sql = "INSERT INTO *PREFIX*metavox_metadata 
-                    (file_id, field_id, value, updated_at) 
-                    VALUES (?, ?, ?, ?)
-                    ON DUPLICATE KEY UPDATE 
-                    value = VALUES(value), 
-                    updated_at = VALUES(updated_at)";
-            
-            $this->db->executeStatement($sql, [
-                $fileId, 
-                $fieldId, 
-                $value, 
-                date('Y-m-d H:i:s')
-            ]);
-        } else {
-            // PostgreSQL: INSERT ... ON CONFLICT
-            $sql = "INSERT INTO *PREFIX*metavox_metadata 
-                    (file_id, field_id, value, updated_at) 
-                    VALUES (?, ?, ?, ?)
-                    ON CONFLICT (file_id, field_id) 
-                    DO UPDATE SET 
-                    value = EXCLUDED.value, 
-                    updated_at = EXCLUDED.updated_at";
-            
-            $this->db->executeStatement($sql, [
-                $fileId, 
-                $fieldId, 
-                $value, 
-                date('Y-m-d H:i:s')
-            ]);
+        // Get field name from metavox_gf_fields
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('field_name')
+           ->from('metavox_gf_fields')
+           ->where($qb->expr()->eq('id', $qb->createNamedParameter($fieldId, IQueryBuilder::PARAM_INT)));
+
+        $result = $qb->executeQuery();
+        $fieldName = $result->fetchColumn();
+        $result->closeCursor();
+
+        if (!$fieldName) {
+            return false;
         }
-        
+
+        $platform = $this->db->getDatabasePlatform();
+        $now = date('Y-m-d H:i:s');
+
+        if ($platform instanceof \Doctrine\DBAL\Platforms\MySqlPlatform) {
+            $sql = "INSERT INTO *PREFIX*metavox_file_gf_meta
+                    (file_id, groupfolder_id, field_name, field_value, created_at, updated_at)
+                    VALUES (?, 0, ?, ?, ?, ?)
+                    ON DUPLICATE KEY UPDATE
+                    field_value = VALUES(field_value),
+                    updated_at = VALUES(updated_at)";
+        } else {
+            $sql = "INSERT INTO *PREFIX*metavox_file_gf_meta
+                    (file_id, groupfolder_id, field_name, field_value, created_at, updated_at)
+                    VALUES (?, 0, ?, ?, ?, ?)
+                    ON CONFLICT (file_id, groupfolder_id, field_name)
+                    DO UPDATE SET
+                    field_value = EXCLUDED.field_value,
+                    updated_at = EXCLUDED.updated_at";
+        }
+
+        $this->db->executeStatement($sql, [
+            $fileId,
+            $fieldName,
+            $value,
+            $now,
+            $now
+        ]);
+
         $this->queueSearchIndexUpdate($fileId);
         return true;
-        
+
     } catch (\Exception $e) {
-        error_log('MetaVox saveFieldValue error: ' . $e->getMessage());
         return false;
     }
 }
@@ -917,30 +749,27 @@ public function getBulkFileMetadata(array $fileIds): array {
     if (empty($fileIds)) {
         return [];
     }
-    
+
     try {
+        // Only groupfolder file metadata supported now
         $qb = $this->db->getQueryBuilder();
-        $qb->select('f.id', 'f.field_name', 'f.field_label', 'f.field_type', 
-                    'f.field_options', 'f.is_required', 'f.field_description', 'v.value', 'v.file_id')
-           ->from('metavox_fields', 'f')
-           ->leftJoin('f', 'metavox_metadata', 'v', 
-                     'f.id = v.field_id AND v.file_id IN (:file_ids)')
-           ->where($qb->expr()->orX(
-               $qb->expr()->isNull('f.scope'),
-               $qb->expr()->eq('f.scope', $qb->createNamedParameter('global'))
-           ))
+        $qb->select('f.id', 'f.field_name', 'f.field_label', 'f.field_type',
+                    'f.field_options', 'f.is_required', 'f.field_description', 'v.field_value as value', 'v.file_id')
+           ->from('metavox_gf_fields', 'f')
+           ->leftJoin('f', 'metavox_file_gf_meta', 'v',
+                     'f.field_name = v.field_name AND v.file_id IN (:file_ids)')
            ->setParameter('file_ids', $fileIds, IQueryBuilder::PARAM_INT_ARRAY)
            ->orderBy('v.file_id', 'ASC')
            ->addOrderBy('f.sort_order', 'ASC');
 
         $result = $qb->executeQuery();
         $metadataByFile = [];
-        
+
         // Initialize all file IDs with empty arrays
         foreach ($fileIds as $fileId) {
             $metadataByFile[$fileId] = [];
         }
-        
+
         // Get all fields first to ensure every file gets all fields
         $allFields = [];
         while ($row = $result->fetch()) {
@@ -955,7 +784,7 @@ public function getBulkFileMetadata(array $fileIds): array {
                     'is_required' => (bool)$row['is_required'],
                 ];
             }
-            
+
             if ($row['file_id'] !== null) {
                 $fileId = (int)$row['file_id'];
                 $metadataByFile[$fileId][] = array_merge($allFields[$row['id']], [
@@ -964,7 +793,7 @@ public function getBulkFileMetadata(array $fileIds): array {
             }
         }
         $result->closeCursor();
-        
+
         // Add fields with null values for files that don't have metadata yet
         foreach ($fileIds as $fileId) {
             if (empty($metadataByFile[$fileId])) {
@@ -975,9 +804,8 @@ public function getBulkFileMetadata(array $fileIds): array {
         }
 
         return $metadataByFile;
-        
+
     } catch (\Exception $e) {
-        error_log('Metavox getBulkFileMetadata error: ' . $e->getMessage());
         return [];
     }
 }
@@ -1047,79 +875,4 @@ private function queueSearchIndexUpdate(int $fileId): void {
         error_log('MetaVox: Failed to queue search index update: ' . $e->getMessage());
     }
 }
-/**
-     * Save field override for specific groupfolder
-     */
-    public function saveGroupfolderFieldOverride(int $groupfolderId, string $fieldName, int $appliesToGroupfolder): bool {
-        try {
-            error_log('Metavox saveGroupfolderFieldOverride: groupfolder=' . $groupfolderId . ', field=' . $fieldName . ', applies=' . $appliesToGroupfolder);
-            
-            // Check if override already exists
-            $qb = $this->db->getQueryBuilder();
-            $qb->select('id')
-               ->from('metavox_gf_overrides')
-               ->where($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)))
-               ->andWhere($qb->expr()->eq('field_name', $qb->createNamedParameter($fieldName)));
-
-            $result = $qb->executeQuery();
-            $existingId = $result->fetchColumn();
-            $result->closeCursor();
-
-            if ($existingId) {
-                // Update existing override
-                $qb = $this->db->getQueryBuilder();
-                $qb->update('metavox_gf_overrides')
-                   ->set('applies_to_groupfolder', $qb->createNamedParameter($appliesToGroupfolder, IQueryBuilder::PARAM_INT))
-                   ->set('updated_at', $qb->createNamedParameter(date('Y-m-d H:i:s')))
-                   ->where($qb->expr()->eq('id', $qb->createNamedParameter($existingId, IQueryBuilder::PARAM_INT)));
-                
-                $result = $qb->executeStatement() > 0;
-                error_log('Metavox saveGroupfolderFieldOverride: Updated existing override, result=' . ($result ? 'success' : 'failed'));
-                return $result;
-            } else {
-                // Create new override
-                $qb = $this->db->getQueryBuilder();
-                $qb->insert('metavox_gf_overrides')
-                   ->values([
-                       'groupfolder_id' => $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT),
-                       'field_name' => $qb->createNamedParameter($fieldName),
-                       'applies_to_groupfolder' => $qb->createNamedParameter($appliesToGroupfolder, IQueryBuilder::PARAM_INT),
-                       'created_at' => $qb->createNamedParameter(date('Y-m-d H:i:s')),
-                       'updated_at' => $qb->createNamedParameter(date('Y-m-d H:i:s')),
-                   ]);
-                
-                $result = $qb->executeStatement() > 0;
-                error_log('Metavox saveGroupfolderFieldOverride: Created new override, result=' . ($result ? 'success' : 'failed'));
-                return $result;
-            }
-        } catch (\Exception $e) {
-            error_log('Metavox saveGroupfolderFieldOverride ERROR: ' . $e->getMessage());
-            error_log('Metavox saveGroupfolderFieldOverride ERROR trace: ' . $e->getTraceAsString());
-            return false;
-        }
-    }
-
-    /**
-     * Get field overrides for specific groupfolder
-     */
-    public function getGroupfolderFieldOverrides(int $groupfolderId): array {
-        try {
-            $qb = $this->db->getQueryBuilder();
-            $qb->select('*')
-               ->from('metavox_gf_overrides')
-               ->where($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)));
-
-            $result = $qb->executeQuery();
-            $overrides = [];
-            while ($row = $result->fetch()) {
-                $overrides[$row['field_name']] = (int)$row['applies_to_groupfolder'];
-            }
-            $result->closeCursor();
-
-            return $overrides;
-        } catch (\Exception $e) {
-            error_log('Metavox getGroupfolderFieldOverrides error: ' . $e->getMessage());
-            return [];
-        }
-    }
 }

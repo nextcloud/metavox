@@ -18,3 +18,26 @@
     background-size: 20px 20px !important;
     background-position: center !important;
 }
+
+/* Unified Search Provider Icon - Fix for light theme visibility */
+/* Target all possible locations where the MetaVox icon appears in unified search */
+[style*='metavox/img/app.svg'],
+[src*='metavox/img/app.svg'],
+img[src*='metavox'][src*='app.svg'],
+.unified-search [style*='metavox'],
+.unified-search img[src*='metavox'],
+[class*='unified-search'] [style*='metavox'],
+[class*='unified-search'] img[src*='metavox'],
+[class*='search-result'] [style*='metavox'],
+[class*='filter'] [style*='metavox'],
+[class*='provider'] [style*='metavox'] {
+    filter: none !important;
+}
+
+/* Override any invert filters on MetaVox icons globally */
+body:not([data-themes*='dark']) [style*='metavox/img/app'],
+body:not([data-themes*='dark']) img[src*='metavox/img/app'],
+html:not(.theme--dark) [style*='metavox/img/app'],
+html:not(.theme--dark) img[src*='metavox/img/app'] {
+    filter: none !important;
+}

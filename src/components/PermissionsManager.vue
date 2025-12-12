@@ -185,16 +185,12 @@ import MagnifyIcon from 'vue-material-design-icons/Magnify.vue'
 const showSuccess = (message) => {
   if (typeof OC !== 'undefined' && OC.Notification) {
     OC.Notification.showTemporary(message)
-  } else {
-    console.log('SUCCESS:', message)
   }
 }
 
 const showError = (message) => {
   if (typeof OC !== 'undefined' && OC.Notification) {
     OC.Notification.showTemporary(message)
-  } else {
-    console.error('ERROR:', message)
   }
 }
 
@@ -280,16 +276,12 @@ filteredPermissions() {
       try {
         // Use our custom endpoint that uses IGroupManager
         const response = await axios.get(generateUrl('/apps/metavox/api/permissions/groups'))
-        
-        console.log('Groups loaded:', response.data)
-        
+
         if (Array.isArray(response.data)) {
           this.availableGroups = response.data.map(group => ({
             id: group.id,
             displayname: group.displayname || group.id
           }))
-          
-          console.log('Available groups:', this.availableGroups)
         }
       } catch (error) {
         console.error('Failed to load groups:', error)
@@ -302,7 +294,6 @@ filteredPermissions() {
     
     searchGroups(query) {
       // Search is handled by NcSelect internally filtering availableGroups
-      console.log('Search query:', query)
     },
     
     async loadGroupfolders() {
