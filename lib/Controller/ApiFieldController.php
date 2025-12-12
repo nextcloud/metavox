@@ -32,78 +32,8 @@ class ApiFieldController extends OCSController {
     }
 
     /**
-     * Get all global fields
-     * 
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
-     */
-    public function getFields(): DataResponse {
-        try {
-            $fields = $this->fieldService->getAllFields();
-            return new DataResponse($fields, Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
-     * Get single field by ID
-     * 
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
-     */
-    public function getField(int $id): DataResponse {
-        try {
-            $field = $this->fieldService->getFieldById($id);
-            
-            if (!$field) {
-                return new DataResponse(['error' => 'Field not found'], Http::STATUS_NOT_FOUND);
-            }
-            
-            return new DataResponse($field, Http::STATUS_OK);
-            
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => 'Internal server error: ' . $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
-     * Create new global field
-     * 
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
-     */
-    public function createField(): DataResponse {
-        try {
-            $fieldData = [
-                'field_name' => $this->request->getParam('field_name'),
-                'field_label' => $this->request->getParam('field_label'),
-                'field_type' => $this->request->getParam('field_type', 'text'),
-                'field_description' => $this->request->getParam('field_description', ''),
-                'field_options' => $this->request->getParam('field_options', []),
-                'is_required' => $this->request->getParam('is_required', false),
-                'sort_order' => $this->request->getParam('sort_order', 0),
-                'scope' => 'global',
-            ];
-
-            if (empty($fieldData['field_name']) || empty($fieldData['field_label'])) {
-                return new DataResponse(['error' => 'Field name and label are required'], Http::STATUS_BAD_REQUEST);
-            }
-
-            $id = $this->fieldService->createField($fieldData);
-            return new DataResponse(['id' => $id, 'success' => true], Http::STATUS_CREATED);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage(), 'success' => false], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
-     * Update existing field
-     * 
-     * @NoAdminRequired
+     * Update existing field (Admin only)
+     *
      * @NoCSRFRequired
      * @CORS
      */
@@ -150,9 +80,8 @@ class ApiFieldController extends OCSController {
     }
 
     /**
-     * Delete field
-     * 
-     * @NoAdminRequired
+     * Delete field (Admin only)
+     *
      * @NoCSRFRequired
      * @CORS
      */
@@ -349,9 +278,8 @@ public function getGroupfolderFields(): DataResponse {
 }
 
     /**
-     * Create groupfolder field
-     * 
-     * @NoAdminRequired
+     * Create groupfolder field (Admin only)
+     *
      * @NoCSRFRequired
      * @CORS
      */
@@ -452,9 +380,8 @@ public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
 }
 
     /**
-     * Set groupfolder fields
-     * 
-     * @NoAdminRequired
+     * Set groupfolder fields (Admin only)
+     *
      * @NoCSRFRequired
      * @CORS
      */
@@ -469,9 +396,8 @@ public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
     }
 
     /**
-     * Save field override for specific groupfolder
-     * 
-     * @NoAdminRequired
+     * Save field override for specific groupfolder (Admin only)
+     *
      * @NoCSRFRequired
      * @CORS
      */
@@ -623,16 +549,8 @@ public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
     }
 
     /**
-     * Batch update groupfolder file metadata
-     * 
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
-     */
-    /**
-     * Get metadata statistics
-     * 
-     * @NoAdminRequired
+     * Get metadata statistics (Admin only)
+     *
      * @NoCSRFRequired
      * @CORS
      */
