@@ -15,6 +15,12 @@ Vue.prototype.n = translatePlural
  * Register the sidebar tab
  */
 function registerMetadataTab() {
+	// Prevent duplicate registration
+	if (window._metavoxTabRegistered) {
+		return
+	}
+	window._metavoxTabRegistered = true
+
 	window.OCA.Files.Sidebar.registerTab(new window.OCA.Files.Sidebar.Tab({
 		id: 'metavox-metadata',
 		name: 'MetaVox',
