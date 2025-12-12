@@ -900,7 +900,7 @@ async deleteField(fieldId) {
   this.deleting = fieldId
   
   try {
-    await axios.delete(generateUrl(`/apps/metavox/api/fields/${fieldId}`))
+    await axios.delete(generateUrl(`/apps/metavox/api/groupfolder-fields/${fieldId}`))
     
     // Invalideer cache omdat een field is verwijderd
     this.invalidateUsageCountsCache()
@@ -957,7 +957,7 @@ async saveEdit() {
   }
   
   try {
-    await axios.put(generateUrl(`/apps/metavox/api/fields/${this.editingField.id}`), fieldData)
+    await axios.put(generateUrl(`/apps/metavox/api/groupfolder-fields/${this.editingField.id}`), fieldData)
     
     // Invalideer cache omdat field is gewijzigd (labels kunnen zijn veranderd)
     this.invalidateUsageCountsCache()
