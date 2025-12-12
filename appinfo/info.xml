@@ -38,8 +38,4 @@
         <personal>OCA\MetaVox\Settings\Personal</personal>
         <personal-section>OCA\MetaVox\Settings\PersonalSection</personal-section>
     </settings>
-    <commands>
-        <command>OCA\MetaVox\Command\PerformanceTestCommand</command>
-        <command>OCA\MetaVox\Command\GroupfolderPerformanceTestCommand</command>
-    </commands>
 </info>
