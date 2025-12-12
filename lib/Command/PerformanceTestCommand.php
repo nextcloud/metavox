@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace OCA\MetaVox\Command;
 
 use OCA\MetaVox\Service\FieldService;
-use OCA\MetaVox\Service\FilterService;
 use OCA\MetaVox\Service\SearchIndexService;
 use OCA\MetaVox\Tests\Performance\DataGenerator;
 use OCA\MetaVox\Tests\Performance\FieldServiceTest;
-use OCA\MetaVox\Tests\Performance\FilterServiceTest;
 use OCA\MetaVox\Tests\Performance\SearchServiceTest;
 use OCA\MetaVox\Tests\Performance\ConcurrencyTest;
 use OCA\MetaVox\Tests\Performance\FileCacheIntegrationTest;
@@ -36,7 +34,6 @@ class PerformanceTestCommand extends Command {
 
     public function __construct(
         private FieldService $fieldService,
-        private FilterService $filterService,
         private SearchIndexService $searchService,
         private IDBConnection $db,
         private IUserSession $userSession,
@@ -54,7 +51,7 @@ class PerformanceTestCommand extends Command {
                 'suite',
                 's',
                 InputOption::VALUE_REQUIRED,
-                'Test suite to run: all, field, filter, search, concurrent, filecache',
+                'Test suite to run: all, field, search, concurrent, filecache',
                 'all'
             )
             ->addOption(
@@ -145,7 +142,6 @@ class PerformanceTestCommand extends Command {
         try {
             $generator = new DataGenerator(
                 $this->fieldService,
-                $this->filterService,
                 $this->searchService,
                 $this->db,
                 $this->userSession,
@@ -191,7 +187,6 @@ class PerformanceTestCommand extends Command {
         try {
             $generator = new DataGenerator(
                 $this->fieldService,
-                $this->filterService,
                 $this->searchService,
                 $this->db,
                 $this->userSession,
@@ -226,7 +221,6 @@ class PerformanceTestCommand extends Command {
             switch ($suite) {
                 case 'all':
                     $this->runFieldTests($output);
-                    $this->runFilterTests($output);
                     $this->runSearchTests($output);
                     $this->runConcurrencyTests($output);
                     $this->runFileCacheTests($output);
@@ -234,10 +228,6 @@ class PerformanceTestCommand extends Command {
 
                 case 'field':
                     $this->runFieldTests($output);
-                    break;
-
-                case 'filter':
-                    $this->runFilterTests($output);
                     break;
 
                 case 'search':
@@ -254,7 +244,7 @@ class PerformanceTestCommand extends Command {
 
                 default:
                     $output->writeln("<error>Unknown test suite: $suite</error>");
-                    $output->writeln("Valid suites: all, field, filter, search, concurrent, filecache");
+                    $output->writeln("Valid suites: all, field, search, concurrent, filecache");
                     return 1;
             }
 
@@ -291,24 +281,6 @@ class PerformanceTestCommand extends Command {
 
         $test = new FieldServiceTest(
             $this->fieldService,
-            $this->filterService,
-            $this->searchService,
-            $this->db,
-            $this->userSession,
-            $this->rootFolder,
-            $this->logger
-        );
-
-        $test->run();
-        $output->writeln('');
-    }
-
-    private function runFilterTests(OutputInterface $output): void {
-        $output->writeln("<comment>→ Running Filter Service tests...</comment>");
-
-        $test = new FilterServiceTest(
-            $this->fieldService,
-            $this->filterService,
             $this->searchService,
             $this->db,
             $this->userSession,
@@ -325,7 +297,6 @@ class PerformanceTestCommand extends Command {
 
         $test = new SearchServiceTest(
             $this->fieldService,
-            $this->filterService,
             $this->searchService,
             $this->db,
             $this->userSession,
@@ -342,7 +313,6 @@ class PerformanceTestCommand extends Command {
 
         $test = new ConcurrencyTest(
             $this->fieldService,
-            $this->filterService,
             $this->searchService,
             $this->db,
             $this->userSession,
@@ -359,7 +329,6 @@ class PerformanceTestCommand extends Command {
 
         $test = new FileCacheIntegrationTest(
             $this->fieldService,
-            $this->filterService,
             $this->searchService,
             $this->db,
             $this->userSession,

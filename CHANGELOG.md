@@ -1,8 +1,53 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.  
-This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).  
+All notable changes to this project will be documented in this file.
+This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
+
+---
+
+## [1.3.0] - 2025-12-12
+
+### Added
+- Dutch (nl) and German (de) translations for the entire application
+- Caching for groupfolder mappings and field labels to improve performance
+- PHP 8.x `match` expression for file icon detection with expanded file type support
+- API response caching for groupfolders (5-minute TTL) with request cancellation
+- Memoization for `getFieldOptions()` to prevent redundant parsing
+
+### Changed
+- **Major Architecture Refactoring**: Removed global metadata system, now exclusively uses groupfolder-scoped metadata
+- Modernized PHP codebase to PHP 8.x standards:
+  - Added `declare(strict_types=1)` to all PHP files
+  - Implemented constructor property promotion with `readonly` properties
+  - Replaced `strpos()` with `str_contains()` for string checks
+  - Replaced `error_log()` and `file_put_contents()` with PSR-3 `LoggerInterface`
+  - Replaced deprecated `execute()` with `executeQuery()`/`executeStatement()`
+  - Added proper return type declarations to all methods
+- Refactored event listeners to use dependency injection for `IJobList` and `LoggerInterface`
+- Improved code organization with proper use statements and class imports
+- **Vue Component Optimizations**:
+  - Fixed v-for keys using index anti-pattern in `GroupfolderMetadataFields.vue` and `FileMetadataFields.vue`
+  - Added proper `required` attribute binding to `SelectFieldInput.vue` and `CheckboxFieldInput.vue`
+  - Removed debug console.log statements from all Vue components
+
+### Removed
+- Global metadata tables (`metavox_fields`, `metavox_metadata`)
+- Field override system (`metavox_gf_overrides`)
+- License/subscription model
+- Filter functionality
+- Retention manager
+- Hardcoded log file paths
+
+### Fixed
+- Database error "Table 'nextcloud.oc_metavox_fields' doesn't exist" after migration
+- Updated all services to use `metavox_gf_fields` and `metavox_file_gf_meta` tables
+- Cleaned up orphaned test data (4776 test groupfolders removed)
+- Unified search icon visibility in light theme (changed SVG fill from `currentColor` to `#1a1a1a`)
+
+### Security
+- Removed hardcoded absolute paths for logging
+- Improved input validation in background jobs
 
 ---
 

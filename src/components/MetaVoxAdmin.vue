@@ -17,8 +17,6 @@
 				<FileIcon v-if="tab.id === 'file-metadata'" :size="16" />
 				<CogIcon v-if="tab.id === 'groupfolders'" :size="16" />
 				<ShieldIcon v-if="tab.id === 'permissions'" :size="16" />
-				<ClockIcon v-if="tab.id === 'retention'" :size="16" />
-				<KeyIcon v-if="tab.id === 'license'" :size="16" />
 				{{ tab.name }}
 			</button>
 		</div>
@@ -43,14 +41,6 @@
 				<PermissionsManager
 					v-if="activeTab === 'permissions'"
 					@notification="showNotification" />
-
-				<RetentionManager
-					v-if="activeTab === 'retention'"
-					@notification="showNotification" />
-
-				<LicenseInfo
-					v-if="activeTab === 'license'"
-					@notification="showNotification" />
 			</div>
 		</div>
 	</div>
@@ -62,16 +52,12 @@ import FolderIcon from 'vue-material-design-icons/Folder.vue'
 import FileIcon from 'vue-material-design-icons/File.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
 import ShieldIcon from 'vue-material-design-icons/Shield.vue'
-import ClockIcon from 'vue-material-design-icons/Clock.vue'
-import KeyIcon from 'vue-material-design-icons/Key.vue'
 
 // Import our custom components
 import GroupfolderMetadataFields from './GroupfolderMetadataFields.vue'
 import FileMetadataFields from './FileMetadataFields.vue'
 import ManageGroupfolders from './ManageGroupfolders.vue'
 import PermissionsManager from './PermissionsManager.vue'
-import RetentionManager from './RetentionManager.vue'
-import LicenseInfo from './LicenseInfo.vue'
 
 export default {
 	name: 'MetaVoxAdmin',
@@ -81,14 +67,10 @@ export default {
 		FileIcon,
 		CogIcon,
 		ShieldIcon,
-		ClockIcon,
-		KeyIcon,
 		GroupfolderMetadataFields,
 		FileMetadataFields,
 		ManageGroupfolders,
 		PermissionsManager,
-		RetentionManager,
-		LicenseInfo,
 	},
 
 	data() {
@@ -99,8 +81,6 @@ export default {
 				{ id: 'file-metadata', name: this.t('metavox', 'File Metadata') },
 				{ id: 'groupfolders', name: this.t('metavox', 'Manage Team folders') },
 				{ id: 'permissions', name: this.t('metavox', 'User Permissions') },
-				{ id: 'retention', name: this.t('metavox', 'Retention Manager') },
-				{ id: 'license', name: this.t('metavox', 'License') },
 			]
 		}
 	},
@@ -118,30 +98,19 @@ export default {
 				'file-metadata-fields': 'file-metadata',
 				// Add more mappings if needed
 			}
-			
+
 			const mappedTab = tabMapping[tabId] || tabId
-			
+
 			// Check if the tab exists
 			if (this.tabs.find(tab => tab.id === mappedTab)) {
 				this.setActiveTab(mappedTab)
-			} else {
-				console.warn(`Tab "${tabId}" not found`)
 			}
 		},
 		
 		showNotification(notification) {
 			// Use Nextcloud's notification system if available
 			if (typeof OC !== 'undefined' && OC.Notification) {
-				if (notification.type === 'success') {
-					OC.Notification.showTemporary(notification.message)
-				} else if (notification.type === 'error') {
-					OC.Notification.showTemporary(notification.message)
-				} else {
-					OC.Notification.showTemporary(notification.message)
-				}
-			} else {
-				// Fallback to console log
-				console.log(`${notification.type}: ${notification.message}`)
+				OC.Notification.showTemporary(notification.message)
 			}
 		},
 		

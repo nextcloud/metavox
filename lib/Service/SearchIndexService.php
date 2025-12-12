@@ -146,12 +146,12 @@ private function searchFromIndex(string $searchTerm, string $userId): array {
 }
 
     private function searchFromMetadata(string $searchTerm, string $userId): array {
+        // Only groupfolder file metadata supported now
         $qb = $this->db->getQueryBuilder();
-        $qb->select('f.fileid', 'f.name', 'f.path', 'field.field_name', 'meta.value')
+        $qb->select('f.fileid', 'f.name', 'f.path', 'meta.field_name', 'meta.field_value as value')
            ->from('filecache', 'f')
-           ->innerJoin('f', 'metavox_metadata', 'meta', 'f.fileid = meta.file_id')
-           ->innerJoin('meta', 'metavox_fields', 'field', 'meta.field_id = field.id')
-           ->where($qb->expr()->like('meta.value', $qb->createNamedParameter('%' . $this->db->escapeLikeParameter($searchTerm) . '%')))
+           ->innerJoin('f', 'metavox_file_gf_meta', 'meta', 'f.fileid = meta.file_id')
+           ->where($qb->expr()->like('meta.field_value', $qb->createNamedParameter('%' . $this->db->escapeLikeParameter($searchTerm) . '%')))
            ->andWhere($qb->expr()->in('f.storage', $qb->createParameter('storages')))
            ->setParameter('storages', $this->getUserStorageIds($userId), IQueryBuilder::PARAM_INT_ARRAY)
            ->setMaxResults(50)
@@ -159,7 +159,7 @@ private function searchFromIndex(string $searchTerm, string $userId): array {
 
         $result = $qb->execute();
         $files = [];
-        
+
         while ($row = $result->fetch()) {
             $fileId = $row['fileid'];
             if (!isset($files[$fileId])) {
@@ -246,26 +246,8 @@ private function searchFromIndex(string $searchTerm, string $userId): array {
 
 private function getFileMetadata(int $fileId): array {
     $metadata = [];
-    
-    // 1. Gewone file metadata (metavox_metadata)
-    $qb = $this->db->getQueryBuilder();
-    $qb->select('field.field_name', 'meta.value')
-       ->from('metavox_metadata', 'meta')
-       ->innerJoin('meta', 'metavox_fields', 'field', 'meta.field_id = field.id')
-       ->where($qb->expr()->eq('meta.file_id', $qb->createNamedParameter($fileId)));
 
-    $result = $qb->execute();
-    while ($row = $result->fetch()) {
-        if (!empty(trim($row['value']))) {
-            $metadata[] = [
-                'field_name' => $row['field_name'],
-                'value' => $row['value']
-            ];
-        }
-    }
-    $result->closeCursor();
-
-    // 2. Groupfolder file metadata - FIXED: use field_value column
+    // Only groupfolder file metadata supported now
     $qb = $this->db->getQueryBuilder();
     $qb->select('field_name', 'field_value')
        ->from('metavox_file_gf_meta')
@@ -276,7 +258,7 @@ private function getFileMetadata(int $fileId): array {
         if (!empty(trim($row['field_value']))) {
             $metadata[] = [
                 'field_name' => $row['field_name'],
-                'value' => $row['field_value']  // CRITICAL: was missing this fix
+                'value' => $row['field_value']
             ];
         }
     }

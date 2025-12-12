@@ -9,29 +9,24 @@ use OCP\AppFramework\Http\TemplateResponse;
 use OCP\Settings\ISettings;
 
 class Admin implements ISettings {
-
-    private FieldService $fieldService;
-
-    public function __construct(FieldService $fieldService) {
-        $this->fieldService = $fieldService;
+    public function __construct(
+        private readonly FieldService $fieldService
+    ) {
     }
 
-    public function getForm() {
-        // JavaScript en CSS laden
+    public function getForm(): TemplateResponse {
         \OCP\Util::addScript('metavox', 'admin');
-        
-        $fields = $this->fieldService->getAllFields();
-        
+
         return new TemplateResponse('metavox', 'admin', [
-            'fields' => $fields,
+            'fields' => $this->fieldService->getAllFields(),
         ]);
     }
 
-    public function getSection() {
+    public function getSection(): string {
         return 'metavox';
     }
 
-    public function getPriority() {
+    public function getPriority(): int {
         return 50;
     }
 }

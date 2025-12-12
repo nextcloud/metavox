@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace OCA\MetaVox\Command;
 
 use OCA\MetaVox\Service\FieldService;
-use OCA\MetaVox\Service\FilterService;
 use OCA\MetaVox\Service\SearchIndexService;
 use OCA\MetaVox\Tests\Performance\GroupfolderDataGenerator;
 use OCA\MetaVox\Tests\Performance\GroupfolderFieldServiceTest;
-use OCA\MetaVox\Tests\Performance\GroupfolderFilterServiceTest;
 use OCA\MetaVox\Tests\Performance\GroupfolderSearchServiceTest;
 use OCA\MetaVox\Tests\Performance\GroupfolderConcurrencyTest;
 use OCP\IDBConnection;
@@ -39,7 +37,6 @@ class GroupfolderPerformanceTestCommand extends Command {
 
     public function __construct(
         private FieldService $fieldService,
-        private FilterService $filterService,
         private SearchIndexService $searchService,
         private IDBConnection $db,
         private IUserSession $userSession,
@@ -57,7 +54,7 @@ class GroupfolderPerformanceTestCommand extends Command {
                 'suite',
                 's',
                 InputOption::VALUE_REQUIRED,
-                'Test suite to run: all, field, filter, search, concurrent',
+                'Test suite to run: all, field, search, concurrent',
                 'all'
             )
             ->addOption(
@@ -149,7 +146,6 @@ class GroupfolderPerformanceTestCommand extends Command {
         try {
             $generator = new GroupfolderDataGenerator(
                 $this->fieldService,
-                $this->filterService,
                 $this->searchService,
                 $this->db,
                 $this->userSession,
@@ -197,7 +193,6 @@ class GroupfolderPerformanceTestCommand extends Command {
         try {
             $generator = new GroupfolderDataGenerator(
                 $this->fieldService,
-                $this->filterService,
                 $this->searchService,
                 $this->db,
                 $this->userSession,
@@ -232,17 +227,12 @@ class GroupfolderPerformanceTestCommand extends Command {
             switch ($suite) {
                 case 'all':
                     $this->runFieldTests($output);
-                    $this->runFilterTests($output);
                     $this->runSearchTests($output);
                     $this->runConcurrencyTests($output);
                     break;
 
                 case 'field':
                     $this->runFieldTests($output);
-                    break;
-
-                case 'filter':
-                    $this->runFilterTests($output);
                     break;
 
                 case 'search':
@@ -255,7 +245,7 @@ class GroupfolderPerformanceTestCommand extends Command {
 
                 default:
                     $output->writeln("<error>Unknown test suite: $suite</error>");
-                    $output->writeln("Valid suites: all, field, filter, search, concurrent");
+                    $output->writeln("Valid suites: all, field, search, concurrent");
                     return 1;
             }
 
@@ -294,24 +284,6 @@ class GroupfolderPerformanceTestCommand extends Command {
 
         $test = new GroupfolderFieldServiceTest(
             $this->fieldService,
-            $this->filterService,
-            $this->searchService,
-            $this->db,
-            $this->userSession,
-            $this->rootFolder,
-            $this->logger
-        );
-
-        $test->run();
-        $output->writeln('');
-    }
-
-    private function runFilterTests(OutputInterface $output): void {
-        $output->writeln("<comment>→ Running Groupfolder Filter Service tests...</comment>");
-
-        $test = new GroupfolderFilterServiceTest(
-            $this->fieldService,
-            $this->filterService,
             $this->searchService,
             $this->db,
             $this->userSession,
@@ -328,7 +300,6 @@ class GroupfolderPerformanceTestCommand extends Command {
 
         $test = new GroupfolderSearchServiceTest(
             $this->fieldService,
-            $this->filterService,
             $this->searchService,
             $this->db,
             $this->userSession,
@@ -345,7 +316,6 @@ class GroupfolderPerformanceTestCommand extends Command {
 
         $test = new GroupfolderConcurrencyTest(
             $this->fieldService,
-            $this->filterService,
             $this->searchService,
             $this->db,
             $this->userSession,

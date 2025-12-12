@@ -285,27 +285,27 @@ class ApiFieldService {
         try {
             $qb = $this->db->getQueryBuilder();
 
-            // Total fields
+            // Total fields (groupfolder fields only)
             $qb->select($qb->createFunction('COUNT(*)'))
-                ->from('metavox_fields');
+                ->from('metavox_gf_fields');
             $totalFields = (int)$qb->executeQuery()->fetchOne();
 
-            // Total field values
+            // Total field values (groupfolder file metadata)
             $qb = $this->db->getQueryBuilder();
             $qb->select($qb->createFunction('COUNT(*)'))
-                ->from('metavox_field_values');
+                ->from('metavox_file_gf_meta');
             $totalValues = (int)$qb->executeQuery()->fetchOne();
 
             // Files with metadata
             $qb = $this->db->getQueryBuilder();
             $qb->selectAlias($qb->createFunction('COUNT(DISTINCT file_id)'), 'count')
-                ->from('metavox_field_values');
+                ->from('metavox_file_gf_meta');
             $filesWithMetadata = (int)$qb->executeQuery()->fetchOne();
 
             // Fields by type
             $qb = $this->db->getQueryBuilder();
             $qb->select('field_type', $qb->createFunction('COUNT(*) as count'))
-                ->from('metavox_fields')
+                ->from('metavox_gf_fields')
                 ->groupBy('field_type');
             $fieldsByType = $qb->executeQuery()->fetchAll();
 

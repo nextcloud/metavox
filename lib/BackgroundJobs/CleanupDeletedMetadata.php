@@ -110,13 +110,6 @@ class CleanupDeletedMetadata extends QueuedJob {
         $totalCleaned = 0;
 
         try {
-            // Clean global metadata
-            $qb = $db->getQueryBuilder();
-            $qb->delete('metavox_metadata')
-               ->where($qb->expr()->eq('file_id', $qb->createNamedParameter($nodeId, IQueryBuilder::PARAM_INT)));
-            $globalCleaned = $qb->execute();
-            $totalCleaned += $globalCleaned;
-
             // Clean search index
             $qb = $db->getQueryBuilder();
             $qb->delete('metavox_search_index')
@@ -124,15 +117,12 @@ class CleanupDeletedMetadata extends QueuedJob {
             $searchCleaned = $qb->execute();
             $totalCleaned += $searchCleaned;
 
-            // Clean groupfolder metadata if applicable
-            if ($groupfolderId) {
-                $qb = $db->getQueryBuilder();
-                $qb->delete('metavox_file_gf_meta')
-                   ->where($qb->expr()->eq('file_id', $qb->createNamedParameter($nodeId, IQueryBuilder::PARAM_INT)))
-                   ->andWhere($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)));
-                $gfCleaned = $qb->execute();
-                $totalCleaned += $gfCleaned;
-            }
+            // Clean groupfolder file metadata
+            $qb = $db->getQueryBuilder();
+            $qb->delete('metavox_file_gf_meta')
+               ->where($qb->expr()->eq('file_id', $qb->createNamedParameter($nodeId, IQueryBuilder::PARAM_INT)));
+            $gfCleaned = $qb->execute();
+            $totalCleaned += $gfCleaned;
 
             if ($totalCleaned > 0) {
                 error_log("MetaVox Cleanup: Cleaned $totalCleaned metadata entries for node $nodeId");
@@ -167,39 +157,12 @@ class CleanupDeletedMetadata extends QueuedJob {
 
     /**
      * Clean up orphaned global metadata entries (where file no longer exists)
+     * Note: Global metadata table has been removed, this method now returns 0
      */
     private function cleanupOrphanedGlobalMetadata(IDBConnection $db): int {
-        try {
-            $qb = $db->getQueryBuilder();
-            $qb->select('m.file_id')
-               ->from('metavox_metadata', 'm')
-               ->leftJoin('m', 'filecache', 'fc', 'm.file_id = fc.fileid')
-               ->where($qb->expr()->isNull('fc.fileid'))
-               ->setMaxResults(100000);
-
-            $result = $qb->execute();
-            $orphanedFileIds = [];
-            while ($row = $result->fetch()) {
-                $orphanedFileIds[] = (int)$row['file_id'];
-            }
-            $result->closeCursor();
-
-            if (empty($orphanedFileIds)) {
-                return 0;
-            }
-
-            $qb = $db->getQueryBuilder();
-            $qb->delete('metavox_metadata')
-               ->where($qb->expr()->in('file_id', $qb->createParameter('file_ids')))
-               ->setParameter('file_ids', $orphanedFileIds, IQueryBuilder::PARAM_INT_ARRAY);
-
-            $deleted = $qb->execute();
-            return $deleted;
-
-        } catch (\Exception $e) {
-            error_log("MetaVox Cleanup: Error cleaning orphaned global metadata: " . $e->getMessage());
-            return 0;
-        }
+        // Global metadata table (metavox_metadata) has been removed
+        // All metadata is now stored in metavox_file_gf_meta
+        return 0;
     }
 
     /**

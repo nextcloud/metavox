@@ -22,68 +22,10 @@ class FieldController extends Controller {
     }
 
     /**
-     * @NoAdminRequired
-     */
-    public function getFields(): JSONResponse {
-        try {
-            $fields = $this->fieldService->getAllFields();
-            return new JSONResponse($fields);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
-        }
-    }
-
-    /**
-     * Get single field by ID (for edit modal)
-     * @NoAdminRequired
-     */
-    public function getField(int $id): JSONResponse {
-        try {
-            error_log('MetaVox FieldController::getField called with ID: ' . $id);
-            
-            $field = $this->fieldService->getFieldById($id);
-            
-            if (!$field) {
-                return new JSONResponse(['error' => 'Field not found'], 404);
-            }
-            
-            error_log('MetaVox FieldController::getField success: ' . json_encode($field));
-            return new JSONResponse($field);
-            
-        } catch (\Exception $e) {
-            error_log('MetaVox FieldController::getField error: ' . $e->getMessage());
-            return new JSONResponse(['error' => 'Internal server error: ' . $e->getMessage()], 500);
-        }
-    }
-
-    /**
-     * @NoAdminRequired
-     */
-public function createField(): JSONResponse {
-    try {
-        $fieldData = [
-            'field_name' => $this->request->getParam('field_name'),
-            'field_label' => $this->request->getParam('field_label'),
-            'field_type' => $this->request->getParam('field_type', 'text'),
-            'field_description' => $this->request->getParam('field_description', ''), // ← ADD THIS LINE
-            'field_options' => $this->request->getParam('field_options', []),
-            'is_required' => $this->request->getParam('is_required', false),
-            'sort_order' => $this->request->getParam('sort_order', 0),
-            'scope' => 'global', // Default scope voor normale velden
-        ];
-
-        $id = $this->fieldService->createField($fieldData);
-        return new JSONResponse(['id' => $id]);
-    } catch (\Exception $e) {
-        return new JSONResponse(['error' => $e->getMessage()], 500);
-    }
-}
-
-    /**
      * updateField method for edit functionality
      * @NoAdminRequired
      */
-public function updateField(int $id): JSONResponse {
+    public function updateField(int $id): JSONResponse {
     try {
         error_log('MetaVox FieldController::updateField called with ID: ' . $id);
         
@@ -145,44 +87,6 @@ public function updateField(int $id): JSONResponse {
         try {
             $success = $this->fieldService->deleteField($id);
             return new JSONResponse(['success' => $success]);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
-        }
-    }
-
-    /**
-     * @NoAdminRequired
-     */
-    public function getFileMetadata(int $fileId): JSONResponse {
-        try {
-            $metadata = $this->fieldService->getFieldMetadata($fileId);
-            return new JSONResponse($metadata);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
-        }
-    }
-
-    /**
-     * @NoAdminRequired
-     */
-    public function saveFileMetadata(int $fileId): JSONResponse {
-        try {
-            $metadata = $this->request->getParam('metadata', []);
-            
-            // Get only global fields to map field names to IDs
-            $fields = $this->fieldService->getAllFields();
-            $fieldMap = [];
-            foreach ($fields as $field) {
-                $fieldMap[$field['field_name']] = $field['id'];
-            }
-            
-            foreach ($metadata as $fieldName => $value) {
-                if (isset($fieldMap[$fieldName])) {
-                    $this->fieldService->saveFieldValue($fileId, $fieldMap[$fieldName], (string)$value);
-                }
-            }
-
-            return new JSONResponse(['success' => true]);
         } catch (\Exception $e) {
             return new JSONResponse(['error' => $e->getMessage()], 500);
         }
@@ -354,57 +258,6 @@ public function createGroupfolderField(): JSONResponse {
             }
 
             return new JSONResponse(['success' => true]);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
-        }
-    }
-
-    /**
-     * Save field override for specific groupfolder
-     * 
-     * @NoAdminRequired
-     * @param int $groupfolderId
-     * @return JSONResponse
-     */
-    public function saveFieldOverride(int $groupfolderId): JSONResponse {
-        try {
-            $fieldName = $this->request->getParam('field_name');
-            $appliesToGroupfolder = (int) $this->request->getParam('applies_to_groupfolder', 0);
-            
-            // Validatie
-            if (empty($fieldName)) {
-                return new JSONResponse(['success' => false, 'message' => 'Field name is required'], 400);
-            }
-            
-            error_log('TesterMeta saveFieldOverride: groupfolder=' . $groupfolderId . ', field=' . $fieldName . ', applies=' . $appliesToGroupfolder);
-            
-            $success = $this->fieldService->saveGroupfolderFieldOverride($groupfolderId, $fieldName, $appliesToGroupfolder);
-            
-            if ($success) {
-                error_log('TesterMeta saveFieldOverride: SUCCESS');
-                return new JSONResponse(['success' => true]);
-            } else {
-                error_log('TesterMeta saveFieldOverride: FAILED');
-                return new JSONResponse(['success' => false, 'message' => 'Failed to save field override'], 500);
-            }
-            
-        } catch (\Exception $e) {
-            error_log('TesterMeta saveFieldOverride ERROR: ' . $e->getMessage());
-            return new JSONResponse(['success' => false, 'message' => $e->getMessage()], 500);
-        }
-    }
-
-    /**
-     * Get field overrides for specific groupfolder
-     * 
-     * @NoAdminRequired
-     * @param int $groupfolderId
-     * @return JSONResponse
-     */
-    public function getFieldOverrides(int $groupfolderId): JSONResponse {
-        try {
-            $overrides = $this->fieldService->getGroupfolderFieldOverrides($groupfolderId);
-            return new JSONResponse($overrides);
         } catch (\Exception $e) {
             return new JSONResponse(['error' => $e->getMessage()], 500);
         }

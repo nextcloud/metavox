@@ -142,6 +142,9 @@ export default {
 			selectValues: {},
 			multiSelectValues: {},
 			selectKey: 0,
+			groupfoldersCache: null,
+			groupfoldersCacheExpiry: null,
+			loadCancelToken: null,
 		}
 	},
 
@@ -163,21 +166,11 @@ export default {
 			const isMountRoot = this.fileInfo.attributes?.['is-mount-root'] === true
 			const result = isDirectory && this.groupfolderId && isMountRoot
 
-			console.log('🔍 isGroupfolderRoot check:', {
-				isDirectory,
-				isMountRoot,
-				groupfolderId: this.groupfolderId,
-				attributes: this.fileInfo.attributes,
-				result,
-				fileInfo: this.fileInfo
-			})
-
 			return result
 		},
 
 		isInGroupfolder() {
 			const result = !!this.groupfolderId && !this.isGroupfolderRoot
-			console.log('🔍 isInGroupfolder check:', result, 'groupfolderId:', this.groupfolderId, 'isGroupfolderRoot:', this.isGroupfolderRoot)
 			return result
 		},
 
@@ -201,6 +194,14 @@ export default {
 		t,
 
 		async loadMetadata() {
+			// Cancel previous request if still running
+			if (this.loadCancelToken) {
+				this.loadCancelToken.cancel('New metadata load request started')
+			}
+
+			// Create new cancel token
+			this.loadCancelToken = axios.CancelToken.source()
+
 			this.loading = true
 			this.error = null
 
@@ -230,8 +231,6 @@ export default {
 					return appliesTo === 0 || appliesTo === '0' || appliesTo === null || appliesTo === undefined
 				})
 
-				console.log(`🔍 Loaded ${this.groupfolderFields.length} groupfolder fields and ${this.itemFields.length} item fields`)
-
 				// Extract metadata values from ALL fields
 				const metadataMap = {}
 				fieldsWithValues.forEach((field) => {
@@ -260,10 +259,15 @@ export default {
 				this.originalMetadata = { ...metadataMap }
 				this.selectKey++ // Force re-render of select components
 			} catch (error) {
+				// Ignore cancelled requests
+				if (axios.isCancel(error)) {
+					return
+				}
 				console.error('Error loading metadata:', error)
 				this.error = error.response?.data?.error || error.message || this.t('metavox', 'Failed to load metadata')
 			} finally {
 				this.loading = false
+				this.loadCancelToken = null
 			}
 		},
 
@@ -274,12 +278,10 @@ export default {
 					this.fileInfo.mountType === 'group' &&
 					this.fileInfo.attributes?.['is-mount-root'] === true) {
 
-					console.log('🔍 Item is een mount-root directory (groupfolder zelf)')
 					const groupfolders = await this.getAllGroupfolders()
 
 					for (const gf of groupfolders) {
 						if (gf.mount_point === this.fileInfo.name) {
-							console.log('✅ Mount-root matches groupfolder:', gf)
 							return gf.id
 						}
 					}
@@ -287,25 +289,20 @@ export default {
 
 				// Method 2: Check mountPoint - meest betrouwbare methode voor items IN groupfolders
 				if (this.fileInfo.mountPoint && this.fileInfo.mountPoint !== '/' && this.fileInfo.mountPoint !== '') {
-					console.log('🔍 MountPoint gevonden:', this.fileInfo.mountPoint)
 					const mountResult = await this.detectFromMountPoint(this.fileInfo.mountPoint)
 					if (mountResult) {
-						console.log('✅ Groupfolder gevonden via mountPoint:', mountResult)
 						return mountResult
 					}
 				}
 
 				// Method 3: Check via het volledige path van het fileInfo
 				if (this.fileInfo.path && this.fileInfo.path !== '/' && this.fileInfo.path !== '') {
-					console.log('🔍 Checking path via fileInfo.path:', this.fileInfo.path)
 					const pathResult = await this.detectFromPath(this.fileInfo.path)
 					if (pathResult) {
-						console.log('✅ Groupfolder gevonden via fileInfo.path:', pathResult)
 						return pathResult
 					}
 				}
 
-				console.log('❌ Geen groupfolder gedetecteerd')
 				return null
 			} catch (error) {
 				console.error('Error detecting groupfolder:', error)
@@ -314,9 +311,27 @@ export default {
 		},
 
 		async getAllGroupfolders() {
-			const response = await axios.get(generateUrl('/apps/metavox/api/groupfolders'))
+			// Check if cache exists and is not expired (5 minutes = 300000ms)
+			const now = Date.now()
+			const cacheExpiry = 5 * 60 * 1000 // 5 minutes
+
+			if (this.groupfoldersCache && this.groupfoldersCacheExpiry && now < this.groupfoldersCacheExpiry) {
+				return this.groupfoldersCache
+			}
+
+			// Fetch from API
+			const response = await axios.get(
+				generateUrl('/apps/metavox/api/groupfolders'),
+				{ cancelToken: this.loadCancelToken?.token }
+			)
 			const groupfoldersData = response.data || {}
-			return Object.values(groupfoldersData)
+			const groupfolders = Object.values(groupfoldersData)
+
+			// Store in cache with expiry
+			this.groupfoldersCache = groupfolders
+			this.groupfoldersCacheExpiry = now + cacheExpiry
+
+			return groupfolders
 		},
 
 		async detectFromMountPoint(mountPoint) {
@@ -329,12 +344,11 @@ export default {
 					if (mountPoint === gf.mount_point ||
 						mountPoint.endsWith('/' + gf.mount_point) ||
 						gf.mount_point === mountPoint.replace(/^\//, '')) {
-						console.log('✅ MountPoint matches groupfolder:', gf)
 						return gf.id
 					}
 				}
 			} catch (error) {
-				console.warn('⚠️ Error getting groupfolders for mountPoint detection:', error)
+				// Silently handle errors in mountPoint detection
 			}
 
 			return null
@@ -352,17 +366,15 @@ export default {
 					const mountPoint = '/' + gf.mount_point
 
 					if (path.startsWith(mountPoint + '/') || path === mountPoint) {
-						console.log('✅ Path matches groupfolder:', gf)
 						return gf.id
 					}
 
 					if (path.startsWith(gf.mount_point + '/') || path === gf.mount_point) {
-						console.log('✅ Path matches groupfolder (no leading slash):', gf)
 						return gf.id
 					}
 				}
 			} catch (error) {
-				console.warn('⚠️ Error getting groupfolders for detection:', error)
+				// Silently handle errors in path detection
 			}
 
 			return null
@@ -390,16 +402,6 @@ export default {
 			// For groupfolders: respect write permissions strictly
 			const canEditMetadata = canWrite || canCreate
 
-			console.log('🔒 Nextcloud permissions calculated:', {
-				rawPermissions: permissions,
-				canRead,
-				canWrite,
-				canCreate,
-				canDelete,
-				canShare,
-				canEditMetadata,
-			})
-
 			return {
 				canView: canRead,
 				canEdit: canEditMetadata,
@@ -421,6 +423,7 @@ export default {
 						generateUrl('/apps/metavox/api/groupfolders/{groupfolderId}/metadata', {
 							groupfolderId: this.groupfolderId,
 						}),
+						{ cancelToken: this.loadCancelToken?.token }
 					)
 					const gfData = gfResponse.data || []
 
@@ -428,11 +431,10 @@ export default {
 					gfData.forEach(field => {
 						if (field.field_name && (field.applies_to_groupfolder === 1 || field.applies_to_groupfolder === '1')) {
 							fieldMap.set(field.field_name, field)
-							console.log('📋 Groupfolder field:', field.field_name, '=', field.value)
 						}
 					})
 				} catch (gfError) {
-					console.error('❌ Fout bij laden groupfolder metadata:', gfError)
+					console.error('Failed to load groupfolder metadata:', gfError)
 				}
 
 				// 2. Load file/folder metadata WITH VALUES (applies_to_groupfolder = 0)
@@ -444,6 +446,7 @@ export default {
 								groupfolderId: this.groupfolderId,
 								fileId: this.fileInfo.id,
 							}),
+							{ cancelToken: this.loadCancelToken?.token }
 						)
 						const fileData = fileResponse.data || []
 
@@ -451,17 +454,14 @@ export default {
 						fileData.forEach(field => {
 							if (field.field_name && (field.applies_to_groupfolder === 0 || field.applies_to_groupfolder === '0')) {
 								fieldMap.set(field.field_name, field)
-								console.log('📋 File field:', field.field_name, '=', field.value)
 							}
 						})
 					} catch (fileError) {
-						console.error('❌ Fout bij laden file metadata:', fileError)
+						console.error('Failed to load file metadata:', fileError)
 					}
 				}
 
 				const allFields = Array.from(fieldMap.values())
-				console.log('📋 Total fields loaded:', allFields.length)
-				console.log('📋 Fields:', allFields.map(f => `${f.field_name} (${f.applies_to_groupfolder})`).join(', '))
 				return allFields
 			} catch (error) {
 				console.error('Error loading fields:', error)

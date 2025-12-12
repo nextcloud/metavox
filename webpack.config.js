@@ -6,7 +6,6 @@ module.exports = {
     admin: path.join(__dirname, 'src', 'admin.js'),
     user: path.join(__dirname, 'src', 'user.js'),
     filesplugin: path.join(__dirname, 'src', 'filesplugin', 'filesplugin-main.js'),
-    'files-filter': path.join(__dirname, 'src', 'filesplugin', 'files-filter-main.js'),
   },
   output: {
     path: path.resolve(__dirname, 'js'),

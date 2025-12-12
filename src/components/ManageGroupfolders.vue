@@ -15,26 +15,6 @@
         </p>
       </div>
 
-      <!-- License Warning -->
-      <div v-if="licenseInfo.configured && licenseInfo.valid" class="settings-section">
-        <div v-if="isLicenseLimitReached" class="info-box warning">
-          <h4>⚠️ {{ t('metavox', 'License Limit Reached') }}</h4>
-          <p>{{ t('metavox', 'You have reached the maximum number of team folders with metadata fields ({current}/{max}). Remove fields from existing folders to configure new ones or upgrade your license.',
-            {
-              current: foldersWithFields,
-              max: licenseInfo.maxTeamFolders
-            }) }}</p>
-        </div>
-        <div v-else-if="foldersWithFields >= licenseInfo.maxTeamFolders * 0.8" class="info-box warning-light">
-          <h4>ℹ️ {{ t('metavox', 'License Limit Warning') }}</h4>
-          <p>{{ t('metavox', 'You are approaching your license limit for team folders with metadata fields ({current}/{max}).',
-            {
-              current: foldersWithFields,
-              max: licenseInfo.maxTeamFolders
-            }) }}</p>
-        </div>
-      </div>
-
       <!-- Info Box -->
       <div class="settings-section">
         <div class="info-box">
@@ -430,16 +410,12 @@ import { generateUrl } from '@nextcloud/router'
 const showSuccess = (message) => {
   if (typeof OC !== 'undefined' && OC.Notification) {
     OC.Notification.showTemporary(message)
-  } else {
-    console.log('Success:', message)
   }
 }
 
 const showError = (message) => {
   if (typeof OC !== 'undefined' && OC.Notification) {
     OC.Notification.showTemporary(message)
-  } else {
-    console.error('Error:', message)
   }
 }
 
@@ -486,14 +462,6 @@ export default {
       allFields: [],
       searchQuery: '',
 
-      // License info
-      licenseInfo: {
-        configured: false,
-        valid: false,
-        maxTeamFolders: 0,
-        currentTeamFolders: 0
-      },
-
       // Expanded states
       expandedFields: {},
 
@@ -520,7 +488,10 @@ export default {
       multiSelectValues: {},
       savingMetadata: false,
       modalTitle: '',
-      selectKey: 0
+      selectKey: 0,
+
+      // Cache for field options
+      fieldOptionsCache: new Map()
     }
   },
   
@@ -560,12 +531,6 @@ export default {
         const assigned = this.assignedFields[gf.id] || []
         return assigned.length > 0
       }).length
-    },
-
-    isLicenseLimitReached() {
-      // Check limit whether licensed or not (default limit is 5)
-      const maxFolders = this.licenseInfo.maxTeamFolders || 5
-      return this.foldersWithFields >= maxFolders
     }
   },
   
@@ -573,7 +538,6 @@ export default {
     // Laad fields en groupfolders met field counts
     await this.loadAllFields()
     await this.loadGroupfoldersWithFieldCounts()
-    await this.loadLicenseInfo()
   },
   
   methods: {
@@ -672,7 +636,6 @@ export default {
       try {
         const response = await axios.get(generateUrl('/apps/metavox/api/groupfolder-fields'))
         this.allFields = response.data || []
-        console.log('All fields loaded:', this.allFields)
       } catch (error) {
         console.error('Failed to load fields:', error)
         this.allFields = []
@@ -680,18 +643,14 @@ export default {
     },
     
     async loadGroupfolderMetadata(groupfolderId) {
-      console.log('Loading metadata for groupfolder:', groupfolderId)
-      
       try {
         const response = await axios.get(
           generateUrl(`/apps/metavox/api/groupfolders/${groupfolderId}/metadata`)
         )
-        
-        console.log('Metadata API response:', response.data)
-        
+
         const metadataData = response.data || []
         const values = {}
-        
+
         // Process the metadata response - map field data with values
         if (Array.isArray(metadataData)) {
           metadataData.forEach(item => {
@@ -700,10 +659,9 @@ export default {
             }
           })
         }
-        
-        console.log('Processed metadata values:', values)
+
         this.$set(this.metadataValues, groupfolderId, values)
-        
+
         // Store the full field definitions including the values
         const assignedFieldIds = this.assignedFields[groupfolderId] || []
         const assignedGroupfolderFields = metadataData.filter(field => {
@@ -711,8 +669,7 @@ export default {
           const isGroupfolderField = field.applies_to_groupfolder === 1 || field.applies_to_groupfolder === '1'
           return isAssigned && isGroupfolderField
         })
-        
-        console.log('Assigned groupfolder fields with metadata:', assignedGroupfolderFields)
+
         this.$set(this.metadataFields, groupfolderId, assignedGroupfolderFields)
         
         return { fields: assignedGroupfolderFields, values }
@@ -726,8 +683,6 @@ export default {
     },
     
     async editGroupfolderMetadata(groupfolder) {
-      console.log('Opening metadata editor for:', groupfolder.mount_point)
-      
       this.showMetadataModal = true
       this.currentGroupfolderId = groupfolder.id
       this.modalTitle = this.t('metavox', 'Edit metadata for {groupfolder}', { groupfolder: groupfolder.mount_point })
@@ -766,12 +721,6 @@ export default {
         // Force re-render of select components
         this.$nextTick(() => {
           this.selectKey++
-          console.log('Modal initialized with:', {
-            fields: this.currentMetadataFields,
-            values: this.currentMetadataValues,
-            selectValues: this.selectValues,
-            multiSelectValues: this.multiSelectValues
-          })
         })
       } catch (error) {
         console.error('Error loading metadata:', error)
@@ -810,32 +759,19 @@ export default {
     },
     
     handleSelectChange(fieldName, value) {
-      console.log(`Select change: ${fieldName} = ${value}`)
       this.$set(this.selectValues, fieldName, value)
       // Also update the main metadata values
       this.$set(this.currentMetadataValues, fieldName, value || '')
-      
-      // Force a small re-render to ensure UI updates
-      this.$nextTick(() => {
-        console.log(`Select value after change: ${this.selectValues[fieldName]}`)
-      })
     },
     
     handleMultiSelectChange(fieldName, values) {
-      console.log(`MultiSelect change: ${fieldName} = ${values}`)
       this.$set(this.multiSelectValues, fieldName, values || [])
       // Also update the main metadata values
       const joinedValue = Array.isArray(values) ? values.join(';#') : ''
       this.$set(this.currentMetadataValues, fieldName, joinedValue)
-      
-      // Force a small re-render to ensure UI updates
-      this.$nextTick(() => {
-        console.log(`MultiSelect value after change: ${this.multiSelectValues[fieldName]}`)
-      })
     },
     
     updateMetadataValue(field, value) {
-      console.log(`Updating ${field.field_name} = "${value}"`)
       this.$set(this.currentMetadataValues, field.field_name, value)
     },
     
@@ -850,9 +786,7 @@ export default {
     
     async saveGroupfolderMetadata() {
       if (!this.currentGroupfolderId) return false
-      
-      console.log('Saving metadata for groupfolder:', this.currentGroupfolderId)
-      
+
       // Explicitly sync all select values
       this.currentMetadataFields.forEach(field => {
         if (field.field_type === 'select') {
@@ -864,18 +798,14 @@ export default {
           this.$set(this.currentMetadataValues, field.field_name, joinedValue)
         }
       })
-      
-      console.log('Final values to save:', this.currentMetadataValues)
-      
+
       this.savingMetadata = true
-      
+
       try {
         const response = await axios.post(
           generateUrl(`/apps/metavox/api/groupfolders/${this.currentGroupfolderId}/metadata`),
           { metadata: this.currentMetadataValues }
         )
-        
-        console.log('Save response:', response.data)
         
         if (response.data.success) {
           this.$set(this.metadataValues, this.currentGroupfolderId, {...this.currentMetadataValues})
@@ -908,25 +838,6 @@ export default {
       this.$set(this.savingFields, groupfolderId, true)
 
       try {
-        const currentFields = this.assignedFields[groupfolderId] || []
-        const newFields = this.tempAssignedFields[groupfolderId] || []
-
-        // Check if we're adding fields (going from 0 to >0)
-        const wasEmpty = currentFields.length === 0
-        const willHaveFields = newFields.length > 0
-
-        // If this folder will be activated (0 -> >0 fields) and license limit is reached
-        if (wasEmpty && willHaveFields && this.isLicenseLimitReached) {
-          showError(this.t('metavox', 'License limit reached! You can only configure {max} team folders with metadata fields. Current: {current}/{max}',
-            {
-              max: this.licenseInfo.maxTeamFolders,
-              current: this.foldersWithFields
-            }
-          ))
-          this.$set(this.savingFields, groupfolderId, false)
-          return
-        }
-
         // Save the temporary assigned fields
         await axios.post(
           generateUrl(`/apps/metavox/api/groupfolders/${groupfolderId}/fields`),
@@ -938,9 +849,6 @@ export default {
 
         showSuccess(this.t('metavox', 'Field configuration saved successfully'))
         this.$set(this.expandedFields, groupfolderId, false)
-
-        // Reload license info to get updated counts
-        await this.loadLicenseInfo()
       } catch (error) {
         console.error('Failed to save field configuration:', error)
         showError(this.t('metavox', 'Failed to save field configuration'))
@@ -995,38 +903,33 @@ export default {
     },
     
     updateFieldAssignment(groupfolderId, fieldId, checked) {
-      console.log(`Updating field assignment: GroupFolder ${groupfolderId}, Field ${fieldId}, Checked: ${checked}`)
-      
       const fields = [...(this.tempAssignedFields[groupfolderId] || [])]
-      console.log('Current temp assigned fields before update:', fields)
-      
+
       if (checked) {
         if (!fields.includes(fieldId)) {
           fields.push(fieldId)
-          console.log(`Added field ${fieldId} to assignments`)
         }
       } else {
         const index = fields.indexOf(fieldId)
         if (index > -1) {
           fields.splice(index, 1)
-          console.log(`Removed field ${fieldId} from assignments`)
         }
       }
-      
+
       this.$set(this.tempAssignedFields, groupfolderId, fields)
-      console.log('New temp assigned fields after update:', this.tempAssignedFields[groupfolderId])
-      
-      this.$nextTick(() => {
-        console.log('Assignment update completed')
-      })
     },
     
     getFieldOptions(field) {
       if (!field.field_options) {
-        console.log(`No options for field ${field.field_name}`)
         return []
       }
-      
+
+      // Check cache using field.id + field.field_options as key
+      const cacheKey = `${field.id}_${field.field_options}`
+      if (this.fieldOptionsCache.has(cacheKey)) {
+        return this.fieldOptionsCache.get(cacheKey)
+      }
+
       let options = []
       if (typeof field.field_options === 'string') {
         // Handle newline-separated options
@@ -1034,14 +937,16 @@ export default {
       } else if (Array.isArray(field.field_options)) {
         options = field.field_options.filter(o => o && o.trim())
       }
-      
+
       // Convert to format expected by NcSelect
       const formattedOptions = options.map(option => ({
         label: option.trim(),
         value: option.trim()
       }))
-      
-      console.log(`Options for field ${field.field_name}:`, formattedOptions)
+
+      // Cache the result
+      this.fieldOptionsCache.set(cacheKey, formattedOptions)
+
       return formattedOptions
     },
     
@@ -1100,27 +1005,6 @@ export default {
         }, text)
       }
       return text
-    },
-
-    async loadLicenseInfo() {
-      try {
-        const response = await axios.get(generateUrl('/apps/metavox/api/license/info'))
-        this.licenseInfo = response.data || {
-          configured: false,
-          valid: false,
-          maxTeamFolders: 0,
-          currentTeamFolders: 0
-        }
-      } catch (error) {
-        console.error('Failed to load license info:', error)
-        // Silently fail - no license means no restrictions
-        this.licenseInfo = {
-          configured: false,
-          valid: false,
-          maxTeamFolders: 0,
-          currentTeamFolders: 0
-        }
-      }
     }
   }
 }
