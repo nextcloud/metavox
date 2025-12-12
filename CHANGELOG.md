@@ -14,6 +14,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - PHP 8.x `match` expression for file icon detection with expanded file type support
 - API response caching for groupfolders (5-minute TTL) with request cancellation
 - Memoization for `getFieldOptions()` to prevent redundant parsing
+- File access permission checks on all file metadata API endpoints
 
 ### Changed
 - **Major Architecture Refactoring**: Removed global metadata system, now exclusively uses groupfolder-scoped metadata
@@ -38,16 +39,21 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Filter functionality
 - Retention manager
 - Hardcoded log file paths
+- Performance test commands from app registration
 
 ### Fixed
 - Database error "Table 'nextcloud.oc_metavox_fields' doesn't exist" after migration
 - Updated all services to use `metavox_gf_fields` and `metavox_file_gf_meta` tables
 - Cleaned up orphaned test data (4776 test groupfolders removed)
 - Unified search icon visibility in light theme (changed SVG fill from `currentColor` to `#1a1a1a`)
+- Fixed "UpdateSearchIndex called without file_id" warning by correcting background job registration
+- Fixed 404 error when editing fields in admin panel (incorrect API URL)
 
 ### Security
 - Removed hardcoded absolute paths for logging
 - Improved input validation in background jobs
+- API endpoints now verify user has file access before allowing metadata read/write operations
+- Admin-only endpoints (`updateField`, `deleteField`, `createGroupfolderField`, etc.) no longer allow non-admin access
 
 ---
 
