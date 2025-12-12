@@ -9,12 +9,21 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [1.3.0] - 2025-12-12
 
 ### Added
+- **Unified Search Integration**: Search files by metadata content directly from Nextcloud's search bar
+- **File Copy Metadata Preservation**: Metadata is automatically copied when files are duplicated (via `FileCopyListener`)
+- **Bulk API Operations**: New API endpoints for batch metadata operations:
+  - `getBulkFileMetadata`: Fetch metadata for multiple files in one request
+  - `batchUpdateFileMetadata`: Update metadata for multiple files at once
+  - `batchDeleteFileMetadata`: Delete metadata from multiple files
+  - `batchCopyFileMetadata`: Copy metadata from one file to multiple target files
+- **Sidebar Tab in Files App**: MetaVox metadata panel integrated into the Files app sidebar
 - Dutch (nl) and German (de) translations for the entire application
 - Caching for groupfolder mappings and field labels to improve performance
 - PHP 8.x `match` expression for file icon detection with expanded file type support
 - API response caching for groupfolders (5-minute TTL) with request cancellation
 - Memoization for `getFieldOptions()` to prevent redundant parsing
 - File access permission checks on all file metadata API endpoints
+- Duplicate sidebar tab registration prevention (window flag guard)
 
 ### Changed
 - **Major Architecture Refactoring**: Removed global metadata system, now exclusively uses groupfolder-scoped metadata
@@ -48,6 +57,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Unified search icon visibility in light theme (changed SVG fill from `currentColor` to `#1a1a1a`)
 - Fixed "UpdateSearchIndex called without file_id" warning by correcting background job registration
 - Fixed 404 error when editing fields in admin panel (incorrect API URL)
+- Fixed dropdown options input only allowing one character at a time (v-for key reactivity issue)
 
 ### Security
 - Removed hardcoded absolute paths for logging
