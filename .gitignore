@@ -1,1 +1,16 @@
 node_modules
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Editor
+*.swp
+*~
+.idea/
+.vscode/
+
+# Build
+*.log
