@@ -16,7 +16,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   - `batchUpdateFileMetadata`: Update metadata for multiple files at once
   - `batchDeleteFileMetadata`: Delete metadata from multiple files
   - `batchCopyFileMetadata`: Copy metadata from one file to multiple target files
-- **Sidebar Tab in Files App**: MetaVox metadata panel integrated into the Files app sidebar
+- **Sidebar Tab in Files App**: MetaVox metadata panel integrated into the Files app sidebar, fully rewritten in Vue.js (replaces vanilla JavaScript implementation)
 - Dutch (nl) and German (de) translations for the entire application
 - Caching for groupfolder mappings and field labels to improve performance
 - PHP 8.x `match` expression for file icon detection with expanded file type support
