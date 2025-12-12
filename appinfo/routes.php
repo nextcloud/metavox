@@ -102,34 +102,5 @@ return [
 
         // Metadata statistics
         ['name' => 'apiField#getMetadataStatistics', 'url' => '/api/v1/metadata/statistics', 'verb' => 'GET'],
-
-        // ========================================
-        // 🔬 PERFORMANCE TEST ROUTES
-        // ========================================
-
-        // Ping test
-        ['name' => 'performanceTest#ping', 'url' => '/api/v1/performance/ping', 'verb' => 'GET'],
-
-        // List available performance tests
-        ['name' => 'performanceTest#listTests', 'url' => '/api/v1/performance/tests', 'verb' => 'GET'],
-
-        // Start a performance test
-        ['name' => 'performanceTest#startTest', 'url' => '/api/v1/performance/tests/{testId}/start', 'verb' => 'POST'],
-
-        // Get test status
-        ['name' => 'performanceTest#getTestStatus', 'url' => '/api/v1/performance/runs/{testRunId}/status', 'verb' => 'GET'],
-
-        // Get test output/logs
-        ['name' => 'performanceTest#getTestOutput', 'url' => '/api/v1/performance/runs/{testRunId}/output', 'verb' => 'GET'],
-
-        // Get test results
-        ['name' => 'performanceTest#getTestResults', 'url' => '/api/v1/performance/runs/{testRunId}/results', 'verb' => 'GET'],
-
-        // Stop a running test
-        ['name' => 'performanceTest#stopTest', 'url' => '/api/v1/performance/runs/{testRunId}/stop', 'verb' => 'POST'],
-
-        // Get available datasets
-        ['name' => 'performanceTest#getDatasets', 'url' => '/api/v1/performance/datasets', 'verb' => 'GET'],
-        ['name' => 'performanceTest#preflightDatasets', 'url' => '/api/v1/performance/datasets', 'verb' => 'OPTIONS'],
     ]
 ];
