@@ -5,7 +5,8 @@
       "Bash(ssh:*)",
       "Bash(docker-compose build:*)",
       "Bash(docker compose build:*)",
-      "Bash(scp:*)"
+      "Bash(scp:*)",
+      "Bash(git -C /Users/samditmeijer/MetaVox ls-files:*)"
     ],
     "deny": [],
     "ask": []
