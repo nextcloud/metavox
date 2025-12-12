@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace OCA\MetaVox\AppInfo;
 
 use OCA\MetaVox\BackgroundJobs\CleanupDeletedMetadata;
-use OCA\MetaVox\BackgroundJobs\UpdateSearchIndex;
 use OCA\MetaVox\Listener\FileCopyListener;
 use OCA\MetaVox\Listener\FileDeleteListener;
 use OCA\MetaVox\Search\MetadataSearchProvider;
@@ -27,10 +26,6 @@ class Application extends App implements IBootstrap {
     public function register(IRegistrationContext $context): void {
         // Register search provider
         $context->registerSearchProvider(MetadataSearchProvider::class);
-
-        // Register background jobs
-        $context->registerService('UpdateSearchIndexJob', static fn() => new UpdateSearchIndex());
-        $context->registerService('CleanupDeletedMetadata', static fn() => new CleanupDeletedMetadata());
 
         // Register event listeners for file copy
         $context->registerEventListener(NodeCopiedEvent::class, FileCopyListener::class);
@@ -69,11 +64,9 @@ class Application extends App implements IBootstrap {
     private function registerBackgroundJobs(): void {
         $jobList = \OC::$server->getJobList();
 
-        // Register background jobs if not already registered
-        if (!$jobList->has(UpdateSearchIndex::class, null)) {
-            $jobList->add(UpdateSearchIndex::class);
-        }
-
+        // Register cleanup job (runs periodically without arguments)
+        // Note: UpdateSearchIndex is NOT registered here - it's a QueuedJob
+        // that gets added with file_id argument when metadata is saved
         if (!$jobList->has(CleanupDeletedMetadata::class, null)) {
             $jobList->add(CleanupDeletedMetadata::class);
         }
