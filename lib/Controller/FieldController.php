@@ -9,16 +9,48 @@ use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 use OCP\IUserSession;
+use OCP\IUserManager;
 
 class FieldController extends Controller {
 
     private FieldService $fieldService;
     private IUserSession $userSession;
+    private IUserManager $userManager;
 
-    public function __construct(string $appName, IRequest $request, FieldService $fieldService, IUserSession $userSession) {
+    public function __construct(
+        string $appName,
+        IRequest $request,
+        FieldService $fieldService,
+        IUserSession $userSession,
+        IUserManager $userManager
+    ) {
         parent::__construct($appName, $request);
         $this->fieldService = $fieldService;
         $this->userSession = $userSession;
+        $this->userManager = $userManager;
+    }
+
+    /**
+     * Get all users for user/group picker field
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     */
+    public function getUsers(): JSONResponse {
+        try {
+            $users = $this->userManager->search('');
+            $userList = [];
+
+            foreach ($users as $user) {
+                $userList[] = [
+                    'id' => $user->getUID(),
+                    'displayname' => $user->getDisplayName(),
+                ];
+            }
+
+            return new JSONResponse($userList);
+        } catch (\Exception $e) {
+            return new JSONResponse(['error' => $e->getMessage()], 500);
+        }
     }
 
     /**

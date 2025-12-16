@@ -47,6 +47,9 @@ return [
         // 🔐 PERMISSION MANAGEMENT ROUTES (NEW)
         // ========================================
         
+        // Get users (for user/group picker field)
+        ['name' => 'field#getUsers', 'url' => '/api/users', 'verb' => 'GET'],
+
         // Get groups (for permission assignment)
         ['name' => 'permission#getGroups', 'url' => '/api/permissions/groups', 'verb' => 'GET'],
         
