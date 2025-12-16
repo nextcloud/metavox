@@ -64,7 +64,9 @@ module.exports = {
       "url": false,
       "zlib": false,
       "assert": false,
-      "util": false
+      "util": false,
+      "buffer": require.resolve("buffer/"),
+      "string_decoder": false
     }
   },
   performance: {

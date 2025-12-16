@@ -191,7 +191,34 @@
         "Manage Metadata Fields": "Metadata Velden Beheren",
         "Loading MetaVox...": "MetaVox laden...",
 
-        "File Metadata": "Bestand Metadata"
+        "File Metadata": "Bestand Metadata",
+
+        "Edit metadata for {count} selected files": "Metadata bewerken voor {count} geselecteerde bestanden",
+        "Selected Files": "Geselecteerde Bestanden",
+        "Update Mode": "Update Modus",
+        "Overwrite existing values": "Bestaande waarden overschrijven",
+        "Only fill empty fields": "Alleen lege velden vullen",
+        "Metadata": "Metadata",
+        "No metadata fields available for these files.": "Geen metadata velden beschikbaar voor deze bestanden.",
+        "No metadata values to save": "Geen metadata waarden om op te slaan",
+        "Metadata saved for {count} files": "Metadata opgeslagen voor {count} bestanden",
+        "{count} of {total} have metadata": "{count} van {total} hebben metadata",
+        "Failed to save metadata": "Metadata opslaan mislukt",
+        "Retry": "Opnieuw proberen",
+        "Change user": "Gebruiker wijzigen",
+
+        "Clear All": "Alles Wissen",
+        "Clearing...": "Wissen...",
+        "Export CSV": "Exporteer CSV",
+        "Exporting...": "Exporteren...",
+        "Are you sure you want to clear all metadata from {count} files? This cannot be undone.": "Weet je zeker dat je alle metadata van {count} bestanden wilt wissen? Dit kan niet ongedaan worden gemaakt.",
+        "Metadata cleared for {count} files": "Metadata gewist voor {count} bestanden",
+        "Failed to clear metadata": "Metadata wissen mislukt",
+        "No metadata to export": "Geen metadata om te exporteren",
+        "Metadata exported for {count} files": "Metadata geëxporteerd voor {count} bestanden",
+        "Failed to export metadata": "Metadata exporteren mislukt",
+        "File Path": "Bestandspad",
+        "File Name": "Bestandsnaam"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

@@ -191,7 +191,34 @@
         "Manage Metadata Fields": "Metadatenfelder Verwalten",
         "Loading MetaVox...": "MetaVox wird geladen...",
 
-        "File Metadata": "Datei Metadaten"
+        "File Metadata": "Datei Metadaten",
+
+        "Edit metadata for {count} selected files": "Metadaten für {count} ausgewählte Dateien bearbeiten",
+        "Selected Files": "Ausgewählte Dateien",
+        "Update Mode": "Aktualisierungsmodus",
+        "Overwrite existing values": "Vorhandene Werte überschreiben",
+        "Only fill empty fields": "Nur leere Felder ausfüllen",
+        "Metadata": "Metadaten",
+        "No metadata fields available for these files.": "Keine Metadatenfelder für diese Dateien verfügbar.",
+        "No metadata values to save": "Keine Metadatenwerte zum Speichern",
+        "Metadata saved for {count} files": "Metadaten für {count} Dateien gespeichert",
+        "{count} of {total} have metadata": "{count} von {total} haben Metadaten",
+        "Failed to save metadata": "Metadaten konnten nicht gespeichert werden",
+        "Retry": "Wiederholen",
+        "Change user": "Benutzer ändern",
+
+        "Clear All": "Alles Löschen",
+        "Clearing...": "Löschen...",
+        "Export CSV": "CSV Exportieren",
+        "Exporting...": "Exportieren...",
+        "Are you sure you want to clear all metadata from {count} files? This cannot be undone.": "Möchten Sie wirklich alle Metadaten von {count} Dateien löschen? Dies kann nicht rückgängig gemacht werden.",
+        "Metadata cleared for {count} files": "Metadaten für {count} Dateien gelöscht",
+        "Failed to clear metadata": "Metadaten konnten nicht gelöscht werden",
+        "No metadata to export": "Keine Metadaten zum Exportieren",
+        "Metadata exported for {count} files": "Metadaten für {count} Dateien exportiert",
+        "Failed to export metadata": "Metadaten konnten nicht exportiert werden",
+        "File Path": "Dateipfad",
+        "File Name": "Dateiname"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

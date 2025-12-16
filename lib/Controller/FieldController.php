@@ -10,24 +10,28 @@ use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 use OCP\IUserSession;
 use OCP\IUserManager;
+use OCP\Files\IRootFolder;
 
 class FieldController extends Controller {
 
     private FieldService $fieldService;
     private IUserSession $userSession;
     private IUserManager $userManager;
+    private IRootFolder $rootFolder;
 
     public function __construct(
         string $appName,
         IRequest $request,
         FieldService $fieldService,
         IUserSession $userSession,
-        IUserManager $userManager
+        IUserManager $userManager,
+        IRootFolder $rootFolder
     ) {
         parent::__construct($appName, $request);
         $this->fieldService = $fieldService;
         $this->userSession = $userSession;
         $this->userManager = $userManager;
+        $this->rootFolder = $rootFolder;
     }
 
     /**
@@ -276,13 +280,13 @@ public function createGroupfolderField(): JSONResponse {
     public function saveGroupfolderFileMetadata(int $groupfolderId, int $fileId): JSONResponse {
         try {
             $metadata = $this->request->getParam('metadata', []);
-            
+
             $fields = $this->fieldService->getFieldsByScope('groupfolder');
             $fieldMap = [];
             foreach ($fields as $field) {
                 $fieldMap[$field['field_name']] = $field['id'];
             }
-            
+
             foreach ($metadata as $fieldName => $value) {
                 if (isset($fieldMap[$fieldName])) {
                     $this->fieldService->saveGroupfolderFileFieldValue($groupfolderId, $fileId, $fieldMap[$fieldName], (string)$value);
@@ -292,6 +296,273 @@ public function createGroupfolderField(): JSONResponse {
             return new JSONResponse(['success' => true]);
         } catch (\Exception $e) {
             return new JSONResponse(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Bulk update metadata for multiple files
+     * @NoAdminRequired
+     */
+    public function saveBulkFileMetadata(): JSONResponse {
+        try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new JSONResponse(['error' => 'User not authenticated'], 401);
+            }
+
+            $fileIds = $this->request->getParam('fileIds', []);
+            $metadata = $this->request->getParam('metadata', []);
+            $mergeStrategy = $this->request->getParam('mergeStrategy', 'overwrite');
+
+            if (empty($fileIds)) {
+                return new JSONResponse(['error' => 'No file IDs provided'], 400);
+            }
+
+            if (empty($metadata)) {
+                return new JSONResponse(['error' => 'No metadata provided'], 400);
+            }
+
+            $userFolder = $this->rootFolder->getUserFolder($user->getUID());
+            $fields = $this->fieldService->getFieldsByScope('groupfolder');
+            $fieldMap = [];
+            foreach ($fields as $field) {
+                $fieldMap[$field['field_name']] = $field['id'];
+            }
+
+            $successCount = 0;
+            $errorCount = 0;
+            $errors = [];
+
+            foreach ($fileIds as $fileId) {
+                try {
+                    // Verify user has access to this file
+                    $nodes = $userFolder->getById((int)$fileId);
+                    if (empty($nodes)) {
+                        $errors[] = "File $fileId: Access denied";
+                        $errorCount++;
+                        continue;
+                    }
+
+                    $node = $nodes[0];
+                    $path = $node->getPath();
+
+                    // Detect groupfolder from path
+                    $groupfolderId = $this->detectGroupfolderFromPath($path, $user->getUID());
+                    if (!$groupfolderId) {
+                        $errors[] = "File $fileId: Not in a groupfolder";
+                        $errorCount++;
+                        continue;
+                    }
+
+                    // Get existing metadata if merge strategy is fill-empty
+                    $existingMetadataMap = [];
+                    if ($mergeStrategy === 'fill-empty') {
+                        // getGroupfolderFileMetadata returns array of field objects with 'field_name' and 'value'
+                        $existingFields = $this->fieldService->getGroupfolderFileMetadata($groupfolderId, (int)$fileId);
+                        foreach ($existingFields as $field) {
+                            if (isset($field['field_name'])) {
+                                $existingMetadataMap[$field['field_name']] = $field['value'] ?? '';
+                            }
+                        }
+                    }
+
+                    // Save metadata for this file
+                    foreach ($metadata as $fieldName => $value) {
+                        if (!isset($fieldMap[$fieldName])) {
+                            continue;
+                        }
+
+                        // Skip if fill-empty and field already has value
+                        if ($mergeStrategy === 'fill-empty') {
+                            $existingValue = $existingMetadataMap[$fieldName] ?? '';
+                            if (!empty($existingValue)) {
+                                continue;
+                            }
+                        }
+
+                        $this->fieldService->saveGroupfolderFileFieldValue(
+                            $groupfolderId,
+                            (int)$fileId,
+                            $fieldMap[$fieldName],
+                            (string)$value
+                        );
+                    }
+
+                    $successCount++;
+                } catch (\Exception $e) {
+                    $errors[] = "File $fileId: " . $e->getMessage();
+                    $errorCount++;
+                }
+            }
+
+            return new JSONResponse([
+                'success' => $errorCount === 0,
+                'successCount' => $successCount,
+                'errorCount' => $errorCount,
+                'errors' => $errors,
+            ]);
+        } catch (\Exception $e) {
+            error_log('MetaVox saveBulkFileMetadata error: ' . $e->getMessage());
+            return new JSONResponse(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Clear all metadata for multiple files
+     * @NoAdminRequired
+     */
+    public function clearFileMetadata(): JSONResponse {
+        try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new JSONResponse(['error' => 'Not authenticated'], 401);
+            }
+            $userId = $user->getUID();
+
+            $fileIds = $this->request->getParam('fileIds', []);
+            if (empty($fileIds)) {
+                return new JSONResponse(['error' => 'No files specified'], 400);
+            }
+
+            $userFolder = $this->rootFolder->getUserFolder($userId);
+            $successCount = 0;
+            $errorCount = 0;
+
+            foreach ($fileIds as $fileId) {
+                try {
+                    $nodes = $userFolder->getById((int)$fileId);
+                    if (empty($nodes)) {
+                        $errorCount++;
+                        continue;
+                    }
+
+                    $node = $nodes[0];
+                    $path = $node->getPath();
+
+                    // Detect groupfolder
+                    $groupfolderId = $this->detectGroupfolderFromPath($path, $userId);
+                    if (!$groupfolderId) {
+                        $errorCount++;
+                        continue;
+                    }
+
+                    // Clear metadata for this file
+                    $this->fieldService->clearGroupfolderFileMetadata($groupfolderId, (int)$fileId);
+                    $successCount++;
+                } catch (\Exception $e) {
+                    error_log('MetaVox clearFileMetadata error for file ' . $fileId . ': ' . $e->getMessage());
+                    $errorCount++;
+                }
+            }
+
+            return new JSONResponse([
+                'status' => 'success',
+                'successCount' => $successCount,
+                'errorCount' => $errorCount,
+            ]);
+        } catch (\Exception $e) {
+            error_log('MetaVox clearFileMetadata error: ' . $e->getMessage());
+            return new JSONResponse(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Export metadata for multiple files
+     * @NoAdminRequired
+     */
+    public function exportFileMetadata(): JSONResponse {
+        try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new JSONResponse(['error' => 'Not authenticated'], 401);
+            }
+            $userId = $user->getUID();
+
+            $fileIds = $this->request->getParam('fileIds', []);
+            if (empty($fileIds)) {
+                return new JSONResponse(['error' => 'No files specified'], 400);
+            }
+
+            $userFolder = $this->rootFolder->getUserFolder($userId);
+            $result = [];
+
+            foreach ($fileIds as $fileId) {
+                try {
+                    $nodes = $userFolder->getById((int)$fileId);
+                    if (empty($nodes)) {
+                        continue;
+                    }
+
+                    $node = $nodes[0];
+                    $path = $node->getPath();
+                    $name = $node->getName();
+
+                    // Remove user folder prefix from path for display
+                    $displayPath = str_replace($userFolder->getPath(), '', $path);
+
+                    // Detect groupfolder
+                    $groupfolderId = $this->detectGroupfolderFromPath($path, $userId);
+                    if (!$groupfolderId) {
+                        $result[] = [
+                            'fileId' => $fileId,
+                            'path' => $displayPath,
+                            'name' => $name,
+                            'metadata' => [],
+                        ];
+                        continue;
+                    }
+
+                    // Get metadata for this file
+                    $metadataFields = $this->fieldService->getGroupfolderFileMetadata($groupfolderId, (int)$fileId);
+
+                    // Convert to key-value map
+                    $metadataMap = [];
+                    foreach ($metadataFields as $field) {
+                        if (isset($field['field_name'])) {
+                            $metadataMap[$field['field_name']] = $field['value'] ?? '';
+                        }
+                    }
+
+                    $result[] = [
+                        'fileId' => $fileId,
+                        'path' => $displayPath,
+                        'name' => $name,
+                        'metadata' => $metadataMap,
+                    ];
+                } catch (\Exception $e) {
+                    error_log('MetaVox exportFileMetadata error for file ' . $fileId . ': ' . $e->getMessage());
+                }
+            }
+
+            return new JSONResponse($result);
+        } catch (\Exception $e) {
+            error_log('MetaVox exportFileMetadata error: ' . $e->getMessage());
+            return new JSONResponse(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Detect groupfolder ID from file path
+     */
+    private function detectGroupfolderFromPath(string $path, string $userId): ?int {
+        try {
+            // Check for __groupfolders path pattern
+            if (preg_match('/\/__groupfolders\/(\d+)/', $path, $matches)) {
+                return (int)$matches[1];
+            }
+
+            // Get groupfolders and check mount points
+            $groupfolders = $this->fieldService->getGroupfolders($userId);
+            foreach ($groupfolders as $gf) {
+                $mountPoint = $gf['mount_point'] ?? '';
+                if (!empty($mountPoint) && strpos($path, "/$mountPoint/") !== false) {
+                    return (int)$gf['id'];
+                }
+            }
+
+            return null;
+        } catch (\Exception $e) {
+            return null;
         }
     }
 }
