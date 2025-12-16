@@ -6,6 +6,17 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.4.0] - 2025-12-16
+
+### Added
+- **New Field Types**: Three new metadata field types for enhanced data capture:
+  - **URL Field**: URL input with validation and clickable external link button
+  - **User Picker**: Select Nextcloud users with avatar display
+  - **File Link**: Browse and link to files/folders within Nextcloud using the native file picker
+- New API endpoint `/api/users` for user listing in picker fields
+
+---
+
 ## [1.3.0] - 2025-12-12
 
 ### Added

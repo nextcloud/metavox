@@ -660,7 +660,10 @@ data() {
         { id: 'date', label: this.t('metavox', 'Date') },
         { id: 'select', label: this.t('metavox', 'Dropdown') },
         { id: 'multiselect', label: this.t('metavox', 'Multi-select') },
-        { id: 'checkbox', label: this.t('metavox', 'Checkbox') }
+        { id: 'checkbox', label: this.t('metavox', 'Checkbox') },
+        { id: 'url', label: this.t('metavox', 'URL') },
+        { id: 'user', label: this.t('metavox', 'User') },
+        { id: 'filelink', label: this.t('metavox', 'File Link') }
       ]
     },
     
