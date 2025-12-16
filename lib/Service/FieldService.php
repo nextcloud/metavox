@@ -875,4 +875,41 @@ private function queueSearchIndexUpdate(int $fileId): void {
         error_log('MetaVox: Failed to queue search index update: ' . $e->getMessage());
     }
 }
+
+/**
+ * Clear all metadata for a file in a groupfolder
+ */
+public function clearGroupfolderFileMetadata(int $groupfolderId, int $fileId): bool {
+    try {
+        $qb = $this->db->getQueryBuilder();
+        $qb->delete('metavox_file_gf_meta')
+           ->where($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)))
+           ->andWhere($qb->expr()->eq('file_id', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_INT)));
+
+        $qb->executeStatement();
+
+        // Also clear from search index
+        $this->clearSearchIndex($fileId);
+
+        return true;
+    } catch (\Exception $e) {
+        error_log('MetaVox clearGroupfolderFileMetadata error: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Clear search index for a file
+ */
+private function clearSearchIndex(int $fileId): void {
+    try {
+        $qb = $this->db->getQueryBuilder();
+        $qb->delete('metavox_search_index')
+           ->where($qb->expr()->eq('file_id', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_INT)));
+
+        $qb->executeStatement();
+    } catch (\Exception $e) {
+        error_log('MetaVox clearSearchIndex error: ' . $e->getMessage());
+    }
+}
 }
