@@ -1,6 +1,37 @@
 <template>
   <div class="user-field-wrapper">
+    <!-- Show user bubble when value is selected -->
+    <div v-if="modelValue && selectedUser && !isEditing" class="selected-user-display">
+      <NcUserBubble
+        :user="selectedUser.id"
+        :display-name="selectedUser.displayname"
+        :size="28"
+        :show-user-status="true">
+        {{ selectedUser.displayname }}
+      </NcUserBubble>
+      <NcButton
+        v-if="!disabled"
+        type="tertiary"
+        :aria-label="t('metavox', 'Change user')"
+        @click="startEditing">
+        <template #icon>
+          <PencilIcon :size="16" />
+        </template>
+      </NcButton>
+      <NcButton
+        v-if="!disabled"
+        type="tertiary"
+        :aria-label="t('metavox', 'Clear selection')"
+        @click="clearSelection">
+        <template #icon>
+          <CloseIcon :size="16" />
+        </template>
+      </NcButton>
+    </div>
+
+    <!-- Show select when no value or editing -->
     <NcSelect
+      v-else
       :id="inputId"
       v-model="internalValue"
       :options="users"
@@ -31,15 +62,21 @@
 </template>
 
 <script>
-import { NcSelect, NcAvatar } from '@nextcloud/vue'
+import { NcSelect, NcAvatar, NcUserBubble, NcButton } from '@nextcloud/vue'
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
+import PencilIcon from 'vue-material-design-icons/Pencil.vue'
+import CloseIcon from 'vue-material-design-icons/Close.vue'
 
 export default {
   name: 'UserGroupFieldInput',
   components: {
     NcSelect,
-    NcAvatar
+    NcAvatar,
+    NcUserBubble,
+    NcButton,
+    PencilIcon,
+    CloseIcon
   },
   props: {
     modelValue: {
@@ -77,11 +114,18 @@ export default {
       loading: false,
       users: [],
       allUsers: [],
-      internalValue: this.multiple ? [] : null
+      internalValue: this.multiple ? [] : null,
+      isEditing: false
     }
   },
   computed: {
-    // No longer needed - using v-model with reduce
+    selectedUser() {
+      if (!this.modelValue || this.multiple) return null
+      return this.allUsers.find(u => u.id === this.modelValue) || {
+        id: this.modelValue,
+        displayname: this.modelValue
+      }
+    }
   },
   watch: {
     modelValue: {
@@ -172,7 +216,18 @@ export default {
         console.log('UserGroupFieldInput emitting (single):', value)
         this.$emit('update:modelValue', value || '')
         this.$emit('input', value || '')
+        // Stop editing after selection
+        this.isEditing = false
       }
+    },
+    startEditing() {
+      this.isEditing = true
+    },
+    clearSelection() {
+      this.$emit('update:modelValue', '')
+      this.$emit('input', '')
+      this.internalValue = null
+      this.isEditing = false
     }
   }
 }
@@ -183,6 +238,18 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.selected-user-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.selected-user-display :deep(.user-bubble__wrapper) {
+  background: var(--color-background-hover);
+  border-radius: var(--border-radius-large);
+  padding: 4px 8px;
 }
 
 .user-option {
@@ -200,11 +267,5 @@ export default {
 .option-name {
   font-weight: 500;
   color: var(--color-main-text);
-}
-
-.user-selected {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 </style>

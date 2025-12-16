@@ -272,6 +272,13 @@ export default {
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
+	padding-bottom: 16px;
+	border-bottom: 1px solid var(--color-border);
+}
+
+.field-container:last-child {
+	border-bottom: none;
+	padding-bottom: 0;
 }
 
 .field-label {
