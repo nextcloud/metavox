@@ -1,32 +1,24 @@
 <template>
 	<NcModal
 		v-if="show"
-		:name="t('metavox', 'Edit Metadata')"
-		size="large"
+		:name="'MetaVox'"
+		size="normal"
 		@close="close">
 		<div class="bulk-metadata-modal">
-			<h2 class="modal-title">
-				{{ t('metavox', 'Edit Metadata') }}
-			</h2>
-
-			<p class="modal-description">
-				{{ t('metavox', 'Edit metadata for {count} selected files', { count: files.length }) }}
-			</p>
-
-			<!-- Selected files list -->
-			<div class="selected-files">
-				<h3>{{ t('metavox', 'Selected Files') }}</h3>
-				<ul class="file-list">
-					<li v-for="file in files" :key="file.fileid" class="file-item">
-						<FileIcon :size="20" />
-						<span class="file-name">{{ file.basename }}</span>
-					</li>
-				</ul>
+			<!-- Compact header -->
+			<div class="modal-header">
+				<h2 class="modal-title">MetaVox</h2>
+				<span class="file-count">{{ files.length }} {{ files.length === 1 ? 'file' : 'files' }}</span>
 			</div>
 
-			<!-- Merge strategy -->
+			<!-- Selected files (compact) -->
+			<div class="selected-files">
+				<span class="files-label">{{ t('metavox', 'Selected Files') }}:</span>
+				<span class="files-names">{{ fileNames }}</span>
+			</div>
+
+			<!-- Inline merge strategy -->
 			<div class="merge-strategy">
-				<h3>{{ t('metavox', 'Update Mode') }}</h3>
 				<NcCheckboxRadioSwitch
 					:checked="mergeStrategy === 'overwrite'"
 					type="radio"
@@ -51,7 +43,6 @@
 
 			<!-- Metadata form -->
 			<div v-else-if="fields.length > 0" class="metadata-section">
-				<h3>{{ t('metavox', 'Metadata') }}</h3>
 				<MetadataForm
 					:fields="fields"
 					:values="metadata"
@@ -114,7 +105,6 @@ import { NcModal, NcButton, NcCheckboxRadioSwitch, NcLoadingIcon } from '@nextcl
 import { showSuccess, showError } from '@nextcloud/dialogs'
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
-import FileIcon from 'vue-material-design-icons/File.vue'
 import DeleteIcon from 'vue-material-design-icons/Delete.vue'
 import DownloadIcon from 'vue-material-design-icons/Download.vue'
 import MetadataForm from './MetadataForm.vue'
@@ -127,7 +117,6 @@ export default {
 		NcButton,
 		NcCheckboxRadioSwitch,
 		NcLoadingIcon,
-		FileIcon,
 		DeleteIcon,
 		DownloadIcon,
 		MetadataForm,
@@ -165,6 +154,13 @@ export default {
 	computed: {
 		hasChanges() {
 			return JSON.stringify(this.metadata) !== JSON.stringify(this.originalMetadata)
+		},
+		fileNames() {
+			const names = this.files.map(f => f.basename)
+			if (names.length <= 3) {
+				return names.join(', ')
+			}
+			return names.slice(0, 3).join(', ') + ` +${names.length - 3}`
 		},
 	},
 
@@ -424,120 +420,76 @@ export default {
 
 <style scoped>
 .bulk-metadata-modal {
-	padding: 20px;
+	padding: 16px;
 	display: flex;
 	flex-direction: column;
-	gap: 20px;
-	max-height: 80vh;
+	gap: 12px;
+	max-height: 70vh;
 	overflow-y: auto;
+}
+
+.modal-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
 }
 
 .modal-title {
 	margin: 0;
-	font-size: 20px;
+	font-size: 18px;
 	font-weight: 600;
 }
 
-.modal-description {
-	margin: 0;
+.file-count {
+	font-size: 13px;
 	color: var(--color-text-maxcontrast);
+	background: var(--color-background-dark);
+	padding: 2px 8px;
+	border-radius: 10px;
 }
 
 .selected-files {
-	background: var(--color-background-hover);
-	padding: 12px;
-	border-radius: var(--border-radius-large);
-}
-
-.selected-files-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	margin-bottom: 8px;
-}
-
-.selected-files-header h3 {
-	margin: 0;
-	font-size: 14px;
-	font-weight: 600;
-}
-
-.metadata-summary {
-	font-size: 12px;
-	color: var(--color-primary-element);
-	font-weight: 500;
-}
-
-.file-list {
-	list-style: none;
-	margin: 0;
-	padding: 0;
-	max-height: 120px;
-	overflow-y: auto;
-}
-
-.file-item {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 4px 0;
 	font-size: 13px;
-}
-
-.file-name {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	flex: 1;
-}
-
-.metadata-indicator {
-	font-size: 11px;
-	padding: 2px 6px;
-	border-radius: 10px;
-	background: var(--color-background-dark);
 	color: var(--color-text-maxcontrast);
-	min-width: 20px;
-	text-align: center;
+	line-height: 1.4;
 }
 
-.metadata-indicator.has-metadata {
-	background: var(--color-primary-element-light);
-	color: var(--color-primary-element);
-	font-weight: 600;
+.files-label {
+	font-weight: 500;
+	color: var(--color-main-text);
+}
+
+.files-names {
+	word-break: break-word;
 }
 
 .merge-strategy {
 	display: flex;
-	flex-direction: column;
-	gap: 8px;
-}
-
-.merge-strategy h3 {
-	margin: 0;
-	font-size: 14px;
-	font-weight: 600;
+	gap: 16px;
+	padding: 8px 0;
+	border-bottom: 1px solid var(--color-border);
 }
 
 .loading-state {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: 12px;
-	padding: 40px;
+	gap: 8px;
+	padding: 24px;
 	color: var(--color-text-maxcontrast);
 }
 
-.metadata-section h3 {
-	margin: 0 0 12px 0;
-	font-size: 14px;
-	font-weight: 600;
+.metadata-section {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
 }
 
 .no-fields {
-	padding: 20px;
+	padding: 16px;
 	text-align: center;
 	color: var(--color-text-maxcontrast);
+	font-size: 13px;
 }
 
 .modal-actions {
@@ -551,11 +503,11 @@ export default {
 
 .actions-left {
 	display: flex;
-	gap: 8px;
+	gap: 6px;
 }
 
 .actions-right {
 	display: flex;
-	gap: 8px;
+	gap: 6px;
 }
 </style>
