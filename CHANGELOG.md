@@ -6,9 +6,17 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.6.0] - 2025-12-16
+## [1.4.0] - 2025-12-19
 
 ### Added
+- **New Field Types**: Three new metadata field types for enhanced data capture:
+  - **URL Field**: URL input with validation and clickable external link button
+  - **User Picker**: Select Nextcloud users with avatar display
+  - **File Link**: Browse and link to files/folders within Nextcloud using the native file picker
+- **Bulk Metadata Editor**: Edit metadata for multiple selected files at once from the Files app toolbar
+  - Appears as "Edit Metadata" action when files are selected
+  - Supports both single and multiple file selection
+  - Merge strategies: "Overwrite existing values" or "Only fill empty fields"
 - **Bulk Metadata Clear**: New "Clear All" button in bulk editor to remove all metadata from selected files
   - Confirmation dialog to prevent accidental data loss
   - Also clears search index entries for the files
@@ -17,41 +25,20 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   - Automatic download with date-stamped filename
   - Proper CSV escaping for special characters
 - New API endpoints:
+  - `POST /api/users` - User listing for picker fields
+  - `POST /api/files/bulk-metadata` - Batch metadata updates
   - `POST /api/files/clear-metadata` - Clear metadata for multiple files
   - `POST /api/files/export-metadata` - Export metadata for multiple files
-- Dutch and German translations for all new bulk editor features
+- Dutch and German translations for all new features
+- Buffer polyfill for webpack 5 compatibility with @nextcloud/files
 
 ### Changed
 - Improved bulk metadata modal layout with action buttons grouped left (destructive/export) and right (cancel/save)
-
----
-
-## [1.5.0] - 2025-12-16
-
-### Added
-- **Bulk Metadata Editor**: Edit metadata for multiple selected files at once from the Files app toolbar
-  - Appears as "Edit Metadata" action when files are selected
-  - Supports both single and multiple file selection
-  - Merge strategies: "Overwrite existing values" or "Only fill empty fields"
-  - Reuses existing MetadataForm component for consistent UI
-- New API endpoint `/api/files/bulk-metadata` for batch metadata updates
-- Buffer polyfill for webpack 5 compatibility with @nextcloud/files
 
 ### Fixed
 - Fixed "Only fill empty fields" option incorrectly overwriting existing values
 - Fixed fields not loading in bulk editor (now uses same endpoint as sidebar)
 - Corrected field filtering to use `applies_to_groupfolder` instead of `field_scope`
-
----
-
-## [1.4.0] - 2025-12-16
-
-### Added
-- **New Field Types**: Three new metadata field types for enhanced data capture:
-  - **URL Field**: URL input with validation and clickable external link button
-  - **User Picker**: Select Nextcloud users with avatar display
-  - **File Link**: Browse and link to files/folders within Nextcloud using the native file picker
-- New API endpoint `/api/users` for user listing in picker fields
 
 ---
 
