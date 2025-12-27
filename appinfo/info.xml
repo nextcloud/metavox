@@ -14,7 +14,7 @@
   • Compatible with existing Nextcloud workflows  
   • Designed for flexible use across education, government, and other document-driven environments
 </description>
-    <version>1.6.0</version>
+    <version>1.4.0</version>
     <licence>AGPL-3.0-or-later</licence>
     <author mail="s.d.ditmeijer@hva.nl">Sam Ditmeijer</author>
     <author mail="j.m.dekker2@hva.nl">Rik Dekker</author>
@@ -32,6 +32,9 @@
     <dependencies>
         <nextcloud min-version="31" max-version="32"/>
     </dependencies>
+    <api-documentation>
+        <openapi>openapi.json</openapi>
+    </api-documentation>
     <settings>
         <admin>OCA\MetaVox\Settings\Admin</admin>
         <admin-section>OCA\MetaVox\Settings\AdminSection</admin-section>
