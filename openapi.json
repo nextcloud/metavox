@@ -1,0 +1,1352 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "MetaVox API",
+    "version": "1.4.0",
+    "description": "API for managing custom metadata on files and groupfolders in Nextcloud. MetaVox allows you to define custom metadata fields and assign values to files within Team folders (groupfolders).",
+    "license": {
+      "name": "AGPL-3.0-or-later",
+      "url": "https://www.gnu.org/licenses/agpl-3.0.html"
+    },
+    "contact": {
+      "name": "MetaVox",
+      "url": "https://github.com/nextcloud/metavox"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://{nextcloud_host}/ocs/v2.php/apps/metavox",
+      "description": "Nextcloud OCS API",
+      "variables": {
+        "nextcloud_host": {
+          "default": "cloud.example.com",
+          "description": "Your Nextcloud server hostname"
+        }
+      }
+    }
+  ],
+  "security": [
+    {
+      "basic_auth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Files",
+      "description": "File metadata operations"
+    },
+    {
+      "name": "Groupfolders",
+      "description": "Groupfolder (Team folder) operations"
+    },
+    {
+      "name": "Fields",
+      "description": "Metadata field management"
+    },
+    {
+      "name": "Batch Operations",
+      "description": "Bulk metadata operations for multiple files"
+    },
+    {
+      "name": "Statistics",
+      "description": "Metadata usage statistics"
+    }
+  ],
+  "paths": {
+    "/api/v1/files/{fileId}/metadata": {
+      "get": {
+        "operationId": "get-file-metadata",
+        "summary": "Get file metadata",
+        "description": "Retrieve all metadata values for a specific file. User must have access to the file.",
+        "tags": ["Files"],
+        "parameters": [
+          {
+            "name": "fileId",
+            "in": "path",
+            "required": true,
+            "description": "The Nextcloud file ID",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "example": 12345
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OCSAPIRequest"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Metadata retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OCSResponse"
+                },
+                "example": {
+                  "ocs": {
+                    "meta": {
+                      "status": "ok",
+                      "statuscode": 200,
+                      "message": "OK"
+                    },
+                    "data": [
+                      {
+                        "field_name": "author",
+                        "field_label": "Author",
+                        "field_type": "text",
+                        "field_value": "John Doe"
+                      },
+                      {
+                        "field_name": "category",
+                        "field_label": "Category",
+                        "field_type": "select",
+                        "field_value": "research"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      },
+      "post": {
+        "operationId": "save-file-metadata",
+        "summary": "Save file metadata",
+        "description": "Save or update metadata values for a specific file. User must have edit access to the file.",
+        "tags": ["Files"],
+        "parameters": [
+          {
+            "name": "fileId",
+            "in": "path",
+            "required": true,
+            "description": "The Nextcloud file ID",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OCSAPIRequest"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "metadata": {
+                    "type": "object",
+                    "description": "Key-value pairs of field names and values",
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "example": {
+                      "author": "Jane Smith",
+                      "category": "education",
+                      "status": "published"
+                    }
+                  }
+                },
+                "required": ["metadata"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Metadata saved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OCSSuccessResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/v1/files/metadata/bulk": {
+      "get": {
+        "operationId": "get-bulk-file-metadata",
+        "summary": "Get metadata for multiple files",
+        "description": "Retrieve metadata for multiple files in a single request. Maximum 100 files per request.",
+        "tags": ["Files", "Batch Operations"],
+        "parameters": [
+          {
+            "name": "file_ids",
+            "in": "query",
+            "required": true,
+            "description": "File IDs as array (file_ids[]=123&file_ids[]=456) or comma-separated string (file_ids=123,456,789)",
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  }
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "examples": {
+              "array": {
+                "summary": "Array notation",
+                "value": [123, 456, 789]
+              },
+              "comma": {
+                "summary": "Comma-separated",
+                "value": "123,456,789"
+              }
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OCSAPIRequest"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bulk metadata retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OCSResponse"
+                },
+                "example": {
+                  "ocs": {
+                    "meta": {
+                      "status": "ok",
+                      "statuscode": 200,
+                      "message": "OK"
+                    },
+                    "data": {
+                      "123": [
+                        {
+                          "field_name": "author",
+                          "field_value": "John Doe"
+                        }
+                      ],
+                      "456": [
+                        {
+                          "field_name": "author",
+                          "field_value": "Jane Smith"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/groupfolders": {
+      "get": {
+        "operationId": "get-groupfolders",
+        "summary": "Get all groupfolders",
+        "description": "Retrieve a list of all groupfolders (Team folders) the current user has access to.",
+        "tags": ["Groupfolders"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/OCSAPIRequest"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Groupfolders retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OCSResponse"
+                },
+                "example": {
+                  "ocs": {
+                    "meta": {
+                      "status": "ok",
+                      "statuscode": 200,
+                      "message": "OK"
+                    },
+                    "data": [
+                      {
+                        "id": 1,
+                        "mount_point": "Team Documents",
+                        "quota": -3,
+                        "size": 1073741824
+                      },
+                      {
+                        "id": 2,
+                        "mount_point": "Research",
+                        "quota": 5368709120,
+                        "size": 2147483648
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/groupfolders/{groupfolderId}/metadata": {
+      "get": {
+        "operationId": "get-groupfolder-metadata",
+        "summary": "Get groupfolder metadata",
+        "description": "Retrieve metadata values for a specific groupfolder (Team folder level metadata).",
+        "tags": ["Groupfolders"],
+        "parameters": [
+          {
+            "name": "groupfolderId",
+            "in": "path",
+            "required": true,
+            "description": "The groupfolder ID",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OCSAPIRequest"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Groupfolder metadata retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OCSResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      },
+      "post": {
+        "operationId": "save-groupfolder-metadata",
+        "summary": "Save groupfolder metadata",
+        "description": "Save or update metadata values for a specific groupfolder.",
+        "tags": ["Groupfolders"],
+        "parameters": [
+          {
+            "name": "groupfolderId",
+            "in": "path",
+            "required": true,
+            "description": "The groupfolder ID",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OCSAPIRequest"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": ["metadata"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Metadata saved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OCSSuccessResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/v1/groupfolders/{groupfolderId}/files/{fileId}/metadata": {
+      "get": {
+        "operationId": "get-groupfolder-file-metadata",
+        "summary": "Get file metadata within groupfolder",
+        "description": "Retrieve metadata for a specific file within a groupfolder context.",
+        "tags": ["Groupfolders", "Files"],
+        "parameters": [
+          {
+            "name": "groupfolderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "fileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OCSAPIRequest"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File metadata retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OCSResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      },
+      "post": {
+        "operationId": "save-groupfolder-file-metadata",
+        "summary": "Save file metadata within groupfolder",
+        "description": "Save or update metadata for a specific file within a groupfolder context.",
+        "tags": ["Groupfolders", "Files"],
+        "parameters": [
+          {
+            "name": "groupfolderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "fileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OCSAPIRequest"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": ["metadata"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Metadata saved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OCSSuccessResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/groupfolder-fields": {
+      "get": {
+        "operationId": "get-groupfolder-fields",
+        "summary": "Get all groupfolder fields",
+        "description": "Retrieve all defined metadata fields for groupfolders.",
+        "tags": ["Fields"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/OCSAPIRequest"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Fields retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OCSResponse"
+                },
+                "example": {
+                  "ocs": {
+                    "meta": {
+                      "status": "ok",
+                      "statuscode": 200,
+                      "message": "OK"
+                    },
+                    "data": [
+                      {
+                        "id": 1,
+                        "field_name": "author",
+                        "field_label": "Author",
+                        "field_type": "text",
+                        "field_description": "Document author name",
+                        "field_options": "",
+                        "is_required": false,
+                        "sort_order": 0
+                      },
+                      {
+                        "id": 2,
+                        "field_name": "category",
+                        "field_label": "Category",
+                        "field_type": "select",
+                        "field_description": "Document category",
+                        "field_options": "[\"research\",\"education\",\"policy\"]",
+                        "is_required": true,
+                        "sort_order": 1
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "create-groupfolder-field",
+        "summary": "Create a groupfolder field",
+        "description": "Create a new metadata field definition for groupfolders. Admin only.",
+        "tags": ["Fields"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/OCSAPIRequest"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FieldDefinition"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Field created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OCSResponse"
+                },
+                "example": {
+                  "ocs": {
+                    "meta": {
+                      "status": "ok",
+                      "statuscode": 201,
+                      "message": "OK"
+                    },
+                    "data": {
+                      "id": 3,
+                      "success": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/api/v1/groupfolders/{groupfolderId}/fields": {
+      "get": {
+        "operationId": "get-groupfolder-assigned-fields",
+        "summary": "Get assigned fields for groupfolder",
+        "description": "Retrieve all metadata fields assigned to a specific groupfolder.",
+        "tags": ["Groupfolders", "Fields"],
+        "parameters": [
+          {
+            "name": "groupfolderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OCSAPIRequest"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Assigned fields retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OCSResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "set-groupfolder-fields",
+        "summary": "Set fields for groupfolder",
+        "description": "Assign metadata fields to a specific groupfolder. Admin only.",
+        "tags": ["Groupfolders", "Fields"],
+        "parameters": [
+          {
+            "name": "groupfolderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OCSAPIRequest"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "Array of field IDs to assign to this groupfolder",
+                    "example": [1, 2, 3]
+                  }
+                },
+                "required": ["field_ids"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Fields assigned successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OCSSuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/files/metadata/batch-update": {
+      "post": {
+        "operationId": "batch-update-file-metadata",
+        "summary": "Batch update file metadata",
+        "description": "Update metadata for multiple files in a single request. Useful for bulk operations.",
+        "tags": ["Batch Operations"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/OCSAPIRequest"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "updates": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "file_id": {
+                          "type": "integer",
+                          "description": "The file ID to update"
+                        },
+                        "groupfolder_id": {
+                          "type": "integer",
+                          "description": "The groupfolder ID the file belongs to"
+                        },
+                        "metadata": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          },
+                          "description": "Key-value pairs of field names and values"
+                        }
+                      },
+                      "required": ["file_id", "groupfolder_id", "metadata"]
+                    }
+                  }
+                },
+                "required": ["updates"]
+              },
+              "example": {
+                "updates": [
+                  {
+                    "file_id": 123,
+                    "groupfolder_id": 1,
+                    "metadata": {
+                      "author": "John Doe",
+                      "status": "reviewed"
+                    }
+                  },
+                  {
+                    "file_id": 456,
+                    "groupfolder_id": 1,
+                    "metadata": {
+                      "author": "Jane Smith",
+                      "status": "draft"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Batch update completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OCSResponse"
+                },
+                "example": {
+                  "ocs": {
+                    "meta": {
+                      "status": "ok",
+                      "statuscode": 200,
+                      "message": "OK"
+                    },
+                    "data": {
+                      "success": true,
+                      "total": 2,
+                      "successful": 2,
+                      "failed": 0,
+                      "results": [
+                        {
+                          "file_id": 123,
+                          "success": true,
+                          "fields_updated": 2
+                        },
+                        {
+                          "file_id": 456,
+                          "success": true,
+                          "fields_updated": 2
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/files/metadata/batch-delete": {
+      "post": {
+        "operationId": "batch-delete-file-metadata",
+        "summary": "Batch delete file metadata",
+        "description": "Delete metadata for multiple files. Can delete all metadata or specific fields.",
+        "tags": ["Batch Operations"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/OCSAPIRequest"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "deletes": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "file_id": {
+                          "type": "integer",
+                          "description": "The file ID"
+                        },
+                        "groupfolder_id": {
+                          "type": "integer",
+                          "description": "The groupfolder ID"
+                        },
+                        "field_names": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "nullable": true,
+                          "description": "Specific field names to delete, or null to delete all"
+                        }
+                      },
+                      "required": ["file_id", "groupfolder_id"]
+                    }
+                  }
+                },
+                "required": ["deletes"]
+              },
+              "example": {
+                "deletes": [
+                  {
+                    "file_id": 123,
+                    "groupfolder_id": 1,
+                    "field_names": ["author", "status"]
+                  },
+                  {
+                    "file_id": 456,
+                    "groupfolder_id": 1,
+                    "field_names": null
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Batch delete completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OCSResponse"
+                },
+                "example": {
+                  "ocs": {
+                    "meta": {
+                      "status": "ok",
+                      "statuscode": 200,
+                      "message": "OK"
+                    },
+                    "data": {
+                      "success": true,
+                      "total": 2,
+                      "successful": 2,
+                      "failed": 0,
+                      "results": [
+                        {
+                          "file_id": 123,
+                          "groupfolder_id": 1,
+                          "success": true,
+                          "fields_deleted": 2
+                        },
+                        {
+                          "file_id": 456,
+                          "groupfolder_id": 1,
+                          "success": true,
+                          "message": "All metadata deleted"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/files/metadata/batch-copy": {
+      "post": {
+        "operationId": "batch-copy-file-metadata",
+        "summary": "Batch copy file metadata",
+        "description": "Copy metadata from one file to multiple target files.",
+        "tags": ["Batch Operations"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/OCSAPIRequest"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "source_file_id": {
+                    "type": "integer",
+                    "description": "The source file ID to copy metadata from"
+                  },
+                  "target_file_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "Array of target file IDs to copy metadata to"
+                  },
+                  "field_names": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "nullable": true,
+                    "description": "Specific field names to copy, or null to copy all"
+                  }
+                },
+                "required": ["source_file_id", "target_file_ids"]
+              },
+              "example": {
+                "source_file_id": 123,
+                "target_file_ids": [456, 789, 101],
+                "field_names": ["author", "category"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Batch copy completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OCSResponse"
+                },
+                "example": {
+                  "ocs": {
+                    "meta": {
+                      "status": "ok",
+                      "statuscode": 200,
+                      "message": "OK"
+                    },
+                    "data": {
+                      "success": true,
+                      "source_file_id": 123,
+                      "fields_copied": 2,
+                      "target_results": [
+                        {
+                          "file_id": 456,
+                          "success": true,
+                          "fields_updated": 2
+                        },
+                        {
+                          "file_id": 789,
+                          "success": true,
+                          "fields_updated": 2
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/metadata/statistics": {
+      "get": {
+        "operationId": "get-metadata-statistics",
+        "summary": "Get metadata statistics",
+        "description": "Retrieve statistics about metadata usage across the system. Admin only.",
+        "tags": ["Statistics"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/OCSAPIRequest"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Statistics retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OCSResponse"
+                },
+                "example": {
+                  "ocs": {
+                    "meta": {
+                      "status": "ok",
+                      "statuscode": 200,
+                      "message": "OK"
+                    },
+                    "data": {
+                      "total_fields": 5,
+                      "total_values": 1250,
+                      "files_with_metadata": 340,
+                      "fields_by_type": [
+                        {
+                          "field_type": "text",
+                          "count": 2
+                        },
+                        {
+                          "field_type": "select",
+                          "count": 2
+                        },
+                        {
+                          "field_type": "date",
+                          "count": 1
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "basic_auth": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "Use your Nextcloud username and password (or app password)"
+      }
+    },
+    "parameters": {
+      "OCSAPIRequest": {
+        "name": "OCS-APIRequest",
+        "in": "header",
+        "required": true,
+        "description": "Required header for OCS API requests",
+        "schema": {
+          "type": "string",
+          "enum": ["true"]
+        }
+      }
+    },
+    "schemas": {
+      "OCSMeta": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          },
+          "statuscode": {
+            "type": "integer",
+            "example": 200
+          },
+          "message": {
+            "type": "string",
+            "example": "OK"
+          }
+        }
+      },
+      "OCSResponse": {
+        "type": "object",
+        "properties": {
+          "ocs": {
+            "type": "object",
+            "properties": {
+              "meta": {
+                "$ref": "#/components/schemas/OCSMeta"
+              },
+              "data": {
+                "description": "Response data (varies by endpoint)"
+              }
+            }
+          }
+        }
+      },
+      "OCSSuccessResponse": {
+        "type": "object",
+        "properties": {
+          "ocs": {
+            "type": "object",
+            "properties": {
+              "meta": {
+                "$ref": "#/components/schemas/OCSMeta"
+              },
+              "data": {
+                "type": "object",
+                "properties": {
+                  "success": {
+                    "type": "boolean",
+                    "example": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "OCSErrorResponse": {
+        "type": "object",
+        "properties": {
+          "ocs": {
+            "type": "object",
+            "properties": {
+              "meta": {
+                "$ref": "#/components/schemas/OCSMeta"
+              },
+              "data": {
+                "type": "object",
+                "properties": {
+                  "error": {
+                    "type": "string",
+                    "description": "Error message"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "FieldDefinition": {
+        "type": "object",
+        "properties": {
+          "field_name": {
+            "type": "string",
+            "description": "Unique identifier for the field (snake_case recommended)",
+            "example": "document_category"
+          },
+          "field_label": {
+            "type": "string",
+            "description": "Human-readable label for the field",
+            "example": "Document Category"
+          },
+          "field_type": {
+            "type": "string",
+            "enum": ["text", "textarea", "select", "multiselect", "date", "checkbox", "number", "user"],
+            "description": "The type of field",
+            "example": "select"
+          },
+          "field_description": {
+            "type": "string",
+            "description": "Description or help text for the field",
+            "example": "Select the category that best describes this document"
+          },
+          "field_options": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ],
+            "description": "Options for select/multiselect fields (JSON string or array)",
+            "example": ["research", "education", "policy", "other"]
+          },
+          "is_required": {
+            "type": "boolean",
+            "description": "Whether this field is required",
+            "default": false
+          },
+          "sort_order": {
+            "type": "integer",
+            "description": "Display order of the field",
+            "default": 0
+          },
+          "applies_to_groupfolder": {
+            "type": "boolean",
+            "description": "Whether this field applies to groupfolder-level metadata",
+            "default": false
+          }
+        },
+        "required": ["field_name", "field_label"]
+      },
+      "FileMetadata": {
+        "type": "object",
+        "properties": {
+          "field_name": {
+            "type": "string"
+          },
+          "field_label": {
+            "type": "string"
+          },
+          "field_type": {
+            "type": "string"
+          },
+          "field_value": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad request - invalid parameters",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/OCSErrorResponse"
+            },
+            "example": {
+              "ocs": {
+                "meta": {
+                  "status": "failure",
+                  "statuscode": 400,
+                  "message": "Bad Request"
+                },
+                "data": {
+                  "error": "Invalid parameters provided"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Unauthorized - authentication required",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/OCSErrorResponse"
+            },
+            "example": {
+              "ocs": {
+                "meta": {
+                  "status": "failure",
+                  "statuscode": 401,
+                  "message": "Unauthorized"
+                },
+                "data": {
+                  "error": "User not authenticated"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Forbidden - access denied",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/OCSErrorResponse"
+            },
+            "example": {
+              "ocs": {
+                "meta": {
+                  "status": "failure",
+                  "statuscode": 403,
+                  "message": "Forbidden"
+                },
+                "data": {
+                  "error": "Access denied to file"
+                }
+              }
+            }
+          }
+        }
+      },
+      "InternalError": {
+        "description": "Internal server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/OCSErrorResponse"
+            },
+            "example": {
+              "ocs": {
+                "meta": {
+                  "status": "failure",
+                  "statuscode": 500,
+                  "message": "Internal Server Error"
+                },
+                "data": {
+                  "error": "An unexpected error occurred"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

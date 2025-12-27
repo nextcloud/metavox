@@ -6,7 +6,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.4.0] - 2025-12-19
+## [1.4.0] - 2025-12-27
 
 ### Added
 - **New Field Types**: Three new metadata field types for enhanced data capture:
@@ -31,14 +31,20 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   - `POST /api/files/export-metadata` - Export metadata for multiple files
 - Dutch and German translations for all new features
 - Buffer polyfill for webpack 5 compatibility with @nextcloud/files
+- **OpenAPI Specification**: Added `openapi.json` for OCS API Viewer compatibility
+  - Full documentation of all external API endpoints
+  - Enables API exploration via the Nextcloud OCS API Viewer app
+- **API Documentation**: Added `<api-documentation>` tag in `info.xml`
 
 ### Changed
 - Improved bulk metadata modal layout with action buttons grouped left (destructive/export) and right (cancel/save)
+- Cleaned up CleanupDeletedMetadata background job code, removed unused debug variables
 
 ### Fixed
 - Fixed "Only fill empty fields" option incorrectly overwriting existing values
 - Fixed fields not loading in bulk editor (now uses same endpoint as sidebar)
 - Corrected field filtering to use `applies_to_groupfolder` instead of `field_scope`
+- Removed hardcoded `file_put_contents` to `/var/www/nextcloud/data/metavox_delete.log` in CleanupDeletedMetadata background job (fixes "Failed to open stream" error)
 
 ---
 
