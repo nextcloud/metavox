@@ -6,6 +6,21 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.4.1] - 2025-12-29
+
+### Changed
+- **Sidebar UI Improvements**: Updated styling to follow Nextcloud design guidelines
+  - Save button moved from header to bottom of form (follows natural form flow)
+  - Save button right-aligned per Nextcloud Forms pattern
+  - Simplified separator lines using `--color-border` instead of darker variants
+  - Section headers use subtle 1px borders instead of prominent 2px primary borders
+  - Field separators replaced with whitespace-only spacing
+
+### Fixed
+- Fixed missing `deleteGroupfolderField` method in FieldController (fixes "Method does not exist" error when deleting fields in admin settings)
+
+---
+
 ## [1.4.0] - 2025-12-28
 
 ### Added
@@ -24,11 +39,6 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   - Includes file path, file name, and all metadata field values
   - Automatic download with date-stamped filename
   - Proper CSV escaping for special characters
-- New API endpoints:
-  - `POST /api/users` - User listing for picker fields
-  - `POST /api/files/bulk-metadata` - Batch metadata updates
-  - `POST /api/files/clear-metadata` - Clear metadata for multiple files
-  - `POST /api/files/export-metadata` - Export metadata for multiple files
 - Dutch and German translations for all new features
 - Buffer polyfill for webpack 5 compatibility with @nextcloud/files
 - **OpenAPI Specification**: Added `openapi.json` for OCS API Viewer compatibility
@@ -39,19 +49,12 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Changed
 - Improved bulk metadata modal layout with action buttons grouped left (destructive/export) and right (cancel/save)
 - Cleaned up CleanupDeletedMetadata background job code, removed unused debug variables
-- **Sidebar UI Improvements**: Updated styling to follow Nextcloud design guidelines
-  - Save button moved from header to bottom of form (follows natural form flow)
-  - Save button right-aligned per Nextcloud Forms pattern
-  - Simplified separator lines using `--color-border` instead of darker variants
-  - Section headers use subtle 1px borders instead of prominent 2px primary borders
-  - Field separators replaced with whitespace-only spacing
 
 ### Fixed
 - Fixed "Only fill empty fields" option incorrectly overwriting existing values
 - Fixed fields not loading in bulk editor (now uses same endpoint as sidebar)
 - Corrected field filtering to use `applies_to_groupfolder` instead of `field_scope`
 - Removed hardcoded `file_put_contents` to `/var/www/nextcloud/data/metavox_delete.log` in CleanupDeletedMetadata background job (fixes "Failed to open stream" error)
-- Fixed missing `deleteGroupfolderField` method in FieldController (fixes "Method does not exist" error when deleting fields in admin settings)
 
 ---
 
