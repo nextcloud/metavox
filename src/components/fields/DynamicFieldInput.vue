@@ -22,6 +22,36 @@
     class="date-input"
     @input="$emit('update:modelValue', $event.target.value)" />
 
+  <!-- URL field type -->
+  <UrlFieldInput
+    v-else-if="type === 'url'"
+    :model-value="modelValue"
+    :field="field"
+    :required="required"
+    :disabled="disabled"
+    :input-id="inputId"
+    @update:model-value="$emit('update:modelValue', $event)" />
+
+  <!-- User picker field type -->
+  <UserGroupFieldInput
+    v-else-if="type === 'user'"
+    :model-value="modelValue"
+    :field="field"
+    :required="required"
+    :disabled="disabled"
+    :input-id="inputId"
+    @update:model-value="$emit('update:modelValue', $event)" />
+
+  <!-- File/Folder link field type -->
+  <FileLinkFieldInput
+    v-else-if="type === 'file' || type === 'filelink'"
+    :model-value="modelValue"
+    :field="field"
+    :required="required"
+    :disabled="disabled"
+    :input-id="inputId"
+    @update:model-value="$emit('update:modelValue', $event)" />
+
   <!-- Dynamic Nextcloud components for other types -->
   <component
     v-else
@@ -36,19 +66,25 @@
 
 <script>
 import { NcTextField, NcSelect, NcCheckboxRadioSwitch } from '@nextcloud/vue'
+import UrlFieldInput from './UrlFieldInput.vue'
+import UserGroupFieldInput from './UserGroupFieldInput.vue'
+import FileLinkFieldInput from './FileLinkFieldInput.vue'
 
 export default {
   name: 'DynamicFieldInput',
   components: {
     NcTextField,
     NcSelect,
-    NcCheckboxRadioSwitch
+    NcCheckboxRadioSwitch,
+    UrlFieldInput,
+    UserGroupFieldInput,
+    FileLinkFieldInput
   },
   props: {
     type: {
       type: String,
       required: true,
-      validator: (value) => ['text', 'textarea', 'number', 'date', 'select', 'multiselect', 'multi_select', 'checkbox'].includes(value)
+      validator: (value) => ['text', 'textarea', 'number', 'date', 'select', 'multiselect', 'multi_select', 'checkbox', 'url', 'user', 'file', 'filelink'].includes(value)
     },
     modelValue: {
       type: [String, Number, Boolean, Array],

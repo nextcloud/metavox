@@ -512,10 +512,15 @@ export default {
 		},
 
 		handleMetadataUpdate(fieldName, value) {
+			console.log('FilesSidebarTab handleMetadataUpdate called:', fieldName, value)
+			console.log('FilesSidebarTab metadata before:', JSON.stringify(this.metadata))
 			this.metadata = {
 				...this.metadata,
 				[fieldName]: value,
 			}
+			console.log('FilesSidebarTab metadata after:', JSON.stringify(this.metadata))
+			console.log('FilesSidebarTab originalMetadata:', JSON.stringify(this.originalMetadata))
+			console.log('FilesSidebarTab hasChanges:', this.hasChanges)
 		},
 
 		reload() {

@@ -93,6 +93,33 @@
 				{{ field.field_label }}
 			</NcCheckboxRadioSwitch>
 
+			<!-- URL Field -->
+			<UrlFieldInput
+				v-else-if="field.field_type === 'url'"
+				:model-value="values[field.field_name] || ''"
+				:field="field"
+				:disabled="readonly"
+				:input-id="`field-${field.id}`"
+				@input="handleUpdate(field.field_name, $event)" />
+
+			<!-- User Field -->
+			<UserGroupFieldInput
+				v-else-if="field.field_type === 'user'"
+				:model-value="values[field.field_name] || ''"
+				:field="field"
+				:disabled="readonly"
+				:input-id="`field-${field.id}`"
+				@input="handleUpdate(field.field_name, $event)" />
+
+			<!-- File Link Field -->
+			<FileLinkFieldInput
+				v-else-if="field.field_type === 'filelink'"
+				:model-value="values[field.field_name] || ''"
+				:field="field"
+				:disabled="readonly"
+				:input-id="`field-${field.id}`"
+				@input="handleUpdate(field.field_name, $event)" />
+
 			<!-- Fallback for unknown types -->
 			<NcTextField
 				v-else
@@ -111,6 +138,9 @@ import {
 	NcSelect,
 	NcCheckboxRadioSwitch,
 } from '@nextcloud/vue'
+import UrlFieldInput from '../components/fields/UrlFieldInput.vue'
+import UserGroupFieldInput from '../components/fields/UserGroupFieldInput.vue'
+import FileLinkFieldInput from '../components/fields/FileLinkFieldInput.vue'
 
 export default {
 	name: 'MetadataForm',
@@ -119,6 +149,9 @@ export default {
 		NcTextField,
 		NcSelect,
 		NcCheckboxRadioSwitch,
+		UrlFieldInput,
+		UserGroupFieldInput,
+		FileLinkFieldInput,
 	},
 
 	props: {
@@ -152,6 +185,7 @@ export default {
 
 	methods: {
 		handleUpdate(fieldName, value) {
+			console.log('MetadataForm handleUpdate called:', fieldName, value)
 			this.$emit('update', fieldName, value)
 		},
 
@@ -238,6 +272,13 @@ export default {
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
+	padding-bottom: 16px;
+	border-bottom: 1px solid var(--color-border);
+}
+
+.field-container:last-child {
+	border-bottom: none;
+	padding-bottom: 0;
 }
 
 .field-label {

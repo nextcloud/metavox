@@ -6,6 +6,7 @@
 import Vue from 'vue'
 import { translate, translatePlural } from '@nextcloud/l10n'
 import FilesSidebarTab from './FilesSidebarTab.vue'
+import { registerBulkMetadataAction } from './BulkMetadataAction.js'
 
 // Register translations globally for Vue components
 Vue.prototype.t = translate
@@ -101,3 +102,6 @@ function waitForFilesApp() {
 
 // Start waiting for Files app
 waitForFilesApp()
+
+// Register the bulk metadata action
+registerBulkMetadataAction()

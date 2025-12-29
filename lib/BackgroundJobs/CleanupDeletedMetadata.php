@@ -17,65 +17,37 @@ class CleanupDeletedMetadata extends QueuedJob {
         $nodePath = $arguments['node_path'] ?? null;
         $nodeType = $arguments['node_type'] ?? 'unknown';
         $groupfolderId = $arguments['groupfolder_id'] ?? null;
-        $timestamp = $arguments['timestamp'] ?? time();
-
-        $logMessage = "=== METAVOX BACKGROUND CLEANUP ===\n";
-        $logMessage .= "Time: " . date('Y-m-d H:i:s') . "\n";
-        $logMessage .= "Node ID: " . ($nodeId ?? 'none') . "\n";
-        $logMessage .= "Node Path: " . ($nodePath ?? 'none') . "\n";
-        $logMessage .= "Node Type: " . $nodeType . "\n";
-        $logMessage .= "Groupfolder ID: " . ($groupfolderId ?? 'none') . "\n";
-        $logMessage .= "Triggered at: " . date('Y-m-d H:i:s', $timestamp) . "\n";
 
         try {
             $totalCleaned = 0;
+            $nodeExists = false;
 
             // Step 1: Check if the specific node still exists in filecache
             if ($nodeId) {
                 $nodeExists = $this->checkNodeExists($db, $nodeId);
-                $logMessage .= "Node still exists in filecache: " . ($nodeExists ? 'YES' : 'NO') . "\n";
-                
+
                 if (!$nodeExists) {
                     // Node is really deleted, clean up its metadata
                     $nodeCleaned = $this->cleanupNodeMetadata($db, $nodeId, $groupfolderId);
                     $totalCleaned += $nodeCleaned;
-                    $logMessage .= "Cleaned metadata for deleted node: $nodeCleaned\n";
-                } else {
-                    $logMessage .= "Node still exists (moved to trash?), keeping metadata intact\n";
                 }
             }
 
             // Step 2: General orphaned cleanup (regardless of specific node)
-            $orphanedGlobal = $this->cleanupOrphanedGlobalMetadata($db);
-            $totalCleaned += $orphanedGlobal;
-            $logMessage .= "Cleaned orphaned global metadata: $orphanedGlobal\n";
-
-            $orphanedSearch = $this->cleanupOrphanedSearchEntries($db);
-            $totalCleaned += $orphanedSearch;
-            $logMessage .= "Cleaned orphaned search entries: $orphanedSearch\n";
-
-            $orphanedGroupfolder = $this->cleanupOrphanedGroupfolderMetadata($db);
-            $totalCleaned += $orphanedGroupfolder;
-            $logMessage .= "Cleaned orphaned groupfolder metadata: $orphanedGroupfolder\n";
+            $totalCleaned += $this->cleanupOrphanedGlobalMetadata($db);
+            $totalCleaned += $this->cleanupOrphanedSearchEntries($db);
+            $totalCleaned += $this->cleanupOrphanedGroupfolderMetadata($db);
 
             // Step 3: If it was a folder and we have path info, look for child nodes
             if ($nodeType === 'folder' && $nodePath && !$nodeExists) {
-                $childrenCleaned = $this->cleanupFolderChildren($db, $nodePath);
-                $totalCleaned += $childrenCleaned;
-                $logMessage .= "Cleaned folder children metadata: $childrenCleaned\n";
+                $totalCleaned += $this->cleanupFolderChildren($db, $nodePath);
             }
 
-            $logMessage .= "Total entries cleaned: $totalCleaned\n";
-            $logMessage .= "=============================\n";
-
-            // Log to file
-            file_put_contents('/var/www/nextcloud/data/metavox_delete.log', $logMessage, FILE_APPEND | LOCK_EX);
-            
-            error_log("MetaVox Cleanup Job: Cleaned $totalCleaned metadata entries for node $nodeId");
+            if ($totalCleaned > 0) {
+                error_log("MetaVox Cleanup Job: Cleaned $totalCleaned metadata entries for node $nodeId");
+            }
 
         } catch (\Exception $e) {
-            $errorMsg = "METAVOX CLEANUP JOB ERROR: " . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n";
-            file_put_contents('/var/www/nextcloud/data/metavox_delete.log', $errorMsg, FILE_APPEND | LOCK_EX);
             error_log("MetaVox Cleanup Job Error: " . $e->getMessage());
         }
     }
