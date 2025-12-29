@@ -71,8 +71,17 @@
 				<div v-if="itemFields.length > 0" class="metadata-section">
 					<div class="item-metadata-header">
 						<h3>{{ t('metavox', '{itemType} Metadata', { itemType }) }}</h3>
+					</div>
+					<MetadataForm
+						:fields="itemFields"
+						:values="metadata"
+						:readonly="!canEdit"
+						:select-values="selectValues"
+						:multi-select-values="multiSelectValues"
+						:select-key="selectKey"
+						@update="handleMetadataUpdate" />
+					<div v-if="canEdit && hasChanges" class="metadata-actions">
 						<NcButton
-							v-if="canEdit && hasChanges"
 							type="primary"
 							:disabled="saving"
 							@click="saveMetadata">
@@ -83,14 +92,6 @@
 							{{ saving ? t('metavox', 'Saving...') : t('metavox', 'Save') }}
 						</NcButton>
 					</div>
-					<MetadataForm
-						:fields="itemFields"
-						:values="metadata"
-						:readonly="!canEdit"
-						:select-values="selectValues"
-						:multi-select-values="multiSelectValues"
-						:select-key="selectKey"
-						@update="handleMetadataUpdate" />
 				</div>
 				<div v-else-if="itemFields.length === 0" class="info-container">
 					<p>{{ t('metavox', 'No {itemType} metadata fields are configured for items in this Team folder. Contact your administrator to set up file metadata fields.', { itemType: itemType.toLowerCase() }) }}</p>
@@ -639,29 +640,25 @@ export default {
 	color: var(--color-primary-element);
 }
 
-/* Separator between sections */
+/* Separator between sections - subtle per Nextcloud guidelines */
 .metadata-separator {
 	height: 1px;
-	background: var(--color-border-dark);
+	background: var(--color-border);
 	margin: 24px 0;
-	box-shadow: 0 1px 0 var(--color-border);
 }
 
-/* Item Metadata Header - Same prominent styling as teamfolder */
+/* Item Metadata Header - subtle per Nextcloud guidelines */
 .item-metadata-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
 	margin-bottom: 16px;
 	padding-bottom: 12px;
-	border-bottom: 2px solid var(--color-primary-element);
+	border-bottom: 1px solid var(--color-border);
 }
 
 .item-metadata-header h3 {
 	margin: 0;
 	font-size: 16px;
-	font-weight: 700;
-	color: var(--color-primary-element);
+	font-weight: 600;
+	color: var(--color-main-text);
 }
 
 .admin-notice {
@@ -678,16 +675,15 @@ export default {
 	font-size: 14px;
 }
 
+/* Field display - whitespace separation per Nextcloud guidelines */
 .field-display {
 	display: flex;
 	flex-direction: column;
-	margin-bottom: 12px;
-	padding: 8px 0;
-	border-bottom: 1px solid var(--color-border);
+	margin-bottom: 16px;
 }
 
 .field-display:last-child {
-	border-bottom: none;
+	margin-bottom: 0;
 }
 
 .field-label {
@@ -701,6 +697,15 @@ export default {
 	font-size: 14px;
 	color: var(--color-main-text);
 	word-break: break-word;
+}
+
+/* Save button container - positioned at bottom of form, right-aligned per Nextcloud Forms */
+.metadata-actions {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: 24px;
+	padding-top: 16px;
+	border-top: 1px solid var(--color-border);
 }
 
 .success-message {
