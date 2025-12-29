@@ -238,6 +238,14 @@ public function createGroupfolderField(): JSONResponse {
     }
 
     /**
+     * Delete groupfolder field (alias for deleteField for backward compatibility)
+     * @NoAdminRequired
+     */
+    public function deleteGroupfolderField(int $id): JSONResponse {
+        return $this->deleteField($id);
+    }
+
+    /**
      * @NoAdminRequired
      */
     public function getGroupfolderAssignedFields(int $groupfolderId): JSONResponse {
