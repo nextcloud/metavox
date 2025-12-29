@@ -51,6 +51,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Fixed fields not loading in bulk editor (now uses same endpoint as sidebar)
 - Corrected field filtering to use `applies_to_groupfolder` instead of `field_scope`
 - Removed hardcoded `file_put_contents` to `/var/www/nextcloud/data/metavox_delete.log` in CleanupDeletedMetadata background job (fixes "Failed to open stream" error)
+- Fixed missing `deleteGroupfolderField` method in FieldController (fixes "Method does not exist" error when deleting fields in admin settings)
 
 ---
 
