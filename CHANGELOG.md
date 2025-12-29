@@ -6,7 +6,22 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.4.0] - 2025-12-29
+## [1.4.1] - 2025-12-29
+
+### Changed
+- **Sidebar UI Improvements**: Updated styling to follow Nextcloud design guidelines
+  - Save button moved from header to bottom of form (follows natural form flow)
+  - Save button right-aligned per Nextcloud Forms pattern
+  - Simplified separator lines using `--color-border` instead of darker variants
+  - Section headers use subtle 1px borders instead of prominent 2px primary borders
+  - Field separators replaced with whitespace-only spacing
+
+### Fixed
+- Fixed missing `deleteGroupfolderField` method in FieldController (fixes "Method does not exist" error when deleting fields in admin settings)
+
+---
+
+## [1.4.0] - 2025-12-28
 
 ### Added
 - **New Field Types**: Three new metadata field types for enhanced data capture:
