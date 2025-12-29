@@ -30,6 +30,11 @@ return [
         // Groupfolder file metadata routes (individual files within groupfolders)
         ['name' => 'field#getGroupfolderFileMetadata', 'url' => '/api/groupfolders/{groupfolderId}/files/{fileId}/metadata', 'verb' => 'GET'],
         ['name' => 'field#saveGroupfolderFileMetadata', 'url' => '/api/groupfolders/{groupfolderId}/files/{fileId}/metadata', 'verb' => 'POST'],
+
+        // Bulk file metadata routes
+        ['name' => 'field#saveBulkFileMetadata', 'url' => '/api/files/bulk-metadata', 'verb' => 'POST'],
+        ['name' => 'field#clearFileMetadata', 'url' => '/api/files/clear-metadata', 'verb' => 'POST'],
+        ['name' => 'field#exportFileMetadata', 'url' => '/api/files/export-metadata', 'verb' => 'POST'],
         
         // Groupfolder field assignment routes
         ['name' => 'field#getGroupfolderAssignedFields', 'url' => '/api/groupfolders/{groupfolderId}/fields', 'verb' => 'GET'],
@@ -47,6 +52,9 @@ return [
         // 🔐 PERMISSION MANAGEMENT ROUTES (NEW)
         // ========================================
         
+        // Get users (for user/group picker field)
+        ['name' => 'field#getUsers', 'url' => '/api/users', 'verb' => 'GET'],
+
         // Get groups (for permission assignment)
         ['name' => 'permission#getGroups', 'url' => '/api/permissions/groups', 'verb' => 'GET'],
         

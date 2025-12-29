@@ -6,6 +6,43 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.4.0] - 2025-12-29
+
+### Added
+- **New Field Types**: Three new metadata field types for enhanced data capture:
+  - **URL Field**: URL input with validation and clickable external link button
+  - **User Picker**: Select Nextcloud users with avatar display
+  - **File Link**: Browse and link to files/folders within Nextcloud using the native file picker
+- **Bulk Metadata Editor**: Edit metadata for multiple selected files at once from the Files app toolbar
+  - Appears as "Edit Metadata" action when files are selected
+  - Supports both single and multiple file selection
+  - Merge strategies: "Overwrite existing values" or "Only fill empty fields"
+- **Bulk Metadata Clear**: New "Clear All" button in bulk editor to remove all metadata from selected files
+  - Confirmation dialog to prevent accidental data loss
+  - Also clears search index entries for the files
+- **Metadata Export to CSV**: Export metadata from selected files to CSV format
+  - Includes file path, file name, and all metadata field values
+  - Automatic download with date-stamped filename
+  - Proper CSV escaping for special characters
+- Dutch and German translations for all new features
+- Buffer polyfill for webpack 5 compatibility with @nextcloud/files
+- **OpenAPI Specification**: Added `openapi.json` for OCS API Viewer compatibility
+  - Full documentation of all external API endpoints
+  - Enables API exploration via the Nextcloud OCS API Viewer app
+- **API Documentation**: Added `<api-documentation>` tag in `info.xml`
+
+### Changed
+- Improved bulk metadata modal layout with action buttons grouped left (destructive/export) and right (cancel/save)
+- Cleaned up CleanupDeletedMetadata background job code, removed unused debug variables
+
+### Fixed
+- Fixed "Only fill empty fields" option incorrectly overwriting existing values
+- Fixed fields not loading in bulk editor (now uses same endpoint as sidebar)
+- Corrected field filtering to use `applies_to_groupfolder` instead of `field_scope`
+- Removed hardcoded `file_put_contents` to `/var/www/nextcloud/data/metavox_delete.log` in CleanupDeletedMetadata background job (fixes "Failed to open stream" error)
+
+---
+
 ## [1.3.0] - 2025-12-12
 
 ### Added
