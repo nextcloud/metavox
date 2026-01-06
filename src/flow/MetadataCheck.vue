@@ -124,6 +124,7 @@ export default {
 			checkValue: '',
 			loadingFields: false,
 			loadingGroupfolders: false,
+			isParsingConfig: false,
 		}
 	},
 
@@ -191,7 +192,12 @@ export default {
 	mounted() {
 		this.loadFields()
 		this.loadGroupfolders()
-		this.parseExistingConfig()
+	},
+
+	activated() {
+		// Reload fields when component is re-activated (e.g., switching tabs)
+		this.loadFields()
+		this.loadGroupfolders()
 	},
 
 	methods: {
@@ -235,6 +241,8 @@ export default {
 				return
 			}
 
+			this.isParsingConfig = true
+
 			try {
 				const config = JSON.parse(this.value)
 
@@ -276,6 +284,10 @@ export default {
 				}
 			} catch (e) {
 				console.warn('Failed to parse existing check config:', e)
+			} finally {
+				this.$nextTick(() => {
+					this.isParsingConfig = false
+				})
 			}
 		},
 
@@ -312,6 +324,14 @@ export default {
 	},
 
 	watch: {
+		value: {
+			immediate: true,
+			handler(newValue) {
+				if (newValue && this.fields.length > 0) {
+					this.parseExistingConfig()
+				}
+			},
+		},
 		fields() {
 			if (this.value && this.fields.length > 0) {
 				this.parseExistingConfig()
@@ -326,8 +346,8 @@ export default {
 			this.updateValue()
 		},
 		selectedField(newField, oldField) {
-			// Reset check value when field changes
-			if (newField?.name !== oldField?.name) {
+			// Reset check value when field changes, but not during config parsing
+			if (newField?.name !== oldField?.name && !this.isParsingConfig) {
 				this.checkValue = ''
 				this.selectedCheckOption = null
 			}

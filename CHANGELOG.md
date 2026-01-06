@@ -6,6 +6,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.4.6] - 2025-01-06
+
+### Fixed
+- Fixed Flow check configuration not persisting after page refresh
+- Fixed newly added metadata fields not appearing in Flow dropdown until page reload
+
+---
+
 ## [1.4.5] - 2025-01-06
 
 ### Added
