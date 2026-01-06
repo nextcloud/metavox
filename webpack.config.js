@@ -6,6 +6,7 @@ module.exports = {
     admin: path.join(__dirname, 'src', 'admin.js'),
     user: path.join(__dirname, 'src', 'user.js'),
     filesplugin: path.join(__dirname, 'src', 'filesplugin', 'filesplugin-main.js'),
+    'metavox-flow': path.join(__dirname, 'src', 'flow', 'main.js'),
   },
   output: {
     path: path.resolve(__dirname, 'js'),

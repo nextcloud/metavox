@@ -6,6 +6,22 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.45] - 2025-01-06
+
+### Added
+- **Nextcloud Flow Integration**: MetaVox metadata can now be used as conditions in Nextcloud Flow rules
+  - New "MetaVox metadata" check available in Flow/Workflow Engine
+  - Supports operators: `is`, `is not`, `contains`, `does not contain`, `matches regex`, `does not match regex`
+  - Dynamic value input based on field type (dropdown for select fields, checkbox toggle for booleans, date picker, number input, text)
+  - Fields grouped into "File fields" and "Team folder fields" in the UI
+  - Auto-detect groupfolder from file context (no manual configuration needed)
+  - Optional manual groupfolder selection for advanced use cases
+- **Access Control Integration**: Combine with the `files_accesscontrol` app to restrict file access based on metadata
+  - Example: Block access to files where `classification` = `confidential`
+  - Example: Only allow download if `status` = `approved`
+
+---
+
 ## [1.4.1] - 2025-12-29
 
 ### Changed
