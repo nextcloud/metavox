@@ -912,4 +912,31 @@ private function clearSearchIndex(int $fileId): void {
         error_log('MetaVox clearSearchIndex error: ' . $e->getMessage());
     }
 }
+
+/**
+ * Get groupfolder ID by file ID from metadata records
+ * Used by Flow checks to auto-detect groupfolder context
+ */
+public function getGroupfolderIdByFileId(int $fileId): ?int {
+    try {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('groupfolder_id')
+           ->from('metavox_file_gf_meta')
+           ->where($qb->expr()->eq('file_id', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_INT)))
+           ->setMaxResults(1);
+
+        $result = $qb->executeQuery();
+        $groupfolderId = $result->fetchOne();
+        $result->closeCursor();
+
+        if ($groupfolderId !== false && $groupfolderId !== null) {
+            return (int)$groupfolderId;
+        }
+
+        return null;
+    } catch (\Exception $e) {
+        error_log('MetaVox getGroupfolderIdByFileId error: ' . $e->getMessage());
+        return null;
+    }
+}
 }

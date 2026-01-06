@@ -113,6 +113,52 @@ MetaVox is a Nextcloud app designed to manage metadata specifically for **Team f
 ## Installation
 Add the app via the Nextcloud app store under Office & text apps
 
+---
+
+## 🔄 Flow Integration (Access Control)
+
+MetaVox integrates with Nextcloud's **Flow** (Workflow Engine) to enable metadata-based automation and access control.
+
+### Prerequisites
+- Install the **Files Access Control** app from the Nextcloud App Store (if you want to restrict file access based on metadata)
+
+### Setting up a Flow Rule
+
+1. Go to **Settings** → **Flow** (Admin settings)
+2. Click **Add new flow**
+3. Select a trigger (e.g., "File accessed", "File created")
+4. Under **Conditions**, click **Add condition**
+5. Select **"MetaVox metadata"** from the dropdown
+6. Configure your condition:
+   - **Field**: Select the metadata field to check
+   - **Operator**: Choose from `is`, `is not`, `contains`, `does not contain`, `matches regex`, `does not match regex`
+   - **Value**: Enter the value to compare against (input type adapts to field type)
+   - **Team folder** (optional): Select a specific team folder, or leave empty for auto-detection
+
+### Example Use Cases
+
+#### Block access to confidential files
+1. Create a Flow rule with trigger "File accessed"
+2. Add condition: MetaVox metadata → `classification` **is** `confidential`
+3. Add action: **Block access**
+
+#### Notify when document is approved
+1. Create a Flow rule with trigger "Tag assigned" or use a webhook
+2. Add condition: MetaVox metadata → `status` **is** `approved`
+3. Add action: **Send notification** to document owner
+
+#### Restrict download based on review status
+1. Create a Flow rule with trigger "File accessed"
+2. Add condition: MetaVox metadata → `review_status` **is not** `approved`
+3. Add action: **Block access**
+
+### Tips
+- The groupfolder is automatically detected from the file location in most cases
+- Fields are grouped by type: "File fields" (per-document) and "Team folder fields" (inherited from folder)
+- Dropdown fields show their configured options; checkbox fields show Yes/No; date fields show a date picker
+
+---
+
 ## Roadmap
 Retention policies
 
