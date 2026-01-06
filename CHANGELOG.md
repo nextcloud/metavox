@@ -6,7 +6,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.45] - 2025-01-06
+## [1.4.5] - 2025-01-06
 
 ### Added
 - **Nextcloud Flow Integration**: MetaVox metadata can now be used as conditions in Nextcloud Flow rules
