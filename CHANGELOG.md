@@ -6,6 +6,32 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.4.7] - 2026-01-09
+
+### Added
+- **Field-type specific operators in Flow**: Operators now dynamically change based on selected metadata field type
+  - Text/Textarea: `equals`, `contains`, `does not contain`, `is not empty`, `is empty`
+  - Date: `equals`, `is before`, `is after`, `is not empty`, `is empty`
+  - Number: `equals`, `greater than`, `less than`, `greater or equal`, `less or equal`, `is not empty`, `is empty`
+  - Select/Dropdown: `equals`, `is one of`, `is not empty`, `is empty`
+  - Multiselect: `contains`, `contains all`, `is not empty`, `is empty`
+  - Checkbox: `equals` (with Yes/No dropdown), `is not empty`, `is empty`
+- **Nextcloud 33 compatibility**: Updated `FileAction` API to support both `@nextcloud/files` v3.x (NC 28-32) and v4.x (NC 33+)
+  - Backwards compatible detection of API version
+  - Supports new destructured context object `{ nodes, view, folder, contents }`
+
+### Changed
+- Flow operator selector moved inside MetaVox component for better field-type awareness
+- Checkbox fields now show "Yes (checked)" / "No (unchecked)" dropdown with proper `1`/`0` values
+- Improved styling of Flow configuration panel to match Nextcloud design guidelines
+
+### Fixed
+- Fixed Flow check configuration not loading on page refresh (timing issue with fields API)
+- Fixed value input not refreshing when switching between different field types
+- Fixed input alignment issues in Flow configuration panel
+
+---
+
 ## [1.4.6] - 2025-01-06
 
 ### Fixed
