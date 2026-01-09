@@ -67,6 +67,10 @@ async function openBulkMetadataModal(nodes) {
 
 /**
  * Register the bulk metadata file action
+ *
+ * Supports both @nextcloud/files v3.x (Nextcloud 28-32) and v4.x (Nextcloud 33+)
+ * v3.x: exec(node, view, dir) with positional parameters
+ * v4.x: exec({ nodes, view, folder, contents }) with destructured object
  */
 export function registerBulkMetadataAction() {
 	const action = new FileAction({
@@ -75,7 +79,12 @@ export function registerBulkMetadataAction() {
 		iconSvgInline: () => metadataIconSvg,
 
 		// Enable for files and folders with write permission
-		enabled(nodes) {
+		// v3.x: enabled(nodes, view)
+		// v4.x: enabled({ nodes, view, folder, contents })
+		enabled(nodesOrContext, view) {
+			// Detect API version: v4.x passes an object with 'nodes' property
+			const nodes = Array.isArray(nodesOrContext) ? nodesOrContext : nodesOrContext?.nodes
+
 			// Must have at least one node
 			if (!nodes || nodes.length === 0) {
 				return false
@@ -88,13 +97,23 @@ export function registerBulkMetadataAction() {
 		},
 
 		// Single file action
-		async exec(node) {
-			await openBulkMetadataModal([node])
+		// v3.x: exec(node, view, dir) - returns null or boolean
+		// v4.x: exec({ nodes, view, folder, contents }) - returns null or boolean
+		async exec(nodeOrContext, view, dir) {
+			// Detect API version: v4.x passes an object with 'nodes' property
+			if (nodeOrContext && typeof nodeOrContext === 'object' && 'nodes' in nodeOrContext) {
+				// v4.x API - context object with nodes array
+				await openBulkMetadataModal(nodeOrContext.nodes)
+			} else {
+				// v3.x API - single node as first argument
+				await openBulkMetadataModal([nodeOrContext])
+			}
 			return null
 		},
 
-		// Bulk action for multiple files
-		async execBatch(nodes) {
+		// Bulk action for multiple files (v3.x only, removed in v4.x)
+		// In v4.x, exec receives all selected nodes in context.nodes
+		async execBatch(nodes, view, dir) {
 			await openBulkMetadataModal(nodes)
 			return nodes.map(() => null)
 		},

@@ -30,21 +30,16 @@ function registerFlowComponents() {
 	/**
 	 * Register the MetaVox check with Nextcloud's Workflow Engine
 	 *
-	 * The 'class' must match the fully qualified class name of the PHP Check class.
-	 * This enables metadata-based conditions in Flow rules, such as:
-	 * - Block access if metadata field 'classification' = 'confidential'
-	 * - Allow download only if 'status' = 'approved'
+	 * We use a single generic operator here. The actual operator selection
+	 * is handled within the Vue component based on field type.
+	 * The selected operator is stored in the config JSON.
 	 */
 	OCA.WorkflowEngine.registerCheck({
 		class: 'OCA\\MetaVox\\Flow\\MetadataCheck',
 		name: t('metavox', 'MetaVox metadata'),
 		operators: [
-			{ operator: 'is', name: t('metavox', 'is') },
-			{ operator: '!is', name: t('metavox', 'is not') },
-			{ operator: 'contains', name: t('metavox', 'contains') },
-			{ operator: '!contains', name: t('metavox', 'does not contain') },
-			{ operator: 'matches', name: t('metavox', 'matches regex') },
-			{ operator: '!matches', name: t('metavox', 'does not match regex') },
+			// Single generic operator - actual operator is selected in the component
+			{ operator: 'matches', name: t('metavox', 'where') },
 		],
 		component: MetadataCheck,
 	})

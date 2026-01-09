@@ -80,6 +80,24 @@ class MetadataCheck implements ICheck, IFileCheck {
     }
 
     /**
+     * All supported operators
+     */
+    private const VALID_OPERATORS = [
+        // Text/general operators
+        'is', '!is', 'contains', '!contains', 'matches', '!matches',
+        // Empty checks (all types)
+        'empty', '!empty',
+        // Date operators
+        'before', 'after',
+        // Number operators
+        'greater', 'less', 'greaterOrEqual', 'lessOrEqual',
+        // Select operators
+        'oneOf', 'containsAll',
+        // Checkbox operators
+        'isTrue', 'isFalse',
+    ];
+
+    /**
      * Validate the check configuration
      *
      * @param string $operator The comparison operator
@@ -87,22 +105,27 @@ class MetadataCheck implements ICheck, IFileCheck {
      * @throws \UnexpectedValueException if configuration is invalid
      */
     public function validateCheck($operator, $value): void {
-        if (!in_array($operator, ['is', '!is', 'matches', '!matches', 'contains', '!contains'])) {
-            throw new \UnexpectedValueException(
-                $this->l->t('Invalid operator. Use: is, !is, matches, !matches, contains, !contains')
-            );
-        }
-
         $config = json_decode($value, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             throw new \UnexpectedValueException($this->l->t('Invalid configuration format'));
+        }
+
+        // Use operator from config if present, otherwise use the $operator parameter
+        $actualOperator = $config['operator'] ?? $operator;
+
+        if (!in_array($actualOperator, self::VALID_OPERATORS)) {
+            throw new \UnexpectedValueException(
+                $this->l->t('Invalid operator')
+            );
         }
 
         if (empty($config['field_name'])) {
             throw new \UnexpectedValueException($this->l->t('Metadata field name is required'));
         }
 
-        if (!isset($config['value'])) {
+        // Value is not required for empty checks and checkbox operators
+        $noValueOperators = ['empty', '!empty', 'isTrue', 'isFalse'];
+        if (!in_array($actualOperator, $noValueOperators) && !isset($config['value'])) {
             throw new \UnexpectedValueException($this->l->t('Comparison value is required'));
         }
     }
@@ -137,6 +160,8 @@ class MetadataCheck implements ICheck, IFileCheck {
         $fieldName = $config['field_name'] ?? '';
         $expectedValue = $config['value'] ?? '';
         $groupfolderId = $config['groupfolder_id'] ?? null;
+        // Use operator from config if present, otherwise use the $operator parameter
+        $actualOperator = $config['operator'] ?? $operator;
 
         if (empty($fieldName)) {
             return false;
@@ -171,7 +196,7 @@ class MetadataCheck implements ICheck, IFileCheck {
             }
 
             // Perform the comparison
-            return $this->compare($operator, $actualValue, $expectedValue);
+            return $this->compare($actualOperator, $actualValue, $expectedValue);
 
         } catch (\Exception $e) {
             $this->logger->warning('MetaVox Flow check failed: ' . $e->getMessage(), [
@@ -267,31 +292,184 @@ class MetadataCheck implements ICheck, IFileCheck {
      * Compare the actual value with the expected value using the operator
      */
     private function compare(string $operator, ?string $actualValue, string $expectedValue): bool {
-        if ($actualValue === null || $actualValue === '') {
-            $actualValue = '';
-        }
+        // Handle empty/null values
+        $isEmpty = $actualValue === null || $actualValue === '';
 
         switch ($operator) {
+            // Empty checks (all field types)
+            case 'empty':
+                return $isEmpty;
+            case '!empty':
+                return !$isEmpty;
+
+            // Checkbox operators (no value needed)
+            case 'isTrue':
+                return $this->normalizeBoolean($actualValue ?? '') === '1';
+            case 'isFalse':
+                return $this->normalizeBoolean($actualValue ?? '') === '0' || $isEmpty;
+
+            // Text/general operators
             case 'is':
-                return strtolower($actualValue) === strtolower($expectedValue);
-
+                $normalizedActual = $this->normalizeBoolean($actualValue ?? '');
+                $normalizedExpected = $this->normalizeBoolean($expectedValue);
+                return strtolower($normalizedActual) === strtolower($normalizedExpected);
             case '!is':
-                return strtolower($actualValue) !== strtolower($expectedValue);
-
-            case 'matches':
-                return preg_match($expectedValue, $actualValue) === 1;
-
-            case '!matches':
-                return preg_match($expectedValue, $actualValue) !== 1;
-
+                $normalizedActual = $this->normalizeBoolean($actualValue ?? '');
+                $normalizedExpected = $this->normalizeBoolean($expectedValue);
+                return strtolower($normalizedActual) !== strtolower($normalizedExpected);
             case 'contains':
-                return stripos($actualValue, $expectedValue) !== false;
-
+                return stripos($actualValue ?? '', $expectedValue) !== false;
             case '!contains':
-                return stripos($actualValue, $expectedValue) === false;
+                return stripos($actualValue ?? '', $expectedValue) === false;
+            case 'matches':
+                return @preg_match($expectedValue, $actualValue ?? '') === 1;
+            case '!matches':
+                return @preg_match($expectedValue, $actualValue ?? '') !== 1;
+
+            // Date operators
+            case 'before':
+                return $this->compareDates($actualValue, $expectedValue, '<');
+            case 'after':
+                return $this->compareDates($actualValue, $expectedValue, '>');
+
+            // Number operators
+            case 'greater':
+                return $this->compareNumbers($actualValue, $expectedValue, '>');
+            case 'less':
+                return $this->compareNumbers($actualValue, $expectedValue, '<');
+            case 'greaterOrEqual':
+                return $this->compareNumbers($actualValue, $expectedValue, '>=');
+            case 'lessOrEqual':
+                return $this->compareNumbers($actualValue, $expectedValue, '<=');
+
+            // Select operators (multi-value)
+            case 'oneOf':
+                return $this->checkOneOf($actualValue, $expectedValue);
+            case 'containsAll':
+                return $this->checkContainsAll($actualValue, $expectedValue);
 
             default:
                 return false;
         }
+    }
+
+    /**
+     * Compare two date values
+     */
+    private function compareDates(?string $actual, string $expected, string $op): bool {
+        if ($actual === null || $actual === '') {
+            return false;
+        }
+
+        $actualTime = strtotime($actual);
+        $expectedTime = strtotime($expected);
+
+        if ($actualTime === false || $expectedTime === false) {
+            return false;
+        }
+
+        return match($op) {
+            '<' => $actualTime < $expectedTime,
+            '>' => $actualTime > $expectedTime,
+            '<=' => $actualTime <= $expectedTime,
+            '>=' => $actualTime >= $expectedTime,
+            default => false,
+        };
+    }
+
+    /**
+     * Compare two numeric values
+     */
+    private function compareNumbers(?string $actual, string $expected, string $op): bool {
+        if ($actual === null || $actual === '' || !is_numeric($actual)) {
+            return false;
+        }
+        if (!is_numeric($expected)) {
+            return false;
+        }
+
+        $actualNum = (float)$actual;
+        $expectedNum = (float)$expected;
+
+        return match($op) {
+            '<' => $actualNum < $expectedNum,
+            '>' => $actualNum > $expectedNum,
+            '<=' => $actualNum <= $expectedNum,
+            '>=' => $actualNum >= $expectedNum,
+            default => false,
+        };
+    }
+
+    /**
+     * Check if actual value is one of the expected values (JSON array)
+     */
+    private function checkOneOf(?string $actual, string $expected): bool {
+        if ($actual === null || $actual === '') {
+            return false;
+        }
+
+        $allowedValues = json_decode($expected, true);
+        if (!is_array($allowedValues)) {
+            // Single value fallback
+            return strtolower($actual) === strtolower($expected);
+        }
+
+        $actualLower = strtolower($actual);
+        foreach ($allowedValues as $allowed) {
+            if (strtolower((string)$allowed) === $actualLower) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Check if actual value contains all expected values (for multiselect)
+     */
+    private function checkContainsAll(?string $actual, string $expected): bool {
+        if ($actual === null || $actual === '') {
+            return false;
+        }
+
+        $requiredValues = json_decode($expected, true);
+        if (!is_array($requiredValues)) {
+            return stripos($actual, $expected) !== false;
+        }
+
+        // Actual might be JSON array or comma-separated
+        $actualValues = json_decode($actual, true);
+        if (!is_array($actualValues)) {
+            $actualValues = array_map('trim', explode(',', $actual));
+        }
+
+        $actualLower = array_map('strtolower', array_map('strval', $actualValues));
+
+        foreach ($requiredValues as $required) {
+            if (!in_array(strtolower((string)$required), $actualLower, true)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Normalize boolean string values for consistent comparison
+     * Converts various boolean representations to '1' or '0'
+     */
+    private function normalizeBoolean(string $value): string {
+        $lower = strtolower($value);
+
+        // Check for truthy values
+        if (in_array($lower, ['true', '1', 'yes', 'on'], true)) {
+            return '1';
+        }
+
+        // Check for falsy values
+        if (in_array($lower, ['false', '0', 'no', 'off'], true)) {
+            return '0';
+        }
+
+        // Return original value for non-boolean strings
+        return $value;
     }
 }

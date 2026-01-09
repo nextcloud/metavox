@@ -2,53 +2,121 @@
 	<div class="metavox-check">
 		<div class="check-field">
 			<label>{{ t('metavox', 'Metadata field') }}</label>
-			<NcSelect
-				v-model="selectedField"
-				:options="groupedFields"
-				:placeholder="t('metavox', 'Select a metadata field')"
-				label="label"
-				track-by="name"
-				:loading="loadingFields"
-				@input="updateValue"
+			<select
+				v-model="selectedFieldName"
+				class="nc-select-input"
+				@change="onFieldChange"
 			>
-				<template #option="option">
-					<span v-if="option.isHeader" class="field-group-header">{{ option.label }}</span>
-					<span v-else>{{ option.label }}</span>
-				</template>
-			</NcSelect>
+				<option value="" disabled>{{ t('metavox', 'Select a metadata field') }}</option>
+				<option
+					v-for="field in groupedFields"
+					:key="field.name"
+					:value="field.isHeader ? '' : field.name"
+					:disabled="field.isHeader"
+					:class="{ 'field-group-header': field.isHeader }"
+				>
+					{{ field.label }}
+				</option>
+			</select>
+			<span v-if="loadingFields" class="loading-indicator">{{ t('metavox', 'Loading...') }}</span>
 		</div>
 
+		<!-- Operator selection based on field type -->
 		<div v-if="selectedField && !selectedField.isHeader" class="check-field">
+			<label>{{ t('metavox', 'Operator') }}</label>
+			<select
+				v-model="selectedOperator"
+				class="nc-select-input"
+				@change="onOperatorChange"
+			>
+				<option
+					v-for="op in availableOperators"
+					:key="op.operator"
+					:value="op.operator"
+				>
+					{{ op.name }}
+				</option>
+			</select>
+		</div>
+
+		<!-- Value input - hidden for empty checks -->
+		<div
+			v-if="selectedField && !selectedField.isHeader && showValueInput"
+			:key="'value-' + selectedFieldName + '-' + (selectedField.type || 'text') + '-' + selectedOperator"
+			class="check-field"
+		>
 			<label>{{ t('metavox', 'Value to check') }}</label>
 
-			<!-- Select/Dropdown field -->
-			<NcSelect
-				v-if="selectedField.type === 'select' || selectedField.type === 'dropdown'"
-				v-model="selectedCheckOption"
-				:options="fieldOptions"
-				:placeholder="t('metavox', 'Select a value')"
-				label="label"
-				track-by="value"
-				@input="onSelectOptionChange"
-			/>
+			<!-- Checkbox/Boolean field - Yes/No dropdown -->
+			<select
+				v-if="isCheckboxField"
+				v-model="checkValue"
+				class="nc-select-input"
+				@change="updateValue"
+			>
+				<option value="" disabled>{{ t('metavox', 'Select a value') }}</option>
+				<option value="1">{{ t('metavox', 'Yes (checked)') }}</option>
+				<option value="0">{{ t('metavox', 'No (unchecked)') }}</option>
+			</select>
 
-			<!-- Checkbox/Boolean field -->
-			<NcSelect
-				v-else-if="selectedField.type === 'checkbox' || selectedField.type === 'boolean'"
-				v-model="selectedCheckOption"
-				:options="booleanOptions"
-				:placeholder="t('metavox', 'Select a value')"
-				label="label"
-				track-by="value"
-				@input="onSelectOptionChange"
-			/>
+			<!-- Select/Dropdown field with oneOf support (multi-select) -->
+			<select
+				v-else-if="isSelectField && selectedOperator === 'oneOf'"
+				v-model="selectedMultipleValues"
+				class="nc-select-input nc-select-multiple"
+				multiple
+				@change="onMultiSelectChange"
+			>
+				<option
+					v-for="opt in fieldOptions"
+					:key="opt.value"
+					:value="opt.value"
+				>
+					{{ opt.label }}
+				</option>
+			</select>
+
+			<!-- Select/Dropdown field single value -->
+			<select
+				v-else-if="isSelectField"
+				v-model="checkValue"
+				class="nc-select-input"
+				@change="updateValue"
+			>
+				<option value="" disabled>{{ t('metavox', 'Select a value') }}</option>
+				<option
+					v-for="opt in fieldOptions"
+					:key="opt.value"
+					:value="opt.value"
+				>
+					{{ opt.label }}
+				</option>
+			</select>
+
+			<!-- Multiselect field with containsAll support -->
+			<select
+				v-else-if="isMultiselectField"
+				v-model="selectedMultipleValues"
+				class="nc-select-input nc-select-multiple"
+				multiple
+				@change="onMultiSelectChange"
+			>
+				<option
+					v-for="opt in fieldOptions"
+					:key="opt.value"
+					:value="opt.value"
+				>
+					{{ opt.label }}
+				</option>
+			</select>
 
 			<!-- Date field -->
 			<input
 				v-else-if="selectedField.type === 'date'"
 				v-model="checkValue"
 				type="date"
-				class="check-input"
+				class="nc-input-field"
+				@change="updateValue"
 			>
 
 			<!-- Number field -->
@@ -56,8 +124,9 @@
 				v-else-if="selectedField.type === 'number'"
 				v-model="checkValue"
 				type="number"
-				class="check-input"
+				class="nc-input-field"
 				:placeholder="t('metavox', 'Enter a number')"
+				@input="updateValue"
 			>
 
 			<!-- Default: text input -->
@@ -65,43 +134,130 @@
 				v-else
 				v-model="checkValue"
 				type="text"
-				class="check-input"
+				class="nc-input-field"
 				:placeholder="t('metavox', 'Enter expected value')"
+				@input="updateValue"
 			>
 		</div>
 
 		<div v-if="selectedField" class="check-field">
 			<label>{{ t('metavox', 'Team folder (optional)') }}</label>
-			<NcSelect
-				v-model="selectedGroupfolder"
-				:options="groupfolders"
-				:placeholder="t('metavox', 'Auto-detect')"
-				label="label"
-				track-by="id"
-				:loading="loadingGroupfolders"
-				@input="updateValue"
-			/>
+			<select
+				v-model="selectedGroupfolderId"
+				class="nc-select-input"
+				@change="updateValue"
+			>
+				<option value="">{{ t('metavox', 'Auto-detect') }}</option>
+				<option
+					v-for="gf in groupfolders"
+					:key="gf.id"
+					:value="gf.id"
+				>
+					{{ gf.label }}
+				</option>
+			</select>
 			<p class="hint">{{ t('metavox', 'Leave empty to auto-detect from file location') }}</p>
 		</div>
 
-		<div v-if="selectedField && checkValue" class="check-preview">
+		<div v-if="selectedField && (checkValue || !showValueInput)" class="check-preview">
 			<span class="preview-label">{{ t('metavox', 'Check configuration:') }}</span>
-			<code>{{ selectedField.label }} {{ operatorLabel }} "{{ checkValue }}"</code>
+			<code>{{ selectedField.label }} {{ operatorLabel }}<span v-if="showValueInput"> "{{ displayValue }}"</span></code>
 		</div>
 	</div>
 </template>
 
 <script>
-import { NcSelect } from '@nextcloud/vue'
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 
+// Operators per field type
+const OPERATORS_BY_TYPE = {
+	text: [
+		{ operator: 'is', name: 'equals' },
+		{ operator: 'contains', name: 'contains' },
+		{ operator: '!contains', name: 'does not contain' },
+		{ operator: '!empty', name: 'is not empty' },
+		{ operator: 'empty', name: 'is empty' },
+	],
+	textarea: [
+		{ operator: 'is', name: 'equals' },
+		{ operator: 'contains', name: 'contains' },
+		{ operator: '!contains', name: 'does not contain' },
+		{ operator: '!empty', name: 'is not empty' },
+		{ operator: 'empty', name: 'is empty' },
+	],
+	date: [
+		{ operator: 'is', name: 'equals' },
+		{ operator: 'before', name: 'is before' },
+		{ operator: 'after', name: 'is after' },
+		{ operator: '!empty', name: 'is not empty' },
+		{ operator: 'empty', name: 'is empty' },
+	],
+	number: [
+		{ operator: 'is', name: 'equals' },
+		{ operator: 'greater', name: 'greater than' },
+		{ operator: 'less', name: 'less than' },
+		{ operator: 'greaterOrEqual', name: 'greater or equal' },
+		{ operator: 'lessOrEqual', name: 'less or equal' },
+		{ operator: '!empty', name: 'is not empty' },
+		{ operator: 'empty', name: 'is empty' },
+	],
+	select: [
+		{ operator: 'is', name: 'equals' },
+		{ operator: 'oneOf', name: 'is one of' },
+		{ operator: '!empty', name: 'is not empty' },
+		{ operator: 'empty', name: 'is empty' },
+	],
+	dropdown: [
+		{ operator: 'is', name: 'equals' },
+		{ operator: 'oneOf', name: 'is one of' },
+		{ operator: '!empty', name: 'is not empty' },
+		{ operator: 'empty', name: 'is empty' },
+	],
+	multiselect: [
+		{ operator: 'contains', name: 'contains' },
+		{ operator: 'containsAll', name: 'contains all' },
+		{ operator: '!empty', name: 'is not empty' },
+		{ operator: 'empty', name: 'is empty' },
+	],
+	checkbox: [
+		{ operator: 'is', name: 'equals' },
+		{ operator: '!empty', name: 'is not empty' },
+		{ operator: 'empty', name: 'is empty' },
+	],
+	boolean: [
+		{ operator: 'is', name: 'equals' },
+		{ operator: '!empty', name: 'is not empty' },
+		{ operator: 'empty', name: 'is empty' },
+	],
+	url: [
+		{ operator: 'is', name: 'equals' },
+		{ operator: 'contains', name: 'contains' },
+		{ operator: '!empty', name: 'is not empty' },
+		{ operator: 'empty', name: 'is empty' },
+	],
+	user: [
+		{ operator: 'is', name: 'equals' },
+		{ operator: '!empty', name: 'is not empty' },
+		{ operator: 'empty', name: 'is empty' },
+	],
+	file: [
+		{ operator: '!empty', name: 'is not empty' },
+		{ operator: 'empty', name: 'is empty' },
+	],
+}
+
+// Default operators for unknown field types
+const DEFAULT_OPERATORS = [
+	{ operator: 'is', name: 'equals' },
+	{ operator: '!is', name: 'is not' },
+	{ operator: 'contains', name: 'contains' },
+	{ operator: '!empty', name: 'is not empty' },
+	{ operator: 'empty', name: 'is empty' },
+]
+
 export default {
 	name: 'MetadataCheck',
-
-	components: {
-		NcSelect,
-	},
 
 	props: {
 		value: {
@@ -118,10 +274,11 @@ export default {
 		return {
 			fields: [],
 			groupfolders: [],
-			selectedField: null,
-			selectedGroupfolder: null,
-			selectedCheckOption: null,
+			selectedFieldName: '',
+			selectedGroupfolderId: '',
+			selectedMultipleValues: [],
 			checkValue: '',
+			selectedOperator: 'is',
 			loadingFields: false,
 			loadingGroupfolders: false,
 			isParsingConfig: false,
@@ -129,35 +286,53 @@ export default {
 	},
 
 	computed: {
-		operatorLabel() {
-			const op = this.check?.operator || 'is'
-			const labels = {
-				'is': '=',
-				'!is': '≠',
-				'matches': '~ (regex)',
-				'!matches': '!~ (regex)',
-				'contains': 'contains',
-				'!contains': 'not contains',
+		selectedField() {
+			if (!this.selectedFieldName) return null
+			return this.fields.find(f => f.name === this.selectedFieldName) || null
+		},
+		displayValue() {
+			if (this.isCheckboxField) {
+				return this.checkValue === '1' ? 'Yes' : 'No'
 			}
-			return labels[op] || op
+			return this.checkValue
+		},
+		availableOperators() {
+			return this.getOperatorsForFieldType(this.selectedField?.type)
+		},
+		operatorLabel() {
+			const found = this.availableOperators.find(o => o.operator === this.selectedOperator)
+			return found ? found.name : this.selectedOperator
+		},
+		showValueInput() {
+			// Hide value input for empty checks
+			const noValueOps = ['empty', '!empty']
+			// Default to true for text fields etc.
+			if (!this.selectedOperator || !noValueOps.includes(this.selectedOperator)) {
+				return true
+			}
+			return false
+		},
+		isCheckboxField() {
+			const type = this.selectedField?.type
+			return type === 'checkbox' || type === 'boolean'
+		},
+		isSelectField() {
+			const type = this.selectedField?.type
+			return type === 'select' || type === 'dropdown'
+		},
+		isMultiselectField() {
+			return this.selectedField?.type === 'multiselect'
 		},
 		fieldOptions() {
 			if (!this.selectedField?.options) {
 				return []
 			}
-			// Handle both array of strings and array of objects
 			return this.selectedField.options.map(opt => {
 				if (typeof opt === 'string') {
 					return { label: opt, value: opt }
 				}
 				return { label: opt.label || opt.value, value: opt.value || opt.label }
 			})
-		},
-		booleanOptions() {
-			return [
-				{ label: this.t('metavox', 'Yes / True'), value: 'true' },
-				{ label: this.t('metavox', 'No / False'), value: 'false' },
-			]
 		},
 		groupedFields() {
 			const groupfolderFields = this.fields.filter(f => f.appliesToGroupfolder)
@@ -170,7 +345,6 @@ export default {
 					label: this.t('metavox', '── File fields ──'),
 					name: '__header_file__',
 					isHeader: true,
-					$isDisabled: true,
 				})
 				result.push(...fileFields)
 			}
@@ -180,7 +354,6 @@ export default {
 					label: this.t('metavox', '── Team folder fields ──'),
 					name: '__header_groupfolder__',
 					isHeader: true,
-					$isDisabled: true,
 				})
 				result.push(...groupfolderFields)
 			}
@@ -195,12 +368,15 @@ export default {
 	},
 
 	activated() {
-		// Reload fields when component is re-activated (e.g., switching tabs)
 		this.loadFields()
 		this.loadGroupfolders()
 	},
 
 	methods: {
+		getOperatorsForFieldType(fieldType) {
+			return OPERATORS_BY_TYPE[fieldType] || DEFAULT_OPERATORS
+		},
+
 		async loadFields() {
 			this.loadingFields = true
 			try {
@@ -212,6 +388,12 @@ export default {
 					options: f.field_options || [],
 					appliesToGroupfolder: f.applies_to_groupfolder === true || f.applies_to_groupfolder === 1,
 				}))
+				// Parse existing config after fields are loaded
+				if (this.value) {
+					this.$nextTick(() => {
+						this.parseExistingConfig()
+					})
+				}
 			} catch (error) {
 				console.error('Failed to load metadata fields:', error)
 				this.fields = []
@@ -247,40 +429,34 @@ export default {
 				const config = JSON.parse(this.value)
 
 				if (config.field_name) {
-					const existing = this.fields.find(f => f.name === config.field_name)
-					if (existing) {
-						this.selectedField = existing
-					} else {
-						this.selectedField = {
-							name: config.field_name,
-							label: config.field_name,
-						}
-					}
+					this.selectedFieldName = config.field_name
 				}
 
-				if (config.value) {
-					this.checkValue = config.value
-					// Set selectedCheckOption for select/boolean fields
-					if (this.selectedField) {
-						const fieldType = this.selectedField.type
-						if (fieldType === 'select' || fieldType === 'dropdown') {
-							this.selectedCheckOption = this.fieldOptions.find(o => o.value === config.value) || null
-						} else if (fieldType === 'checkbox' || fieldType === 'boolean') {
-							this.selectedCheckOption = this.booleanOptions.find(o => o.value === config.value) || null
+				if (config.operator) {
+					this.selectedOperator = config.operator
+				} else {
+					// Default to first available operator for field type
+					const field = this.fields.find(f => f.name === config.field_name)
+					const operators = this.getOperatorsForFieldType(field?.type)
+					this.selectedOperator = operators.length > 0 ? operators[0].operator : 'is'
+				}
+
+				if (config.value !== undefined && config.value !== '') {
+					// Handle multi-select values (JSON array)
+					if (typeof config.value === 'string' && config.value.startsWith('[')) {
+						try {
+							this.selectedMultipleValues = JSON.parse(config.value)
+							this.checkValue = config.value
+						} catch {
+							this.checkValue = config.value
 						}
+					} else {
+						this.checkValue = config.value
 					}
 				}
 
 				if (config.groupfolder_id) {
-					const existing = this.groupfolders.find(gf => gf.id === config.groupfolder_id)
-					if (existing) {
-						this.selectedGroupfolder = existing
-					} else {
-						this.selectedGroupfolder = {
-							id: config.groupfolder_id,
-							label: `Team folder ${config.groupfolder_id}`,
-						}
-					}
+					this.selectedGroupfolderId = config.groupfolder_id
 				}
 			} catch (e) {
 				console.warn('Failed to parse existing check config:', e)
@@ -291,20 +467,41 @@ export default {
 			}
 		},
 
-		onSelectOptionChange(option) {
-			this.selectedCheckOption = option
-			this.checkValue = option?.value || ''
+		onFieldChange() {
+			if (!this.isParsingConfig) {
+				this.checkValue = ''
+				this.selectedMultipleValues = []
+				// Reset operator to first available for this field type
+				const operators = this.getOperatorsForFieldType(this.selectedField?.type)
+				this.selectedOperator = operators.length > 0 ? operators[0].operator : 'is'
+			}
+			this.updateValue()
+		},
+
+		onOperatorChange() {
+			// Clear value when switching to/from operators that don't need a value
+			const noValueOps = ['empty', '!empty']
+			if (noValueOps.includes(this.selectedOperator)) {
+				this.checkValue = ''
+				this.selectedMultipleValues = []
+			}
+			this.updateValue()
+		},
+
+		onMultiSelectChange() {
+			this.checkValue = JSON.stringify(this.selectedMultipleValues)
 			this.updateValue()
 		},
 
 		updateValue() {
 			const config = {
-				field_name: this.selectedField?.name || '',
+				field_name: this.selectedFieldName || '',
 				value: this.checkValue || '',
+				operator: this.selectedOperator || 'is',
 			}
 
-			if (this.selectedGroupfolder?.id) {
-				config.groupfolder_id = this.selectedGroupfolder.id
+			if (this.selectedGroupfolderId) {
+				config.groupfolder_id = this.selectedGroupfolderId
 			}
 
 			this.$emit('input', JSON.stringify(config))
@@ -325,32 +522,14 @@ export default {
 
 	watch: {
 		value: {
-			immediate: true,
+			immediate: false,
 			handler(newValue) {
-				if (newValue && this.fields.length > 0) {
+				// Only parse if value changed externally (not from our own updateValue)
+				// and fields are already loaded
+				if (newValue && this.fields.length > 0 && !this.isParsingConfig) {
 					this.parseExistingConfig()
 				}
 			},
-		},
-		fields() {
-			if (this.value && this.fields.length > 0) {
-				this.parseExistingConfig()
-			}
-		},
-		groupfolders() {
-			if (this.value && this.groupfolders.length > 0) {
-				this.parseExistingConfig()
-			}
-		},
-		checkValue() {
-			this.updateValue()
-		},
-		selectedField(newField, oldField) {
-			// Reset check value when field changes, but not during config parsing
-			if (newField?.name !== oldField?.name && !this.isParsingConfig) {
-				this.checkValue = ''
-				this.selectedCheckOption = null
-			}
 		},
 	},
 }
@@ -359,6 +538,8 @@ export default {
 <style scoped>
 .metavox-check {
 	padding: 8px 0;
+	min-width: 300px;
+	max-width: 350px;
 }
 
 .check-field {
@@ -379,19 +560,71 @@ export default {
 	margin: 4px 0 0 0;
 }
 
-.check-input {
+/* Nextcloud-style select input */
+.nc-select-input {
 	width: 100%;
-	padding: 8px 12px;
+	min-height: 34px;
+	padding: 6px 28px 6px 12px;
 	border: 2px solid var(--color-border-dark);
 	border-radius: var(--border-radius-large);
-	background: var(--color-main-background);
+	background-color: var(--color-main-background);
 	color: var(--color-main-text);
 	font-size: 14px;
+	cursor: pointer;
+	appearance: none;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'%3E%3Cpath fill='%23969696' d='M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 8px center;
+	background-size: 16px;
+	box-sizing: border-box;
 }
 
-.check-input:focus {
+.nc-select-input:hover {
+	border-color: var(--color-primary-element);
+}
+
+.nc-select-input:focus {
 	border-color: var(--color-primary-element);
 	outline: none;
+	box-shadow: 0 0 0 2px var(--color-primary-element-light);
+}
+
+.nc-select-input option:disabled {
+	color: var(--color-text-lighter);
+	font-weight: 600;
+}
+
+.nc-select-multiple {
+	min-height: 80px;
+	padding: 6px 12px;
+	background-image: none;
+}
+
+/* Nextcloud-style input field */
+.nc-input-field {
+	width: 100%;
+	min-height: 34px;
+	padding: 6px 12px;
+	border: 2px solid var(--color-border-dark);
+	border-radius: var(--border-radius-large);
+	background-color: var(--color-main-background);
+	color: var(--color-main-text);
+	font-size: 14px;
+	box-sizing: border-box;
+}
+
+.nc-input-field:hover {
+	border-color: var(--color-primary-element);
+}
+
+.nc-input-field:focus {
+	border-color: var(--color-primary-element);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--color-primary-element-light);
+}
+
+.nc-input-field::placeholder {
+	color: var(--color-text-lighter);
 }
 
 .check-preview {
@@ -420,5 +653,11 @@ export default {
 	color: var(--color-text-lighter);
 	text-transform: uppercase;
 	letter-spacing: 0.5px;
+}
+
+.loading-indicator {
+	font-size: 12px;
+	color: var(--color-text-lighter);
+	margin-left: 8px;
 }
 </style>
