@@ -14,3 +14,7 @@ node_modules
 
 # Build
 *.log
+
+# GitHub push helper (internal)
+push-to-github.sh
+.gitignore-github
