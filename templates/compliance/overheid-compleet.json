@@ -12,13 +12,13 @@
     "field_type": "multiselect",
     "field_description": "Welke categorieën persoonsgegevens bevat dit document?",
     "field_options": [
-      {"value": "Naam en adresgegevens"},
-      {"value": "Financiële gegevens"},
-      {"value": "Gezondheidsgegevens"},
-      {"value": "Strafrechtelijke gegevens"},
-      {"value": "Biometrische gegevens"},
-      {"value": "Religie of politieke voorkeur"},
-      {"value": "Geen persoonsgegevens"}
+      "Naam en adresgegevens",
+      "Financiële gegevens",
+      "Gezondheidsgegevens",
+      "Strafrechtelijke gegevens",
+      "Biometrische gegevens",
+      "Religie of politieke voorkeur",
+      "Geen persoonsgegevens"
     ],
     "is_required": false
   },
@@ -28,12 +28,12 @@
     "field_type": "select",
     "field_description": "Op welke AVG-grondslag wordt verwerkt?",
     "field_options": [
-      {"value": "Toestemming"},
-      {"value": "Uitvoering overeenkomst"},
-      {"value": "Wettelijke verplichting"},
-      {"value": "Vitaal belang"},
-      {"value": "Publieke taak"},
-      {"value": "Gerechtvaardigd belang"}
+      "Toestemming",
+      "Uitvoering overeenkomst",
+      "Wettelijke verplichting",
+      "Vitaal belang",
+      "Publieke taak",
+      "Gerechtvaardigd belang"
     ],
     "is_required": false
   },
@@ -43,10 +43,10 @@
     "field_type": "select",
     "field_description": "Status volgens Wet Open Overheid",
     "field_options": [
-      {"value": "Openbaar"},
-      {"value": "Deels openbaar"},
-      {"value": "Niet openbaar"},
-      {"value": "Nog te beoordelen"}
+      "Openbaar",
+      "Deels openbaar",
+      "Niet openbaar",
+      "Nog te beoordelen"
     ],
     "is_required": true
   },
@@ -56,15 +56,15 @@
     "field_type": "select",
     "field_description": "Informatiecategorie volgens WOO artikel 3.3",
     "field_options": [
-      {"value": "Wet- en regelgeving"},
-      {"value": "Organisatiegegevens"},
-      {"value": "Raadsstukken"},
-      {"value": "Convenanten"},
-      {"value": "Subsidies"},
-      {"value": "Onderzoeksrapporten"},
-      {"value": "Beschikkingen"},
-      {"value": "Klachten"},
-      {"value": "Overig"}
+      "Wet- en regelgeving",
+      "Organisatiegegevens",
+      "Raadsstukken",
+      "Convenanten",
+      "Subsidies",
+      "Onderzoeksrapporten",
+      "Beschikkingen",
+      "Klachten",
+      "Overig"
     ],
     "is_required": false
   },
@@ -74,12 +74,12 @@
     "field_type": "multiselect",
     "field_description": "Reden voor beperkte openbaarheid (WOO artikel 5.1-5.5)",
     "field_options": [
-      {"value": "Persoonlijke levenssfeer"},
-      {"value": "Bedrijfs- en fabricagegegevens"},
-      {"value": "Opsporing en vervolging"},
-      {"value": "Inspectie, controle en toezicht"},
-      {"value": "Staatsveiligheid"},
-      {"value": "Niet van toepassing"}
+      "Persoonlijke levenssfeer",
+      "Bedrijfs- en fabricagegegevens",
+      "Opsporing en vervolging",
+      "Inspectie, controle en toezicht",
+      "Staatsveiligheid",
+      "Niet van toepassing"
     ],
     "is_required": false
   },
@@ -89,9 +89,9 @@
     "field_type": "select",
     "field_description": "Categorie volgens selectielijst",
     "field_options": [
-      {"value": "Te vernietigen"},
-      {"value": "Blijvend te bewaren"},
-      {"value": "Over te brengen naar archiefbewaarplaats"}
+      "Te vernietigen",
+      "Blijvend te bewaren",
+      "Over te brengen naar archiefbewaarplaats"
     ],
     "is_required": true
   },
@@ -129,10 +129,10 @@
     "field_type": "select",
     "field_description": "Status van het dossier",
     "field_options": [
-      {"value": "Lopend"},
-      {"value": "Afgesloten"},
-      {"value": "Gearchiveerd"},
-      {"value": "Vernietigd"}
+      "Lopend",
+      "Afgesloten",
+      "Gearchiveerd",
+      "Vernietigd"
     ],
     "is_required": false
   }
