@@ -1,0 +1,71 @@
+[
+  {
+    "field_name": "openbaarheid_status",
+    "field_label": "Openbaarheidsstatus",
+    "field_type": "select",
+    "field_description": "Status volgens Wet Open Overheid",
+    "field_options": [
+      {"value": "Openbaar"},
+      {"value": "Deels openbaar"},
+      {"value": "Niet openbaar"},
+      {"value": "Nog te beoordelen"}
+    ],
+    "is_required": true
+  },
+  {
+    "field_name": "woo_categorie",
+    "field_label": "WOO Categorie",
+    "field_type": "select",
+    "field_description": "Informatiecategorie volgens WOO artikel 3.3",
+    "field_options": [
+      {"value": "Wet- en regelgeving"},
+      {"value": "Organisatiegegevens"},
+      {"value": "Raadsstukken"},
+      {"value": "Convenanten"},
+      {"value": "Subsidies"},
+      {"value": "Onderzoeksrapporten"},
+      {"value": "Beschikkingen"},
+      {"value": "Klachten"},
+      {"value": "Overig"}
+    ],
+    "is_required": false
+  },
+  {
+    "field_name": "uitzonderingsgrond",
+    "field_label": "Uitzonderingsgrond",
+    "field_type": "multiselect",
+    "field_description": "Reden voor beperkte openbaarheid (WOO artikel 5.1-5.5)",
+    "field_options": [
+      {"value": "Persoonlijke levenssfeer"},
+      {"value": "Bedrijfs- en fabricagegegevens"},
+      {"value": "Opsporing en vervolging"},
+      {"value": "Inspectie, controle en toezicht"},
+      {"value": "Staatsveiligheid"},
+      {"value": "Internationale betrekkingen"},
+      {"value": "Financiële belangen"},
+      {"value": "Niet van toepassing"}
+    ],
+    "is_required": false
+  },
+  {
+    "field_name": "woo_verzoek_datum",
+    "field_label": "WOO-verzoek ontvangen",
+    "field_type": "date",
+    "field_description": "Datum waarop WOO-verzoek is ontvangen (indien van toepassing)",
+    "is_required": false
+  },
+  {
+    "field_name": "actieve_openbaarmaking",
+    "field_label": "Actieve openbaarmaking",
+    "field_type": "checkbox",
+    "field_description": "Valt onder actieve openbaarmakingsplicht (WOO artikel 3.3)?",
+    "is_required": false
+  },
+  {
+    "field_name": "publicatiedatum_woo",
+    "field_label": "Publicatiedatum",
+    "field_type": "date",
+    "field_description": "Datum waarop document openbaar is gemaakt",
+    "is_required": false
+  }
+]
