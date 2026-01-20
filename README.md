@@ -30,10 +30,48 @@ MetaVox is suitable for:
 
 While Nextcloud provides basic metadata capabilities (tags, comments, etc.), MetaVox introduces **rich, structured semantic metadata** to support use cases such as:
 
-- Curriculum and course tagging  
-- Policy and compliance classification  
-- Research annotation  
-- Document lifecycle and role-specific categorization  
+- Curriculum and course tagging
+- Policy and compliance classification
+- Research annotation
+- Document lifecycle and role-specific categorization
+
+## 🏛️ Government Compliance Templates
+
+MetaVox includes ready-to-use metadata templates for Dutch government compliance requirements. These templates help organizations meet their obligations under:
+
+- **AVG (GDPR)** - Classify documents containing personal data, track processing grounds and retention periods
+- **Wet Open Overheid (WOO)** - Manage publication status, information categories, and exception grounds
+- **Archiefwet** - Track retention periods, selection list codes, and archival status
+
+### Quick Start
+
+1. Download a template from [`/templates/compliance/`](templates/compliance/)
+2. Go to **Settings** > **MetaVox** > **Team folder Metadata**
+3. Click **Select JSON File** and import the template
+4. Start classifying your documents
+
+### Available Templates
+
+| Template | Description |
+|----------|-------------|
+| `avg-compliance.json` | Personal data classification, processing grounds, retention |
+| `woo-compliance.json` | Publication status, WOO categories, exception grounds |
+| `archiefwet-compliance.json` | Archival categories, destruction dates, selection list codes |
+| `overheid-compleet.json` | Combined template with all essential fields |
+
+See [`/docs/COMPLIANCE_TEMPLATES.md`](docs/COMPLIANCE_TEMPLATES.md) for detailed documentation and Flow integration examples.
+
+### Why Metadata-First?
+
+Traditional document-centric approaches (Word, PDF) store information in formats designed for printing, not searching. This makes compliance challenging:
+- WOO requests require manual document review
+- AVG accountability is difficult to demonstrate
+- Archival selection is time-consuming
+
+MetaVox separates metadata from content, enabling:
+- Machine-readable classification
+- Automated workflows via Nextcloud Flow
+- Faster compliance reporting  
 
 # MetaVox - Metadata Management Requirements
 

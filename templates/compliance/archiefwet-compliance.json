@@ -1,0 +1,69 @@
+[
+  {
+    "field_name": "archiefcategorie",
+    "field_label": "Archiefcategorie",
+    "field_type": "select",
+    "field_description": "Categorie volgens selectielijst",
+    "field_options": [
+      {"value": "Te vernietigen"},
+      {"value": "Blijvend te bewaren"},
+      {"value": "Over te brengen naar archiefbewaarplaats"}
+    ],
+    "is_required": true
+  },
+  {
+    "field_name": "vernietigingsjaar",
+    "field_label": "Vernietigingsjaar",
+    "field_type": "number",
+    "field_description": "Jaar waarin document vernietigd moet worden",
+    "is_required": false
+  },
+  {
+    "field_name": "selectielijst_code",
+    "field_label": "Selectielijst code",
+    "field_type": "text",
+    "field_description": "Code uit de gemeentelijke/rijks selectielijst",
+    "is_required": false
+  },
+  {
+    "field_name": "zaaktype",
+    "field_label": "Zaaktype",
+    "field_type": "text",
+    "field_description": "Type zaak waartoe dit document behoort",
+    "is_required": false
+  },
+  {
+    "field_name": "dossier_status",
+    "field_label": "Dossierstatus",
+    "field_type": "select",
+    "field_description": "Status van het dossier",
+    "field_options": [
+      {"value": "Lopend"},
+      {"value": "Afgesloten"},
+      {"value": "Gearchiveerd"},
+      {"value": "Vernietigd"}
+    ],
+    "is_required": false
+  },
+  {
+    "field_name": "bewaartermijn_jaren",
+    "field_label": "Bewaartermijn (jaren)",
+    "field_type": "number",
+    "field_description": "Bewaartermijn in jaren volgens selectielijst",
+    "is_required": false
+  },
+  {
+    "field_name": "archiefdatum",
+    "field_label": "Archiefdatum",
+    "field_type": "date",
+    "field_description": "Datum waarop dossier is afgesloten/gearchiveerd",
+    "is_required": false
+  },
+  {
+    "field_name": "archieflocatie",
+    "field_label": "Archieflocatie",
+    "field_type": "text",
+    "field_description": "Fysieke of digitale locatie in archief",
+    "is_required": false
+  }
+]

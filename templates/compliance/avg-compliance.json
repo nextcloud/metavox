@@ -1,0 +1,54 @@
+[
+  {
+    "field_name": "bevat_persoonsgegevens",
+    "field_label": "Bevat persoonsgegevens",
+    "field_type": "checkbox",
+    "field_description": "Bevat dit document persoonsgegevens volgens AVG?",
+    "is_required": true
+  },
+  {
+    "field_name": "categorie_persoonsgegevens",
+    "field_label": "Categorie persoonsgegevens",
+    "field_type": "multiselect",
+    "field_description": "Welke categorieën persoonsgegevens bevat dit document?",
+    "field_options": [
+      {"value": "Naam en adresgegevens"},
+      {"value": "Financiële gegevens"},
+      {"value": "Gezondheidsgegevens"},
+      {"value": "Strafrechtelijke gegevens"},
+      {"value": "Biometrische gegevens"},
+      {"value": "Religie of politieke voorkeur"},
+      {"value": "Geen persoonsgegevens"}
+    ],
+    "is_required": false
+  },
+  {
+    "field_name": "grondslag_verwerking",
+    "field_label": "Grondslag verwerking",
+    "field_type": "select",
+    "field_description": "Op welke AVG-grondslag wordt verwerkt?",
+    "field_options": [
+      {"value": "Toestemming"},
+      {"value": "Uitvoering overeenkomst"},
+      {"value": "Wettelijke verplichting"},
+      {"value": "Vitaal belang"},
+      {"value": "Publieke taak"},
+      {"value": "Gerechtvaardigd belang"}
+    ],
+    "is_required": false
+  },
+  {
+    "field_name": "bewaartermijn_avg",
+    "field_label": "Bewaartermijn (jaren)",
+    "field_type": "number",
+    "field_description": "Maximale bewaartermijn volgens AVG (in jaren)",
+    "is_required": false
+  },
+  {
+    "field_name": "verwerkingsverantwoordelijke",
+    "field_label": "Verwerkingsverantwoordelijke",
+    "field_type": "text",
+    "field_description": "Wie is verantwoordelijk voor de verwerking van deze gegevens?",
+    "is_required": false
+  }
+]
