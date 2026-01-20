@@ -5,9 +5,9 @@
     "field_type": "select",
     "field_description": "Categorie volgens selectielijst",
     "field_options": [
-      {"value": "Te vernietigen"},
-      {"value": "Blijvend te bewaren"},
-      {"value": "Over te brengen naar archiefbewaarplaats"}
+      "Te vernietigen",
+      "Blijvend te bewaren",
+      "Over te brengen naar archiefbewaarplaats"
     ],
     "is_required": true
   },
@@ -38,10 +38,10 @@
     "field_type": "select",
     "field_description": "Status van het dossier",
     "field_options": [
-      {"value": "Lopend"},
-      {"value": "Afgesloten"},
-      {"value": "Gearchiveerd"},
-      {"value": "Vernietigd"}
+      "Lopend",
+      "Afgesloten",
+      "Gearchiveerd",
+      "Vernietigd"
     ],
     "is_required": false
   },
