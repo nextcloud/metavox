@@ -1,150 +1,150 @@
-# Compliance Templates voor Nederlandse Overheid
+# Compliance Templates for Dutch Government
 
-MetaVox bevat voorgedefinieerde metadata templates voor Nederlandse overheidscompliance. Deze templates helpen bij het voldoen aan de AVG, Wet Open Overheid (WOO) en Archiefwet.
+MetaVox includes predefined metadata templates for Dutch government compliance. These templates help organizations meet their obligations under GDPR (AVG), the Open Government Act (WOO), and the Archives Act (Archiefwet).
 
-## Beschikbare Templates
+## Available Templates
 
-| Template | Bestand | Doel |
-|----------|---------|------|
-| AVG Compliance | `avg-compliance.json` | Classificatie persoonsgegevens en verwerkingsgrondslagen |
-| WOO Compliance | `woo-compliance.json` | Openbaarheidsstatus en informatiecategorieën |
-| Archiefwet | `archiefwet-compliance.json` | Bewaartermijnen en selectielijst codes |
-| Compleet | `overheid-compleet.json` | Alle velden gecombineerd |
+| Template | File | Purpose |
+|----------|------|---------|
+| GDPR Compliance | `avg-compliance.json` | Personal data classification and processing grounds |
+| WOO Compliance | `woo-compliance.json` | Publication status and information categories |
+| Archives Act | `archiefwet-compliance.json` | Retention periods and selection list codes |
+| Complete | `overheid-compleet.json` | All fields combined |
 
-## Installatie
+## Installation
 
-1. Ga naar **Instellingen** > **MetaVox** > **Team folder Metadata**
-2. Klik op **Select JSON File** onder "Import & Export"
-3. Selecteer het gewenste template bestand uit `/templates/compliance/`
-4. Bekijk de preview en klik op **Confirm Import**
+1. Go to **Settings** > **MetaVox** > **Team folder Metadata**
+2. Click **Select JSON File** under "Import & Export"
+3. Select the desired template file from `/templates/compliance/`
+4. Review the preview and click **Confirm Import**
 
 ## Template Details
 
-### AVG Compliance (`avg-compliance.json`)
+### GDPR Compliance (`avg-compliance.json`)
 
-Velden voor het classificeren van documenten volgens de Algemene Verordening Gegevensbescherming:
+Fields for classifying documents according to the General Data Protection Regulation (GDPR/AVG):
 
-| Veld | Type | Beschrijving |
-|------|------|--------------|
-| Bevat persoonsgegevens | Checkbox | Verplicht - geeft aan of document persoonsgegevens bevat |
-| Categorie persoonsgegevens | Multiselect | Welke categorieën (naam/adres, financieel, gezondheid, etc.) |
-| Grondslag verwerking | Select | AVG-grondslag (toestemming, overeenkomst, wettelijk, etc.) |
-| Bewaartermijn (jaren) | Nummer | Maximale bewaartermijn volgens AVG |
-| Verwerkingsverantwoordelijke | Tekst | Wie is verantwoordelijk voor de verwerking |
+| Field | Type | Description |
+|-------|------|-------------|
+| Contains personal data | Checkbox | Required - indicates whether document contains personal data |
+| Personal data category | Multiselect | Which categories (name/address, financial, health, etc.) |
+| Processing ground | Select | GDPR legal basis (consent, contract, legal obligation, etc.) |
+| Retention period (years) | Number | Maximum retention period according to GDPR |
+| Data controller | Text | Who is responsible for data processing |
 
-**Use case**: AVG-verantwoording bij verzoeken van betrokkenen of Autoriteit Persoonsgegevens.
+**Use case**: GDPR accountability for data subject requests or Data Protection Authority inquiries.
 
 ### WOO Compliance (`woo-compliance.json`)
 
-Velden voor het classificeren van documenten volgens de Wet Open Overheid:
+Fields for classifying documents according to the Open Government Act (Wet Open Overheid):
 
-| Veld | Type | Beschrijving |
-|------|------|--------------|
-| Openbaarheidsstatus | Select | Verplicht - openbaar, deels openbaar, niet openbaar |
-| WOO Categorie | Select | Informatiecategorie volgens artikel 3.3 |
-| Uitzonderingsgrond | Multiselect | Reden voor beperkte openbaarheid (artikel 5.1-5.5) |
-| WOO-verzoek ontvangen | Datum | Datum van binnenkomst WOO-verzoek |
-| Actieve openbaarmaking | Checkbox | Valt onder actieve openbaarmakingsplicht |
-| Publicatiedatum | Datum | Wanneer openbaar gemaakt |
+| Field | Type | Description |
+|-------|------|-------------|
+| Publication status | Select | Required - public, partially public, not public |
+| WOO Category | Select | Information category according to article 3.3 |
+| Exception ground | Multiselect | Reason for limited publication (articles 5.1-5.5) |
+| WOO request received | Date | Date when WOO request was received |
+| Active publication | Checkbox | Subject to active publication obligation |
+| Publication date | Date | When document was made public |
 
-**Use case**: Snel beantwoorden van WOO-verzoeken, identificeren van documenten voor actieve openbaarmaking.
+**Use case**: Quickly responding to WOO requests, identifying documents for proactive publication.
 
-### Archiefwet (`archiefwet-compliance.json`)
+### Archives Act (`archiefwet-compliance.json`)
 
-Velden voor archivering en selectielijst compliance:
+Fields for archival and selection list compliance:
 
-| Veld | Type | Beschrijving |
-|------|------|--------------|
-| Archiefcategorie | Select | Verplicht - te vernietigen, blijvend bewaren, overbrengen |
-| Vernietigingsjaar | Nummer | Jaar waarin document vernietigd moet worden |
-| Selectielijst code | Tekst | Code uit VNG of rijks selectielijst |
-| Zaaktype | Tekst | Type zaak waartoe document behoort |
-| Dossierstatus | Select | Lopend, afgesloten, gearchiveerd, vernietigd |
-| Bewaartermijn (jaren) | Nummer | Bewaartermijn volgens selectielijst |
-| Archiefdatum | Datum | Datum van archivering |
-| Archieflocatie | Tekst | Fysieke of digitale locatie |
+| Field | Type | Description |
+|-------|------|-------------|
+| Archive category | Select | Required - to be destroyed, permanent retention, transfer |
+| Destruction year | Number | Year in which document must be destroyed |
+| Selection list code | Text | Code from VNG or national selection list |
+| Case type | Text | Type of case the document belongs to |
+| Dossier status | Select | Open, closed, archived, destroyed |
+| Retention period (years) | Number | Retention period according to selection list |
+| Archive date | Date | Date of archival |
+| Archive location | Text | Physical or digital location |
 
-**Use case**: Beheer van bewaartermijnen, voorbereiding op overbrenging naar archiefbewaarplaats.
+**Use case**: Retention period management, preparation for transfer to archival repository.
 
-### Compleet Template (`overheid-compleet.json`)
+### Complete Template (`overheid-compleet.json`)
 
-Combineert de belangrijkste velden uit alle drie de templates voor organisaties die een volledig compliance-pakket nodig hebben. Bevat 12 velden die de essentiële aspecten van AVG, WOO en Archiefwet dekken.
+Combines the most important fields from all three templates for organizations that need a complete compliance package. Contains 12 fields covering the essential aspects of GDPR, WOO, and Archives Act.
 
-## Nextcloud Flow Integratie
+## Nextcloud Flow Integration
 
-Combineer MetaVox metadata met Nextcloud Flow voor automatisering:
+Combine MetaVox metadata with Nextcloud Flow for automation:
 
-### Voorbeeld 1: Blokkeer toegang tot niet-geclassificeerde documenten
+### Example 1: Block access to unclassified documents
 
-1. Ga naar **Instellingen** > **Flow**
-2. Klik op **Add new flow**
+1. Go to **Settings** > **Flow**
+2. Click **Add new flow**
 3. Trigger: "File accessed"
-4. Conditie: MetaVox metadata > `openbaarheid_status` **is** `Nog te beoordelen`
-5. Actie: **Block access**
+4. Condition: MetaVox metadata > `openbaarheid_status` **is** `Nog te beoordelen`
+5. Action: **Block access**
 
-### Voorbeeld 2: Notificatie bij naderende vernietigingsdatum
+### Example 2: Notification for approaching destruction date
 
-1. Maak een Flow rule met trigger "File accessed"
-2. Conditie: MetaVox metadata > `vernietigingsjaar` **is** `2026`
-3. Actie: **Send notification** "Document nadert vernietigingsdatum"
+1. Create a Flow rule with trigger "File accessed"
+2. Condition: MetaVox metadata > `vernietigingsjaar` **is** `2026`
+3. Action: **Send notification** "Document approaching destruction date"
 
-### Voorbeeld 3: Automatisch markeren voor archivering
+### Example 3: Automatically mark for archival
 
-1. Trigger: "Tag assigned" of periodiek via background job
-2. Conditie: MetaVox metadata > `dossier_status` **is** `Afgesloten`
-3. Actie: Verplaats naar archief-folder of stuur notificatie naar archivaris
+1. Trigger: "Tag assigned" or periodically via background job
+2. Condition: MetaVox metadata > `dossier_status` **is** `Afgesloten`
+3. Action: Move to archive folder or send notification to archivist
 
-## Wettelijke Context
+## Legal Context
 
-### AVG (GDPR)
-De Algemene Verordening Gegevensbescherming vereist dat organisaties:
-- Weten welke persoonsgegevens ze verwerken
-- Een geldige grondslag hebben voor verwerking
-- Persoonsgegevens niet langer bewaren dan noodzakelijk
+### GDPR (AVG)
+The General Data Protection Regulation requires organizations to:
+- Know which personal data they process
+- Have a valid legal basis for processing
+- Not retain personal data longer than necessary
 
-### Wet Open Overheid (WOO)
-De WOO verplicht overheidsorganisaties tot:
-- Actieve openbaarmaking van bepaalde categorieën informatie
-- Transparantie over welke informatie wel/niet openbaar is
-- Snelle afhandeling van informatieverzoeken
+### Open Government Act (WOO)
+The WOO requires government organizations to:
+- Proactively publish certain categories of information
+- Be transparent about which information is/isn't public
+- Handle information requests promptly
 
-### Archiefwet
-De Archiefwet stelt eisen aan:
-- Selectie en waardering van documenten
-- Bewaartermijnen en vernietiging
-- Overbrenging naar archiefbewaarplaats
+### Archives Act (Archiefwet)
+The Archives Act sets requirements for:
+- Selection and appraisal of documents
+- Retention periods and destruction
+- Transfer to archival repository
 
-## Aanpassen van Templates
+## Customizing Templates
 
-De templates zijn een startpunt. Pas ze aan voor uw organisatie:
+The templates are a starting point. Customize them for your organization:
 
-1. **Exporteer** de huidige velden via MetaVox Admin
-2. **Bewerk** het JSON bestand
-3. **Importeer** de aangepaste versie
+1. **Export** current fields via MetaVox Admin
+2. **Edit** the JSON file
+3. **Import** the customized version
 
-### JSON Structuur
+### JSON Structure
 
 ```json
 [
   {
-    "field_name": "interne_naam",
-    "field_label": "Weergavenaam",
+    "field_name": "internal_name",
+    "field_label": "Display Name",
     "field_type": "select",
-    "field_description": "Uitleg voor gebruikers",
+    "field_description": "Explanation for users",
     "field_options": [
-      {"value": "Optie 1"},
-      {"value": "Optie 2"}
+      {"value": "Option 1"},
+      {"value": "Option 2"}
     ],
     "is_required": true
   }
 ]
 ```
 
-**Beschikbare field types**: `text`, `textarea`, `number`, `date`, `select`, `multiselect`, `checkbox`, `url`, `usergroup`, `filelink`
+**Available field types**: `text`, `textarea`, `number`, `date`, `select`, `multiselect`, `checkbox`, `url`, `usergroup`, `filelink`
 
-## Ondersteuning
+## Resources
 
 - [MetaVox GitHub](https://github.com/nextcloud/metavox)
-- [VNG Selectielijst](https://vng.nl/selectielijst) - Officiële gemeentelijke selectielijst
-- [Autoriteit Persoonsgegevens](https://autoriteitpersoonsgegevens.nl) - AVG-informatie
-- [Wet Open Overheid](https://wetten.overheid.nl/BWBR0045754) - Officiële wettekst
+- [VNG Selection List](https://vng.nl/selectielijst) - Official municipal selection list (Dutch)
+- [Dutch Data Protection Authority](https://autoriteitpersoonsgegevens.nl) - GDPR information (Dutch)
+- [Open Government Act](https://wetten.overheid.nl/BWBR0045754) - Official legal text (Dutch)
