@@ -6,9 +6,15 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.4.7] - 2026-01-09
+## [1.4.7] - 2026-01-24
 
 ### Added
+- **Telemetry Service**: Optional anonymous usage statistics to help improve MetaVox
+  - Collects anonymous metrics: field counts, metadata entries, groupfolder usage, user counts
+  - Instance identification via hashed URL (fully anonymous)
+  - Opt-out via admin settings (enabled by default)
+  - Background job runs daily to send reports
+  - Admin panel shows telemetry status and last report time
 - **Field-type specific operators in Flow**: Operators now dynamically change based on selected metadata field type
   - Text/Textarea: `equals`, `contains`, `does not contain`, `is not empty`, `is empty`
   - Date: `equals`, `is before`, `is after`, `is not empty`, `is empty`
@@ -29,6 +35,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Fixed Flow check configuration not loading on page refresh (timing issue with fields API)
 - Fixed value input not refreshing when switching between different field types
 - Fixed input alignment issues in Flow configuration panel
+- Fixed bulk metadata editor opening when selecting a single file (now only shows for 2+ files)
 
 ---
 

@@ -41,4 +41,7 @@
         <personal>OCA\MetaVox\Settings\Personal</personal>
         <personal-section>OCA\MetaVox\Settings\PersonalSection</personal-section>
     </settings>
+    <background-jobs>
+        <job>OCA\MetaVox\BackgroundJobs\TelemetryJob</job>
+    </background-jobs>
 </info>
