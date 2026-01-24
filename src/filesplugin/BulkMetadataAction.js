@@ -79,14 +79,15 @@ export function registerBulkMetadataAction() {
 		iconSvgInline: () => metadataIconSvg,
 
 		// Enable for files and folders with write permission
+		// Only show for multi-select (2+ files) - single file uses sidebar tab
 		// v3.x: enabled(nodes, view)
 		// v4.x: enabled({ nodes, view, folder, contents })
 		enabled(nodesOrContext, view) {
 			// Detect API version: v4.x passes an object with 'nodes' property
 			const nodes = Array.isArray(nodesOrContext) ? nodesOrContext : nodesOrContext?.nodes
 
-			// Must have at least one node
-			if (!nodes || nodes.length === 0) {
+			// Must have more than one node (bulk action only)
+			if (!nodes || nodes.length < 2) {
 				return false
 			}
 

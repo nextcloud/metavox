@@ -70,6 +70,13 @@ return [
         // Revoke permissions
         ['name' => 'permission#revokeUserPermission', 'url' => '/api/permissions/user/{permissionId}', 'verb' => 'DELETE'],
         ['name' => 'permission#revokeGroupPermission', 'url' => '/api/permissions/group/{permissionId}', 'verb' => 'DELETE'],
+
+        // ========================================
+        // 📊 TELEMETRY ROUTES (Admin only)
+        // ========================================
+        ['name' => 'telemetry#getStatus', 'url' => '/api/telemetry/status', 'verb' => 'GET'],
+        ['name' => 'telemetry#sendTelemetry', 'url' => '/api/telemetry/send', 'verb' => 'POST'],
+        ['name' => 'telemetry#saveSettings', 'url' => '/api/telemetry/settings', 'verb' => 'POST'],
     ],
 
     // ========================================
