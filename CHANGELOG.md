@@ -11,7 +11,6 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Fixed
 - Fixed Files app detection not working behind reverse proxy with subpath (e.g., `/nextcloud/apps/files`)
   - Now uses both `getRequestUri()` and `getPathInfo()` for reliable detection
-  - Thanks to @user for debugging and reporting this issue
 
 ---
 
