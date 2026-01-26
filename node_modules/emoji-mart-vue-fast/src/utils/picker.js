@@ -28,6 +28,14 @@ export class PickerView {
 
   onScroll() {
     const scrollElement = this._vm.$refs.scroll
+
+    if (!scrollElement) {
+      // Reported in https://github.com/serebrov/emoji-mart-vue/issues/305
+      // Would be good to understand how it can happen, but at least
+      // exiting early we prevent the error.
+      return
+    }
+
     const scrollTop = scrollElement.scrollTop
 
     let activeCategory = this.filteredCategories[0]

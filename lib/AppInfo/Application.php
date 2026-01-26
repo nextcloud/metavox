@@ -51,10 +51,16 @@ class Application extends App implements IBootstrap {
         $request = \OC::$server->getRequest();
         $requestUri = $request->getRequestUri();
 
+        // Also check pathInfo for reverse proxy setups with subpaths
+        // getPathInfo() returns the Nextcloud-specific path without proxy prefix
+        $pathInfo = $request->getPathInfo() ?? '';
+
         // Check URL patterns for Files app using PHP 8 str_contains
+        // Check both requestUri (direct access) and pathInfo (behind reverse proxy)
         $isFilesApp = (
             str_contains($requestUri, '/apps/files') ||
             str_contains($requestUri, '/index.php/apps/files') ||
+            str_contains($pathInfo, '/apps/files') ||
             (($_GET['app'] ?? '') === 'files') ||
             (($_POST['app'] ?? '') === 'files')
         );

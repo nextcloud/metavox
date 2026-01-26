@@ -1,6 +1,10 @@
+<!--
+  - SPDX-FileCopyrightText: 2019-2024 Nextcloud GmbH and Nextcloud contributors
+  - SPDX-License-Identifier: GPL-3.0-or-later
+-->
 # @nextcloud/logger
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/nextcloud-libraries/nextcloud-logger/node.yml?branch=master)](https://github.com/nextcloud-libraries/nextcloud-logger/actions/workflows/node.yml) [![Code coverage](https://img.shields.io/codecov/c/gh/nextcloud-libraries/nextcloud-logger/master)](https://app.codecov.io/gh/nextcloud-libraries/nextcloud-logger) [![npm](https://img.shields.io/npm/v/@nextcloud/logger.svg)](https://www.npmjs.com/package/@nextcloud/logger)
+[![REUSE status](https://api.reuse.software/badge/github.com/nextcloud-libraries/nextcloud-logger)](https://api.reuse.software/info/github.com/nextcloud-libraries/nextcloud-logger) [![Build Status](https://img.shields.io/github/actions/workflow/status/nextcloud-libraries/nextcloud-logger/node.yml?branch=master)](https://github.com/nextcloud-libraries/nextcloud-logger/actions/workflows/node.yml) [![Code coverage](https://img.shields.io/codecov/c/gh/nextcloud-libraries/nextcloud-logger/master)](https://app.codecov.io/gh/nextcloud-libraries/nextcloud-logger) [![npm](https://img.shields.io/npm/v/@nextcloud/logger.svg)](https://www.npmjs.com/package/@nextcloud/logger)
 [![Documentation](https://img.shields.io/badge/Documentation-online-brightgreen)](https://nextcloud.github.io/nextcloud-logger/)
 
 Generic JavaScript logging interface for Nextcloud apps and libraries
