@@ -20,6 +20,7 @@
     .vs__clear,
     .vs__search,
     .vs__selected,
+    .vs__open-indicator-button,
     .vs__open-indicator {
         cursor: var(--vs-disabled-cursor);
         background-color: var(--vs-disabled-bg);

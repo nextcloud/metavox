@@ -4,6 +4,7 @@
 @import 'global/states.css';
 
 @import 'modules/dropdown-toggle.css';
+@import 'modules/open-indicator-button.css';
 @import 'modules/open-indicator.css';
 @import 'modules/clear.css';
 @import 'modules/dropdown-menu.css';
