@@ -6,6 +6,29 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.4.9] - 2026-01-31
+
+### Changed
+- **Renamed Telemetry tab to Statistics**: Admin settings tab renamed from "Telemetry" to "Statistics" for consistency with IntraVox and FormVox apps
+- **Updated "About" section to "The Future of MetaVox"**: New section explaining potential future licensing model for larger organizations
+  - Clear communication that MetaVox remains free for most users
+  - Promises: free tier for small/medium installations, all current features remain available, transparent pricing
+
+### Added
+- **Telemetry expansion**: Added 7 new server configuration fields to anonymous usage statistics
+  - Country code, database type, default language, timezone, OS family, web server, Docker detection
+- **Send report now button**: Manual telemetry report trigger in admin Statistics tab
+- New Statistics API endpoint (`/api/telemetry/stats`) for admin panel statistics display
+- Metadata statistics overview showing field counts, team folders with metadata, and total entries
+- **Complete French (fr) translations**: Full translation of all 252 strings
+- **Complete German (de) translations**: Full translation of all 252 strings
+- **Complete Dutch (nl) translations**: Full translation of all 252 strings
+
+### Fixed
+- **Telemetry countryCode and timezone**: Country code now derived from `default_phone_region` instead of `default_language` (which produced invalid codes like `EN`). Timezone uses smarter fallback: Nextcloud config → php.ini → UTC
+
+---
+
 ## [1.4.8] - 2026-01-26
 
 ### Fixed

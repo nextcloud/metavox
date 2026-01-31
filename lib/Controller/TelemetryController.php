@@ -82,6 +82,41 @@ class TelemetryController extends Controller {
     }
 
     /**
+     * Get statistics for admin panel display
+     *
+     * Admin only - no @NoAdminRequired annotation.
+     *
+     * @NoCSRFRequired
+     *
+     * @return DataResponse
+     */
+    public function getStats(): DataResponse {
+        if (!$this->isAdmin()) {
+            return new DataResponse([
+                'success' => false,
+                'message' => 'Admin privileges required'
+            ], Http::STATUS_FORBIDDEN);
+        }
+
+        try {
+            $stats = $this->telemetryService->getStats();
+
+            return new DataResponse([
+                'success' => true,
+                'stats' => $stats
+            ]);
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to get statistics', [
+                'error' => $e->getMessage()
+            ]);
+            return new DataResponse([
+                'success' => false,
+                'message' => 'Failed to retrieve statistics'
+            ], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
      * Send telemetry to license server
      *
      * Admin only - no @NoAdminRequired annotation.

@@ -17,7 +17,7 @@
 				<FileIcon v-if="tab.id === 'file-metadata'" :size="16" />
 				<CogIcon v-if="tab.id === 'groupfolders'" :size="16" />
 				<ShieldIcon v-if="tab.id === 'permissions'" :size="16" />
-				<ChartBoxIcon v-if="tab.id === 'telemetry'" :size="16" />
+				<ChartBoxIcon v-if="tab.id === 'statistics'" :size="16" />
 				{{ tab.name }}
 			</button>
 		</div>
@@ -43,8 +43,8 @@
 					v-if="activeTab === 'permissions'"
 					@notification="showNotification" />
 
-				<TelemetrySettings
-					v-if="activeTab === 'telemetry'" />
+				<StatisticsSettings
+					v-if="activeTab === 'statistics'" />
 			</div>
 		</div>
 	</div>
@@ -63,7 +63,7 @@ import GroupfolderMetadataFields from './GroupfolderMetadataFields.vue'
 import FileMetadataFields from './FileMetadataFields.vue'
 import ManageGroupfolders from './ManageGroupfolders.vue'
 import PermissionsManager from './PermissionsManager.vue'
-import TelemetrySettings from './TelemetrySettings.vue'
+import StatisticsSettings from './StatisticsSettings.vue'
 
 export default {
 	name: 'MetaVoxAdmin',
@@ -78,7 +78,7 @@ export default {
 		FileMetadataFields,
 		ManageGroupfolders,
 		PermissionsManager,
-		TelemetrySettings,
+		StatisticsSettings,
 	},
 
 	data() {
@@ -89,7 +89,7 @@ export default {
 				{ id: 'file-metadata', name: this.t('metavox', 'File Metadata') },
 				{ id: 'groupfolders', name: this.t('metavox', 'Manage Team folders') },
 				{ id: 'permissions', name: this.t('metavox', 'User Permissions') },
-				{ id: 'telemetry', name: this.t('metavox', 'Telemetry') },
+				{ id: 'statistics', name: this.t('metavox', 'Statistics') },
 			]
 		}
 	},
