@@ -1,15 +1,41 @@
-/* Alleen basis variabelen en overrides */
+/* VoxCloud Branding Variables - MetaVox */
 :root {
+    /* MetaVox accent color (purple) */
+    --vox-accent-metavox: #8e44ad;
+    --vox-accent-metavox-hover: #7d3c98;
+    --vox-accent-metavox-light: rgba(142, 68, 173, 0.1);
+
+    /* Inherit Nextcloud theming */
+    --vox-color-primary: var(--color-primary-element);
+    --vox-color-primary-text: var(--color-primary-element-text);
+    --vox-color-text: var(--color-main-text);
+    --vox-color-text-light: var(--color-text-lighter);
+    --vox-color-bg: var(--color-main-background);
+    --vox-color-bg-hover: var(--color-background-hover);
+    --vox-color-border: var(--color-border);
+    --vox-color-border-dark: var(--color-border-dark);
+
+    /* Spacing */
+    --vox-spacing-xs: 4px;
+    --vox-spacing-sm: 8px;
+    --vox-spacing-md: 16px;
+    --vox-spacing-lg: 24px;
+    --vox-spacing-xl: 32px;
+
+    /* Border radius */
+    --vox-border-radius: var(--border-radius);
+    --vox-border-radius-large: var(--border-radius-large);
+
+    /* Fallback values */
     --color-main-background: #ffffff;
     --color-main-text: #222222;
     --color-border: #e0e0e0;
-    /* etc. */
 }
 
 [data-theme-dark] {
+    --vox-accent-metavox-light: rgba(142, 68, 173, 0.2);
     --color-main-background: #181818;
     --color-main-text: #e6e6e6;
-    /* etc. */
 }
 
 /* App-specific overrides */
