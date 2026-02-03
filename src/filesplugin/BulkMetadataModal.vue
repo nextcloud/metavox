@@ -20,17 +20,17 @@
 			<!-- Inline merge strategy -->
 			<div class="merge-strategy">
 				<NcCheckboxRadioSwitch
-					:checked="mergeStrategy === 'overwrite'"
+					:model-value="mergeStrategy === 'overwrite'"
 					type="radio"
 					name="merge-strategy"
-					@update:checked="mergeStrategy = 'overwrite'">
+					@update:model-value="mergeStrategy = 'overwrite'">
 					{{ t('metavox', 'Overwrite existing values') }}
 				</NcCheckboxRadioSwitch>
 				<NcCheckboxRadioSwitch
-					:checked="mergeStrategy === 'fill-empty'"
+					:model-value="mergeStrategy === 'fill-empty'"
 					type="radio"
 					name="merge-strategy"
-					@update:checked="mergeStrategy = 'fill-empty'">
+					@update:model-value="mergeStrategy = 'fill-empty'">
 					{{ t('metavox', 'Only fill empty fields') }}
 				</NcCheckboxRadioSwitch>
 			</div>
@@ -203,11 +203,19 @@ export default {
 				} else {
 					// Check if files are in a groupfolder mount
 					const response = await axios.get(generateUrl('/apps/metavox/api/groupfolders'))
-					const groupfolders = response.data
+					const groupfoldersData = response.data || {}
+					const groupfolders = Array.isArray(groupfoldersData)
+						? groupfoldersData
+						: Object.values(groupfoldersData)
 
 					// Find matching groupfolder based on path
 					for (const gf of groupfolders) {
-						if (path.includes(`/${gf.mount_point}/`) || path.startsWith(`/${gf.mount_point}`)) {
+						const mountPoint = gf.mount_point
+						if (path.includes(`/${mountPoint}/`) ||
+							path.startsWith(`/${mountPoint}`) ||
+							path.startsWith(mountPoint) ||
+							path === `/${mountPoint}` ||
+							path === mountPoint) {
 							groupfolderId = gf.id
 							break
 						}

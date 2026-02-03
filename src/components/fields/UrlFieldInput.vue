@@ -3,13 +3,13 @@
     <div class="url-input-container">
       <NcTextField
         :id="inputId"
-        :value="modelValue || ''"
+        :model-value="modelValue || ''"
         :disabled="disabled"
         :required="required"
         :placeholder="placeholder || t('metavox', 'Enter URL (https://...)')"
         :error="!isValidUrl && modelValue !== ''"
         type="url"
-        @update:value="onInput" />
+        @update:model-value="onInput" />
       <a
         v-if="modelValue && isValidUrl"
         :href="normalizedUrl"

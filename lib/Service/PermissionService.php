@@ -96,8 +96,8 @@ class PermissionService {
             ));
         }
 
-        $result = $qb->execute();
-        $exists = $result->fetchColumn();
+        $result = $qb->executeQuery();
+        $exists = $result->fetchOne();
         $result->closeCursor();
 
         return (bool)$exists;
@@ -134,8 +134,8 @@ class PermissionService {
             ));
         }
 
-        $result = $qb->execute();
-        $exists = $result->fetchColumn();
+        $result = $qb->executeQuery();
+        $exists = $result->fetchOne();
         $result->closeCursor();
 
         return (bool)$exists;
@@ -171,7 +171,7 @@ class PermissionService {
                    'updated_at' => $qb->createNamedParameter(date('Y-m-d H:i:s')),
                ]);
 
-            return $qb->execute() > 0;
+            return $qb->executeStatement() > 0;
         } catch (\Exception $e) {
             error_log('MetaVox grantUserPermission error: ' . $e->getMessage());
             return false;
@@ -208,7 +208,7 @@ class PermissionService {
                    'updated_at' => $qb->createNamedParameter(date('Y-m-d H:i:s')),
                ]);
 
-            return $qb->execute() > 0;
+            return $qb->executeStatement() > 0;
         } catch (\Exception $e) {
             error_log('MetaVox grantGroupPermission error: ' . $e->getMessage());
             return false;
@@ -242,7 +242,7 @@ class PermissionService {
                 $qb->andWhere($qb->expr()->isNull('field_scope'));
             }
 
-            return $qb->execute() > 0;
+            return $qb->executeStatement() > 0;
         } catch (\Exception $e) {
             error_log('MetaVox revokeUserPermission error: ' . $e->getMessage());
             return false;
@@ -276,7 +276,7 @@ class PermissionService {
                 $qb->andWhere($qb->expr()->isNull('field_scope'));
             }
 
-            return $qb->execute() > 0;
+            return $qb->executeStatement() > 0;
         } catch (\Exception $e) {
             error_log('MetaVox revokeGroupPermission error: ' . $e->getMessage());
             return false;
@@ -292,10 +292,10 @@ class PermissionService {
            ->from('metavox_permissions')
            ->orderBy('created_at', 'DESC');
 
-        $result = $qb->execute();
+        $result = $qb->executeQuery();
         $permissions = [];
         
-        while ($row = $result->fetch()) {
+        while ($row = $result->fetchAssociative()) {
             $permissions[] = [
                 'id' => (int)$row['id'],
                 'user_id' => $row['user_id'],
@@ -323,10 +323,10 @@ class PermissionService {
            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
            ->orderBy('created_at', 'DESC');
 
-        $result = $qb->execute();
+        $result = $qb->executeQuery();
         $permissions = [];
         
-        while ($row = $result->fetch()) {
+        while ($row = $result->fetchAssociative()) {
             $permissions[] = [
                 'id' => (int)$row['id'],
                 'source' => 'user',
@@ -348,8 +348,8 @@ class PermissionService {
                ->from('metavox_permissions')
                ->where($qb->expr()->eq('group_id', $qb->createNamedParameter($groupId)));
 
-            $result = $qb->execute();
-            while ($row = $result->fetch()) {
+            $result = $qb->executeQuery();
+            while ($row = $result->fetchAssociative()) {
                 $permissions[] = [
                     'id' => (int)$row['id'],
                     'source' => 'group',

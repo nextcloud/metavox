@@ -7,6 +7,7 @@ namespace OCA\MetaVox\AppInfo;
 use OCA\MetaVox\BackgroundJobs\CleanupDeletedMetadata;
 use OCA\MetaVox\Listener\FileCopyListener;
 use OCA\MetaVox\Listener\FileDeleteListener;
+use OCA\MetaVox\Listener\RegisterFlowChecksListener;
 use OCA\MetaVox\Search\MetadataSearchProvider;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
@@ -15,6 +16,7 @@ use OCP\AppFramework\Bootstrap\IRegistrationContext;
 use OCP\Files\Events\Node\NodeCopiedEvent;
 use OCP\Files\Events\Node\NodeCreatedEvent;
 use OCP\Files\Events\Node\NodeDeletedEvent;
+use OCP\WorkflowEngine\Events\RegisterChecksEvent;
 
 class Application extends App implements IBootstrap {
     public const APP_ID = 'metavox';
@@ -33,6 +35,9 @@ class Application extends App implements IBootstrap {
 
         // Register delete listener
         $context->registerEventListener(NodeDeletedEvent::class, FileDeleteListener::class);
+
+        // Register Flow (Workflow) checks for metadata-based conditions
+        $context->registerEventListener(RegisterChecksEvent::class, RegisterFlowChecksListener::class);
     }
 
     public function boot(IBootContext $context): void {
@@ -46,10 +51,16 @@ class Application extends App implements IBootstrap {
         $request = \OC::$server->getRequest();
         $requestUri = $request->getRequestUri();
 
+        // Also check pathInfo for reverse proxy setups with subpaths
+        // getPathInfo() returns the Nextcloud-specific path without proxy prefix
+        $pathInfo = $request->getPathInfo() ?? '';
+
         // Check URL patterns for Files app using PHP 8 str_contains
+        // Check both requestUri (direct access) and pathInfo (behind reverse proxy)
         $isFilesApp = (
             str_contains($requestUri, '/apps/files') ||
             str_contains($requestUri, '/index.php/apps/files') ||
+            str_contains($pathInfo, '/apps/files') ||
             (($_GET['app'] ?? '') === 'files') ||
             (($_POST['app'] ?? '') === 'files')
         );

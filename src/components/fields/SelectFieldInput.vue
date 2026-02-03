@@ -1,13 +1,13 @@
 <template>
   <NcSelect
-    :value="selectedOption"
+    :model-value="selectedOption"
     :options="selectOptions"
     label="label"
     track-by="value"
     :searchable="false"
     :required="required"
     :clearable="!required"
-    @input="onSelectChange" />
+    @update:model-value="onSelectChange" />
 </template>
 
 <script>

@@ -1,34 +1,77 @@
 /**
  * MetaVox Bulk Metadata Action
- * Registers a file action for bulk editing metadata
+ * Registers a file action for bulk editing metadata (Vue 3 version)
  */
 
 import { registerFileAction, FileAction, Permission } from '@nextcloud/files'
 import { translate as t } from '@nextcloud/l10n'
+import { createApp, h, ref } from 'vue'
 
 // SVG icon for MetaVox (original logo, properly sized)
 const metadataIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path d="M2.5 2.5 C4.96 2.92 6.2 3.16 7.88 5.06 C9.51 6.77 9.51 6.77 12.44 6.94 C16.15 6.41 17.04 5.21 19.5 2.5 C20.49 2.5 21.48 2.5 22.5 2.5 C23.43 6.86 23.31 10.14 22.5 14.5 C22.83 14.83 23.16 15.16 23.5 15.5 C23.54 17.5 23.54 19.5 23.5 21.5 C22.08 22.18 22.08 22.18 20.63 22.88 C17.5 24.3 17.5 24.3 15.5 26.5 C11.62 27.02 10.02 26.88 6.81 24.56 C6.05 23.88 5.29 23.2 4.5 22.5 C3.51 22.17 2.52 21.84 1.5 21.5 C1.38 15.75 1.38 15.75 2.5 13.5 C2.24 11.49 1.99 9.47 1.66 7.47 C1.5 5.5 1.5 5.5 2.5 2.5 Z" fill="currentColor"/></svg>`
 
-// Store for the modal instance
-let modalInstance = null
+// Store for the modal app instance
+let modalApp = null
 let modalContainer = null
 
 /**
  * Open the bulk metadata modal
- * @param {Array} nodes - Array of file nodes
+ * @param {Array|Object} nodes - Array of file nodes or single node
  */
 async function openBulkMetadataModal(nodes) {
-	// Convert nodes to file info format
-	const files = nodes.map(node => ({
-		fileid: node.fileid,
-		basename: node.basename,
-		path: node.path,
-		filename: node.path,
-		type: node.type,
-	}))
+	// NC33 FileAction API passes different formats:
+	// - exec(node): single Node object
+	// - execBatch(nodes): array of Node objects OR an object with {nodes: Array, view, folder, contents}
+	let nodeArray = []
 
-	// Dynamically import Vue and the modal component
-	const Vue = (await import('vue')).default
+	if (Array.isArray(nodes)) {
+		nodeArray = nodes
+	} else if (nodes && typeof nodes === 'object') {
+		if (nodes.nodes && Array.isArray(nodes.nodes)) {
+			nodeArray = nodes.nodes
+		} else if (nodes.fileid !== undefined || nodes.source !== undefined) {
+			nodeArray = [nodes]
+		} else {
+			console.error('MetaVox: Invalid nodes input format')
+			return
+		}
+	} else {
+		console.error('MetaVox: Invalid nodes input')
+		return
+	}
+
+	if (nodeArray.length === 0) {
+		return
+	}
+
+	// Convert nodes to file info format
+	const files = nodeArray.map(node => {
+		const fileid = node.fileid
+		const basename = node.basename || node.displayname
+		const source = node.source
+		const nodeType = node.type || (node.mime === 'httpd/unix-directory' ? 'folder' : 'file')
+		const attributes = node.attributes || {}
+
+		// Extract path from source URL or attributes
+		let nodePath = node.path || attributes.filename
+		if (!nodePath && source) {
+			const davMatch = source.match(/\/remote\.php\/dav\/files\/[^/]+(.*)/)
+			if (davMatch) {
+				nodePath = decodeURIComponent(davMatch[1] || '/')
+			}
+		}
+
+		return {
+			fileid,
+			basename,
+			path: nodePath,
+			filename: nodePath,
+			type: nodeType,
+			attributes,
+		}
+	})
+
+	// Dynamically import the modal component
 	const BulkMetadataModal = (await import('./BulkMetadataModal.vue')).default
 
 	// Create container if not exists
@@ -38,71 +81,135 @@ async function openBulkMetadataModal(nodes) {
 		document.body.appendChild(modalContainer)
 	}
 
-	// Create or update modal instance
-	if (modalInstance) {
-		modalInstance.$destroy()
+	// Safe unmount function that handles tiptap cleanup errors
+	const safeUnmount = () => {
+		if (modalApp) {
+			try {
+				modalApp.unmount()
+			} catch (e) {
+				// Ignore unmount errors (tiptap cleanup issues in NcModal)
+			}
+			modalApp = null
+		}
+		if (modalContainer) {
+			modalContainer.innerHTML = ''
+		}
 	}
 
-	const ModalConstructor = Vue.extend(BulkMetadataModal)
-	modalInstance = new ModalConstructor({
-		propsData: {
-			show: true,
-			files,
+	// Unmount existing app if present
+	safeUnmount()
+
+	// Create reactive show state
+	const showModal = ref(true)
+
+	// Create Vue 3 app
+	modalApp = createApp({
+		render() {
+			return h(BulkMetadataModal, {
+				show: showModal.value,
+				files,
+				onClose: () => {
+					showModal.value = false
+					// Unmount after animation
+					setTimeout(safeUnmount, 300)
+				},
+				onSaved: () => {
+					// Refresh the file list if possible
+					if (window.OCA?.Files?.App?.fileList) {
+						window.OCA.Files.App.fileList.reload()
+					}
+				},
+			})
 		},
 	})
 
-	modalInstance.$on('close', () => {
-		modalInstance.show = false
-	})
+	// Add global translation function
+	modalApp.config.globalProperties.t = t
 
-	modalInstance.$on('saved', () => {
-		// Refresh the file list if possible
-		if (window.OCA?.Files?.App?.fileList) {
-			window.OCA.Files.App.fileList.reload()
-		}
-	})
-
-	modalInstance.$mount(modalContainer)
+	modalApp.mount(modalContainer)
 }
 
 /**
  * Register the bulk metadata file action
  */
 export function registerBulkMetadataAction() {
-	const action = new FileAction({
-		id: 'metavox-edit-metadata',
-		displayName: () => t('metavox', 'Edit Metadata'),
-		iconSvgInline: () => metadataIconSvg,
+	try {
+		const action = new FileAction({
+			id: 'metavox-edit-metadata',
+			displayName: (nodes) => {
+				// NC33 may pass nodes as array or as object with nodes property
+				let count = 0
+				if (Array.isArray(nodes)) {
+					count = nodes.length
+				} else if (nodes?.nodes && Array.isArray(nodes.nodes)) {
+					count = nodes.nodes.length
+				} else if (nodes) {
+					count = 1
+				}
+				if (count > 1) {
+					return t('metavox', 'Edit Metadata ({count} items)', { count })
+				}
+				return t('metavox', 'Edit Metadata')
+			},
+			title: () => t('metavox', 'Edit metadata fields for selected files'),
+			iconSvgInline: () => metadataIconSvg,
 
-		// Enable for files and folders with write permission
-		enabled(nodes) {
-			// Must have at least one node
-			if (!nodes || nodes.length === 0) {
-				return false
-			}
+			// Enable for files and folders
+			enabled(nodes) {
+				// Handle different input formats
+				let nodeArray = nodes
 
-			// All nodes must have write permission
-			return nodes.every(node => {
-				return (node.permissions & Permission.UPDATE) !== 0
-			})
-		},
+				// If nodes is not an array, try to convert it
+				if (!Array.isArray(nodes)) {
+					if (nodes && typeof nodes === 'object') {
+						// Check if it's a single Node object (has source property which is the file path)
+						if (nodes.source || nodes.fileid || nodes.path) {
+							nodeArray = [nodes]
+						} else if (nodes.length !== undefined) {
+							nodeArray = Array.from(nodes)
+						} else {
+							// It might be an object with node properties directly
+							const values = Object.values(nodes)
+							// Filter out non-object values
+							nodeArray = values.filter(v => v && typeof v === 'object' && (v.source || v.fileid || v.type))
+						}
+					} else {
+						return false
+					}
+				}
 
-		// Single file action
-		async exec(node) {
-			await openBulkMetadataModal([node])
-			return null
-		},
+				if (!nodeArray || nodeArray.length === 0) {
+					// Return true anyway to show action
+					return true
+				}
 
-		// Bulk action for multiple files
-		async execBatch(nodes) {
-			await openBulkMetadataModal(nodes)
-			return nodes.map(() => null)
-		},
+				// Show for all files and folders (simplified check)
+				return nodeArray.every(node => node && (node.type === 'file' || node.type === 'folder'))
+			},
 
-		// Show in selection toolbar
-		order: 50,
-	})
+			// Single file action
+			async exec(node) {
+				await openBulkMetadataModal(node)
+				return null
+			},
 
-	registerFileAction(action)
-	console.log('✅ MetaVox: Bulk metadata action registered')
+			// Bulk action for multiple files
+			async execBatch(nodes) {
+				await openBulkMetadataModal(nodes)
+				// Return array of nulls matching input length
+				if (Array.isArray(nodes)) {
+					return nodes.map(() => null)
+				}
+				// If nodes is not an array, just return null
+				return [null]
+			},
+
+			// Show in context menu (higher = lower in menu)
+			order: 50,
+		})
+
+		registerFileAction(action)
+	} catch (error) {
+		console.error('MetaVox: Failed to register bulk metadata action', error)
+	}
 }

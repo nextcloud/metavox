@@ -71,8 +71,17 @@
 				<div v-if="itemFields.length > 0" class="metadata-section">
 					<div class="item-metadata-header">
 						<h3>{{ t('metavox', '{itemType} Metadata', { itemType }) }}</h3>
+					</div>
+					<MetadataForm
+						:fields="itemFields"
+						:values="metadata"
+						:readonly="!canEdit"
+						:select-values="selectValues"
+						:multi-select-values="multiSelectValues"
+						:select-key="selectKey"
+						@update="handleMetadataUpdate" />
+					<div v-if="canEdit && hasChanges" class="metadata-actions">
 						<NcButton
-							v-if="canEdit && hasChanges"
 							type="primary"
 							:disabled="saving"
 							@click="saveMetadata">
@@ -83,14 +92,6 @@
 							{{ saving ? t('metavox', 'Saving...') : t('metavox', 'Save') }}
 						</NcButton>
 					</div>
-					<MetadataForm
-						:fields="itemFields"
-						:values="metadata"
-						:readonly="!canEdit"
-						:select-values="selectValues"
-						:multi-select-values="multiSelectValues"
-						:select-key="selectKey"
-						@update="handleMetadataUpdate" />
 				</div>
 				<div v-else-if="itemFields.length === 0" class="info-container">
 					<p>{{ t('metavox', 'No {itemType} metadata fields are configured for items in this Team folder. Contact your administrator to set up file metadata fields.', { itemType: itemType.toLowerCase() }) }}</p>
@@ -122,9 +123,27 @@ export default {
 	},
 
 	props: {
+		// New NC33 API props
+		node: {
+			type: Object,
+			default: null,
+		},
+		folder: {
+			type: Object,
+			default: null,
+		},
+		view: {
+			type: Object,
+			default: null,
+		},
+		active: {
+			type: Boolean,
+			default: false,
+		},
+		// Legacy prop for backwards compatibility
 		fileInfo: {
 			type: Object,
-			required: true,
+			default: null,
 		},
 	},
 
@@ -149,6 +168,25 @@ export default {
 	},
 
 	computed: {
+		// Unified file info - works with both new NC33 API (node) and legacy API (fileInfo)
+		currentFileInfo() {
+			if (this.node) {
+				// NC33 new API - convert Node to fileInfo-like object
+				return {
+					id: this.node.fileid,
+					name: this.node.basename,
+					path: this.node.path,
+					type: this.node.type === 'folder' ? 'dir' : 'file',
+					permissions: this.node.permissions,
+					mountType: this.node.attributes?.mountType || '',
+					mountPoint: this.node.attributes?.mountPoint || '',
+					attributes: this.node.attributes || {},
+				}
+			}
+			// Legacy API - return the fileInfo prop
+			return this.fileInfo
+		},
+
 		hasPermission() {
 			return this.permissions?.canView === true
 		},
@@ -162,8 +200,9 @@ export default {
 		},
 
 		isGroupfolderRoot() {
-			const isDirectory = this.fileInfo.type === 'dir'
-			const isMountRoot = this.fileInfo.attributes?.['is-mount-root'] === true
+			if (!this.currentFileInfo) return false
+			const isDirectory = this.currentFileInfo.type === 'dir'
+			const isMountRoot = this.currentFileInfo.attributes?.['is-mount-root'] === true
 			const result = isDirectory && this.groupfolderId && isMountRoot
 
 			return result
@@ -175,11 +214,30 @@ export default {
 		},
 
 		itemType() {
-			return this.fileInfo.type === 'dir' ? 'Folder' : 'File'
+			if (!this.currentFileInfo) return 'File'
+			return this.currentFileInfo.type === 'dir' ? 'Folder' : 'File'
 		},
 	},
 
 	watch: {
+		// Watch for NC33 node changes
+		node: {
+			immediate: true,
+			handler(newNode) {
+				if (newNode?.fileid) {
+					this.loadMetadata()
+				}
+			},
+		},
+		// Watch for active state (NC33)
+		active: {
+			handler(isActive) {
+				if (isActive && this.node?.fileid) {
+					this.loadMetadata()
+				}
+			},
+		},
+		// Legacy: watch fileInfo
 		fileInfo: {
 			immediate: true,
 			handler(newFileInfo) {
@@ -244,13 +302,13 @@ export default {
 				this.multiSelectValues = {}
 				fieldsWithValues.forEach((field) => {
 					if (field.field_type === 'select') {
-						this.$set(this.selectValues, field.field_name, metadataMap[field.field_name] || null)
+						this.selectValues[field.field_name] = metadataMap[field.field_name] || null
 					} else if (field.field_type === 'multiselect') {
 						const value = metadataMap[field.field_name]
 						if (value) {
-							this.$set(this.multiSelectValues, field.field_name, value.split(';#').filter((v) => v.trim()))
+							this.multiSelectValues[field.field_name] = value.split(';#').filter((v) => v.trim())
 						} else {
-							this.$set(this.multiSelectValues, field.field_name, [])
+							this.multiSelectValues[field.field_name] = []
 						}
 					}
 				})
@@ -274,30 +332,30 @@ export default {
 		async detectGroupfolder() {
 			try {
 				// Method 1: Check voor mount-root directories (groupfolders zelf)
-				if (this.fileInfo.type === 'dir' &&
-					this.fileInfo.mountType === 'group' &&
-					this.fileInfo.attributes?.['is-mount-root'] === true) {
+				if (this.currentFileInfo.type === 'dir' &&
+					this.currentFileInfo.mountType === 'group' &&
+					this.currentFileInfo.attributes?.['is-mount-root'] === true) {
 
 					const groupfolders = await this.getAllGroupfolders()
 
 					for (const gf of groupfolders) {
-						if (gf.mount_point === this.fileInfo.name) {
+						if (gf.mount_point === this.currentFileInfo.name) {
 							return gf.id
 						}
 					}
 				}
 
 				// Method 2: Check mountPoint - meest betrouwbare methode voor items IN groupfolders
-				if (this.fileInfo.mountPoint && this.fileInfo.mountPoint !== '/' && this.fileInfo.mountPoint !== '') {
-					const mountResult = await this.detectFromMountPoint(this.fileInfo.mountPoint)
+				if (this.currentFileInfo.mountPoint && this.currentFileInfo.mountPoint !== '/' && this.currentFileInfo.mountPoint !== '') {
+					const mountResult = await this.detectFromMountPoint(this.currentFileInfo.mountPoint)
 					if (mountResult) {
 						return mountResult
 					}
 				}
 
 				// Method 3: Check via het volledige path van het fileInfo
-				if (this.fileInfo.path && this.fileInfo.path !== '/' && this.fileInfo.path !== '') {
-					const pathResult = await this.detectFromPath(this.fileInfo.path)
+				if (this.currentFileInfo.path && this.currentFileInfo.path !== '/' && this.currentFileInfo.path !== '') {
+					const pathResult = await this.detectFromPath(this.currentFileInfo.path)
 					if (pathResult) {
 						return pathResult
 					}
@@ -383,7 +441,7 @@ export default {
 		checkPermissions() {
 			// Use Nextcloud's built-in file permission system
 			// Same approach as original files-plugin1.js
-			const permissions = this.fileInfo.permissions || 0
+			const permissions = this.currentFileInfo.permissions || 0
 
 			// Nextcloud permission constants
 			const NC_PERMISSION_READ = 1
@@ -439,12 +497,12 @@ export default {
 
 				// 2. Load file/folder metadata WITH VALUES (applies_to_groupfolder = 0)
 				// This endpoint returns: ALL fields (groupfolder + file), but only file fields have values
-				if (this.fileInfo?.id) {
+				if (this.currentFileInfo?.id) {
 					try {
 						const fileResponse = await axios.get(
 							generateUrl('/apps/metavox/api/groupfolders/{groupfolderId}/files/{fileId}/metadata', {
 								groupfolderId: this.groupfolderId,
-								fileId: this.fileInfo.id,
+								fileId: this.currentFileInfo.id,
 							}),
 							{ cancelToken: this.loadCancelToken?.token }
 						)
@@ -482,18 +540,18 @@ export default {
 				this.itemFields.forEach((field) => {
 					if (field.field_type === 'select') {
 						const value = this.selectValues[field.field_name]
-						this.$set(this.metadata, field.field_name, value || '')
+						this.metadata[field.field_name] = value || ''
 					} else if (field.field_type === 'multiselect') {
 						const values = this.multiSelectValues[field.field_name]
 						const joinedValue = Array.isArray(values) ? values.join(';#') : ''
-						this.$set(this.metadata, field.field_name, joinedValue)
+						this.metadata[field.field_name] = joinedValue
 					}
 				})
 
 				await axios.post(
 					generateUrl('/apps/metavox/api/groupfolders/{groupfolderId}/files/{fileId}/metadata', {
 						groupfolderId: this.groupfolderId,
-						fileId: this.fileInfo.id,
+						fileId: this.currentFileInfo.id,
 					}),
 					{
 						metadata: this.metadata,
@@ -512,15 +570,10 @@ export default {
 		},
 
 		handleMetadataUpdate(fieldName, value) {
-			console.log('FilesSidebarTab handleMetadataUpdate called:', fieldName, value)
-			console.log('FilesSidebarTab metadata before:', JSON.stringify(this.metadata))
 			this.metadata = {
 				...this.metadata,
 				[fieldName]: value,
 			}
-			console.log('FilesSidebarTab metadata after:', JSON.stringify(this.metadata))
-			console.log('FilesSidebarTab originalMetadata:', JSON.stringify(this.originalMetadata))
-			console.log('FilesSidebarTab hasChanges:', this.hasChanges)
 		},
 
 		reload() {
@@ -639,29 +692,25 @@ export default {
 	color: var(--color-primary-element);
 }
 
-/* Separator between sections */
+/* Separator between sections - subtle per Nextcloud guidelines */
 .metadata-separator {
 	height: 1px;
-	background: var(--color-border-dark);
+	background: var(--color-border);
 	margin: 24px 0;
-	box-shadow: 0 1px 0 var(--color-border);
 }
 
-/* Item Metadata Header - Same prominent styling as teamfolder */
+/* Item Metadata Header - subtle per Nextcloud guidelines */
 .item-metadata-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
 	margin-bottom: 16px;
 	padding-bottom: 12px;
-	border-bottom: 2px solid var(--color-primary-element);
+	border-bottom: 1px solid var(--color-border);
 }
 
 .item-metadata-header h3 {
 	margin: 0;
 	font-size: 16px;
-	font-weight: 700;
-	color: var(--color-primary-element);
+	font-weight: 600;
+	color: var(--color-main-text);
 }
 
 .admin-notice {
@@ -678,16 +727,15 @@ export default {
 	font-size: 14px;
 }
 
+/* Field display - whitespace separation per Nextcloud guidelines */
 .field-display {
 	display: flex;
 	flex-direction: column;
-	margin-bottom: 12px;
-	padding: 8px 0;
-	border-bottom: 1px solid var(--color-border);
+	margin-bottom: 16px;
 }
 
 .field-display:last-child {
-	border-bottom: none;
+	margin-bottom: 0;
 }
 
 .field-label {
@@ -701,6 +749,15 @@ export default {
 	font-size: 14px;
 	color: var(--color-main-text);
 	word-break: break-word;
+}
+
+/* Save button container - positioned at bottom of form, right-aligned per Nextcloud Forms */
+.metadata-actions {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: 24px;
+	padding-top: 16px;
+	border-top: 1px solid var(--color-border);
 }
 
 .success-message {

@@ -19,20 +19,20 @@
 			<NcTextField
 				v-if="field.field_type === 'text'"
 				:id="`field-${field.id}`"
-				:value="values[field.field_name] || ''"
+				:model-value="values[field.field_name] || ''"
 				:disabled="readonly"
 				:placeholder="field.field_label"
-				@update:value="handleUpdate(field.field_name, $event)" />
+				@update:model-value="handleUpdate(field.field_name, $event)" />
 
 			<!-- Number Field -->
 			<NcTextField
 				v-else-if="field.field_type === 'number'"
 				:id="`field-${field.id}`"
-				:value.number="values[field.field_name] || ''"
+				:model-value="values[field.field_name] || ''"
 				:disabled="readonly"
 				:placeholder="field.field_label"
 				type="number"
-				@update:value="handleNumberUpdate(field.field_name, $event)" />
+				@update:model-value="handleNumberUpdate(field.field_name, $event)" />
 
 			<!-- Textarea Field -->
 			<textarea
@@ -67,7 +67,7 @@
 				:placeholder="field.field_label"
 				:reduce="option => option.value"
 				label="label"
-				@input="handleSelectChange(field.field_name, $event)" />
+				@update:model-value="handleSelectChange(field.field_name, $event)" />
 
 			<!-- Multi-Select Field -->
 			<NcSelect
@@ -81,15 +81,15 @@
 				:placeholder="field.field_label"
 				:reduce="option => option.value"
 				label="label"
-				@input="handleMultiSelectChange(field.field_name, $event)" />
+				@update:model-value="handleMultiSelectChange(field.field_name, $event)" />
 
 			<!-- Checkbox Field -->
 			<NcCheckboxRadioSwitch
 				v-else-if="field.field_type === 'checkbox'"
 				:id="`field-${field.id}`"
-				:checked="values[field.field_name] === '1' || values[field.field_name] === true"
+				:model-value="values[field.field_name] === '1' || values[field.field_name] === true"
 				:disabled="readonly"
-				@update:checked="handleCheckboxUpdate(field.field_name, $event)">
+				@update:model-value="handleCheckboxUpdate(field.field_name, $event)">
 				{{ field.field_label }}
 			</NcCheckboxRadioSwitch>
 
@@ -124,10 +124,10 @@
 			<NcTextField
 				v-else
 				:id="`field-${field.id}`"
-				:value="values[field.field_name] || ''"
+				:model-value="values[field.field_name] || ''"
 				:disabled="readonly"
 				:placeholder="`Unknown field type: ${field.field_type}`"
-				@update:value="handleUpdate(field.field_name, $event)" />
+				@update:model-value="handleUpdate(field.field_name, $event)" />
 		</div>
 	</div>
 </template>
@@ -185,7 +185,6 @@ export default {
 
 	methods: {
 		handleUpdate(fieldName, value) {
-			console.log('MetadataForm handleUpdate called:', fieldName, value)
 			this.$emit('update', fieldName, value)
 		},
 
@@ -200,7 +199,7 @@ export default {
 		},
 
 		handleSelectChange(fieldName, value) {
-			// Single select change handler
+			// Single select change handler - value is now extracted in template
 			this.$emit('update', fieldName, value || '')
 		},
 

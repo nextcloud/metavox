@@ -1,84 +1,73 @@
-# MetaVox - Nextcloud App
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
-MetaVox is een Nextcloud app voor het toevoegen van custom metadata aan bestanden en groupfolders.
 
-## Project Context
-- **Framework**: Nextcloud App (PHP backend + Vue.js frontend)
-- **Doel**: Custom metadata fields toevoegen aan bestanden binnen Nextcloud groupfolders
+MetaVox is a Nextcloud app for adding custom metadata fields to files and groupfolders. It's a PHP backend + Vue.js 2 frontend application.
 
-## Belangrijke Beslissingen
+**Nextcloud version**: 31-32
+**License**: AGPL-3.0-or-later
 
-### Verwijderde Features (december 2024)
-1. **Licentie systeem** - Niet meer nodig, volledig verwijderd:
-   - LicenseController.php
-   - LicenseService.php
-   - UpdateLicenseUsage.php (BackgroundJob)
-   - LicenseInfo.vue
-   - License routes in routes.php
-   - LICENSE_INTEGRATION.md
-   - License warning/info sectie in ManageGroupfolders.vue
+## Build Commands
 
-2. **Filter functionaliteit** - Niet meer nodig, volledig verwijderd:
-   - FilterController.php
-   - FilterService.php
-   - FilesFilterPanel.vue
-   - files-filter-main.js
-   - files-filter.js (built)
-   - Filter routes in routes.php
-   - FILTER_SERVICE_OPTIMIZATION.md
+```bash
+# Build frontend for production
+npm run build
 
-3. **Global fields** - Alleen groupfolder fields worden gebruikt:
-   - Global field routes verwijderd (/api/fields/*)
-   - Global file metadata routes verwijderd (/api/files/{fileId}/metadata)
-   - FieldController methodes verwijderd: getFields(), getField(), createField(), getFileMetadata(), saveFileMetadata()
+# Build frontend for development
+npm run dev
 
-4. **Field overrides** - Niet gebruikt in frontend:
-   - Field override routes verwijderd (zowel regulier als OCS)
-   - FieldController methodes verwijderd: saveFieldOverride(), getFieldOverrides()
+# Watch mode for development
+npm run watch
 
-5. **Retention Manager** - Niet meer nodig:
-   - RetentionManager.vue verwijderd
-   - Retention tab verwijderd uit MetaVoxAdmin.vue
+# Development server
+npm run serve
+```
 
-## Database Tabellen
-### Actief gebruikt:
-- `metavox_gf_fields` - Groupfolder field definities
-- `metavox_gf_metadata` - Groupfolder metadata waarden
-- `metavox_file_gf_meta` - File metadata binnen groupfolders
-- `metavox_gf_assigns` - Field toewijzingen aan groupfolders
+The built JavaScript files are output to `/js/` directory.
+
+## Architecture
+
+### Frontend Entry Points (webpack.config.js)
+- `src/admin.js` → Admin settings page (MetaVoxAdmin.vue)
+- `src/user.js` → Personal settings page (MetaVoxPersonal.vue)
+- `src/filesplugin/filesplugin-main.js` → Files app sidebar integration (FilesSidebarTab.vue)
+
+### Backend Structure
+- **Controllers**: `/lib/Controller/` - FieldController, ApiFieldController, PermissionController, UserFieldController
+- **Services**: `/lib/Service/` - Business logic (FieldService, PermissionService, SearchIndexService)
+- **Routes**: `/appinfo/routes.php` - Web routes (`/api/*`) and OCS API routes (`/ocs/v2.php/apps/metavox/api/v1/*`)
+- **Migrations**: `/lib/Migration/` - Database schema changes
+- **Background Jobs**: `/lib/BackgroundJobs/` - CleanupDeletedMetadata, UpdateSearchIndex
+- **Event Listeners**: `/lib/Listener/` - FileCopyListener, FileDeleteListener
+
+### Key Components
+- **Field Types**: Text, Textarea, Number, Date, Select, Checkbox, URL, User/Group picker, File Link
+- **Field inputs**: `/src/components/fields/` - DynamicFieldInput.vue routes to specific input components
+
+### Database Tables (Active)
+- `metavox_gf_fields` - Groupfolder field definitions
+- `metavox_gf_metadata` - Groupfolder metadata values
+- `metavox_file_gf_meta` - File metadata within groupfolders
+- `metavox_gf_assigns` - Field assignments to groupfolders
 - `metavox_permissions` - User/group permissions
-- `metavox_search_index` - Search index voor Nextcloud unified search
+- `metavox_search_index` - Search index for Nextcloud unified search
 
-### Niet meer actief (kan verwijderd worden):
-- `metavox_fields` - Global field definities (niet meer gebruikt)
-- `metavox_metadata` - Global metadata waarden (niet meer gebruikt)
-- `metavox_gf_overrides` - Field overrides (niet meer gebruikt)
+### Dual API Pattern
+The app exposes two API types:
+1. **Web API** (`/api/*`) - CSRF-protected, for frontend Vue components
+2. **OCS API** (`/ocs/v2.php/apps/metavox/api/v1/*`) - Token-based, for external integrations
 
-## Huidige Functionaliteit
-- Groupfolder metadata velden beheer
-- File metadata velden beheer (binnen groupfolders)
-- Groupfolder configuratie
-- User permissions beheer
-- Nextcloud unified search integratie (MetadataSearchProvider)
+## Internationalization
 
-## Architectuur
-- **Backend**: PHP controllers en services in `/lib/`
-- **Frontend**: Vue.js componenten in `/src/components/`
-- **Routes**: Gedefinieerd in `/appinfo/routes.php`
-- **Database migraties**: `/lib/Migration/`
-- **Vertalingen**: `/l10n/` (nl.json, de.json)
+Translations are in `/l10n/` (nl.json, de.json). Use `t('metavox', 'text')` in Vue components.
 
-## Vertalingen (i18n)
-De app ondersteunt meerdere talen via Nextcloud's l10n systeem:
-- **Nederlands (nl.json)** - Volledig vertaald
-- **Duits (de.json)** - Volledig vertaald
-- **Engels** - Standaardtaal (geen apart bestand nodig)
+## Removed Features (do not re-add)
 
-Vertalingen worden automatisch geladen door Nextcloud op basis van de gebruikerstaal.
-Nieuwe strings toevoegen: voeg de Engelse tekst toe in de Vue componenten met `t('metavox', 'tekst')` en voeg vertalingen toe aan de JSON bestanden.
-
-## Development Notes
-- Build frontend: `npm run build`
-- Vue componenten in `/src/components/`
-- Admin interface: `MetaVoxAdmin.vue`
+These features were intentionally removed:
+- License system (LicenseController, LicenseService)
+- Filter functionality (FilterController, FilesFilterPanel)
+- Global fields (only groupfolder fields are used)
+- Field overrides
+- Retention Manager

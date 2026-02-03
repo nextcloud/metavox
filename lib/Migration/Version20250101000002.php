@@ -73,7 +73,7 @@ class Version20250101000002 extends SimpleMigrationStep {
                    $qb->expr()->eq('applies_to_groupfolder', $qb->createNamedParameter(''))
                ));
 
-            $affected = $qb->execute();
+            $affected = $qb->executeQuery();
             $output->info("Updated $affected existing groupfolder fields with applies_to_groupfolder = 0 (applies to files)");
 
         } catch (\Exception $e) {

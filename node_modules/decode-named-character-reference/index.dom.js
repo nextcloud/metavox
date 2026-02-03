@@ -20,8 +20,6 @@ export function decodeNamedCharacterReference(value) {
   // reference to decode was not a semicolon (`&semi;`), we can assume that the
   // matching was not complete.
   if (
-    // @ts-expect-error: TypeScript is wrong that `textContent` on elements can
-    // yield `null`.
     character.charCodeAt(character.length - 1) === 59 /* `;` */ &&
     value !== 'semi'
   ) {
@@ -30,7 +28,5 @@ export function decodeNamedCharacterReference(value) {
 
   // If the decoded string is equal to the input, the character reference was
   // not valid.
-  // @ts-expect-error: TypeScript is wrong that `textContent` on elements can
-  // yield `null`.
   return character === characterReference ? false : character
 }

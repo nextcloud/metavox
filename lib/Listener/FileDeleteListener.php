@@ -126,7 +126,7 @@ class FileDeleteListener implements IEventListener {
            ->orderBy('folder_id');
 
         $result = $qb->executeQuery();
-        while ($row = $result->fetch()) {
+        while ($row = $result->fetchAssociative()) {
             $this->groupfolderCache[(int)$row['folder_id']] = $row['mount_point'];
         }
         $result->closeCursor();

@@ -134,7 +134,7 @@ export default {
         case 'text':
           return {
             id: this.inputId,
-            value: this.modelValue || '',
+            'model-value': this.modelValue || '',
             required: this.required,
             disabled: this.disabled,
             placeholder: this.field.field_label
@@ -143,7 +143,7 @@ export default {
         case 'number':
           return {
             id: this.inputId,
-            value: String(this.modelValue || ''),
+            'model-value': String(this.modelValue || ''),
             type: 'number',
             required: this.required,
             disabled: this.disabled,
@@ -155,7 +155,7 @@ export default {
         case 'multi_select':
           return {
             id: this.inputId,
-            value: this.selectValue,
+            'model-value': this.selectValue,
             options: this.selectOptions,
             disabled: this.disabled,
             placeholder: this.field.field_label,
@@ -167,7 +167,7 @@ export default {
         case 'checkbox':
           return {
             id: this.inputId,
-            checked: this.checkboxValue,
+            'model-value': this.checkboxValue,
             disabled: this.disabled,
             type: 'checkbox'
           }
@@ -181,20 +181,20 @@ export default {
 
       switch (this.type) {
         case 'text':
-          events['update:value'] = (value) => {
+          events['update:model-value'] = (value) => {
             this.$emit('update:modelValue', value)
           }
           break
 
         case 'number':
-          events['update:value'] = (value) => {
+          events['update:model-value'] = (value) => {
             // Keep as string for consistency with backend
             this.$emit('update:modelValue', value !== '' && value !== null ? String(value) : '')
           }
           break
 
         case 'select':
-          events['input'] = (value) => {
+          events['update:model-value'] = (value) => {
             // With reduce, value is already the raw value
             this.$emit('update:modelValue', value || '')
           }
@@ -202,7 +202,7 @@ export default {
 
         case 'multiselect':
         case 'multi_select':
-          events['input'] = (values) => {
+          events['update:model-value'] = (values) => {
             // With reduce, values is already an array of raw values
             // Join with ;# for backend compatibility
             const joinedValue = Array.isArray(values) ? values.join(';#') : ''
@@ -211,7 +211,7 @@ export default {
           break
 
         case 'checkbox':
-          events['update:checked'] = (checked) => {
+          events['update:model-value'] = (checked) => {
             this.$emit('update:modelValue', checked ? '1' : '0')
           }
           break

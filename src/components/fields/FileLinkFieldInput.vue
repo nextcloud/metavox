@@ -3,7 +3,7 @@
     <div class="file-input-container">
       <NcTextField
         :id="inputId"
-        :value="displayPath"
+        :model-value="displayPath"
         :disabled="true"
         :placeholder="placeholder || t('metavox', 'No file selected')"
         class="file-path-input" />
