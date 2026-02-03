@@ -56,10 +56,10 @@ class SearchIndexService {
                ->setMaxResults(100)  // Increased limit since we filter later
                ->orderBy('f.mtime', 'DESC');
 
-            $result = $qb->execute();
+            $result = $qb->executeQuery();
             $files = [];
             
-            while ($row = $result->fetch()) {
+            while ($row = $result->fetchAssociative()) {
                 $files[] = [
                     'id' => (int)$row['file_id'],
                     'name' => $row['name'],
@@ -102,7 +102,7 @@ private function searchFromIndex(string $searchTerm, string $userId): array {
                    ->where('MATCH(search_content) AGAINST (:test IN BOOLEAN MODE)')
                    ->setParameter('test', 'test')
                    ->setMaxResults(1);
-            $testQb->execute()->closeCursor();
+            $testQb->executeQuery()->closeCursor();
             $useFulltext = true;
         } catch (\Exception $e) {
             // FULLTEXT index not available, fall back to LIKE
@@ -129,10 +129,10 @@ private function searchFromIndex(string $searchTerm, string $userId): array {
            ->orderBy('f.mtime', 'DESC');
     }
 
-    $result = $qb->execute();
+    $result = $qb->executeQuery();
     $files = [];
     
-    while ($row = $result->fetch()) {
+    while ($row = $result->fetchAssociative()) {
         $files[] = [
             'id' => (int)$row['file_id'],
             'name' => $row['name'],
@@ -157,10 +157,10 @@ private function searchFromIndex(string $searchTerm, string $userId): array {
            ->setMaxResults(50)
            ->orderBy('f.mtime', 'DESC');
 
-        $result = $qb->execute();
+        $result = $qb->executeQuery();
         $files = [];
 
-        while ($row = $result->fetch()) {
+        while ($row = $result->fetchAssociative()) {
             $fileId = $row['fileid'];
             if (!isset($files[$fileId])) {
                 $files[$fileId] = [
@@ -187,9 +187,9 @@ private function searchFromIndex(string $searchTerm, string $userId): array {
                $qb->expr()->eq('m.user_id', $qb->createNamedParameter($userId))
            ));
         
-        $result = $qb->execute();
+        $result = $qb->executeQuery();
         $storageIds = [];
-        while ($row = $result->fetch()) {
+        while ($row = $result->fetchAssociative()) {
             $storageIds[] = (int)$row['numeric_id'];
         }
         $result->closeCursor();
@@ -203,7 +203,7 @@ private function searchFromIndex(string $searchTerm, string $userId): array {
             $qb->select($qb->createFunction('COUNT(*)'))
                ->from('metavox_search_index')
                ->setMaxResults(1);
-            $qb->execute();
+            $qb->executeQuery();
             return true;
         } catch (\Exception $e) {
             return false;
@@ -253,8 +253,8 @@ private function getFileMetadata(int $fileId): array {
        ->from('metavox_file_gf_meta')
        ->where($qb->expr()->eq('file_id', $qb->createNamedParameter($fileId)));
 
-    $result = $qb->execute();
-    while ($row = $result->fetch()) {
+    $result = $qb->executeQuery();
+    while ($row = $result->fetchAssociative()) {
         if (!empty(trim($row['field_value']))) {
             $metadata[] = [
                 'field_name' => $row['field_name'],
@@ -274,8 +274,8 @@ private function getFileMetadata(int $fileId): array {
            ->leftJoin('f', 'mounts', 'm', 'f.storage = m.storage_id')
            ->where($qb->expr()->eq('f.fileid', $qb->createNamedParameter($fileId)));
 
-        $result = $qb->execute();
-        $info = $result->fetch();
+        $result = $qb->executeQuery();
+        $info = $result->fetchAssociative();
         $result->closeCursor();
 
         if (!$info) {
@@ -294,8 +294,8 @@ private function getFileMetadata(int $fileId): array {
            ->from('storages')
            ->where($qb->expr()->eq('numeric_id', $qb->createNamedParameter($storageId)));
 
-        $result = $qb->execute();
-        $storageString = $result->fetchColumn();
+        $result = $qb->executeQuery();
+        $storageString = $result->fetchOne();
         $result->closeCursor();
 
         if ($storageString && preg_match('/^home::(.+)$/', $storageString, $matches)) {
@@ -320,8 +320,8 @@ private function upsertSearchIndex(int $fileId, ?string $userId, int $storageId,
            ->where($qb->expr()->eq('file_id', $qb->createNamedParameter($fileId)))
            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
 
-        $result = $qb->execute();
-        $existingId = $result->fetchColumn();
+        $result = $qb->executeQuery();
+        $existingId = $result->fetchOne();
         $result->closeCursor();
 
 if ($existingId) {
@@ -331,7 +331,7 @@ if ($existingId) {
            ->set('field_data', $qb->createNamedParameter($fieldData))
            ->set('updated_at', $qb->createNamedParameter(date('Y-m-d H:i:s')))
            ->where($qb->expr()->eq('id', $qb->createNamedParameter($existingId)));
-        $qb->execute();
+        $qb->executeQuery();
     } else {
         $qb = $this->db->getQueryBuilder();
         $qb->insert('metavox_search_index')
@@ -343,7 +343,7 @@ if ($existingId) {
                'field_data' => $qb->createNamedParameter($fieldData),
                'updated_at' => $qb->createNamedParameter(date('Y-m-d H:i:s'))
            ]);
-        $qb->execute();
+        $qb->executeQuery();
     }
 
 
@@ -356,6 +356,6 @@ if ($existingId) {
         $qb = $this->db->getQueryBuilder();
         $qb->delete('metavox_search_index')
            ->where($qb->expr()->eq('file_id', $qb->createNamedParameter($fileId)));
-        $qb->execute();
+        $qb->executeQuery();
     }
 }

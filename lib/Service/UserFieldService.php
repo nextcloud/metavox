@@ -53,10 +53,10 @@ public function getAccessibleGroupfolders(string $userId): array {
         $qb->select('f.*')
            ->from('group_folders', 'f');
 
-        $result = $qb->execute();
+        $result = $qb->executeQuery();
         $folders = [];
         
-        while ($row = $result->fetch()) {
+        while ($row = $result->fetchAssociative()) {
             $folderId = (int)($row['folder_id'] ?? $row['id'] ?? 0);
             $mountPoint = $row['mount_point'] ?? 'Unknown';
             
@@ -66,10 +66,10 @@ public function getAccessibleGroupfolders(string $userId): array {
                 ->from('group_folders_groups')
                 ->where($qb2->expr()->eq('folder_id', $qb2->createNamedParameter($folderId, IQueryBuilder::PARAM_INT)));
             
-            $result2 = $qb2->execute();
+            $result2 = $qb2->executeQuery();
             $folderGroups = [];
-            
-            while ($groupRow = $result2->fetch()) {
+
+            while ($groupRow = $result2->fetchAssociative()) {
                 $groupId = $groupRow['group_id'];
                 $folderGroups[] = $groupId;
             }
@@ -122,9 +122,9 @@ public function getAccessibleGroupfolders(string $userId): array {
                ->from('metavox_gf_assigns')
                ->where($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)));
 
-            $result = $qb->execute();
+            $result = $qb->executeQuery();
             $fieldIds = [];
-            while ($row = $result->fetch()) {
+            while ($row = $result->fetchAssociative()) {
                 $fieldIds[] = (int)$row['field_id'];
             }
             $result->closeCursor();
@@ -149,9 +149,9 @@ public function getAccessibleGroupfolders(string $userId): array {
                ->setParameter('groupfolder_id', $groupfolderId)
                ->orderBy('f.sort_order', 'ASC');
 
-            $result = $qb->execute();
+            $result = $qb->executeQuery();
             $metadata = [];
-            while ($row = $result->fetch()) {
+            while ($row = $result->fetchAssociative()) {
                 $metadata[] = [
                     'id' => (int)$row['id'],
                     'field_name' => $row['field_name'],
@@ -184,9 +184,9 @@ public function getAccessibleGroupfolders(string $userId): array {
             $qb->select('id', 'field_name')
                ->from('metavox_gf_fields');
             
-            $result = $qb->execute();
+            $result = $qb->executeQuery();
             $fieldMap = [];
-            while ($row = $result->fetch()) {
+            while ($row = $result->fetchAssociative()) {
                 $fieldMap[$row['field_name']] = (int)$row['id'];
             }
             $result->closeCursor();
@@ -203,8 +203,8 @@ public function getAccessibleGroupfolders(string $userId): array {
                    ->where($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)))
                    ->andWhere($qb->expr()->eq('field_name', $qb->createNamedParameter($fieldName)));
 
-                $result = $qb->execute();
-                $existingId = $result->fetchColumn();
+                $result = $qb->executeQuery();
+                $existingId = $result->fetchOne();
                 $result->closeCursor();
 
                 if ($existingId) {
@@ -214,7 +214,7 @@ public function getAccessibleGroupfolders(string $userId): array {
                        ->set('field_value', $qb->createNamedParameter((string)$value))
                        ->set('updated_at', $qb->createNamedParameter(date('Y-m-d H:i:s')))
                        ->where($qb->expr()->eq('id', $qb->createNamedParameter($existingId, IQueryBuilder::PARAM_INT)));
-                    $qb->execute();
+                    $qb->executeStatement();
                 } else {
                     // Insert
                     $qb = $this->db->getQueryBuilder();
@@ -226,7 +226,7 @@ public function getAccessibleGroupfolders(string $userId): array {
                            'created_at' => $qb->createNamedParameter(date('Y-m-d H:i:s')),
                            'updated_at' => $qb->createNamedParameter(date('Y-m-d H:i:s')),
                        ]);
-                    $qb->execute();
+                    $qb->executeStatement();
                 }
             }
 
@@ -246,7 +246,7 @@ public function getAccessibleGroupfolders(string $userId): array {
             $qb = $this->db->getQueryBuilder();
             $qb->delete('metavox_gf_assigns')
                ->where($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)));
-            $qb->execute();
+            $qb->executeStatement();
 
             // Insert new assignments
             foreach ($fieldIds as $fieldId) {
@@ -257,7 +257,7 @@ public function getAccessibleGroupfolders(string $userId): array {
                        'field_id' => $qb->createNamedParameter($fieldId, IQueryBuilder::PARAM_INT),
                        'created_at' => $qb->createNamedParameter(date('Y-m-d H:i:s')),
                    ]);
-                $qb->execute();
+                $qb->executeStatement();
             }
 
             return true;
@@ -277,9 +277,9 @@ public function getAccessibleGroupfolders(string $userId): array {
                ->from('metavox_gf_fields')
                ->orderBy('sort_order', 'ASC');
 
-            $result = $qb->execute();
+            $result = $qb->executeQuery();
             $fields = [];
-            while ($row = $result->fetch()) {
+            while ($row = $result->fetchAssociative()) {
                 $fields[] = [
                     'id' => (int)$row['id'],
                     'field_name' => $row['field_name'],

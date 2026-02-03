@@ -85,8 +85,8 @@
   <!-- Search -->
 <div class="search-container">
   <NcTextField
-    :value="searchQuery"
-    @update:value="searchQuery = $event"
+    :model-value="searchQuery"
+    @update:model-value="searchQuery = $event"
     :placeholder="t('metavox', 'Search permissions...')"
     :show-trailing-button="!!searchQuery"
     trailing-button-icon="close"

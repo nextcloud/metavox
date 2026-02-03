@@ -370,7 +370,7 @@ class FileCopyListener implements IEventListener {
             
             $result = $qb->executeQuery();
             $knownGroupfolders = [];
-            while ($row = $result->fetch()) {
+            while ($row = $result->fetchAssociative()) {
                 $knownGroupfolders[(int)$row['folder_id']] = $row['mount_point'];
                 $debugInfo .= "Known groupfolder: ID={$row['folder_id']}, mount_point={$row['mount_point']}\n";
             }
@@ -434,7 +434,7 @@ class FileCopyListener implements IEventListener {
             
             $result = $qb->executeQuery();
             $sourceMetadata = [];
-            while ($row = $result->fetch()) {
+            while ($row = $result->fetchAssociative()) {
                 if (!empty(trim($row['field_value'])) && $row['field_value'] !== 'null') {
                     $sourceMetadata[] = $row;
                     $debugInfo .= "Found metadata: gf_id={$row['groupfolder_id']}, field={$row['field_name']}, value={$row['field_value']}\n";
@@ -513,7 +513,7 @@ class FileCopyListener implements IEventListener {
                ->andWhere($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($targetGroupfolderId, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)));
             
             $result = $qb->executeQuery();
-            while ($row = $result->fetch()) {
+            while ($row = $result->fetchAssociative()) {
                 $debugInfo .= "Verified in target: field={$row['field_name']}, value={$row['field_value']}\n";
             }
             $result->closeCursor();

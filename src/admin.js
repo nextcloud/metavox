@@ -1,13 +1,12 @@
-import Vue from 'vue'
+import { createApp } from 'vue'
 import MetaVoxAdmin from './components/MetaVoxAdmin.vue'
 import { translate, translatePlural } from '@nextcloud/l10n'
 
-Vue.prototype.t = translate
-Vue.prototype.n = translatePlural
-Vue.prototype.OC = window.OC
-Vue.prototype.OCA = window.OCA
+const app = createApp(MetaVoxAdmin)
 
-export default new Vue({
-    el: '#metavox-admin',
-    render: h => h(MetaVoxAdmin)
-})
+app.config.globalProperties.t = translate
+app.config.globalProperties.n = translatePlural
+app.config.globalProperties.OC = window.OC
+app.config.globalProperties.OCA = window.OCA
+
+app.mount('#metavox-admin')

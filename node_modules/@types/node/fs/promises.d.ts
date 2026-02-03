@@ -8,10 +8,10 @@
  * concurrent modifications on the same file or data corruption may occur.
  * @since v10.0.0
  */
-declare module "fs/promises" {
+declare module "node:fs/promises" {
+    import { NonSharedBuffer } from "node:buffer";
     import { Abortable } from "node:events";
-    import { Stream } from "node:stream";
-    import { ReadableStream } from "node:stream/web";
+    import { Interface as ReadlineInterface } from "node:readline";
     import {
         BigIntStats,
         BigIntStatsFs,
@@ -20,7 +20,6 @@ declare module "fs/promises" {
         CopyOptions,
         Dir,
         Dirent,
-        DisposableTempDir,
         EncodingOption,
         GlobOptions,
         GlobOptionsWithFileTypes,
@@ -31,10 +30,11 @@ declare module "fs/promises" {
         OpenDirOptions,
         OpenMode,
         PathLike,
+        ReadOptions,
+        ReadOptionsWithBuffer,
         ReadPosition,
         ReadStream,
         ReadVResult,
-        RmDirOptions,
         RmOptions,
         StatFsOptions,
         StatOptions,
@@ -46,7 +46,8 @@ declare module "fs/promises" {
         WriteStream,
         WriteVResult,
     } from "node:fs";
-    import { Interface as ReadlineInterface } from "node:readline";
+    import { Stream } from "node:stream";
+    import { ReadableStream } from "node:stream/web";
     interface FileChangeInfo<T extends string | Buffer> {
         eventType: WatchEventType;
         filename: T | null;
@@ -59,6 +60,7 @@ declare module "fs/promises" {
         bytesRead: number;
         buffer: T;
     }
+    /** @deprecated This interface will be removed in a future version. Use `import { ReadOptionsWithBuffer } from "node:fs"` instead. */
     interface FileReadOptions<T extends NodeJS.ArrayBufferView = Buffer> {
         /**
          * @default `Buffer.alloc(0xffff)`
@@ -237,11 +239,13 @@ declare module "fs/promises" {
             length?: number | null,
             position?: ReadPosition | null,
         ): Promise<FileReadResult<T>>;
-        read<T extends NodeJS.ArrayBufferView = Buffer>(
+        read<T extends NodeJS.ArrayBufferView>(
             buffer: T,
-            options?: FileReadOptions<T>,
+            options?: ReadOptions,
         ): Promise<FileReadResult<T>>;
-        read<T extends NodeJS.ArrayBufferView = Buffer>(options?: FileReadOptions<T>): Promise<FileReadResult<T>>;
+        read<T extends NodeJS.ArrayBufferView = NonSharedBuffer>(
+            options?: ReadOptionsWithBuffer<T>,
+        ): Promise<FileReadResult<T>>;
         /**
          * Returns a byte-oriented `ReadableStream` that may be used to read the file's
          * contents.
@@ -285,7 +289,7 @@ declare module "fs/promises" {
             options?:
                 | ({ encoding?: null | undefined } & Abortable)
                 | null,
-        ): Promise<Buffer>;
+        ): Promise<NonSharedBuffer>;
         /**
          * Asynchronously reads the entire contents of a file. The underlying file will _not_ be closed automatically.
          * The `FileHandle` must have been opened for reading.
@@ -304,7 +308,7 @@ declare module "fs/promises" {
                 | (ObjectEncodingOptions & Abortable)
                 | BufferEncoding
                 | null,
-        ): Promise<string | Buffer>;
+        ): Promise<string | NonSharedBuffer>;
         /**
          * Convenience method to create a `readline` interface and stream over the file.
          * See `filehandle.createReadStream()` for the options.
@@ -413,7 +417,7 @@ declare module "fs/promises" {
          * @param [position='null'] The offset from the beginning of the file where the data from `buffer` should be written. If `position` is not a `number`, the data will be written at the current
          * position. See the POSIX pwrite(2) documentation for more detail.
          */
-        write<TBuffer extends Uint8Array>(
+        write<TBuffer extends NodeJS.ArrayBufferView>(
             buffer: TBuffer,
             offset?: number | null,
             length?: number | null,
@@ -452,14 +456,20 @@ declare module "fs/promises" {
          * @param [position='null'] The offset from the beginning of the file where the data from `buffers` should be written. If `position` is not a `number`, the data will be written at the current
          * position.
          */
-        writev(buffers: readonly NodeJS.ArrayBufferView[], position?: number): Promise<WriteVResult>;
+        writev<TBuffers extends readonly NodeJS.ArrayBufferView[]>(
+            buffers: TBuffers,
+            position?: number,
+        ): Promise<WriteVResult<TBuffers>>;
         /**
          * Read from a file and write to an array of [ArrayBufferView](https://developer.mozilla.org/en-US/docs/Web/API/ArrayBufferView) s
          * @since v13.13.0, v12.17.0
          * @param [position='null'] The offset from the beginning of the file where the data should be read from. If `position` is not a `number`, the data will be read from the current position.
          * @return Fulfills upon success an object containing two properties:
          */
-        readv(buffers: readonly NodeJS.ArrayBufferView[], position?: number): Promise<ReadVResult>;
+        readv<TBuffers extends readonly NodeJS.ArrayBufferView[]>(
+            buffers: TBuffers,
+            position?: number,
+        ): Promise<ReadVResult<TBuffers>>;
         /**
          * Closes the file handle after waiting for any pending operation on the handle to
          * complete.
@@ -590,7 +600,7 @@ declare module "fs/promises" {
      * @since v10.0.0
      * @return Fulfills with `undefined` upon success.
      */
-    function rmdir(path: PathLike, options?: RmDirOptions): Promise<void>;
+    function rmdir(path: PathLike): Promise<void>;
     /**
      * Removes files and directories (modeled on the standard POSIX `rm` utility).
      * @since v14.14.0
@@ -696,7 +706,7 @@ declare module "fs/promises" {
                 recursive?: boolean | undefined;
             }
             | "buffer",
-    ): Promise<Buffer[]>;
+    ): Promise<NonSharedBuffer[]>;
     /**
      * Asynchronous readdir(3) - read a directory.
      * @param path A path to a file. If a URL is provided, it must use the `file:` protocol.
@@ -711,7 +721,7 @@ declare module "fs/promises" {
             })
             | BufferEncoding
             | null,
-    ): Promise<string[] | Buffer[]>;
+    ): Promise<string[] | NonSharedBuffer[]>;
     /**
      * Asynchronous readdir(3) - read a directory.
      * @param path A path to a file. If a URL is provided, it must use the `file:` protocol.
@@ -736,7 +746,7 @@ declare module "fs/promises" {
             withFileTypes: true;
             recursive?: boolean | undefined;
         },
-    ): Promise<Dirent<Buffer>[]>;
+    ): Promise<Dirent<NonSharedBuffer>[]>;
     /**
      * Reads the contents of the symbolic link referred to by `path`. See the POSIX [`readlink(2)`](http://man7.org/linux/man-pages/man2/readlink.2.html) documentation for more detail. The promise is
      * fulfilled with the`linkString` upon success.
@@ -754,13 +764,16 @@ declare module "fs/promises" {
      * @param path A path to a file. If a URL is provided, it must use the `file:` protocol.
      * @param options The encoding (or an object specifying the encoding), used as the encoding of the result. If not provided, `'utf8'` is used.
      */
-    function readlink(path: PathLike, options: BufferEncodingOption): Promise<Buffer>;
+    function readlink(path: PathLike, options: BufferEncodingOption): Promise<NonSharedBuffer>;
     /**
      * Asynchronous readlink(2) - read value of a symbolic link.
      * @param path A path to a file. If a URL is provided, it must use the `file:` protocol.
      * @param options The encoding (or an object specifying the encoding), used as the encoding of the result. If not provided, `'utf8'` is used.
      */
-    function readlink(path: PathLike, options?: ObjectEncodingOptions | string | null): Promise<string | Buffer>;
+    function readlink(
+        path: PathLike,
+        options?: ObjectEncodingOptions | string | null,
+    ): Promise<string | NonSharedBuffer>;
     /**
      * Creates a symbolic link.
      *
@@ -911,7 +924,7 @@ declare module "fs/promises" {
      * @param path A path to a file. If a URL is provided, it must use the `file:` protocol.
      * @param options The encoding (or an object specifying the encoding), used as the encoding of the result. If not provided, `'utf8'` is used.
      */
-    function realpath(path: PathLike, options: BufferEncodingOption): Promise<Buffer>;
+    function realpath(path: PathLike, options: BufferEncodingOption): Promise<NonSharedBuffer>;
     /**
      * Asynchronous realpath(3) - return the canonicalized absolute pathname.
      * @param path A path to a file. If a URL is provided, it must use the `file:` protocol.
@@ -920,7 +933,7 @@ declare module "fs/promises" {
     function realpath(
         path: PathLike,
         options?: ObjectEncodingOptions | BufferEncoding | null,
-    ): Promise<string | Buffer>;
+    ): Promise<string | NonSharedBuffer>;
     /**
      * Creates a unique temporary directory. A unique directory name is generated by
      * appending six random characters to the end of the provided `prefix`. Due to
@@ -956,13 +969,30 @@ declare module "fs/promises" {
      * Generates six random characters to be appended behind a required `prefix` to create a unique temporary directory.
      * @param options The encoding (or an object specifying the encoding), used as the encoding of the result. If not provided, `'utf8'` is used.
      */
-    function mkdtemp(prefix: string, options: BufferEncodingOption): Promise<Buffer>;
+    function mkdtemp(prefix: string, options: BufferEncodingOption): Promise<NonSharedBuffer>;
     /**
      * Asynchronously creates a unique temporary directory.
      * Generates six random characters to be appended behind a required `prefix` to create a unique temporary directory.
      * @param options The encoding (or an object specifying the encoding), used as the encoding of the result. If not provided, `'utf8'` is used.
      */
-    function mkdtemp(prefix: string, options?: ObjectEncodingOptions | BufferEncoding | null): Promise<string | Buffer>;
+    function mkdtemp(
+        prefix: string,
+        options?: ObjectEncodingOptions | BufferEncoding | null,
+    ): Promise<string | NonSharedBuffer>;
+    interface DisposableTempDir extends AsyncDisposable {
+        /**
+         * The path of the created directory.
+         */
+        path: string;
+        /**
+         * A function which removes the created directory.
+         */
+        remove(): Promise<void>;
+        /**
+         * The same as `remove`.
+         */
+        [Symbol.asyncDispose](): Promise<void>;
+    }
     /**
      * The resulting Promise holds an async-disposable object whose `path` property
      * holds the created directory path. When the object is disposed, the directory
@@ -1138,7 +1168,7 @@ declare module "fs/promises" {
                 flag?: OpenMode | undefined;
             } & Abortable)
             | null,
-    ): Promise<Buffer>;
+    ): Promise<NonSharedBuffer>;
     /**
      * Asynchronously reads the entire contents of a file.
      * @param path A path to a file. If a URL is provided, it must use the `file:` protocol.
@@ -1174,7 +1204,7 @@ declare module "fs/promises" {
             )
             | BufferEncoding
             | null,
-    ): Promise<string | Buffer>;
+    ): Promise<string | NonSharedBuffer>;
     /**
      * Asynchronously open a directory for iterative scanning. See the POSIX [`opendir(3)`](http://man7.org/linux/man-pages/man3/opendir.3.html) documentation for more detail.
      *
@@ -1251,11 +1281,11 @@ declare module "fs/promises" {
     function watch(
         filename: PathLike,
         options: WatchOptionsWithBufferEncoding | "buffer",
-    ): NodeJS.AsyncIterator<FileChangeInfo<Buffer>>;
+    ): NodeJS.AsyncIterator<FileChangeInfo<NonSharedBuffer>>;
     function watch(
         filename: PathLike,
         options: WatchOptions | BufferEncoding | "buffer",
-    ): NodeJS.AsyncIterator<FileChangeInfo<string | Buffer>>;
+    ): NodeJS.AsyncIterator<FileChangeInfo<string | NonSharedBuffer>>;
     /**
      * Asynchronously copies the entire directory structure from `src` to `dest`,
      * including subdirectories and files.
@@ -1294,6 +1324,6 @@ declare module "fs/promises" {
         options: GlobOptions,
     ): NodeJS.AsyncIterator<Dirent | string>;
 }
-declare module "node:fs/promises" {
-    export * from "fs/promises";
+declare module "fs/promises" {
+    export * from "node:fs/promises";
 }

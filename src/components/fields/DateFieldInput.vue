@@ -1,7 +1,7 @@
 <template>
   <NcDatetimePicker
-    :value="dateValue"
-    @update:value="onUpdate"
+    :model-value="dateValue"
+    @update:model-value="onUpdate"
     type="date"
     :required="required"
     :placeholder="field.field_label" />

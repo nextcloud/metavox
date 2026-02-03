@@ -17,6 +17,7 @@
 				<FileIcon v-if="tab.id === 'file-metadata'" :size="16" />
 				<CogIcon v-if="tab.id === 'groupfolders'" :size="16" />
 				<ShieldIcon v-if="tab.id === 'permissions'" :size="16" />
+				<ChartBoxIcon v-if="tab.id === 'statistics'" :size="16" />
 				{{ tab.name }}
 			</button>
 		</div>
@@ -41,6 +42,9 @@
 				<PermissionsManager
 					v-if="activeTab === 'permissions'"
 					@notification="showNotification" />
+
+				<StatisticsSettings
+					v-if="activeTab === 'statistics'" />
 			</div>
 		</div>
 	</div>
@@ -52,12 +56,14 @@ import FolderIcon from 'vue-material-design-icons/Folder.vue'
 import FileIcon from 'vue-material-design-icons/File.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
 import ShieldIcon from 'vue-material-design-icons/Shield.vue'
+import ChartBoxIcon from 'vue-material-design-icons/ChartBox.vue'
 
 // Import our custom components
 import GroupfolderMetadataFields from './GroupfolderMetadataFields.vue'
 import FileMetadataFields from './FileMetadataFields.vue'
 import ManageGroupfolders from './ManageGroupfolders.vue'
 import PermissionsManager from './PermissionsManager.vue'
+import StatisticsSettings from './StatisticsSettings.vue'
 
 export default {
 	name: 'MetaVoxAdmin',
@@ -67,10 +73,12 @@ export default {
 		FileIcon,
 		CogIcon,
 		ShieldIcon,
+		ChartBoxIcon,
 		GroupfolderMetadataFields,
 		FileMetadataFields,
 		ManageGroupfolders,
 		PermissionsManager,
+		StatisticsSettings,
 	},
 
 	data() {
@@ -81,6 +89,7 @@ export default {
 				{ id: 'file-metadata', name: this.t('metavox', 'File Metadata') },
 				{ id: 'groupfolders', name: this.t('metavox', 'Manage Team folders') },
 				{ id: 'permissions', name: this.t('metavox', 'User Permissions') },
+				{ id: 'statistics', name: this.t('metavox', 'Statistics') },
 			]
 		}
 	},

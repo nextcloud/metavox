@@ -1,11 +1,16 @@
 const path = require('path')
+const webpack = require('webpack')
 const { VueLoaderPlugin } = require('vue-loader')
+
+// Read package.json for version
+const packageJson = require('./package.json')
 
 module.exports = {
   entry: {
     admin: path.join(__dirname, 'src', 'admin.js'),
     user: path.join(__dirname, 'src', 'user.js'),
     filesplugin: path.join(__dirname, 'src', 'filesplugin', 'filesplugin-main.js'),
+    'metavox-flow': path.join(__dirname, 'src', 'flow', 'main.js'),
   },
   output: {
     path: path.resolve(__dirname, 'js'),
@@ -49,12 +54,19 @@ module.exports = {
     ]
   },
   plugins: [
-    new VueLoaderPlugin()
+    new VueLoaderPlugin(),
+    new webpack.DefinePlugin({
+      appName: JSON.stringify('metavox'),
+      appVersion: JSON.stringify(packageJson.version),
+      __VUE_OPTIONS_API__: true,
+      __VUE_PROD_DEVTOOLS__: false,
+      __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
+    }),
   ],
   resolve: {
     extensions: ['.js', '.vue'],
     alias: {
-      vue$: 'vue/dist/vue.esm.js'
+      vue$: 'vue/dist/vue.esm-bundler.js'
     },
     fallback: {
       "path": false,

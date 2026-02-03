@@ -31,8 +31,8 @@
       <div class="settings-section" v-if="accessibleGroupfolders.length > 0">
         <div class="search-container">
           <NcTextField
-            :value="searchQuery"
-            @update:value="searchQuery = $event"
+            :model-value="searchQuery"
+            @update:model-value="searchQuery = $event"
             :label="t('metavox', 'Search team folders')"
             :show-trailing-button="!!searchQuery"
             @trailing-button-click="searchQuery = ''">
@@ -125,8 +125,8 @@
                   <!-- Search for Fields -->
                   <div class="field-search-section">
                     <NcTextField
-                      :value="fieldSearchQuery[groupfolder.id]"
-                      @update:value="fieldSearchQuery[groupfolder.id] = $event"
+                      :model-value="fieldSearchQuery[groupfolder.id]"
+                      @update:model-value="fieldSearchQuery[groupfolder.id] = $event"
                       :label="t('metavox', 'Search fields')"
                       :show-trailing-button="!!fieldSearchQuery[groupfolder.id]"
                       @trailing-button-click="fieldSearchQuery[groupfolder.id] = ''">
@@ -167,8 +167,8 @@
                       <NcCheckboxRadioSwitch
                         v-for="field in getFilteredGroupfolderFields(groupfolder.id)"
                         :key="`gf-${field.id}-${groupfolder.id}`"
-                        :checked="isFieldAssigned(groupfolder.id, field.id)"
-                        @update:checked="updateFieldAssignment(groupfolder.id, field.id, $event)"
+                        :model-value="isFieldAssigned(groupfolder.id, field.id)"
+                        @update:model-value="updateFieldAssignment(groupfolder.id, field.id, $event)"
                         type="checkbox">
                         {{ field.field_label }}
                         <span class="field-type-label">({{ field.field_type }})</span>
@@ -184,8 +184,8 @@
                       <NcCheckboxRadioSwitch
                         v-for="field in getFilteredFileFields(groupfolder.id)"
                         :key="`file-${field.id}-${groupfolder.id}`"
-                        :checked="isFieldAssigned(groupfolder.id, field.id)"
-                        @update:checked="updateFieldAssignment(groupfolder.id, field.id, $event)"
+                        :model-value="isFieldAssigned(groupfolder.id, field.id)"
+                        @update:model-value="updateFieldAssignment(groupfolder.id, field.id, $event)"
                         type="checkbox">
                         {{ field.field_label }}
                         <span class="field-type-label">({{ field.field_type }})</span>
@@ -266,8 +266,8 @@
               <NcTextField
                 v-if="field.field_type === 'text'"
                 :id="'field-' + field.id"
-                :value="getFieldValue(field)"
-                @update:value="updateMetadataValue(field, $event)"
+                :model-value="getFieldValue(field)"
+                @update:model-value="updateMetadataValue(field, $event)"
                 :label="field.field_label"
                 :placeholder="field.field_label"
                 :required="field.is_required"
@@ -277,7 +277,7 @@
               <textarea
                 v-else-if="field.field_type === 'textarea'"
                 :id="'field-' + field.id"
-                :value="getFieldValue(field)"
+                :model-value="getFieldValue(field)"
                 @input="updateMetadataValue(field, $event.target.value)"
                 :placeholder="field.field_label"
                 :required="field.is_required"
@@ -296,7 +296,7 @@
                 :clearable="!field.is_required"
                 :reduce="option => option.value"
                 label="label"
-                @input="handleSelectChange(field.field_name, $event)" />
+                @update:model-value="handleSelectChange(field.field_name, $event)" />
               
               <!-- MultiSelect input -->
               <NcSelect
@@ -311,14 +311,14 @@
                 :clearable="!field.is_required"
                 :reduce="option => option.value"
                 label="label"
-                @input="handleMultiSelectChange(field.field_name, $event)" />
+                @update:model-value="handleMultiSelectChange(field.field_name, $event)" />
               
               <!-- Date input -->
               <input
                 v-else-if="field.field_type === 'date'"
                 :id="'field-' + field.id"
                 type="date"
-                :value="getFieldValue(field)"
+                :model-value="getFieldValue(field)"
                 @input="updateMetadataValue(field, $event.target.value)"
                 :required="field.is_required"
                 class="field-input date-input" />
@@ -328,7 +328,7 @@
                 v-else-if="field.field_type === 'number'"
                 :id="'field-' + field.id"
                 type="number"
-                :value="getFieldValue(field)"
+                :model-value="getFieldValue(field)"
                 @input="updateMetadataValue(field, $event.target.value)"
                 :required="field.is_required"
                 class="field-input number-input" />
@@ -337,8 +337,8 @@
               <NcCheckboxRadioSwitch
                 v-else-if="field.field_type === 'checkbox'"
                 :id="'field-' + field.id"
-                :checked="isCheckboxChecked(field)"
-                @update:checked="updateCheckboxValue(field, $event)"
+                :model-value="isCheckboxChecked(field)"
+                @update:model-value="updateCheckboxValue(field, $event)"
                 type="checkbox">
                 {{ field.field_label }}
               </NcCheckboxRadioSwitch>
@@ -347,8 +347,8 @@
               <NcTextField
                 v-else
                 :id="'field-' + field.id"
-                :value="getFieldValue(field)"
-                @update:value="updateMetadataValue(field, $event)"
+                :model-value="getFieldValue(field)"
+                @update:model-value="updateMetadataValue(field, $event)"
                 :placeholder="field.field_label"
                 :required="field.is_required"
                 class="field-input" />
@@ -520,13 +520,13 @@ async loadAccessibleGroupfolders() {
         
         // Initialize state objects
         this.accessibleGroupfolders.forEach(gf => {
-          this.$set(this.expandedFields, gf.id, false)
-          this.$set(this.metadataValues, gf.id, {})
-          this.$set(this.metadataFields, gf.id, [])
-          this.$set(this.assignedFields, gf.id, [])
-          this.$set(this.tempAssignedFields, gf.id, [])
-          this.$set(this.fieldSearchQuery, gf.id, '')
-          this.$set(this.fieldTypeFilter, gf.id, 'all')
+          this.expandedFields[gf.id] = false
+          this.metadataValues[gf.id] = {}
+          this.metadataFields[gf.id] = []
+          this.assignedFields[gf.id] = []
+          this.tempAssignedFields[gf.id] = []
+          this.fieldSearchQuery[gf.id] = ''
+          this.fieldTypeFilter[gf.id] = 'all'
         })
         
         // Pre-load assigned fields for all groupfolders
@@ -536,12 +536,12 @@ async loadAccessibleGroupfolders() {
               generateUrl(`/apps/metavox/api/groupfolders/${gf.id}/fields`)
             )
             const fieldIds = response.data || []
-            this.$set(this.assignedFields, gf.id, fieldIds)
-            this.$set(this.tempAssignedFields, gf.id, [...fieldIds])
+            this.assignedFields[gf.id] = fieldIds
+            this.tempAssignedFields[gf.id] = [...fieldIds]
           } catch (error) {
             console.error(`Failed to load fields for groupfolder ${gf.id}:`, error)
-            this.$set(this.assignedFields, gf.id, [])
-            this.$set(this.tempAssignedFields, gf.id, [])
+            this.assignedFields[gf.id] = []
+            this.tempAssignedFields[gf.id] = []
           }
         }
       } catch (error) {
@@ -556,28 +556,28 @@ async loadAccessibleGroupfolders() {
       // Close other panels
       Object.keys(this.expandedFields).forEach(id => {
         if (id !== groupfolderId) {
-          this.$set(this.expandedFields, id, false)
+          this.expandedFields[id] = false
         }
       })
       
       const isExpanded = !this.expandedFields[groupfolderId]
-      this.$set(this.expandedFields, groupfolderId, isExpanded)
+      this.expandedFields[groupfolderId] = isExpanded
       
       if (isExpanded) {
         // Reset temp fields to current assigned fields when opening
-        this.$set(this.tempAssignedFields, groupfolderId, [...this.assignedFields[groupfolderId]])
-        this.$set(this.loadingFields, groupfolderId, false)
+        this.tempAssignedFields[groupfolderId] = [...this.assignedFields[groupfolderId]]
+        this.loadingFields[groupfolderId] = false
       }
     },
     
     closeFieldsConfig(groupfolderId) {
       // Reset temp fields to actual assigned fields when canceling
-      this.$set(this.tempAssignedFields, groupfolderId, [...this.assignedFields[groupfolderId]])
-      this.$set(this.expandedFields, groupfolderId, false)
+      this.tempAssignedFields[groupfolderId] = [...this.assignedFields[groupfolderId]]
+      this.expandedFields[groupfolderId] = false
     },
     
     async saveFieldsConfiguration(groupfolderId) {
-      this.$set(this.savingFields, groupfolderId, true)
+      this.savingFields[groupfolderId] = true
       
       try {
         await axios.post(
@@ -586,17 +586,17 @@ async loadAccessibleGroupfolders() {
         )
         
         // Update the actual assigned fields after successful save
-        this.$set(this.assignedFields, groupfolderId, [...this.tempAssignedFields[groupfolderId]])
+        this.assignedFields[groupfolderId] = [...this.tempAssignedFields[groupfolderId]]
         
         showSuccess(this.t('metavox', 'Field configuration saved successfully'))
-        this.$set(this.expandedFields, groupfolderId, false)
+        this.expandedFields[groupfolderId] = false
       } catch (error) {
         console.error('Failed to save field configuration:', error)
         showError(this.t('metavox', 'Failed to save field configuration'))
         // Reset temp fields to actual assigned fields on error
-        this.$set(this.tempAssignedFields, groupfolderId, [...this.assignedFields[groupfolderId]])
+        this.tempAssignedFields[groupfolderId] = [...this.assignedFields[groupfolderId]]
       } finally {
-        this.$set(this.savingFields, groupfolderId, false)
+        this.savingFields[groupfolderId] = false
       }
     },
     
@@ -618,7 +618,7 @@ async loadAccessibleGroupfolders() {
         }
       }
       
-      this.$set(this.tempAssignedFields, groupfolderId, fields)
+      this.tempAssignedFields[groupfolderId] = fields
     },
     
     getAssignedFieldsCount(groupfolderId) {
@@ -692,7 +692,7 @@ async loadAccessibleGroupfolders() {
           })
         }
         
-        this.$set(this.metadataValues, groupfolderId, values)
+        this.metadataValues[groupfolderId] = values
 
         const assignedFieldIds = this.assignedFields[groupfolderId] || []
         const assignedGroupfolderFields = metadataData.filter(field => {
@@ -701,14 +701,14 @@ async loadAccessibleGroupfolders() {
           return isAssigned && isGroupfolderField
         })
 
-        this.$set(this.metadataFields, groupfolderId, assignedGroupfolderFields)
+        this.metadataFields[groupfolderId] = assignedGroupfolderFields
         
         return { fields: assignedGroupfolderFields, values }
         
       } catch (error) {
         console.error('Error loading groupfolder metadata:', error)
-        this.$set(this.metadataFields, groupfolderId, [])
-        this.$set(this.metadataValues, groupfolderId, {})
+        this.metadataFields[groupfolderId] = []
+        this.metadataValues[groupfolderId] = {}
         throw error
       }
     },
@@ -735,13 +735,13 @@ async loadAccessibleGroupfolders() {
         // Initialize select and multiselect values
         fields.forEach(field => {
           if (field.field_type === 'select') {
-            this.$set(this.selectValues, field.field_name, values[field.field_name] || null)
+            this.selectValues[field.field_name] = values[field.field_name] || null
           } else if (field.field_type === 'multiselect') {
             const value = values[field.field_name]
             if (value) {
-              this.$set(this.multiSelectValues, field.field_name, value.split(';#').filter(v => v.trim()))
+              this.multiSelectValues[field.field_name] = value.split(';#'.filter(v => v.trim()))
             } else {
-              this.$set(this.multiSelectValues, field.field_name, [])
+              this.multiSelectValues[field.field_name] = []
             }
           }
         })
@@ -778,18 +778,18 @@ async loadAccessibleGroupfolders() {
     },
     
     handleSelectChange(fieldName, value) {
-      this.$set(this.selectValues, fieldName, value)
-      this.$set(this.currentMetadataValues, fieldName, value || '')
+      this.selectValues[fieldName] = value
+      this.currentMetadataValues[fieldName] = value || ''
     },
     
     handleMultiSelectChange(fieldName, values) {
-      this.$set(this.multiSelectValues, fieldName, values || [])
+      this.multiSelectValues[fieldName] = values || []
       const joinedValue = Array.isArray(values) ? values.join(';#') : ''
-      this.$set(this.currentMetadataValues, fieldName, joinedValue)
+      this.currentMetadataValues[fieldName] = joinedValue
     },
     
     updateMetadataValue(field, value) {
-      this.$set(this.currentMetadataValues, field.field_name, value)
+      this.currentMetadataValues[field.field_name] = value
     },
     
     updateCheckboxValue(field, checked) {
@@ -808,11 +808,11 @@ async loadAccessibleGroupfolders() {
       this.currentMetadataFields.forEach(field => {
         if (field.field_type === 'select') {
           const value = this.selectValues[field.field_name]
-          this.$set(this.currentMetadataValues, field.field_name, value || '')
+          this.currentMetadataValues[field.field_name] = value || ''
         } else if (field.field_type === 'multiselect') {
           const values = this.multiSelectValues[field.field_name]
           const joinedValue = Array.isArray(values) ? values.join(';#') : ''
-          this.$set(this.currentMetadataValues, field.field_name, joinedValue)
+          this.currentMetadataValues[field.field_name] = joinedValue
         }
       })
 
@@ -825,7 +825,7 @@ async loadAccessibleGroupfolders() {
         )
         
         if (response.data.success) {
-          this.$set(this.metadataValues, this.currentGroupfolderId, {...this.currentMetadataValues})
+          this.metadataValues[this.currentGroupfolderId] = {...this.currentMetadataValues}
           
           showSuccess(this.t('metavox', 'Metadata saved successfully'))
           this.closeMetadataModal()

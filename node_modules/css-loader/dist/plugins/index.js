@@ -24,4 +24,4 @@ Object.defineProperty(exports, "urlParser", {
 var _postcssImportParser = _interopRequireDefault(require("./postcss-import-parser"));
 var _postcssIcssParser = _interopRequireDefault(require("./postcss-icss-parser"));
 var _postcssUrlParser = _interopRequireDefault(require("./postcss-url-parser"));
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+function _interopRequireDefault(e) { return e && e.__esModule ? e : { default: e }; }

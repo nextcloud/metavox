@@ -42,7 +42,7 @@
       :reduce="option => option.id"
       label="displayname"
       @search-change="onSearch"
-      @input="onSelect">
+      @update:model-value="onSelect">
       <template #option="{ option }">
         <div v-if="option" class="user-option">
           <NcAvatar

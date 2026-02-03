@@ -1,7 +1,7 @@
 <template>
   <NcTextField
-    :value="String(modelValue)"
-    @update:value="onUpdate"
+    :model-value="String(modelValue)"
+    @update:model-value="onUpdate"
     type="number"
     :required="required"
     :placeholder="field.field_label" />

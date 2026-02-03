@@ -1,7 +1,7 @@
 <template>
   <NcTextArea
-    :value="modelValue"
-    @update:value="$emit('update:modelValue', $event)"
+    :model-value="modelValue"
+    @update:model-value="$emit('update:modelValue', $event)"
     :required="required"
     :placeholder="field.field_label"
     :rows="3" />

@@ -108,8 +108,8 @@
           <!-- Field Name (Internal) -->
           <div class="form-row">
             <NcTextField
-              :value="formData.name"
-              @update:value="formData.name = $event"
+              :model-value="formData.name"
+              @update:model-value="formData.name = $event"
               :label="t('metavox', 'Field Name')"
               :placeholder="t('metavox', 'e.g., author, document_type, status')"
               :helper-text="t('metavox', 'Internal name (no spaces, lowercase)')"
@@ -121,8 +121,8 @@
           <!-- Field Label (Display Name) -->
           <div class="form-row">
             <NcTextField
-              :value="formData.label"
-              @update:value="formData.label = $event"
+              :model-value="formData.label"
+              @update:model-value="formData.label = $event"
               :label="t('metavox', 'Field Label')"
               :placeholder="t('metavox', 'e.g., Author, Document Type, Status')"
               :helper-text="t('metavox', 'Display name shown to users')"
@@ -135,20 +135,20 @@
           <div class="form-row">
             <label class="field-label">{{ t('metavox', 'Field Type') }}</label>
             <NcSelect
-              :value="selectedFieldType"
+              :model-value="selectedFieldType"
               :options="selectOptions"
               label="label"
               track-by="id"
               :searchable="false"
               :clearable="false"
-              @input="onFieldTypeChange" />
+              @update:model-value="onFieldTypeChange" />
           </div>
 
           <!-- Description -->
           <div class="form-row">
             <NcTextField
-              :value="formData.description"
-              @update:value="formData.description = $event"
+              :model-value="formData.description"
+              @update:model-value="formData.description = $event"
               :label="t('metavox', 'Description')"
               :placeholder="t('metavox', 'Optional description for this field')"
               :helper-text="t('metavox', 'Description')"
@@ -158,8 +158,8 @@
           <!-- Required Field Checkbox -->
           <div class="form-row">
             <NcCheckboxRadioSwitch
-              :checked="formData.required"
-              @update:checked="formData.required = $event"
+              :model-value="formData.required"
+              @update:model-value="formData.required = $event"
               type="checkbox">
               {{ t('metavox', 'Required field') }}
             </NcCheckboxRadioSwitch>
@@ -171,8 +171,8 @@
             <div class="options-container">
               <div v-for="(option, index) in formData.options" :key="`option-add-${index}`" class="option-row">
                 <NcTextField
-                  :value="option.value"
-                  @update:value="option.value = $event"
+                  :model-value="option.value"
+                  @update:model-value="option.value = $event"
                   :placeholder="t('metavox', 'Option value')" />
                 <NcButton
                   type="tertiary"
@@ -233,8 +233,8 @@
         <!-- Search Field -->
         <div class="search-container">
           <NcTextField
-            :value="searchQuery"
-            @update:value="searchQuery = $event"
+            :model-value="searchQuery"
+            @update:model-value="searchQuery = $event"
             :placeholder="t('metavox', 'Search fields...')"
             :show-trailing-button="!!searchQuery"
             trailing-button-icon="close"
@@ -345,8 +345,8 @@
           <!-- Field Name (Internal) -->
           <div class="form-row">
             <NcTextField
-              :value="editData.name"
-              @update:value="editData.name = $event"
+              :model-value="editData.name"
+              @update:model-value="editData.name = $event"
               :label="t('metavox', 'Internal Field Name')"
               :placeholder="t('metavox', 'e.g., author, document_type, status')"
               :helper-text="t('metavox', 'Internal identifier used in the system')"
@@ -361,8 +361,8 @@
           <!-- Field Label (Display Name) -->
           <div class="form-row">
             <NcTextField
-              :value="editData.label"
-              @update:value="editData.label = $event"
+              :model-value="editData.label"
+              @update:model-value="editData.label = $event"
               :label="t('metavox', 'Display Name')"
               :placeholder="t('metavox', 'e.g., Author, Document Type, Status')"
               :helper-text="t('metavox', 'Name shown to users')"
@@ -372,8 +372,8 @@
           <!-- Description -->
           <div class="form-row">
             <NcTextField
-              :value="editData.description"
-              @update:value="editData.description = $event"
+              :model-value="editData.description"
+              @update:model-value="editData.description = $event"
               :helper-text="t('metavox', 'Description')"
               :label="t('metavox', 'Description')"
               :rows="3" />
@@ -382,8 +382,8 @@
           <!-- Required Field -->
           <div class="form-row">
             <NcCheckboxRadioSwitch
-              :checked="editData.required"
-              @update:checked="editData.required = $event"
+              :model-value="editData.required"
+              @update:model-value="editData.required = $event"
               type="checkbox"
               :disabled="getUsageCount(editingField) > 0">
               {{ t('metavox', 'Required field') }}
@@ -396,8 +396,8 @@
             <div class="options-container">
               <div v-for="(option, index) in editData.options" :key="`option-edit-${index}`" class="option-row">
                 <NcTextField
-                  :value="option.value"
-                  @update:value="option.value = $event"
+                  :model-value="option.value"
+                  @update:model-value="option.value = $event"
                   :placeholder="t('metavox', 'Option value')" />
                 <NcButton
                   type="tertiary"
