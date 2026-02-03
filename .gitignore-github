@@ -1,0 +1,5 @@
+# Additional ignores for GitHub only
+# These files should go to Gitea but not to GitHub
+
+docs/metavox-waarde-analyse.md
+docs/internal/
