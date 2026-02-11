@@ -14,17 +14,22 @@ const metavoxIconSvg = '<svg version="1.1" xmlns="http://www.w3.org/2000/svg" wi
  */
 async function registerNewSidebarTab() {
 	try {
+		// Only use the new API if the runtime Files app supports it (NC33+)
+		// On NC32, OCA.Files.Sidebar exists but getSidebar() returns a local stub
+		if (window.OCA?.Files?.Sidebar?.registerTab) {
+			// Legacy API is available, prefer it for NC31-32
+			return false
+		}
+
 		// Import getSidebar from @nextcloud/files
 		const { getSidebar } = await import('@nextcloud/files')
 
 		if (!getSidebar) {
-			console.error('MetaVox: getSidebar not available from @nextcloud/files')
 			return false
 		}
 
 		const sidebar = getSidebar()
-		if (!sidebar) {
-			console.error('MetaVox: Sidebar instance not available')
+		if (!sidebar || typeof sidebar.registerTab !== 'function') {
 			return false
 		}
 

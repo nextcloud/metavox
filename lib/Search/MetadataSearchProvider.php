@@ -159,7 +159,7 @@ class MetadataSearchProvider implements IProvider {
                ->from('metavox_gf_fields');
 
             $result = $qb->executeQuery();
-            while ($row = $result->fetchAssociative()) {
+            while ($row = $result->fetch()) {
                 $this->fieldLabelsCache[$row['field_name']] = $row['field_label'];
             }
             $result->closeCursor();

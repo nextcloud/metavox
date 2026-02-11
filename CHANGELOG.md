@@ -6,6 +6,21 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.6.1] - 2026-02-11
+
+### Fixed
+- Bulk metadata action no longer appears when only a single file is selected (requires 2+ files)
+- File copy listener now only copies metadata within the same team folder, preventing orphaned metadata when copying files between different team folders
+
+### Changed
+- Replaced hardcoded `file_put_contents` debug logging in FileCopyListener with PSR-3 `LoggerInterface`
+- Removed dead `copyGlobalFileMetadata` method (global metadata tables were removed in v1.3.0)
+- Metadata cleanup now uses `CacheEntryRemovedEvent` for real-time cleanup when files are permanently deleted from filecache
+- `CleanupDeletedMetadata` converted from `QueuedJob` to `TimedJob` (runs daily) — catches orphaned metadata for deleted files and files moved out of their team folder
+- Removed `FileDeleteListener` (replaced by `CacheCleanupListener` + periodic cleanup job)
+
+---
+
 ## [1.6.0] - 2025-12-16
 
 ### Added

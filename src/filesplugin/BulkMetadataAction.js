@@ -154,7 +154,7 @@ export function registerBulkMetadataAction() {
 			title: () => t('metavox', 'Edit metadata fields for selected files'),
 			iconSvgInline: () => metadataIconSvg,
 
-			// Enable for files and folders
+			// Enable only for 2+ files/folders (bulk action)
 			enabled(nodes) {
 				// Handle different input formats
 				let nodeArray = nodes
@@ -178,18 +178,17 @@ export function registerBulkMetadataAction() {
 					}
 				}
 
-				if (!nodeArray || nodeArray.length === 0) {
-					// Return true anyway to show action
-					return true
+				// Require at least 2 items for bulk editing
+				if (!nodeArray || nodeArray.length < 2) {
+					return false
 				}
 
 				// Show for all files and folders (simplified check)
 				return nodeArray.every(node => node && (node.type === 'file' || node.type === 'folder'))
 			},
 
-			// Single file action
-			async exec(node) {
-				await openBulkMetadataModal(node)
+			// Single file action - not used, bulk only
+			async exec() {
 				return null
 			},
 

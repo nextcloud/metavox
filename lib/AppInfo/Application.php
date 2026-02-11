@@ -4,18 +4,17 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\AppInfo;
 
-use OCA\MetaVox\BackgroundJobs\CleanupDeletedMetadata;
+use OCA\MetaVox\Listener\CacheCleanupListener;
 use OCA\MetaVox\Listener\FileCopyListener;
-use OCA\MetaVox\Listener\FileDeleteListener;
 use OCA\MetaVox\Listener\RegisterFlowChecksListener;
 use OCA\MetaVox\Search\MetadataSearchProvider;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
+use OCP\Files\Cache\CacheEntryRemovedEvent;
 use OCP\Files\Events\Node\NodeCopiedEvent;
 use OCP\Files\Events\Node\NodeCreatedEvent;
-use OCP\Files\Events\Node\NodeDeletedEvent;
 use OCP\WorkflowEngine\Events\RegisterChecksEvent;
 
 class Application extends App implements IBootstrap {
@@ -33,8 +32,8 @@ class Application extends App implements IBootstrap {
         $context->registerEventListener(NodeCopiedEvent::class, FileCopyListener::class);
         $context->registerEventListener(NodeCreatedEvent::class, FileCopyListener::class);
 
-        // Register delete listener
-        $context->registerEventListener(NodeDeletedEvent::class, FileDeleteListener::class);
+        // Clean up metadata when files are removed from filecache (trash emptied, etc.)
+        $context->registerEventListener(CacheEntryRemovedEvent::class, CacheCleanupListener::class);
 
         // Register Flow (Workflow) checks for metadata-based conditions
         $context->registerEventListener(RegisterChecksEvent::class, RegisterFlowChecksListener::class);
@@ -43,9 +42,6 @@ class Application extends App implements IBootstrap {
     public function boot(IBootContext $context): void {
         // Load icon CSS globally to fix sidebar icon scaling
         \OCP\Util::addStyle('metavox', 'icon');
-
-        // Register background jobs with Nextcloud's job list
-        $this->registerBackgroundJobs();
 
         // Load Files app integration only when needed
         $request = \OC::$server->getRequest();
@@ -69,17 +65,6 @@ class Application extends App implements IBootstrap {
         if ($isFilesApp) {
             \OCP\Util::addScript('metavox', 'filesplugin');
             \OCP\Util::addStyle('metavox', 'files');
-        }
-    }
-
-    private function registerBackgroundJobs(): void {
-        $jobList = \OC::$server->getJobList();
-
-        // Register cleanup job (runs periodically without arguments)
-        // Note: UpdateSearchIndex is NOT registered here - it's a QueuedJob
-        // that gets added with file_id argument when metadata is saved
-        if (!$jobList->has(CleanupDeletedMetadata::class, null)) {
-            $jobList->add(CleanupDeletedMetadata::class);
         }
     }
 }

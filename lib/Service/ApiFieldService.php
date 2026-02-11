@@ -43,7 +43,7 @@ class ApiFieldService {
         $result = $qb->executeQuery();
         $fieldMap = [];
 
-        while ($row = $result->fetchAssociative()) {
+        while ($row = $result->fetch()) {
             // Use lowercase for case-insensitive matching
             $fieldMap[strtolower($row['field_name'])] = (int)$row['id'];
         }

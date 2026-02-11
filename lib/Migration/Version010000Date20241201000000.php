@@ -106,7 +106,7 @@ class Version010000Date20241201000000 extends SimpleMigrationStep {
                         AND INDEX_NAME = 'search_content_fulltext'";
 
                 $result = $connection->executeQuery($sql, [$tableName]);
-                $row = $result->fetchAssociative();
+                $row = $result->fetch();
 
                 if ($row['count'] == 0) {
                     // Add FULLTEXT index with proper MySQL syntax
