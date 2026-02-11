@@ -295,7 +295,7 @@ class PermissionService {
         $result = $qb->executeQuery();
         $permissions = [];
         
-        while ($row = $result->fetchAssociative()) {
+        while ($row = $result->fetch()) {
             $permissions[] = [
                 'id' => (int)$row['id'],
                 'user_id' => $row['user_id'],
@@ -326,7 +326,7 @@ class PermissionService {
         $result = $qb->executeQuery();
         $permissions = [];
         
-        while ($row = $result->fetchAssociative()) {
+        while ($row = $result->fetch()) {
             $permissions[] = [
                 'id' => (int)$row['id'],
                 'source' => 'user',
@@ -349,7 +349,7 @@ class PermissionService {
                ->where($qb->expr()->eq('group_id', $qb->createNamedParameter($groupId)));
 
             $result = $qb->executeQuery();
-            while ($row = $result->fetchAssociative()) {
+            while ($row = $result->fetch()) {
                 $permissions[] = [
                     'id' => (int)$row['id'],
                     'source' => 'group',

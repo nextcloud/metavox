@@ -56,7 +56,7 @@ public function getAccessibleGroupfolders(string $userId): array {
         $result = $qb->executeQuery();
         $folders = [];
         
-        while ($row = $result->fetchAssociative()) {
+        while ($row = $result->fetch()) {
             $folderId = (int)($row['folder_id'] ?? $row['id'] ?? 0);
             $mountPoint = $row['mount_point'] ?? 'Unknown';
             
@@ -69,7 +69,7 @@ public function getAccessibleGroupfolders(string $userId): array {
             $result2 = $qb2->executeQuery();
             $folderGroups = [];
 
-            while ($groupRow = $result2->fetchAssociative()) {
+            while ($groupRow = $result2->fetch()) {
                 $groupId = $groupRow['group_id'];
                 $folderGroups[] = $groupId;
             }
@@ -124,7 +124,7 @@ public function getAccessibleGroupfolders(string $userId): array {
 
             $result = $qb->executeQuery();
             $fieldIds = [];
-            while ($row = $result->fetchAssociative()) {
+            while ($row = $result->fetch()) {
                 $fieldIds[] = (int)$row['field_id'];
             }
             $result->closeCursor();
@@ -151,7 +151,7 @@ public function getAccessibleGroupfolders(string $userId): array {
 
             $result = $qb->executeQuery();
             $metadata = [];
-            while ($row = $result->fetchAssociative()) {
+            while ($row = $result->fetch()) {
                 $metadata[] = [
                     'id' => (int)$row['id'],
                     'field_name' => $row['field_name'],
@@ -186,7 +186,7 @@ public function getAccessibleGroupfolders(string $userId): array {
             
             $result = $qb->executeQuery();
             $fieldMap = [];
-            while ($row = $result->fetchAssociative()) {
+            while ($row = $result->fetch()) {
                 $fieldMap[$row['field_name']] = (int)$row['id'];
             }
             $result->closeCursor();
@@ -279,7 +279,7 @@ public function getAccessibleGroupfolders(string $userId): array {
 
             $result = $qb->executeQuery();
             $fields = [];
-            while ($row = $result->fetchAssociative()) {
+            while ($row = $result->fetch()) {
                 $fields[] = [
                     'id' => (int)$row['id'],
                     'field_name' => $row['field_name'],

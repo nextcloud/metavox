@@ -4,210 +4,164 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\BackgroundJobs;
 
-use OCP\BackgroundJob\QueuedJob;
-use OCP\IDBConnection;
+use OCP\AppFramework\Utility\ITimeFactory;
+use OCP\BackgroundJob\TimedJob;
 use OCP\DB\QueryBuilder\IQueryBuilder;
+use OCP\IDBConnection;
+use Psr\Log\LoggerInterface;
 
-class CleanupDeletedMetadata extends QueuedJob {
+/**
+ * Periodic cleanup of orphaned metadata entries. Runs once per day.
+ *
+ * Handles two cases:
+ * 1. Deleted files — metadata where file_id no longer exists in filecache
+ * 2. Moved files — metadata where the file still exists but is no longer in its assigned groupfolder
+ *
+ * Real-time cleanup on file deletion is handled by CacheCleanupListener.
+ */
+class CleanupDeletedMetadata extends TimedJob {
 
-    public function run($arguments) {
-        $db = \OC::$server->getDatabaseConnection();
+    public function __construct(
+        ITimeFactory $time,
+        private readonly IDBConnection $db,
+        private readonly LoggerInterface $logger,
+    ) {
+        parent::__construct($time);
+        $this->setInterval(86400);
+    }
 
-        $nodeId = $arguments['node_id'] ?? null;
-        $nodePath = $arguments['node_path'] ?? null;
-        $nodeType = $arguments['node_type'] ?? 'unknown';
-        $groupfolderId = $arguments['groupfolder_id'] ?? null;
-
+    protected function run(mixed $argument): void {
         try {
             $totalCleaned = 0;
-            $nodeExists = false;
-
-            // Step 1: Check if the specific node still exists in filecache
-            if ($nodeId) {
-                $nodeExists = $this->checkNodeExists($db, $nodeId);
-
-                if (!$nodeExists) {
-                    // Node is really deleted, clean up its metadata
-                    $nodeCleaned = $this->cleanupNodeMetadata($db, $nodeId, $groupfolderId);
-                    $totalCleaned += $nodeCleaned;
-                }
-            }
-
-            // Step 2: General orphaned cleanup (regardless of specific node)
-            $totalCleaned += $this->cleanupOrphanedGlobalMetadata($db);
-            $totalCleaned += $this->cleanupOrphanedSearchEntries($db);
-            $totalCleaned += $this->cleanupOrphanedGroupfolderMetadata($db);
-
-            // Step 3: If it was a folder and we have path info, look for child nodes
-            if ($nodeType === 'folder' && $nodePath && !$nodeExists) {
-                $totalCleaned += $this->cleanupFolderChildren($db, $nodePath);
-            }
+            $totalCleaned += $this->cleanupDeletedFiles();
+            $totalCleaned += $this->cleanupMovedFiles();
+            $totalCleaned += $this->cleanupOrphanedSearchEntries();
 
             if ($totalCleaned > 0) {
-                error_log("MetaVox Cleanup Job: Cleaned $totalCleaned metadata entries for node $nodeId");
+                $this->logger->info('MetaVox cleanup: removed {count} orphaned entries', [
+                    'count' => $totalCleaned,
+                ]);
             }
-
         } catch (\Exception $e) {
-            error_log("MetaVox Cleanup Job Error: " . $e->getMessage());
+            $this->logger->error('MetaVox cleanup error', ['exception' => $e]);
         }
     }
 
     /**
-     * Check if a node still exists in filecache
+     * Remove metadata for files that no longer exist in filecache.
      */
-    private function checkNodeExists(IDBConnection $db, int $nodeId): bool {
-        try {
-            $qb = $db->getQueryBuilder();
-            $qb->select('fileid')
-               ->from('filecache')
-               ->where($qb->expr()->eq('fileid', $qb->createNamedParameter($nodeId, IQueryBuilder::PARAM_INT)))
-               ->setMaxResults(1);
+    private function cleanupDeletedFiles(): int {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('gf.file_id')
+           ->from('metavox_file_gf_meta', 'gf')
+           ->leftJoin('gf', 'filecache', 'fc', $qb->expr()->eq('gf.file_id', 'fc.fileid'))
+           ->where($qb->expr()->isNull('fc.fileid'))
+           ->groupBy('gf.file_id')
+           ->setMaxResults(10000);
 
-            $result = $qb->executeQuery();
-            $exists = $result->fetchColumn() !== false;
-            $result->closeCursor();
-
-            return $exists;
-
-        } catch (\Exception $e) {
-            error_log("MetaVox Cleanup: Error checking node existence: " . $e->getMessage());
-            return true; // Assume it exists to be safe
+        $result = $qb->executeQuery();
+        $orphanedIds = [];
+        while ($row = $result->fetch()) {
+            $orphanedIds[] = (int)$row['file_id'];
         }
+        $result->closeCursor();
+
+        return $this->deleteMetadataForFiles($orphanedIds);
     }
 
     /**
-     * Clean up metadata for a specific node
+     * Remove metadata for files that still exist but are no longer in their assigned groupfolder.
      */
-    private function cleanupNodeMetadata(IDBConnection $db, int $nodeId, ?int $groupfolderId): int {
-        $totalCleaned = 0;
-
-        try {
-            // Clean search index
-            $qb = $db->getQueryBuilder();
-            $qb->delete('metavox_search_index')
-               ->where($qb->expr()->eq('file_id', $qb->createNamedParameter($nodeId, IQueryBuilder::PARAM_INT)));
-            $searchCleaned = $qb->executeQuery();
-            $totalCleaned += $searchCleaned;
-
-            // Clean groupfolder file metadata
-            $qb = $db->getQueryBuilder();
-            $qb->delete('metavox_file_gf_meta')
-               ->where($qb->expr()->eq('file_id', $qb->createNamedParameter($nodeId, IQueryBuilder::PARAM_INT)));
-            $gfCleaned = $qb->executeQuery();
-            $totalCleaned += $gfCleaned;
-
-            if ($totalCleaned > 0) {
-                error_log("MetaVox Cleanup: Cleaned $totalCleaned metadata entries for node $nodeId");
-            }
-
-            return $totalCleaned;
-
-        } catch (\Exception $e) {
-            error_log("MetaVox Cleanup: Error cleaning node metadata: " . $e->getMessage());
+    private function cleanupMovedFiles(): int {
+        $groupfolders = $this->loadGroupfolders();
+        if (empty($groupfolders)) {
             return 0;
         }
+
+        // Get metadata entries joined with their filecache path
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('gf.file_id', 'gf.groupfolder_id', 'fc.path')
+           ->from('metavox_file_gf_meta', 'gf')
+           ->innerJoin('gf', 'filecache', 'fc', $qb->expr()->eq('gf.file_id', 'fc.fileid'))
+           ->groupBy('gf.file_id', 'gf.groupfolder_id', 'fc.path')
+           ->setMaxResults(10000);
+
+        $result = $qb->executeQuery();
+        $movedFileIds = [];
+        while ($row = $result->fetch()) {
+            $gfId = (int)$row['groupfolder_id'];
+            $path = $row['path'];
+
+            // Groupfolder was deleted entirely
+            if (!isset($groupfolders[$gfId])) {
+                $movedFileIds[] = (int)$row['file_id'];
+                continue;
+            }
+
+            // Check if file path still belongs to this groupfolder
+            // Filecache stores paths as: __groupfolders/{id}/...
+            if (!str_contains($path, '__groupfolders/' . $gfId . '/')) {
+                $movedFileIds[] = (int)$row['file_id'];
+            }
+        }
+        $result->closeCursor();
+
+        return $this->deleteMetadataForFiles($movedFileIds);
     }
 
     /**
-     * Clean up folder children by trying to find related file IDs
-     * This is a fallback for cases where child nodes weren't individually processed
+     * Remove orphaned search index entries.
      */
-    private function cleanupFolderChildren(IDBConnection $db, string $folderPath): int {
-        try {
-            // This is tricky - we can't safely query filecache for path patterns
-            // So we'll just rely on the orphaned cleanup methods
-            // which are safer and will catch any truly orphaned entries
-            
-            error_log("MetaVox Cleanup: Folder children cleanup delegated to orphaned cleanup for path: $folderPath");
-            return 0;
+    private function cleanupOrphanedSearchEntries(): int {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('si.file_id')
+           ->from('metavox_search_index', 'si')
+           ->leftJoin('si', 'filecache', 'fc', $qb->expr()->eq('si.file_id', 'fc.fileid'))
+           ->where($qb->expr()->isNull('fc.fileid'))
+           ->setMaxResults(10000);
 
-        } catch (\Exception $e) {
-            error_log("MetaVox Cleanup: Error cleaning folder children: " . $e->getMessage());
+        $result = $qb->executeQuery();
+        $orphanedIds = [];
+        while ($row = $result->fetch()) {
+            $orphanedIds[] = (int)$row['file_id'];
+        }
+        $result->closeCursor();
+
+        if (empty($orphanedIds)) {
             return 0;
         }
+
+        $qb = $this->db->getQueryBuilder();
+        $qb->delete('metavox_search_index')
+           ->where($qb->expr()->in('file_id', $qb->createNamedParameter($orphanedIds, IQueryBuilder::PARAM_INT_ARRAY)));
+
+        return $qb->executeStatement();
     }
 
-    /**
-     * Clean up orphaned global metadata entries (where file no longer exists)
-     * Note: Global metadata table has been removed, this method now returns 0
-     */
-    private function cleanupOrphanedGlobalMetadata(IDBConnection $db): int {
-        // Global metadata table (metavox_metadata) has been removed
-        // All metadata is now stored in metavox_file_gf_meta
-        return 0;
+    private function loadGroupfolders(): array {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('folder_id', 'mount_point')
+           ->from('group_folders');
+
+        $result = $qb->executeQuery();
+        $groupfolders = [];
+        while ($row = $result->fetch()) {
+            $groupfolders[(int)$row['folder_id']] = $row['mount_point'];
+        }
+        $result->closeCursor();
+
+        return $groupfolders;
     }
 
-    /**
-     * Clean up orphaned search index entries
-     */
-    private function cleanupOrphanedSearchEntries(IDBConnection $db): int {
-        try {
-            $qb = $db->getQueryBuilder();
-            $qb->select('si.file_id')
-               ->from('metavox_search_index', 'si')
-               ->leftJoin('si', 'filecache', 'fc', 'si.file_id = fc.fileid')
-               ->where($qb->expr()->isNull('fc.fileid'))
-               ->setMaxResults(100000);
-
-            $result = $qb->executeQuery();
-            $orphanedFileIds = [];
-            while ($row = $result->fetchAssociative()) {
-                $orphanedFileIds[] = (int)$row['file_id'];
-            }
-            $result->closeCursor();
-
-            if (empty($orphanedFileIds)) {
-                return 0;
-            }
-
-            $qb = $db->getQueryBuilder();
-            $qb->delete('metavox_search_index')
-               ->where($qb->expr()->in('file_id', $qb->createParameter('file_ids')))
-               ->setParameter('file_ids', $orphanedFileIds, IQueryBuilder::PARAM_INT_ARRAY);
-
-            $deleted = $qb->executeQuery();
-            return $deleted;
-
-        } catch (\Exception $e) {
-            error_log("MetaVox Cleanup: Error cleaning orphaned search entries: " . $e->getMessage());
+    private function deleteMetadataForFiles(array $fileIds): int {
+        if (empty($fileIds)) {
             return 0;
         }
-    }
 
-    /**
-     * Clean up orphaned groupfolder file metadata
-     */
-    private function cleanupOrphanedGroupfolderMetadata(IDBConnection $db): int {
-        try {
-            $qb = $db->getQueryBuilder();
-            $qb->select('gf.file_id')
-               ->from('metavox_file_gf_meta', 'gf')
-               ->leftJoin('gf', 'filecache', 'fc', 'gf.file_id = fc.fileid')
-               ->where($qb->expr()->isNull('fc.fileid'))
-               ->setMaxResults(100000);
+        $qb = $this->db->getQueryBuilder();
+        $qb->delete('metavox_file_gf_meta')
+           ->where($qb->expr()->in('file_id', $qb->createNamedParameter($fileIds, IQueryBuilder::PARAM_INT_ARRAY)));
 
-            $result = $qb->executeQuery();
-            $orphanedFileIds = [];
-            while ($row = $result->fetchAssociative()) {
-                $orphanedFileIds[] = (int)$row['file_id'];
-            }
-            $result->closeCursor();
-
-            if (empty($orphanedFileIds)) {
-                return 0;
-            }
-
-            $qb = $db->getQueryBuilder();
-            $qb->delete('metavox_file_gf_meta')
-               ->where($qb->expr()->in('file_id', $qb->createParameter('file_ids')))
-               ->setParameter('file_ids', $orphanedFileIds, IQueryBuilder::PARAM_INT_ARRAY);
-
-            $deleted = $qb->executeQuery();
-            return $deleted;
-
-        } catch (\Exception $e) {
-            error_log("MetaVox Cleanup: Error cleaning orphaned groupfolder metadata: " . $e->getMessage());
-            return 0;
-        }
+        return $qb->executeStatement();
     }
 }

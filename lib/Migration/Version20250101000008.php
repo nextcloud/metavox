@@ -80,7 +80,7 @@ class Version20250101000008 extends SimpleMigrationStep {
 
         $result = $qb->executeQuery();
         $fieldIds = [];
-        while ($row = $result->fetchAssociative()) {
+        while ($row = $result->fetch()) {
             $fieldIds[] = (int)$row['id'];
         }
         $result->closeCursor();
@@ -99,7 +99,7 @@ class Version20250101000008 extends SimpleMigrationStep {
 
         $result = $qb->executeQuery();
         $fieldNames = [];
-        while ($row = $result->fetchAssociative()) {
+        while ($row = $result->fetch()) {
             $fieldNames[] = $row['field_name'];
         }
         $result->closeCursor();
@@ -126,7 +126,7 @@ class Version20250101000008 extends SimpleMigrationStep {
         $result = $qb->executeQuery();
         $rowsToUpdate = [];
 
-        while ($row = $result->fetchAssociative()) {
+        while ($row = $result->fetch()) {
             $rowsToUpdate[] = [
                 'id' => (int)$row['id'],
                 'new_value' => str_replace(',', ';#', $row['value'])
@@ -166,7 +166,7 @@ class Version20250101000008 extends SimpleMigrationStep {
         $result = $qb->executeQuery();
         $rowsToUpdate = [];
 
-        while ($row = $result->fetchAssociative()) {
+        while ($row = $result->fetch()) {
             $rowsToUpdate[] = [
                 'id' => (int)$row['id'],
                 'new_value' => str_replace(',', ';#', $row[$columnName])

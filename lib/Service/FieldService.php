@@ -39,7 +39,7 @@ public function getAllFields(): array {
 
     $result = $qb->executeQuery();
     $fields = [];
-    while ($row = $result->fetchAssociative()) {
+    while ($row = $result->fetch()) {
         $fields[] = [
             'id' => (int)$row['id'],
             'field_name' => $row['field_name'],
@@ -71,7 +71,7 @@ public function getFieldById(int $id): ?array {
            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
 
         $result = $qb->executeQuery();
-        $row = $result->fetchAssociative();
+        $row = $result->fetch();
         $result->closeCursor();
 
         if ($row) {
@@ -110,7 +110,7 @@ public function getFieldsByScope(string $scope = 'global'): array {
 
     $result = $qb->executeQuery();
     $fields = [];
-    while ($row = $result->fetchAssociative()) {
+    while ($row = $result->fetch()) {
         $fieldData = [
             'id' => (int)$row['id'],
             'field_name' => $row['field_name'],
@@ -357,7 +357,7 @@ public function getFieldMetadata(int $fileId): array {
 
         $result = $qb->executeQuery();
         $metadata = [];
-        while ($row = $result->fetchAssociative()) {
+        while ($row = $result->fetch()) {
             $metadata[] = [
                 'id' => (int)$row['id'],
                 'field_name' => $row['field_name'],
@@ -448,7 +448,7 @@ public function getGroupfolders(string $userId): array {
         $result = $qb->executeQuery();
         $folders = [];
 
-        while ($row = $result->fetchAssociative()) {
+        while ($row = $result->fetch()) {
             $folderId = (int)($row['folder_id']);
             $mountPoint = $row['mount_point'] ?? 'Team Folder ' . $folderId;
 
@@ -461,7 +461,7 @@ public function getGroupfolders(string $userId): array {
             $result2 = $qb2->executeQuery();
             $folderGroups = [];
 
-            while ($groupRow = $result2->fetchAssociative()) {
+            while ($groupRow = $result2->fetch()) {
                 $folderGroups[] = $groupRow['group_id'];
             }
             $result2->closeCursor();
@@ -512,7 +512,7 @@ public function getGroupfolderMetadata(int $groupfolderId): array {
 
             $result = $qb->executeQuery();
             $metadata = [];
-            while ($row = $result->fetchAssociative()) {
+            while ($row = $result->fetch()) {
                 $metadata[] = [
                     'id' => (int)$row['id'],
                     'field_name' => $row['field_name'],
@@ -544,7 +544,7 @@ public function getGroupfolderMetadata(int $groupfolderId): array {
 
         $result = $qb->executeQuery();
         $fieldIds = [];
-        while ($row = $result->fetchAssociative()) {
+        while ($row = $result->fetch()) {
             $fieldIds[] = (int)$row['field_id'];
         }
         $result->closeCursor();
@@ -565,7 +565,7 @@ public function getAssignedFieldsWithDataForGroupfolder(int $groupfolderId): arr
 
         $result = $qb->executeQuery();
         $fieldIds = [];
-        while ($row = $result->fetchAssociative()) {
+        while ($row = $result->fetch()) {
             $fieldIds[] = (int)$row['field_id'];
         }
         $result->closeCursor();
@@ -583,7 +583,7 @@ public function getAssignedFieldsWithDataForGroupfolder(int $groupfolderId): arr
 
         $result = $qb->executeQuery();
         $fields = [];
-        while ($row = $result->fetchAssociative()) {
+        while ($row = $result->fetch()) {
             $fields[] = [
                 'id' => (int)$row['id'],
                 'field_name' => $row['field_name'],
@@ -663,7 +663,7 @@ public function getGroupfolderFileMetadata(int $groupfolderId, int $fileId): arr
 
             $result = $qb->executeQuery();
             $metadata = [];
-            while ($row = $result->fetchAssociative()) {
+            while ($row = $result->fetch()) {
                 $metadata[] = [
                     'id' => (int)$row['id'],
                     'field_name' => $row['field_name'],
@@ -772,7 +772,7 @@ public function getBulkFileMetadata(array $fileIds): array {
 
         // Get all fields first to ensure every file gets all fields
         $allFields = [];
-        while ($row = $result->fetchAssociative()) {
+        while ($row = $result->fetch()) {
             if (!isset($allFields[$row['id']])) {
                 $allFields[$row['id']] = [
                     'id' => (int)$row['id'],

@@ -59,7 +59,7 @@ class SearchIndexService {
             $result = $qb->executeQuery();
             $files = [];
             
-            while ($row = $result->fetchAssociative()) {
+            while ($row = $result->fetch()) {
                 $files[] = [
                     'id' => (int)$row['file_id'],
                     'name' => $row['name'],
@@ -132,7 +132,7 @@ private function searchFromIndex(string $searchTerm, string $userId): array {
     $result = $qb->executeQuery();
     $files = [];
     
-    while ($row = $result->fetchAssociative()) {
+    while ($row = $result->fetch()) {
         $files[] = [
             'id' => (int)$row['file_id'],
             'name' => $row['name'],
@@ -160,7 +160,7 @@ private function searchFromIndex(string $searchTerm, string $userId): array {
         $result = $qb->executeQuery();
         $files = [];
 
-        while ($row = $result->fetchAssociative()) {
+        while ($row = $result->fetch()) {
             $fileId = $row['fileid'];
             if (!isset($files[$fileId])) {
                 $files[$fileId] = [
@@ -189,7 +189,7 @@ private function searchFromIndex(string $searchTerm, string $userId): array {
         
         $result = $qb->executeQuery();
         $storageIds = [];
-        while ($row = $result->fetchAssociative()) {
+        while ($row = $result->fetch()) {
             $storageIds[] = (int)$row['numeric_id'];
         }
         $result->closeCursor();
@@ -254,7 +254,7 @@ private function getFileMetadata(int $fileId): array {
        ->where($qb->expr()->eq('file_id', $qb->createNamedParameter($fileId)));
 
     $result = $qb->executeQuery();
-    while ($row = $result->fetchAssociative()) {
+    while ($row = $result->fetch()) {
         if (!empty(trim($row['field_value']))) {
             $metadata[] = [
                 'field_name' => $row['field_name'],
@@ -275,7 +275,7 @@ private function getFileMetadata(int $fileId): array {
            ->where($qb->expr()->eq('f.fileid', $qb->createNamedParameter($fileId)));
 
         $result = $qb->executeQuery();
-        $info = $result->fetchAssociative();
+        $info = $result->fetch();
         $result->closeCursor();
 
         if (!$info) {

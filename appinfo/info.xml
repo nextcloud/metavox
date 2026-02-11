@@ -43,5 +43,6 @@
     </settings>
     <background-jobs>
         <job>OCA\MetaVox\BackgroundJobs\TelemetryJob</job>
+        <job>OCA\MetaVox\BackgroundJobs\CleanupDeletedMetadata</job>
     </background-jobs>
 </info>

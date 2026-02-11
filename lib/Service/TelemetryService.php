@@ -183,7 +183,7 @@ class TelemetryService {
             $byType = [];
             $total = 0;
 
-            while ($row = $result->fetchAssociative()) {
+            while ($row = $result->fetch()) {
                 $byType[$row['field_type']] = (int)$row['count'];
                 $total += (int)$row['count'];
             }
@@ -238,7 +238,7 @@ class TelemetryService {
                ->groupBy('groupfolder_id');
             $result = $qb->executeQuery();
             $perGroupfolder = [];
-            while ($row = $result->fetchAssociative()) {
+            while ($row = $result->fetch()) {
                 $perGroupfolder[(int)$row['groupfolder_id']] = (int)$row['count'];
             }
             $result->closeCursor();
