@@ -6,7 +6,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.4.10] - 2026-02-14
+## [1.7.1] - 2026-02-14
 
 ### Fixed
 - Fixed "The requested uri() cannot be processed by the script '/var/www/nextcloud/occ'" error when running occ commands — `boot()` now skips request-dependent logic in CLI mode
