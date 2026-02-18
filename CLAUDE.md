@@ -28,9 +28,9 @@ Built JS outputs to `/js/` directory. No test suite or linter is configured.
 The app uses Vue 3 with `@nextcloud/vue` v9 components. No centralized state management — components manage their own state and make API calls directly via `@nextcloud/axios`.
 
 **Four webpack entry points** (`webpack.config.js`):
-- `src/admin.js` → `MetaVoxAdmin.vue` — Admin settings with 5 tabs (Team folder Metadata, File Metadata, Manage Team folders, User Permissions, Statistics)
+- `src/admin.js` → `MetaVoxAdmin.vue` — Admin settings with 6 tabs (Team folder Metadata, File Metadata, Manage Team folders, User Permissions, Retention, Statistics)
 - `src/user.js` → `MetaVoxPersonal.vue` — Personal settings page
-- `src/filesplugin/filesplugin-main.js` → `FilesSidebarTab.vue` — Files app sidebar integration
+- `src/filesplugin/filesplugin-main.js` → `FilesSidebarTab.vue` + `RetentionSidebarTab.vue` — Files app sidebar integration (metadata + retention tabs)
 - `src/flow/main.js` → `MetadataCheck.vue` — Nextcloud Workflow Engine integration
 
 **Field input components** in `src/components/fields/`: `DynamicFieldInput.vue` routes to type-specific inputs (Text, Textarea, Number, Date, Select, Checkbox, URL, UserGroup, FileLink).
@@ -41,10 +41,10 @@ The app uses Vue 3 with `@nextcloud/vue` v9 components. No centralized state man
 
 Standard Nextcloud app pattern: Controllers → Services → Database.
 
-- **Controllers** (`lib/Controller/`): `FieldController` (web API), `ApiFieldController` (OCS API), `PermissionController`, `UserFieldController`, `UserController`, `TelemetryController`
-- **Services** (`lib/Service/`): `FieldService`, `ApiFieldService`, `PermissionService`, `UserFieldService`, `SearchIndexService`, `TelemetryService`
-- **Event Listeners** (`lib/Listener/`): `FileCopyListener` (NodeCopiedEvent + NodeCreatedEvent), `FileDeleteListener` (NodeDeletedEvent), `RegisterFlowChecksListener`
-- **Background Jobs** (`lib/BackgroundJobs/`): `CleanupDeletedMetadata` (TimedJob), `UpdateSearchIndex` (QueuedJob — added per file on metadata save), `TelemetryJob`
+- **Controllers** (`lib/Controller/`): `FieldController` (web API), `ApiFieldController` (OCS API), `PermissionController`, `UserFieldController`, `UserController`, `TelemetryController`, `RetentionController`
+- **Services** (`lib/Service/`): `FieldService`, `ApiFieldService`, `PermissionService`, `UserFieldService`, `SearchIndexService`, `TelemetryService`, `RetentionService`
+- **Event Listeners** (`lib/Listener/`): `FileCopyListener` (NodeCopiedEvent + NodeCreatedEvent), `CacheCleanupListener` (CacheEntryRemovedEvent — cleans metadata, search index, and retention on file removal), `RegisterFlowChecksListener`
+- **Background Jobs** (`lib/BackgroundJobs/`): `CleanupDeletedMetadata` (TimedJob), `UpdateSearchIndex` (QueuedJob — added per file on metadata save), `RetentionExecutionJob` (TimedJob — hourly, executes expired retentions), `TelemetryJob`
 - **Flow** (`lib/Flow/MetadataCheck.php`): Workflow Engine check with 17+ operators (is, contains, empty, before, after, greater, oneOf, etc.)
 - **Search** (`lib/Search/MetadataSearchProvider.php`): Nextcloud unified search integration
 - **Bootstrap** (`lib/AppInfo/Application.php`): Registers listeners, search provider, background jobs; conditionally loads filesplugin JS only on Files app pages
@@ -65,8 +65,13 @@ Routes defined in `appinfo/routes.php`. OCS routes include batch operations (bul
 - `metavox_gf_assigns` — Field-to-groupfolder assignments
 - `metavox_permissions` — User/group permissions
 - `metavox_search_index` — Full-text search index
+- `metavox_ret_policies` — Retention policy definitions
+- `metavox_ret_terms` — Retention terms per policy (duration, action)
+- `metavox_ret_assigns` — Policy-to-groupfolder assignments
+- `metavox_ret_files` — Per-file retention selections (with pre-calculated expires_at)
+- `metavox_ret_log` — Retention execution audit log
 
-Migrations in `lib/Migration/` (version-based, latest: `Version20250101000011`).
+Migrations in `lib/Migration/` (version-based, latest: `Version20250101000012`).
 
 ## Internationalization
 
@@ -78,4 +83,3 @@ Translations in `/l10n/` (nl.json, de.json). Use `t('metavox', 'text')` in Vue c
 - Filter functionality (FilterController, FilesFilterPanel)
 - Global fields (only groupfolder fields are used)
 - Field overrides
-- Retention Manager

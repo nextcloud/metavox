@@ -6,6 +6,29 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.8.0] - 2026-02-18
+
+### Added
+- NC33 + Vue 3 migration with backwards compatibility (NC31-33)
+- `CacheCleanupListener` for real-time metadata cleanup on file removal
+
+### Changed
+- Migrated frontend from Vue 2 to Vue 3 with `@nextcloud/vue` v9
+- Dual sidebar registration strategy (NC33 `getSidebar()` API + legacy fallback)
+- `CleanupDeletedMetadata` converted from `QueuedJob` to `TimedJob`
+
+### Fixed
+- File copy listener now only copies metadata within the same team folder, preventing orphaned metadata when copying between different team folders
+
+---
+
+## [1.6.2] - 2026-02-14
+
+### Fixed
+- Fixed "The requested uri() cannot be processed by the script '/var/www/nextcloud/occ'" error when running occ commands — `boot()` now skips request-dependent logic in CLI mode
+
+---
+
 ## [1.6.1] - 2026-02-11
 
 ### Fixed

@@ -17,7 +17,7 @@
 				<FileIcon v-if="tab.id === 'file-metadata'" :size="16" />
 				<CogIcon v-if="tab.id === 'groupfolders'" :size="16" />
 				<ShieldIcon v-if="tab.id === 'permissions'" :size="16" />
-				<ChartBoxIcon v-if="tab.id === 'statistics'" :size="16" />
+			<ChartBoxIcon v-if="tab.id === 'statistics'" :size="16" />
 				{{ tab.name }}
 			</button>
 		</div>

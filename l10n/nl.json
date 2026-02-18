@@ -218,7 +218,9 @@
         "Metadata exported for {count} files": "Metadata geëxporteerd voor {count} bestanden",
         "Failed to export metadata": "Metadata exporteren mislukt",
         "File Path": "Bestandspad",
-        "File Name": "Bestandsnaam"
+        "File Name": "Bestandsnaam",
+
+        "Statistics": "Statistieken"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }
