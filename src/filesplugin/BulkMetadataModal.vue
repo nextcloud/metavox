@@ -209,13 +209,14 @@ export default {
 						: Object.values(groupfoldersData)
 
 					// Find matching groupfolder based on path
+					// Must match exact mount point boundaries to avoid
+					// "Test" matching "Test sam" (substring false positive)
 					for (const gf of groupfolders) {
-						const mountPoint = gf.mount_point
-						if (path.includes(`/${mountPoint}/`) ||
-							path.startsWith(`/${mountPoint}`) ||
-							path.startsWith(mountPoint) ||
-							path === `/${mountPoint}` ||
-							path === mountPoint) {
+						const mp = gf.mount_point
+						if (path === `/${mp}` ||
+							path === mp ||
+							path.startsWith(`/${mp}/`) ||
+							path.startsWith(`${mp}/`)) {
 							groupfolderId = gf.id
 							break
 						}

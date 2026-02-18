@@ -15,30 +15,31 @@ let modalApp = null
 let modalContainer = null
 
 /**
+ * Extract nodes array from NC33 ActionContext or legacy array format
+ * NC33 (@nextcloud/files v4.x) passes { nodes, view, folder, contents }
+ * NC31-32 passes Node[] directly
+ * @param {Array|Object} input - Raw input from FileAction callback
+ * @returns {Array} Array of Node objects
+ */
+function extractNodes(input) {
+	if (Array.isArray(input)) {
+		return input
+	}
+	if (input && typeof input === 'object' && Array.isArray(input.nodes)) {
+		return input.nodes
+	}
+	if (input && typeof input === 'object' && (input.source || input.fileid)) {
+		return [input]
+	}
+	return []
+}
+
+/**
  * Open the bulk metadata modal
  * @param {Array|Object} nodes - Array of file nodes or single node
  */
 async function openBulkMetadataModal(nodes) {
-	// NC33 FileAction API passes different formats:
-	// - exec(node): single Node object
-	// - execBatch(nodes): array of Node objects OR an object with {nodes: Array, view, folder, contents}
-	let nodeArray = []
-
-	if (Array.isArray(nodes)) {
-		nodeArray = nodes
-	} else if (nodes && typeof nodes === 'object') {
-		if (nodes.nodes && Array.isArray(nodes.nodes)) {
-			nodeArray = nodes.nodes
-		} else if (nodes.fileid !== undefined || nodes.source !== undefined) {
-			nodeArray = [nodes]
-		} else {
-			console.error('MetaVox: Invalid nodes input format')
-			return
-		}
-	} else {
-		console.error('MetaVox: Invalid nodes input')
-		return
-	}
+	const nodeArray = extractNodes(nodes)
 
 	if (nodeArray.length === 0) {
 		return
@@ -137,17 +138,9 @@ export function registerBulkMetadataAction() {
 		const action = new FileAction({
 			id: 'metavox-edit-metadata',
 			displayName: (nodes) => {
-				// NC33 may pass nodes as array or as object with nodes property
-				let count = 0
-				if (Array.isArray(nodes)) {
-					count = nodes.length
-				} else if (nodes?.nodes && Array.isArray(nodes.nodes)) {
-					count = nodes.nodes.length
-				} else if (nodes) {
-					count = 1
-				}
-				if (count > 1) {
-					return t('metavox', 'Edit Metadata ({count} items)', { count })
+				const nodeArray = extractNodes(nodes)
+				if (nodeArray.length > 1) {
+					return t('metavox', 'Edit Metadata ({count} items)', { count: nodeArray.length })
 				}
 				return t('metavox', 'Edit Metadata')
 			},
@@ -156,34 +149,14 @@ export function registerBulkMetadataAction() {
 
 			// Enable only for 2+ files/folders (bulk action)
 			enabled(nodes) {
-				// Handle different input formats
-				let nodeArray = nodes
-
-				// If nodes is not an array, try to convert it
-				if (!Array.isArray(nodes)) {
-					if (nodes && typeof nodes === 'object') {
-						// Check if it's a single Node object (has source property which is the file path)
-						if (nodes.source || nodes.fileid || nodes.path) {
-							nodeArray = [nodes]
-						} else if (nodes.length !== undefined) {
-							nodeArray = Array.from(nodes)
-						} else {
-							// It might be an object with node properties directly
-							const values = Object.values(nodes)
-							// Filter out non-object values
-							nodeArray = values.filter(v => v && typeof v === 'object' && (v.source || v.fileid || v.type))
-						}
-					} else {
-						return false
-					}
-				}
+				const nodeArray = extractNodes(nodes)
 
 				// Require at least 2 items for bulk editing
-				if (!nodeArray || nodeArray.length < 2) {
+				if (nodeArray.length < 2) {
 					return false
 				}
 
-				// Show for all files and folders (simplified check)
+				// Show for all files and folders
 				return nodeArray.every(node => node && (node.type === 'file' || node.type === 'folder'))
 			},
 
@@ -194,13 +167,9 @@ export function registerBulkMetadataAction() {
 
 			// Bulk action for multiple files
 			async execBatch(nodes) {
-				await openBulkMetadataModal(nodes)
-				// Return array of nulls matching input length
-				if (Array.isArray(nodes)) {
-					return nodes.map(() => null)
-				}
-				// If nodes is not an array, just return null
-				return [null]
+				const nodeArray = extractNodes(nodes)
+				await openBulkMetadataModal(nodeArray)
+				return nodeArray.map(() => null)
 			},
 
 			// Show in context menu (higher = lower in menu)

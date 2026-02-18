@@ -218,7 +218,9 @@
         "Metadata exported for {count} files": "Metadaten für {count} Dateien exportiert",
         "Failed to export metadata": "Metadaten konnten nicht exportiert werden",
         "File Path": "Dateipfad",
-        "File Name": "Dateiname"
+        "File Name": "Dateiname",
+
+        "Statistics": "Statistiken"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

@@ -40,6 +40,11 @@ class Application extends App implements IBootstrap {
     }
 
     public function boot(IBootContext $context): void {
+        // Skip request-dependent logic in CLI mode (occ commands, cron, etc.)
+        if (\OC::$CLI) {
+            return;
+        }
+
         // Load icon CSS globally to fix sidebar icon scaling
         \OCP\Util::addStyle('metavox', 'icon');
 
