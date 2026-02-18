@@ -6,6 +6,15 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.8.1] - 2026-02-18
+
+### Fixed
+- NC33 sidebar tab now registers correctly by writing to NC33's scoped globals (`window._nc_files_scope.v4_0`) instead of the bundled `@nextcloud/files` window global
+- NC33 bulk metadata action now registers correctly using the same scoped globals approach
+- Groupfolder path matching uses exact boundary checks to prevent substring false positives
+
+---
+
 ## [1.8.0] - 2026-02-18
 
 ### Added
