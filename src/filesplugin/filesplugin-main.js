@@ -1,6 +1,6 @@
 /**
- * MetaVox Files Plugin - Nextcloud 33 Compatible Version
- * Registers metadata and retention sidebar tabs in Nextcloud Files app
+ * MetaVox Files Plugin - Nextcloud 31-33 Compatible Version
+ * Registers metadata sidebar tab in Nextcloud Files app
  */
 
 import { translate, translatePlural } from '@nextcloud/l10n'
@@ -14,31 +14,27 @@ const metavoxIconSvg = '<svg version="1.1" xmlns="http://www.w3.org/2000/svg" wi
 // ========================================
 
 /**
- * Register the metadata sidebar tab using the new NC33 API
+ * Register the metadata sidebar tab for NC33+ by writing directly to
+ * NC33's scoped globals (window._nc_files_scope.v4_0.filesSidebarTabs).
+ *
+ * We cannot use the bundled @nextcloud/files registerSidebarTab() because
+ * it writes to window._nc_files_sidebar_tabs, while NC33's sidebar reads
+ * from window._nc_files_scope.v4_0.filesSidebarTabs (a different location).
  */
 async function registerNewSidebarTab() {
 	try {
-		// Only use the new API if the runtime Files app supports it (NC33+)
-		// On NC32, OCA.Files.Sidebar exists but getSidebar() returns a local stub
-		if (window.OCA?.Files?.Sidebar?.registerTab) {
-			// Legacy API is available, prefer it for NC31-32
+		const scope = window._nc_files_scope?.v4_0
+		if (!scope) {
 			return false
 		}
 
-		// Import getSidebar from @nextcloud/files
-		const { getSidebar } = await import('@nextcloud/files')
+		scope.filesSidebarTabs ??= new Map()
 
-		if (!getSidebar) {
-			return false
+		if (scope.filesSidebarTabs.has('metavox')) {
+			return true
 		}
 
-		const sidebar = getSidebar()
-		if (!sidebar || typeof sidebar.registerTab !== 'function') {
-			return false
-		}
-
-		// Register the tab using the new API
-		sidebar.registerTab({
+		scope.filesSidebarTabs.set('metavox', {
 			id: 'metavox',
 			displayName: 'MetaVox',
 			iconSvgInline: metavoxIconSvg,
@@ -259,9 +255,10 @@ async function registerAllTabs() {
 	}
 	window._metavoxTabRegistered = true
 
-	// Register metadata tab
+	// Try new @nextcloud/files registerSidebarTab API first (NC33+)
 	const newApiSuccess = await registerNewSidebarTab()
 	if (!newApiSuccess) {
+		// Fallback to legacy OCA.Files.Sidebar API (NC31-32)
 		await registerLegacySidebarTab()
 	}
 }

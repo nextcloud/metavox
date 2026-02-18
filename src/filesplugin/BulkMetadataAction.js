@@ -1,9 +1,12 @@
 /**
  * MetaVox Bulk Metadata Action
  * Registers a file action for bulk editing metadata (Vue 3 version)
+ *
+ * On NC33, file actions are stored in window._nc_files_scope.v4_0.fileActions.
+ * Our bundled @nextcloud/files writes to a different location, so we register
+ * directly into the scoped globals (same approach as the sidebar tab fix).
  */
 
-import { registerFileAction, FileAction, Permission } from '@nextcloud/files'
 import { translate as t } from '@nextcloud/l10n'
 import { createApp, h, ref } from 'vue'
 
@@ -131,52 +134,61 @@ async function openBulkMetadataModal(nodes) {
 }
 
 /**
- * Register the bulk metadata file action
+ * The file action definition (plain object matching NC33's validation requirements)
+ */
+const bulkMetadataAction = {
+	id: 'metavox-edit-metadata',
+	displayName: (nodes) => {
+		const nodeArray = extractNodes(nodes)
+		if (nodeArray.length > 1) {
+			return t('metavox', 'Edit Metadata ({count} items)', { count: nodeArray.length })
+		}
+		return t('metavox', 'Edit Metadata')
+	},
+	title: () => t('metavox', 'Edit metadata fields for selected files'),
+	iconSvgInline: () => metadataIconSvg,
+
+	enabled(nodes) {
+		const nodeArray = extractNodes(nodes)
+		if (nodeArray.length < 2) {
+			return false
+		}
+		return nodeArray.every(node => node && (node.type === 'file' || node.type === 'folder'))
+	},
+
+	async exec() {
+		return null
+	},
+
+	async execBatch(nodes) {
+		const nodeArray = extractNodes(nodes)
+		await openBulkMetadataModal(nodeArray)
+		return nodeArray.map(() => null)
+	},
+
+	order: 50,
+}
+
+/**
+ * Register the bulk metadata file action.
+ * Writes directly to NC33's scoped globals, falls back to bundled API for older versions.
  */
 export function registerBulkMetadataAction() {
 	try {
-		const action = new FileAction({
-			id: 'metavox-edit-metadata',
-			displayName: (nodes) => {
-				const nodeArray = extractNodes(nodes)
-				if (nodeArray.length > 1) {
-					return t('metavox', 'Edit Metadata ({count} items)', { count: nodeArray.length })
-				}
-				return t('metavox', 'Edit Metadata')
-			},
-			title: () => t('metavox', 'Edit metadata fields for selected files'),
-			iconSvgInline: () => metadataIconSvg,
-
-			// Enable only for 2+ files/folders (bulk action)
-			enabled(nodes) {
-				const nodeArray = extractNodes(nodes)
-
-				// Require at least 2 items for bulk editing
-				if (nodeArray.length < 2) {
-					return false
-				}
-
-				// Show for all files and folders
-				return nodeArray.every(node => node && (node.type === 'file' || node.type === 'folder'))
-			},
-
-			// Single file action - not used, bulk only
-			async exec() {
-				return null
-			},
-
-			// Bulk action for multiple files
-			async execBatch(nodes) {
-				const nodeArray = extractNodes(nodes)
-				await openBulkMetadataModal(nodeArray)
-				return nodeArray.map(() => null)
-			},
-
-			// Show in context menu (higher = lower in menu)
-			order: 50,
-		})
-
-		registerFileAction(action)
+		const scope = window._nc_files_scope?.v4_0
+		if (scope) {
+			// NC33: register directly into scoped globals
+			scope.fileActions ??= new Map()
+			if (!scope.fileActions.has(bulkMetadataAction.id)) {
+				scope.fileActions.set(bulkMetadataAction.id, bulkMetadataAction)
+			}
+		} else {
+			// NC31-32 fallback: use bundled @nextcloud/files
+			import('@nextcloud/files').then(({ registerFileAction, FileAction }) => {
+				const action = new FileAction(bulkMetadataAction)
+				registerFileAction(action)
+			})
+		}
 	} catch (error) {
 		console.error('MetaVox: Failed to register bulk metadata action', error)
 	}
