@@ -331,7 +331,7 @@ if ($existingId) {
            ->set('field_data', $qb->createNamedParameter($fieldData))
            ->set('updated_at', $qb->createNamedParameter(date('Y-m-d H:i:s')))
            ->where($qb->expr()->eq('id', $qb->createNamedParameter($existingId)));
-        $qb->executeQuery();
+        $qb->executeStatement();
     } else {
         $qb = $this->db->getQueryBuilder();
         $qb->insert('metavox_search_index')
@@ -343,7 +343,7 @@ if ($existingId) {
                'field_data' => $qb->createNamedParameter($fieldData),
                'updated_at' => $qb->createNamedParameter(date('Y-m-d H:i:s'))
            ]);
-        $qb->executeQuery();
+        $qb->executeStatement();
     }
 
 
@@ -356,6 +356,6 @@ if ($existingId) {
         $qb = $this->db->getQueryBuilder();
         $qb->delete('metavox_search_index')
            ->where($qb->expr()->eq('file_id', $qb->createNamedParameter($fileId)));
-        $qb->executeQuery();
+        $qb->executeStatement();
     }
 }
