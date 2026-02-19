@@ -6,6 +6,19 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.8.4] - 2026-02-19
+
+### Added
+- Automatic daily metadata backup to JSON (background job)
+- Admin panel: Backup & Restore tab with manual backup, download, and restore
+- Streaming backup/restore for large datasets (millions of entries)
+
+### Fixed
+- Fixed backup entry count display in admin panel
+- Manual backups now also enforce the 7-backup retention limit
+
+---
+
 ## [1.8.3] - 2026-02-19
 
 ### Fixed
