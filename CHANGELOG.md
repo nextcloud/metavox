@@ -6,6 +6,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.8.3] - 2026-02-19
+
+### Fixed
+- Fixed search index not updating when saving metadata
+- Search index now updates directly on save instead of via background job
+
+---
+
 ## [1.8.2] - 2026-02-19
 
 ### Fixed

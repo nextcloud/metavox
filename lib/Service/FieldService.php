@@ -14,15 +14,17 @@ class FieldService {
     private IDBConnection $db;
     private IGroupManager $groupManager;
     private IUserManager $userManager;
+    private SearchIndexService $searchIndexService;
 
     // Request-scope cache for fields
     private ?array $fieldsCache = null;
     private array $fieldsByScopeCache = [];
 
-    public function __construct(IDBConnection $db, IGroupManager $groupManager, IUserManager $userManager) {
+    public function __construct(IDBConnection $db, IGroupManager $groupManager, IUserManager $userManager, SearchIndexService $searchIndexService) {
         $this->db = $db;
         $this->groupManager = $groupManager;
         $this->userManager = $userManager;
+        $this->searchIndexService = $searchIndexService;
     }
 
 public function getAllFields(): array {
@@ -866,13 +868,9 @@ public function saveGroupfolderFileFieldValue(int $groupfolderId, int $fileId, i
 
 private function queueSearchIndexUpdate(int $fileId): void {
     try {
-        \OC::$server->getJobList()->add(
-            \OCA\MetaVox\BackgroundJobs\UpdateSearchIndex::class,
-            ['file_id' => $fileId]
-        );
-        error_log('Metavox: Queued search index update for file ID: ' . $fileId);
+        $this->searchIndexService->updateFileIndex($fileId);
     } catch (\Exception $e) {
-        error_log('MetaVox: Failed to queue search index update: ' . $e->getMessage());
+        error_log('MetaVox: Failed to update search index: ' . $e->getMessage());
     }
 }
 
