@@ -253,13 +253,18 @@ async function registerAllTabs() {
 	if (window._metavoxTabRegistered) {
 		return
 	}
-	window._metavoxTabRegistered = true
 
 	// Try new @nextcloud/files registerSidebarTab API first (NC33+)
 	const newApiSuccess = await registerNewSidebarTab()
-	if (!newApiSuccess) {
-		// Fallback to legacy OCA.Files.Sidebar API (NC31-32)
-		await registerLegacySidebarTab()
+	if (newApiSuccess) {
+		window._metavoxTabRegistered = true
+		return
+	}
+
+	// Fallback to legacy OCA.Files.Sidebar API (NC31-32)
+	const legacySuccess = await registerLegacySidebarTab()
+	if (legacySuccess) {
+		window._metavoxTabRegistered = true
 	}
 }
 
@@ -274,7 +279,18 @@ function waitForFilesApp() {
 		return
 	}
 
-	setTimeout(() => {
+	// Try immediately for NC33 (scoped globals are available early)
+	registerAllTabs()
+
+	// Also poll for legacy API (NC31-32) which loads asynchronously
+	let attempts = 0
+	const maxAttempts = 50 // 5 seconds max
+	const pollInterval = setInterval(() => {
+		attempts++
+		if (window._metavoxTabRegistered || attempts >= maxAttempts) {
+			clearInterval(pollInterval)
+			return
+		}
 		registerAllTabs()
 	}, 100)
 }

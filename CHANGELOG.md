@@ -6,6 +6,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.8.2] - 2026-02-19
+
+### Fixed
+- Fixed sidebar tab not appearing on NC32 due to registration timing
+- Added missing telemetry/statistics routes
+
+---
+
 ## [1.8.1] - 2026-02-18
 
 ### Fixed

@@ -13,10 +13,7 @@ use Psr\Log\LoggerInterface;
 /**
  * Periodic cleanup of orphaned metadata entries. Runs once per day.
  *
- * Handles two cases:
- * 1. Deleted files — metadata where file_id no longer exists in filecache
- * 2. Moved files — metadata where the file still exists but is no longer in its assigned groupfolder
- *
+ * Removes metadata and search index entries for files that no longer exist in filecache.
  * Real-time cleanup on file deletion is handled by CacheCleanupListener.
  */
 class CleanupDeletedMetadata extends TimedJob {
@@ -34,7 +31,6 @@ class CleanupDeletedMetadata extends TimedJob {
         try {
             $totalCleaned = 0;
             $totalCleaned += $this->cleanupDeletedFiles();
-            $totalCleaned += $this->cleanupMovedFiles();
             $totalCleaned += $this->cleanupOrphanedSearchEntries();
 
             if ($totalCleaned > 0) {
@@ -70,46 +66,6 @@ class CleanupDeletedMetadata extends TimedJob {
     }
 
     /**
-     * Remove metadata for files that still exist but are no longer in their assigned groupfolder.
-     */
-    private function cleanupMovedFiles(): int {
-        $groupfolders = $this->loadGroupfolders();
-        if (empty($groupfolders)) {
-            return 0;
-        }
-
-        // Get metadata entries joined with their filecache path
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('gf.file_id', 'gf.groupfolder_id', 'fc.path')
-           ->from('metavox_file_gf_meta', 'gf')
-           ->innerJoin('gf', 'filecache', 'fc', $qb->expr()->eq('gf.file_id', 'fc.fileid'))
-           ->groupBy('gf.file_id', 'gf.groupfolder_id', 'fc.path')
-           ->setMaxResults(10000);
-
-        $result = $qb->executeQuery();
-        $movedFileIds = [];
-        while ($row = $result->fetch()) {
-            $gfId = (int)$row['groupfolder_id'];
-            $path = $row['path'];
-
-            // Groupfolder was deleted entirely
-            if (!isset($groupfolders[$gfId])) {
-                $movedFileIds[] = (int)$row['file_id'];
-                continue;
-            }
-
-            // Check if file path still belongs to this groupfolder
-            // Filecache stores paths as: __groupfolders/{id}/...
-            if (!str_contains($path, '__groupfolders/' . $gfId . '/')) {
-                $movedFileIds[] = (int)$row['file_id'];
-            }
-        }
-        $result->closeCursor();
-
-        return $this->deleteMetadataForFiles($movedFileIds);
-    }
-
-    /**
      * Remove orphaned search index entries.
      */
     private function cleanupOrphanedSearchEntries(): int {
@@ -136,21 +92,6 @@ class CleanupDeletedMetadata extends TimedJob {
            ->where($qb->expr()->in('file_id', $qb->createNamedParameter($orphanedIds, IQueryBuilder::PARAM_INT_ARRAY)));
 
         return $qb->executeStatement();
-    }
-
-    private function loadGroupfolders(): array {
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('folder_id', 'mount_point')
-           ->from('group_folders');
-
-        $result = $qb->executeQuery();
-        $groupfolders = [];
-        while ($row = $result->fetch()) {
-            $groupfolders[(int)$row['folder_id']] = $row['mount_point'];
-        }
-        $result->closeCursor();
-
-        return $groupfolders;
     }
 
     private function deleteMetadataForFiles(array $fileIds): int {
