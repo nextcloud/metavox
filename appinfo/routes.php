@@ -78,6 +78,14 @@ return [
         ['name' => 'telemetry#getStats', 'url' => '/api/telemetry/stats', 'verb' => 'GET'],
         ['name' => 'telemetry#sendTelemetry', 'url' => '/api/telemetry/send', 'verb' => 'POST'],
         ['name' => 'telemetry#saveSettings', 'url' => '/api/telemetry/settings', 'verb' => 'POST'],
+
+        // ========================================
+        // 💾 BACKUP & RESTORE ROUTES
+        // ========================================
+        ['name' => 'backup#list', 'url' => '/api/backup/list', 'verb' => 'GET'],
+        ['name' => 'backup#trigger', 'url' => '/api/backup/trigger', 'verb' => 'POST'],
+        ['name' => 'backup#restore', 'url' => '/api/backup/restore', 'verb' => 'POST'],
+        ['name' => 'backup#download', 'url' => '/api/backup/download', 'verb' => 'GET'],
     ],
 
     // ========================================
