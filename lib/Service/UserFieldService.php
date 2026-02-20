@@ -35,58 +35,66 @@ public function getAccessibleGroupfolders(string $userId): array {
     try {
         $user = $this->userManager->get($userId);
         if (!$user) {
-            error_log('MetaVox: User not found: ' . $userId);
             return [];
         }
-        
-        // Check if user is admin - check both admin group and isAdmin()
-        $isInAdminGroup = $this->groupManager->isInGroup($userId, 'admin');
-        $isAdmin = $this->groupManager->isAdmin($userId);
-        
-        // Get user's groups
+
+        // Use the groupfolders app's FolderManager — handles both groups and circles/teams
+        try {
+            $folderManager = \OC::$server->get(\OCA\GroupFolders\Folder\FolderManager::class);
+            $gfFolders = $folderManager->getFoldersForUser($user);
+
+            $folders = [];
+            foreach ($gfFolders as $gfFolder) {
+                $folders[] = [
+                    'id' => $gfFolder->id,
+                    'mount_point' => $gfFolder->mountPoint,
+                    'groups' => [],
+                    'quota' => $gfFolder->quota,
+                    'size' => 0,
+                    'acl' => $gfFolder->acl,
+                ];
+            }
+
+            return $folders;
+        } catch (\Exception $e) {
+            // FolderManager not available, fall back to direct DB query
+        }
+
+        // Fallback: direct DB query (does not support circles/teams)
         $userGroups = $this->groupManager->getUserGroupIds($user);
-        error_log('MetaVox: User ' . $userId . ' is in groups: ' . json_encode($userGroups));
-        error_log('MetaVox: User isInAdminGroup: ' . ($isInAdminGroup ? 'yes' : 'no') . ', isAdmin: ' . ($isAdmin ? 'yes' : 'no'));
-        
-        // Get all groupfolders with their group access
+
         $qb = $this->db->getQueryBuilder();
         $qb->select('f.*')
            ->from('group_folders', 'f');
 
         $result = $qb->executeQuery();
         $folders = [];
-        
+
         while ($row = $result->fetch()) {
             $folderId = (int)($row['folder_id'] ?? $row['id'] ?? 0);
             $mountPoint = $row['mount_point'] ?? 'Unknown';
-            
-            // Get applicable groups for this folder from group_folders_groups table
+
             $qb2 = $this->db->getQueryBuilder();
             $qb2->select('group_id', 'permissions')
                 ->from('group_folders_groups')
                 ->where($qb2->expr()->eq('folder_id', $qb2->createNamedParameter($folderId, IQueryBuilder::PARAM_INT)));
-            
+
             $result2 = $qb2->executeQuery();
             $folderGroups = [];
 
             while ($groupRow = $result2->fetch()) {
-                $groupId = $groupRow['group_id'];
-                $folderGroups[] = $groupId;
+                $folderGroups[] = $groupRow['group_id'];
             }
             $result2->closeCursor();
-            
-            error_log('MetaVox: Groupfolder ' . $folderId . ' (' . $mountPoint . ') has groups: ' . json_encode($folderGroups));
-            
-            // Check if user has access (user is in at least one of the folder's groups)
+
             $hasAccess = false;
             foreach ($userGroups as $userGroup) {
                 if (in_array($userGroup, $folderGroups)) {
                     $hasAccess = true;
-                    error_log('MetaVox: User has access to groupfolder ' . $folderId . ' via group: ' . $userGroup);
                     break;
                 }
             }
-            
+
             if ($hasAccess) {
                 $folders[] = [
                     'id' => $folderId,
@@ -96,20 +104,33 @@ public function getAccessibleGroupfolders(string $userId): array {
                     'size' => (int)($row['size'] ?? 0),
                     'acl' => (bool)($row['acl'] ?? false),
                 ];
-            } else {
-                error_log('MetaVox: User does NOT have access to groupfolder ' . $folderId . ' (not in any of the folder groups: ' . json_encode($folderGroups) . ')');
             }
         }
         $result->closeCursor();
 
-        error_log('MetaVox: User has access to ' . count($folders) . ' groupfolders (out of total checked)');
         return $folders;
-        
+
     } catch (\Exception $e) {
         error_log('MetaVox getAccessibleGroupfolders error: ' . $e->getMessage());
-        error_log('MetaVox getAccessibleGroupfolders trace: ' . $e->getTraceAsString());
         return [];
     }
+}
+
+/**
+ * Check if a user has access to a specific groupfolder.
+ */
+public function hasAccessToGroupfolder(string $userId, int $groupfolderId): bool {
+    if ($this->groupManager->isAdmin($userId)) {
+        return true;
+    }
+
+    $folders = $this->getAccessibleGroupfolders($userId);
+    foreach ($folders as $folder) {
+        if ((int)$folder['id'] === $groupfolderId) {
+            return true;
+        }
+    }
+    return false;
 }
 
     /**

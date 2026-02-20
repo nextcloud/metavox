@@ -7,6 +7,7 @@ namespace OCA\MetaVox\Controller;
 use OCA\MetaVox\Service\FieldService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\JSONResponse;
+use OCP\IGroupManager;
 use OCP\IRequest;
 use OCP\IUserSession;
 use OCP\IUserManager;
@@ -17,6 +18,7 @@ class FieldController extends Controller {
     private FieldService $fieldService;
     private IUserSession $userSession;
     private IUserManager $userManager;
+    private IGroupManager $groupManager;
     private IRootFolder $rootFolder;
 
     public function __construct(
@@ -25,12 +27,14 @@ class FieldController extends Controller {
         FieldService $fieldService,
         IUserSession $userSession,
         IUserManager $userManager,
+        IGroupManager $groupManager,
         IRootFolder $rootFolder
     ) {
         parent::__construct($appName, $request);
         $this->fieldService = $fieldService;
         $this->userSession = $userSession;
         $this->userManager = $userManager;
+        $this->groupManager = $groupManager;
         $this->rootFolder = $rootFolder;
     }
 
@@ -139,7 +143,8 @@ class FieldController extends Controller {
             }
 
             $userId = $user->getUID();
-            $groupfolders = $this->fieldService->getGroupfolders($userId);
+            $isAdmin = $this->groupManager->isAdmin($userId);
+            $groupfolders = $this->fieldService->getGroupfolders($userId, $isAdmin);
             return new JSONResponse($groupfolders);
         } catch (\Exception $e) {
             return new JSONResponse(['error' => $e->getMessage()], 500);
@@ -151,6 +156,14 @@ class FieldController extends Controller {
      */
     public function getGroupfolderMetadata(int $groupfolderId): JSONResponse {
         try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new JSONResponse(['error' => 'User not authenticated'], 401);
+            }
+            if (!$this->fieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
+                return new JSONResponse(['error' => 'Access denied'], 403);
+            }
+
             $metadata = $this->fieldService->getGroupfolderMetadata($groupfolderId);
             return new JSONResponse($metadata);
         } catch (\Exception $e) {
@@ -159,35 +172,34 @@ class FieldController extends Controller {
     }
 
     /**
-     * @NoAdminRequired  
+     * @NoAdminRequired
      */
     public function saveGroupfolderMetadata(int $groupfolderId): JSONResponse {
         try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new JSONResponse(['error' => 'User not authenticated'], 401);
+            }
+            if (!$this->fieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
+                return new JSONResponse(['error' => 'Access denied'], 403);
+            }
+
             $metadata = $this->request->getParam('metadata', []);
-            
-            error_log('TesterMeta saveGroupfolderMetadata: groupfolder=' . $groupfolderId . ', metadata=' . json_encode($metadata));
-            
+
             $fields = $this->fieldService->getFieldsByScope('groupfolder');
             $fieldMap = [];
             foreach ($fields as $field) {
                 $fieldMap[$field['field_name']] = $field['id'];
             }
-            
-            error_log('TesterMeta saveGroupfolderMetadata: Found ' . count($fields) . ' groupfolder fields');
-            
+
             foreach ($metadata as $fieldName => $value) {
                 if (isset($fieldMap[$fieldName])) {
-                    $result = $this->fieldService->saveGroupfolderFieldValue($groupfolderId, $fieldMap[$fieldName], (string)$value);
-                    error_log('TesterMeta saveGroupfolderMetadata: Saved field ' . $fieldName . ', result: ' . ($result ? 'success' : 'failed'));
-                } else {
-                    error_log('TesterMeta saveGroupfolderMetadata: Field not found in map: ' . $fieldName);
+                    $this->fieldService->saveGroupfolderFieldValue($groupfolderId, $fieldMap[$fieldName], (string)$value);
                 }
             }
 
             return new JSONResponse(['success' => true]);
         } catch (\Exception $e) {
-            error_log('TesterMeta saveGroupfolderMetadata error: ' . $e->getMessage());
-            error_log('TesterMeta saveGroupfolderMetadata error trace: ' . $e->getTraceAsString());
             return new JSONResponse(['error' => $e->getMessage(), 'success' => false], 500);
         }
     }
@@ -250,6 +262,14 @@ public function createGroupfolderField(): JSONResponse {
      */
     public function getGroupfolderAssignedFields(int $groupfolderId): JSONResponse {
         try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new JSONResponse(['error' => 'User not authenticated'], 401);
+            }
+            if (!$this->fieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
+                return new JSONResponse(['error' => 'Access denied'], 403);
+            }
+
             $fields = $this->fieldService->getAssignedFieldsForGroupfolder($groupfolderId);
             return new JSONResponse($fields);
         } catch (\Exception $e) {
@@ -262,6 +282,14 @@ public function createGroupfolderField(): JSONResponse {
      */
     public function setGroupfolderFields(int $groupfolderId): JSONResponse {
         try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new JSONResponse(['error' => 'User not authenticated'], 401);
+            }
+            if (!$this->fieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
+                return new JSONResponse(['error' => 'Access denied'], 403);
+            }
+
             $fieldIds = $this->request->getParam('field_ids', []);
             $success = $this->fieldService->setGroupfolderFields($groupfolderId, $fieldIds);
             return new JSONResponse(['success' => $success]);
@@ -275,6 +303,14 @@ public function createGroupfolderField(): JSONResponse {
      */
     public function getGroupfolderFileMetadata(int $groupfolderId, int $fileId): JSONResponse {
         try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new JSONResponse(['error' => 'User not authenticated'], 401);
+            }
+            if (!$this->fieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
+                return new JSONResponse(['error' => 'Access denied'], 403);
+            }
+
             $metadata = $this->fieldService->getGroupfolderFileMetadata($groupfolderId, $fileId);
             return new JSONResponse($metadata);
         } catch (\Exception $e) {
@@ -287,6 +323,14 @@ public function createGroupfolderField(): JSONResponse {
      */
     public function saveGroupfolderFileMetadata(int $groupfolderId, int $fileId): JSONResponse {
         try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new JSONResponse(['error' => 'User not authenticated'], 401);
+            }
+            if (!$this->fieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
+                return new JSONResponse(['error' => 'Access denied'], 403);
+            }
+
             $metadata = $this->request->getParam('metadata', []);
 
             $fields = $this->fieldService->getFieldsByScope('groupfolder');

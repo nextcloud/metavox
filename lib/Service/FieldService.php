@@ -428,20 +428,55 @@ public function saveFieldValue(int $fileId, int $fieldId, string $value): bool {
 }
 
     // Groupfolder functionality
-public function getGroupfolders(string $userId): array {
+public function getGroupfolders(string $userId, bool $adminMode = false): array {
     try {
-        // Get user object
         $user = $this->userManager->get($userId);
         if (!$user) {
-            error_log('MetaVox: User not found: ' . $userId);
             return [];
         }
 
-        // Get user's groups
-        $userGroups = $this->groupManager->getUserGroupIds($user);
-        error_log('MetaVox: User ' . $userId . ' is in groups: ' . json_encode($userGroups));
+        // Use the groupfolders app's FolderManager — handles both groups and circles/teams
+        try {
+            $folderManager = \OC::$server->get(\OCA\GroupFolders\Folder\FolderManager::class);
 
-        // Get all groupfolders
+            if ($adminMode) {
+                // Admin: return all groupfolders
+                $gfFolders = $folderManager->getAllFolders();
+                $folders = [];
+                foreach ($gfFolders as $gfFolder) {
+                    $folders[] = [
+                        'id' => $gfFolder->id,
+                        'mount_point' => $gfFolder->mountPoint,
+                        'groups' => array_keys($gfFolder->groups),
+                        'quota' => $gfFolder->quota,
+                        'size' => 0,
+                        'acl' => $gfFolder->acl,
+                    ];
+                }
+                return $folders;
+            }
+
+            // Non-admin: return only folders the user has access to
+            $gfFolders = $folderManager->getFoldersForUser($user);
+            $folders = [];
+            foreach ($gfFolders as $gfFolder) {
+                $folders[] = [
+                    'id' => $gfFolder->id,
+                    'mount_point' => $gfFolder->mountPoint,
+                    'groups' => [],
+                    'quota' => $gfFolder->quota,
+                    'size' => 0,
+                    'acl' => $gfFolder->acl,
+                ];
+            }
+            return $folders;
+        } catch (\Exception $e) {
+            // FolderManager not available, fall back to direct DB query
+        }
+
+        // Fallback: direct DB query (does not support circles/teams)
+        $userGroups = $adminMode ? null : $this->groupManager->getUserGroupIds($user);
+
         $qb = $this->db->getQueryBuilder();
         $qb->select('folder_id', 'mount_point')
            ->from('group_folders')
@@ -454,7 +489,6 @@ public function getGroupfolders(string $userId): array {
             $folderId = (int)($row['folder_id']);
             $mountPoint = $row['mount_point'] ?? 'Team Folder ' . $folderId;
 
-            // Get applicable groups for this folder from group_folders_groups table
             $qb2 = $this->db->getQueryBuilder();
             $qb2->select('group_id')
                 ->from('group_folders_groups')
@@ -468,17 +502,7 @@ public function getGroupfolders(string $userId): array {
             }
             $result2->closeCursor();
 
-            // Check if user has access (user is in at least one of the folder's groups)
-            $hasAccess = false;
-            foreach ($userGroups as $userGroup) {
-                if (in_array($userGroup, $folderGroups)) {
-                    $hasAccess = true;
-                    break;
-                }
-            }
-
-            // Only add folder if user has access
-            if ($hasAccess) {
+            if ($adminMode) {
                 $folders[] = [
                     'id' => $folderId,
                     'mount_point' => $mountPoint,
@@ -487,21 +511,55 @@ public function getGroupfolders(string $userId): array {
                     'size' => 0,
                     'acl' => false,
                 ];
+            } else {
+                $hasAccess = false;
+                foreach ($userGroups as $userGroup) {
+                    if (in_array($userGroup, $folderGroups)) {
+                        $hasAccess = true;
+                        break;
+                    }
+                }
+
+                if ($hasAccess) {
+                    $folders[] = [
+                        'id' => $folderId,
+                        'mount_point' => $mountPoint,
+                        'groups' => $folderGroups,
+                        'quota' => -3,
+                        'size' => 0,
+                        'acl' => false,
+                    ];
+                }
             }
         }
         $result->closeCursor();
 
-        error_log('MetaVox: User has access to ' . count($folders) . ' groupfolders');
         return $folders;
 
     } catch (\Exception $e) {
         error_log('MetaVox getGroupfolders error: ' . $e->getMessage());
-        error_log('MetaVox getGroupfolders trace: ' . $e->getTraceAsString());
-
-        // If even the basic query fails, return an empty array
         return [];
     }
 }
+
+/**
+ * Check if a user has access to a specific groupfolder (via group or circle/team).
+ * Admins always have access.
+ */
+public function hasAccessToGroupfolder(string $userId, int $groupfolderId): bool {
+    if ($this->groupManager->isAdmin($userId)) {
+        return true;
+    }
+
+    $folders = $this->getGroupfolders($userId);
+    foreach ($folders as $folder) {
+        if ((int)$folder['id'] === $groupfolderId) {
+            return true;
+        }
+    }
+    return false;
+}
+
 public function getGroupfolderMetadata(int $groupfolderId): array {
         try {
             $qb = $this->db->getQueryBuilder();

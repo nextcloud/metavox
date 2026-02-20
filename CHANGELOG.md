@@ -6,24 +6,19 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.8.4] - 2026-02-19
+## [1.8.3] - 2026-02-20
 
 ### Added
 - Automatic daily metadata backup to JSON (background job)
 - Admin panel: Backup & Restore tab with manual backup, download, and restore
 - Streaming backup/restore for large datasets (millions of entries)
-
-### Fixed
-- Fixed backup entry count display in admin panel
-- Manual backups now also enforce the 7-backup retention limit
-
----
-
-## [1.8.3] - 2026-02-19
+- Circles/Teams support: team folders assigned to circles are now correctly detected
 
 ### Fixed
 - Fixed search index not updating when saving metadata
 - Search index now updates directly on save instead of via background job
+- Admin panel now shows all team folders regardless of membership
+- Added groupfolder access checks on all metadata endpoints
 
 ---
 
