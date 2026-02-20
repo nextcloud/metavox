@@ -50,11 +50,19 @@ class UserFieldController extends Controller {
 
     /**
      * Get assigned fields for a groupfolder
-     * 
+     *
      * @NoAdminRequired
      */
     public function getGroupfolderFields(int $groupfolderId): JSONResponse {
         try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new JSONResponse(['error' => 'User not authenticated'], 401);
+            }
+            if (!$this->userFieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
+                return new JSONResponse(['error' => 'Access denied'], 403);
+            }
+
             $fields = $this->userFieldService->getGroupfolderFields($groupfolderId);
             return new JSONResponse($fields);
         } catch (\Exception $e) {
@@ -78,11 +86,19 @@ class UserFieldController extends Controller {
 
     /**
      * Get metadata for a groupfolder
-     * 
+     *
      * @NoAdminRequired
      */
     public function getGroupfolderMetadata(int $groupfolderId): JSONResponse {
         try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new JSONResponse(['error' => 'User not authenticated'], 401);
+            }
+            if (!$this->userFieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
+                return new JSONResponse(['error' => 'Access denied'], 403);
+            }
+
             $metadata = $this->userFieldService->getGroupfolderMetadata($groupfolderId);
             return new JSONResponse($metadata);
         } catch (\Exception $e) {
@@ -92,33 +108,46 @@ class UserFieldController extends Controller {
 
     /**
      * Save metadata for a groupfolder
-     * 
+     *
      * @NoAdminRequired
      */
     public function saveGroupfolderMetadata(int $groupfolderId): JSONResponse {
         try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new JSONResponse(['error' => 'User not authenticated'], 401);
+            }
+            if (!$this->userFieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
+                return new JSONResponse(['error' => 'Access denied'], 403);
+            }
+
             $metadata = $this->request->getParam('metadata', []);
-            
             $success = $this->userFieldService->saveGroupfolderMetadata($groupfolderId, $metadata);
-            
+
             return new JSONResponse(['success' => $success]);
         } catch (\Exception $e) {
-            error_log('MetaVox saveGroupfolderMetadata error: ' . $e->getMessage());
             return new JSONResponse(['error' => $e->getMessage()], 500);
         }
     }
 
     /**
      * Set which fields are assigned to a groupfolder
-     * 
+     *
      * @NoAdminRequired
      */
     public function setGroupfolderFields(int $groupfolderId): JSONResponse {
         try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new JSONResponse(['error' => 'User not authenticated'], 401);
+            }
+            if (!$this->userFieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
+                return new JSONResponse(['error' => 'Access denied'], 403);
+            }
+
             $fieldIds = $this->request->getParam('field_ids', []);
-            
             $success = $this->userFieldService->setGroupfolderFields($groupfolderId, $fieldIds);
-            
+
             return new JSONResponse(['success' => $success]);
         } catch (\Exception $e) {
             return new JSONResponse(['error' => $e->getMessage()], 500);
