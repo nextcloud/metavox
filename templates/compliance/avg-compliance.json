@@ -1,0 +1,70 @@
+[
+  {
+    "field_name": "bevat_persoonsgegevens",
+    "field_label": "Contains personal data",
+    "field_type": "checkbox",
+    "field_description": "Indicates whether this document contains personal data as defined by the GDPR/AVG",
+    "field_options": [],
+    "is_required": true,
+    "sort_order": 1
+  },
+  {
+    "field_name": "persoonsgegevens_categorie",
+    "field_label": "Personal data category",
+    "field_type": "multiselect",
+    "field_description": "Which categories of personal data are present in this document (GDPR Art. 4, Art. 9)",
+    "field_options": [
+      "Name and address details",
+      "Contact details (email, phone)",
+      "Financial data",
+      "BSN (citizen service number)",
+      "Health data",
+      "Biometric data",
+      "Genetic data",
+      "Criminal record data",
+      "Political opinions",
+      "Religious or philosophical beliefs",
+      "Trade union membership",
+      "Sexual orientation",
+      "Racial or ethnic origin",
+      "Location data",
+      "Online identifiers"
+    ],
+    "is_required": false,
+    "sort_order": 2
+  },
+  {
+    "field_name": "verwerkingsgrondslag",
+    "field_label": "Processing ground",
+    "field_type": "select",
+    "field_description": "Legal basis for processing personal data (GDPR Art. 6)",
+    "field_options": [
+      "Consent (Art. 6.1a)",
+      "Contract performance (Art. 6.1b)",
+      "Legal obligation (Art. 6.1c)",
+      "Vital interests (Art. 6.1d)",
+      "Public interest / official authority (Art. 6.1e)",
+      "Legitimate interest (Art. 6.1f)"
+    ],
+    "is_required": false,
+    "sort_order": 3
+  },
+  {
+    "field_name": "bewaartermijn_avg",
+    "field_label": "Retention period (years)",
+    "field_type": "number",
+    "field_description": "Maximum retention period for this document according to GDPR data minimization principle",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 4
+  },
+  {
+    "field_name": "verwerkingsverantwoordelijke",
+    "field_label": "Data controller",
+    "field_type": "text",
+    "field_description": "The party responsible for processing the personal data in this document (GDPR Art. 4.7)",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 5
+  }
+]

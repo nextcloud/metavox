@@ -1,0 +1,149 @@
+[
+  {
+    "field_name": "title",
+    "field_label": "Title",
+    "field_type": "text",
+    "field_description": "Descriptive title for this file/document (max 255 chars) (Yoda: Title)",
+    "field_options": [],
+    "is_required": true,
+    "sort_order": 1
+  },
+  {
+    "field_name": "description",
+    "field_label": "Description",
+    "field_type": "textarea",
+    "field_description": "Description of this file's contents (max 2700 chars) (Yoda: Description)",
+    "field_options": [],
+    "is_required": true,
+    "sort_order": 2
+  },
+  {
+    "field_name": "version",
+    "field_label": "Version",
+    "field_type": "text",
+    "field_description": "Version of this file (max 255 chars) (Yoda: Version)",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 3
+  },
+  {
+    "field_name": "language",
+    "field_label": "Language",
+    "field_type": "select",
+    "field_description": "Primary language of this file (Yoda: Language)",
+    "field_options": [
+      "en - English",
+      "nl - Dutch",
+      "de - German",
+      "fr - French",
+      "es - Spanish",
+      "it - Italian",
+      "pt - Portuguese",
+      "zh - Chinese",
+      "ja - Japanese",
+      "ko - Korean",
+      "ar - Arabic",
+      "ru - Russian",
+      "pl - Polish",
+      "sv - Swedish",
+      "da - Danish",
+      "no - Norwegian",
+      "fi - Finnish",
+      "el - Greek",
+      "tr - Turkish",
+      "cs - Czech",
+      "hu - Hungarian",
+      "ro - Romanian",
+      "bg - Bulgarian",
+      "hr - Croatian",
+      "sk - Slovak",
+      "sl - Slovenian",
+      "et - Estonian",
+      "lv - Latvian",
+      "lt - Lithuanian",
+      "ga - Irish",
+      "mt - Maltese",
+      "ca - Catalan",
+      "eu - Basque",
+      "gl - Galician",
+      "cy - Welsh",
+      "la - Latin",
+      "fy - Western Frisian",
+      "Other"
+    ],
+    "is_required": false,
+    "sort_order": 4
+  },
+  {
+    "field_name": "tags",
+    "field_label": "Tags",
+    "field_type": "textarea",
+    "field_description": "Keywords/tags for this file, one per line (Yoda: Tag)",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 5
+  },
+  {
+    "field_name": "collected_start_date",
+    "field_label": "Collection Start Date",
+    "field_type": "date",
+    "field_description": "Start date of data collection for this file (Yoda: Collected.Start_Date)",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 6
+  },
+  {
+    "field_name": "collected_end_date",
+    "field_label": "Collection End Date",
+    "field_type": "date",
+    "field_description": "End date of data collection for this file (Yoda: Collected.End_Date)",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 7
+  },
+  {
+    "field_name": "covered_geolocation",
+    "field_label": "Geolocation(s)",
+    "field_type": "textarea",
+    "field_description": "Geographic location(s) covered by this file's data, one place per line (Yoda: Covered_Geolocation_Place)",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 8
+  },
+  {
+    "field_name": "covered_period_start",
+    "field_label": "Covered Period Start Date",
+    "field_type": "date",
+    "field_description": "Start date of the time period covered in this file (Yoda: Covered_Period.Start_Date)",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 9
+  },
+  {
+    "field_name": "covered_period_end",
+    "field_label": "Covered Period End Date",
+    "field_type": "date",
+    "field_description": "End date of the time period covered in this file (Yoda: Covered_Period.End_Date)",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 10
+  },
+  {
+    "field_name": "related_datapackages",
+    "field_label": "Related Data Packages",
+    "field_type": "textarea",
+    "field_description": "Related data packages, one per line: \"RelationType | Title | IdentifierType:Identifier\". Relation types: IsCitedBy, Cites, IsSupplementTo, IsSupplementedBy, IsContinuedBy, Continues, IsNewVersionOf, IsPreviousVersionOf, IsPartOf, HasPart, IsReferencedBy, References, IsDocumentedBy, Documents, IsCompiledBy, Compiles, IsVariantFormOf, IsOriginalFormOf, IsIdenticalTo, IsReviewedBy, Reviews, IsDerivedFrom, IsSourceOf. Example: IsSupplementTo | Climate Data 2023 | DOI:10.1234/example (Yoda: Related_Datapackage)",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 11
+  },
+  {
+    "field_name": "remarks",
+    "field_label": "Remarks",
+    "field_type": "textarea",
+    "field_description": "Additional remarks about this file (max 2700 chars) (Yoda: Remarks)",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 12
+  }
+]

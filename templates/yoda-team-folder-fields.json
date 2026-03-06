@@ -1,0 +1,216 @@
+[
+  {
+    "field_name": "data_classification",
+    "field_label": "Data Classification",
+    "field_type": "select",
+    "field_description": "Security classification of the research data in this project (Yoda: Data_Classification)",
+    "field_options": ["Public", "Basic", "Sensitive", "Critical"],
+    "is_required": true,
+    "sort_order": 1
+  },
+  {
+    "field_name": "license",
+    "field_label": "License",
+    "field_type": "select",
+    "field_description": "License under which this data package is published (Yoda: License)",
+    "field_options": [
+      "Creative Commons Attribution 4.0 International Public License",
+      "Creative Commons Attribution-ShareAlike 4.0 International Public License",
+      "Creative Commons Attribution-NonCommercial 4.0 International Public License",
+      "Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International Public License",
+      "Open Data Commons Attribution License (ODC-By) v1.0",
+      "Open Data Commons Public Domain Dedication and Licence (PDDL) v1.0",
+      "Custom"
+    ],
+    "is_required": true,
+    "sort_order": 2
+  },
+  {
+    "field_name": "data_access_restriction",
+    "field_label": "Data Access Restriction",
+    "field_type": "select",
+    "field_description": "Access level for the data package (Yoda: Data_Access_Restriction)",
+    "field_options": [
+      "Open - freely retrievable",
+      "Restricted - available upon request",
+      "Closed"
+    ],
+    "is_required": true,
+    "sort_order": 3
+  },
+  {
+    "field_name": "retention_period",
+    "field_label": "Retention Period (years)",
+    "field_type": "number",
+    "field_description": "Number of years the data must be retained (0-9999, default 10) (Yoda: Retention_Period)",
+    "field_options": [],
+    "is_required": true,
+    "sort_order": 4
+  },
+  {
+    "field_name": "retention_information",
+    "field_label": "Retention Information",
+    "field_type": "text",
+    "field_description": "Additional information about the retention policy (max 255 chars) (Yoda: Retention_Information)",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 5
+  },
+  {
+    "field_name": "discipline",
+    "field_label": "Discipline",
+    "field_type": "multiselect",
+    "field_description": "Research discipline(s) of this project (Yoda: Discipline)",
+    "field_options": [
+      "Natural Sciences",
+      "Natural Sciences - Mathematics",
+      "Natural Sciences - Computer and Information Sciences",
+      "Natural Sciences - Physical Sciences",
+      "Natural Sciences - Chemical Sciences",
+      "Natural Sciences - Earth and Related Environmental Sciences",
+      "Natural Sciences - Biological Sciences",
+      "Natural Sciences - Other Natural Sciences",
+      "Engineering and Technology",
+      "Engineering and Technology - Civil Engineering",
+      "Engineering and Technology - Electrical Engineering, Electronic Engineering, Information Engineering",
+      "Engineering and Technology - Mechanical Engineering",
+      "Engineering and Technology - Chemical Engineering",
+      "Engineering and Technology - Materials Engineering",
+      "Engineering and Technology - Medical Engineering",
+      "Engineering and Technology - Environmental Engineering",
+      "Engineering and Technology - Environmental Biotechnology",
+      "Engineering and Technology - Industrial Biotechnology",
+      "Engineering and Technology - Nano Technology",
+      "Engineering and Technology - Other Engineering and Technologies",
+      "Medical and Health Sciences",
+      "Medical and Health Sciences - Basic Medicine",
+      "Medical and Health Sciences - Clinical Medicine",
+      "Medical and Health Sciences - Health Sciences",
+      "Medical and Health Sciences - Medical Biotechnology",
+      "Medical and Health Sciences - Other Medical Sciences",
+      "Agricultural Sciences",
+      "Agricultural Sciences - Agriculture, Forestry, and Fisheries",
+      "Agricultural Sciences - Animal and Dairy Science",
+      "Agricultural Sciences - Veterinary Science",
+      "Agricultural Sciences - Agricultural Biotechnology",
+      "Agricultural Sciences - Other Agricultural Sciences",
+      "Social Sciences",
+      "Social Sciences - Psychology",
+      "Social Sciences - Economics and Business",
+      "Social Sciences - Educational Sciences",
+      "Social Sciences - Sociology",
+      "Social Sciences - Law",
+      "Social Sciences - Political Science",
+      "Social Sciences - Social and Economic Geography",
+      "Social Sciences - Media and Communications",
+      "Social Sciences - Other Social Sciences",
+      "Humanities",
+      "Humanities - History and Archaeology",
+      "Humanities - Languages and Literature",
+      "Humanities - Philosophy, Ethics and Religion",
+      "Humanities - Arts",
+      "Humanities - Other Humanities"
+    ],
+    "is_required": false,
+    "sort_order": 6
+  },
+  {
+    "field_name": "data_type",
+    "field_label": "Data Type",
+    "field_type": "select",
+    "field_description": "Type of the data package (Yoda: Data_Type)",
+    "field_options": ["Dataset", "DataPaper", "Software", "Text"],
+    "is_required": false,
+    "sort_order": 7
+  },
+  {
+    "field_name": "collection_name",
+    "field_label": "Collection Name",
+    "field_type": "text",
+    "field_description": "Name of the data collection this package belongs to (max 255 chars) (Yoda: Collection_Name)",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 8
+  },
+  {
+    "field_name": "embargo_end_date",
+    "field_label": "Embargo End Date",
+    "field_type": "date",
+    "field_description": "Date when the embargo on this data package ends (Yoda: Embargo_End_Date)",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 9
+  },
+  {
+    "field_name": "creator_names",
+    "field_label": "Creator(s)",
+    "field_type": "textarea",
+    "field_description": "Data package creators, one per line: \"FirstName LastName\" (Yoda: Creator.Name)",
+    "field_options": [],
+    "is_required": true,
+    "sort_order": 10
+  },
+  {
+    "field_name": "creator_affiliations",
+    "field_label": "Creator Affiliation(s)",
+    "field_type": "textarea",
+    "field_description": "Affiliations corresponding to each creator, one per line (Yoda: Creator.Affiliation)",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 11
+  },
+  {
+    "field_name": "creator_identifiers",
+    "field_label": "Creator Identifier(s)",
+    "field_type": "textarea",
+    "field_description": "Persistent identifiers for creators, one per line: \"ORCID: 0000-0001-2345-6789\" (Yoda: Creator.Person_Identifier)",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 12
+  },
+  {
+    "field_name": "contributor_names",
+    "field_label": "Contributor(s)",
+    "field_type": "textarea",
+    "field_description": "Contributors with role, one per line: \"FirstName LastName (Role)\". Roles: ContactPerson, DataCollector, DataCurator, DataManager, Distributor, Editor, Funder, HostingInstitution, Producer, ProjectLeader, ProjectManager, ProjectMember, RegistrationAgency, RegistrationAuthority, RelatedPerson, Researcher, ResearchGroup, RightsHolder, Sponsor, Supervisor, WorkPackageLeader, Other (Yoda: Contributor)",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 13
+  },
+  {
+    "field_name": "contributor_affiliations",
+    "field_label": "Contributor Affiliation(s)",
+    "field_type": "textarea",
+    "field_description": "Affiliations corresponding to each contributor, one per line (Yoda: Contributor.Affiliation)",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 14
+  },
+  {
+    "field_name": "contributor_identifiers",
+    "field_label": "Contributor Identifier(s)",
+    "field_type": "textarea",
+    "field_description": "Persistent identifiers for contributors, one per line: \"ORCID: 0000-0001-2345-6789\" (Yoda: Contributor.Person_Identifier)",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 15
+  },
+  {
+    "field_name": "funder_names",
+    "field_label": "Funder(s)",
+    "field_type": "textarea",
+    "field_description": "Funding organizations, one per line (Yoda: Funding_Reference.Funder_Name)",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 16
+  },
+  {
+    "field_name": "award_numbers",
+    "field_label": "Award Number(s)",
+    "field_type": "textarea",
+    "field_description": "Grant/award numbers corresponding to each funder, one per line (Yoda: Funding_Reference.Award_Number)",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 17
+  }
+]
