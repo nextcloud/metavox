@@ -1,0 +1,157 @@
+[
+  {
+    "field_name": "bevat_persoonsgegevens",
+    "field_label": "Contains personal data",
+    "field_type": "checkbox",
+    "field_description": "Indicates whether this document contains personal data as defined by the GDPR/AVG",
+    "field_options": [],
+    "is_required": true,
+    "sort_order": 1
+  },
+  {
+    "field_name": "persoonsgegevens_categorie",
+    "field_label": "Personal data category",
+    "field_type": "multiselect",
+    "field_description": "Which categories of personal data are present in this document (GDPR Art. 4, Art. 9)",
+    "field_options": [
+      "Name and address details",
+      "Contact details (email, phone)",
+      "Financial data",
+      "BSN (citizen service number)",
+      "Health data",
+      "Biometric data",
+      "Criminal record data",
+      "Location data"
+    ],
+    "is_required": false,
+    "sort_order": 2
+  },
+  {
+    "field_name": "verwerkingsgrondslag",
+    "field_label": "Processing ground",
+    "field_type": "select",
+    "field_description": "Legal basis for processing personal data (GDPR Art. 6)",
+    "field_options": [
+      "Consent (Art. 6.1a)",
+      "Contract performance (Art. 6.1b)",
+      "Legal obligation (Art. 6.1c)",
+      "Vital interests (Art. 6.1d)",
+      "Public interest / official authority (Art. 6.1e)",
+      "Legitimate interest (Art. 6.1f)"
+    ],
+    "is_required": false,
+    "sort_order": 3
+  },
+  {
+    "field_name": "verwerkingsverantwoordelijke",
+    "field_label": "Data controller",
+    "field_type": "text",
+    "field_description": "The party responsible for processing the personal data in this document (GDPR Art. 4.7)",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 4
+  },
+  {
+    "field_name": "openbaarheid_status",
+    "field_label": "Publication status",
+    "field_type": "select",
+    "field_description": "Publication status of this document under the Open Government Act (WOO)",
+    "field_options": [
+      "Public",
+      "Partially public",
+      "Not public",
+      "To be assessed"
+    ],
+    "is_required": true,
+    "sort_order": 5
+  },
+  {
+    "field_name": "woo_categorie",
+    "field_label": "WOO Category",
+    "field_type": "select",
+    "field_description": "Information category according to WOO Art. 3.3",
+    "field_options": [
+      "Laws and regulations",
+      "Organization and working method",
+      "Policy documents",
+      "Advisory documents",
+      "Annual plans and reports",
+      "WOO requests and decisions",
+      "Research reports",
+      "Subsidy information",
+      "Permit applications and decisions",
+      "Inspection and audit reports"
+    ],
+    "is_required": false,
+    "sort_order": 6
+  },
+  {
+    "field_name": "uitzonderingsgrond",
+    "field_label": "Exception ground",
+    "field_type": "multiselect",
+    "field_description": "Grounds for limiting publication (WOO Art. 5.1-5.5)",
+    "field_options": [
+      "Confidential business data (Art. 5.1.1c)",
+      "Personal privacy (Art. 5.1.1d)",
+      "Investigation and prosecution (Art. 5.1.2c)",
+      "Inspection and supervision (Art. 5.1.2d)",
+      "Personal opinions in internal deliberation (Art. 5.2)"
+    ],
+    "is_required": false,
+    "sort_order": 7
+  },
+  {
+    "field_name": "actieve_openbaarmaking",
+    "field_label": "Active publication",
+    "field_type": "checkbox",
+    "field_description": "Whether this document is subject to active publication obligation under the WOO",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 8
+  },
+  {
+    "field_name": "archief_categorie",
+    "field_label": "Archive category",
+    "field_type": "select",
+    "field_description": "Selection decision for this document according to the Archives Act",
+    "field_options": [
+      "To be destroyed",
+      "Permanent retention",
+      "Transfer to archival repository"
+    ],
+    "is_required": true,
+    "sort_order": 9
+  },
+  {
+    "field_name": "bewaartermijn_archief",
+    "field_label": "Retention period (years)",
+    "field_type": "number",
+    "field_description": "Retention period in years according to the applicable selection list",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 10
+  },
+  {
+    "field_name": "dossier_status",
+    "field_label": "Dossier status",
+    "field_type": "select",
+    "field_description": "Current status of the dossier this document belongs to",
+    "field_options": [
+      "Open",
+      "Closed",
+      "Archived",
+      "Destroyed"
+    ],
+    "is_required": false,
+    "sort_order": 11
+  },
+  {
+    "field_name": "selectielijst_code",
+    "field_label": "Selection list code",
+    "field_type": "text",
+    "field_description": "Code from the VNG selection list or national selection list (e.g. 1.1.1, 3.2.4)",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 12
+  }
+]

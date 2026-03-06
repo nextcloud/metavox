@@ -1,0 +1,83 @@
+[
+  {
+    "field_name": "archief_categorie",
+    "field_label": "Archive category",
+    "field_type": "select",
+    "field_description": "Selection decision for this document according to the Archives Act",
+    "field_options": [
+      "To be destroyed",
+      "Permanent retention",
+      "Transfer to archival repository"
+    ],
+    "is_required": true,
+    "sort_order": 1
+  },
+  {
+    "field_name": "vernietigingsjaar",
+    "field_label": "Destruction year",
+    "field_type": "number",
+    "field_description": "Year in which this document must be destroyed according to the selection list",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 2
+  },
+  {
+    "field_name": "selectielijst_code",
+    "field_label": "Selection list code",
+    "field_type": "text",
+    "field_description": "Code from the VNG selection list or national selection list (e.g. 1.1.1, 3.2.4)",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 3
+  },
+  {
+    "field_name": "zaaktype",
+    "field_label": "Case type",
+    "field_type": "text",
+    "field_description": "Type of case or process this document belongs to",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 4
+  },
+  {
+    "field_name": "dossier_status",
+    "field_label": "Dossier status",
+    "field_type": "select",
+    "field_description": "Current status of the dossier this document belongs to",
+    "field_options": [
+      "Open",
+      "Closed",
+      "Archived",
+      "Destroyed"
+    ],
+    "is_required": false,
+    "sort_order": 5
+  },
+  {
+    "field_name": "bewaartermijn_archief",
+    "field_label": "Retention period (years)",
+    "field_type": "number",
+    "field_description": "Retention period in years according to the applicable selection list",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 6
+  },
+  {
+    "field_name": "archiefdatum",
+    "field_label": "Archive date",
+    "field_type": "date",
+    "field_description": "Date when this document was archived",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 7
+  },
+  {
+    "field_name": "archieflocatie",
+    "field_label": "Archive location",
+    "field_type": "text",
+    "field_description": "Physical or digital location where this document is archived",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 8
+  }
+]

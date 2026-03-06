@@ -1,0 +1,88 @@
+[
+  {
+    "field_name": "openbaarheid_status",
+    "field_label": "Publication status",
+    "field_type": "select",
+    "field_description": "Publication status of this document under the Open Government Act (WOO)",
+    "field_options": [
+      "Public",
+      "Partially public",
+      "Not public",
+      "To be assessed"
+    ],
+    "is_required": true,
+    "sort_order": 1
+  },
+  {
+    "field_name": "woo_categorie",
+    "field_label": "WOO Category",
+    "field_type": "select",
+    "field_description": "Information category according to WOO Art. 3.3",
+    "field_options": [
+      "Laws and regulations",
+      "Organization and working method",
+      "Policy documents",
+      "Advisory documents",
+      "Annual plans and reports",
+      "WOO requests and decisions",
+      "Complaints and notifications",
+      "Research reports",
+      "Subsidy information",
+      "Permit applications and decisions",
+      "Enforcement decisions",
+      "Agreements with external parties",
+      "Inspection and audit reports"
+    ],
+    "is_required": false,
+    "sort_order": 2
+  },
+  {
+    "field_name": "uitzonderingsgrond",
+    "field_label": "Exception ground",
+    "field_type": "multiselect",
+    "field_description": "Grounds for limiting publication (WOO Art. 5.1-5.5)",
+    "field_options": [
+      "Unity of the Crown (Art. 5.1.1a)",
+      "State security (Art. 5.1.1b)",
+      "Confidential business data (Art. 5.1.1c)",
+      "Personal privacy (Art. 5.1.1d)",
+      "Personal privacy - special data (Art. 5.1.1e)",
+      "International relations (Art. 5.1.2a)",
+      "Economic/financial interest of the State (Art. 5.1.2b)",
+      "Investigation and prosecution (Art. 5.1.2c)",
+      "Inspection and supervision (Art. 5.1.2d)",
+      "Personal opinions in internal deliberation (Art. 5.2)",
+      "Manifestly unfair advantage/disadvantage (Art. 5.3)",
+      "Disproportionate advantage/disadvantage (Art. 5.5)"
+    ],
+    "is_required": false,
+    "sort_order": 3
+  },
+  {
+    "field_name": "woo_verzoek_ontvangen",
+    "field_label": "WOO request received",
+    "field_type": "date",
+    "field_description": "Date when a WOO request was received for this document",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 4
+  },
+  {
+    "field_name": "actieve_openbaarmaking",
+    "field_label": "Active publication",
+    "field_type": "checkbox",
+    "field_description": "Whether this document is subject to active publication obligation under the WOO",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 5
+  },
+  {
+    "field_name": "publicatiedatum",
+    "field_label": "Publication date",
+    "field_type": "date",
+    "field_description": "Date when this document was made public",
+    "field_options": [],
+    "is_required": false,
+    "sort_order": 6
+  }
+]
