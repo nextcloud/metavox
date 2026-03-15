@@ -92,6 +92,14 @@ return [
         ['name' => 'telemetry#saveSettings', 'url' => '/api/telemetry/settings', 'verb' => 'POST'],
 
         // ========================================
+        // 👁 VIEWS ROUTES
+        // ========================================
+        ['name' => 'view#listViews',  'url' => '/api/groupfolders/{gfId}/views',           'verb' => 'GET'],
+        ['name' => 'view#createView', 'url' => '/api/groupfolders/{gfId}/views',           'verb' => 'POST'],
+        ['name' => 'view#updateView', 'url' => '/api/groupfolders/{gfId}/views/{viewId}',  'verb' => 'PUT'],
+        ['name' => 'view#deleteView', 'url' => '/api/groupfolders/{gfId}/views/{viewId}',  'verb' => 'DELETE'],
+
+        // ========================================
         // 💾 BACKUP & RESTORE ROUTES
         // ========================================
         ['name' => 'backup#list', 'url' => '/api/backup/list', 'verb' => 'GET'],
