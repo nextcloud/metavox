@@ -164,6 +164,7 @@ class MetaVoxMetadataFilter extends EventTarget {
 
 	_emitFilterUpdate() {
 		this.dispatchEvent(new CustomEvent('update:filter'))
+		window._nc_event_bus?.emit('files:filters:changed')
 	}
 
 	_emitChips() {
