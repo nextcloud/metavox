@@ -1,6 +1,7 @@
 <template>
   <div class="column-config-section">
     <h4>{{ t('metavox', 'File List Columns') }}</h4>
+
     <p class="description">
       {{ t('metavox', 'Select which metadata fields appear as columns in the Files app when browsing this team folder.') }}
     </p>
@@ -74,6 +75,11 @@
     <div v-if="saveMessage" :class="['save-message', saveSuccess ? 'success' : 'error']">
       {{ saveMessage }}
     </div>
+
+    <ViewConfigSection
+      :groupfolder-id="groupfolderId"
+      :api-base-path="apiBasePath"
+    />
   </div>
 </template>
 
@@ -84,6 +90,7 @@ import { generateUrl } from '@nextcloud/router'
 import { NcButton, NcCheckboxRadioSwitch } from '@nextcloud/vue'
 import ChevronUpIcon from 'vue-material-design-icons/ChevronUp.vue'
 import ChevronDownIcon from 'vue-material-design-icons/ChevronDown.vue'
+import ViewConfigSection from './ViewConfigSection.vue'
 
 export default {
   name: 'ColumnConfigSection',
@@ -93,6 +100,7 @@ export default {
     NcCheckboxRadioSwitch,
     ChevronUpIcon,
     ChevronDownIcon,
+    ViewConfigSection,
   },
 
   props: {

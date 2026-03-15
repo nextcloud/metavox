@@ -165,6 +165,65 @@ class MetaVoxMetadataFilter extends EventTarget {
 	_emitFilterUpdate() {
 		this.dispatchEvent(new CustomEvent('update:filter'))
 		window._nc_event_bus?.emit('files:filters:changed')
+		this._syncToUrl()
+	}
+
+	_syncToUrl() {
+		const params = new URLSearchParams(window.location.search)
+		if (this._activeFilters.size > 0) {
+			// Encode: field1:val1,val2;field2:val3
+			const parts = []
+			for (const [fieldName, valueSet] of this._activeFilters) {
+				const shortName = fieldName.replace('file_gf_', '')
+				parts.push(`${shortName}:${[...valueSet].join(',')}`)
+			}
+			params.set('mvfilter', parts.join(';'))
+		} else {
+			params.delete('mvfilter')
+		}
+		// Don't navigate, just update URL silently
+		const newUrl = window.location.pathname + '?' + params.toString() + window.location.hash
+		history.replaceState(null, '', newUrl)
+	}
+
+	/**
+	 * Load filters from the URL ?mvfilter= parameter.
+	 * Reads and applies the encoded filter state without triggering navigation.
+	 * @param {Array<Object>} columnConfigs - Column configs to resolve field names from
+	 */
+	loadFromUrl(columnConfigs) {
+		const params = new URLSearchParams(window.location.search)
+		const raw = params.get('mvfilter')
+		if (!raw) return
+
+		this._activeFilters.clear()
+
+		// Decode: field1:val1,val2;field2:val3
+		for (const part of raw.split(';')) {
+			const colonIdx = part.indexOf(':')
+			if (colonIdx === -1) continue
+			const shortName = part.substring(0, colonIdx).trim()
+			const valuesStr = part.substring(colonIdx + 1).trim()
+			if (!shortName || !valuesStr) continue
+
+			// Resolve full field name: try exact match first, then with file_gf_ prefix
+			const configs = columnConfigs || this._columnConfigs
+			let fieldName = shortName
+			const matchedConfig = configs.find(
+				c => c.field_name === shortName || c.field_name === 'file_gf_' + shortName,
+			)
+			if (matchedConfig) {
+				fieldName = matchedConfig.field_name
+			}
+
+			const values = valuesStr.split(',').filter(Boolean)
+			if (values.length > 0) {
+				this._activeFilters.set(fieldName, new Set(values))
+			}
+		}
+
+		this._emitChips()
+		this._emitFilterUpdate()
 	}
 
 	_emitChips() {
@@ -305,4 +364,13 @@ export function updateFilterCache(metadataCache) {
 		filterInstance.setMetadataCache(metadataCache)
 		filterInstance.triggerRefilter()
 	}
+}
+
+/**
+ * Get the current filter instance.
+ * Returns null if no filter is currently registered.
+ * @returns {MetaVoxMetadataFilter|null}
+ */
+export function getFilterInstance() {
+	return filterInstance
 }
