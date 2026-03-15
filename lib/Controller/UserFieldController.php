@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\MetaVox\Controller;
 
 use OCA\MetaVox\Service\UserFieldService;
+use OCA\MetaVox\Service\FieldService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
@@ -13,16 +14,19 @@ use OCP\IUserSession;
 class UserFieldController extends Controller {
 
     private UserFieldService $userFieldService;
+    private FieldService $fieldService;
     private IUserSession $userSession;
 
     public function __construct(
         string $appName,
         IRequest $request,
         UserFieldService $userFieldService,
+        FieldService $fieldService,
         IUserSession $userSession
     ) {
         parent::__construct($appName, $request);
         $this->userFieldService = $userFieldService;
+        $this->fieldService = $fieldService;
         $this->userSession = $userSession;
     }
 
@@ -148,6 +152,53 @@ class UserFieldController extends Controller {
             $fieldIds = $this->request->getParam('field_ids', []);
             $success = $this->userFieldService->setGroupfolderFields($groupfolderId, $fieldIds);
 
+            return new JSONResponse(['success' => $success]);
+        } catch (\Exception $e) {
+            return new JSONResponse(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    // ========================================
+    // Column Configuration (for team folder owners)
+    // ========================================
+
+    /**
+     * Get column configuration for a groupfolder (owner)
+     * @NoAdminRequired
+     */
+    public function getGroupfolderColumnConfig(int $groupfolderId): JSONResponse {
+        try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new JSONResponse(['error' => 'User not authenticated'], 401);
+            }
+            if (!$this->userFieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
+                return new JSONResponse(['error' => 'Access denied'], 403);
+            }
+
+            $config = $this->fieldService->getFullColumnConfigForGroupfolder($groupfolderId);
+            return new JSONResponse($config);
+        } catch (\Exception $e) {
+            return new JSONResponse(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Save column configuration for a groupfolder (owner)
+     * @NoAdminRequired
+     */
+    public function setGroupfolderColumnConfig(int $groupfolderId): JSONResponse {
+        try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new JSONResponse(['error' => 'User not authenticated'], 401);
+            }
+            if (!$this->userFieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
+                return new JSONResponse(['error' => 'Access denied'], 403);
+            }
+
+            $columns = $this->request->getParam('columns', []);
+            $success = $this->fieldService->setColumnConfigForGroupfolder($groupfolderId, $columns);
             return new JSONResponse(['success' => $success]);
         } catch (\Exception $e) {
             return new JSONResponse(['error' => $e->getMessage()], 500);

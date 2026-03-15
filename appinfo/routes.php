@@ -49,6 +49,18 @@ return [
         ['name' => 'user_field#setGroupfolderFields', 'url' => '/api/user/groupfolders/{groupfolderId}/fields', 'verb' => 'POST'],
 
         // ========================================
+        // 📊 COLUMN CONFIGURATION ROUTES
+        // ========================================
+
+        // Admin column config
+        ['name' => 'field#getGroupfolderColumnConfig', 'url' => '/api/groupfolders/{groupfolderId}/columns', 'verb' => 'GET'],
+        ['name' => 'field#setGroupfolderColumnConfig', 'url' => '/api/groupfolders/{groupfolderId}/columns', 'verb' => 'POST'],
+
+        // Owner column config (via personal settings)
+        ['name' => 'user_field#getGroupfolderColumnConfig', 'url' => '/api/user/groupfolders/{groupfolderId}/columns', 'verb' => 'GET'],
+        ['name' => 'user_field#setGroupfolderColumnConfig', 'url' => '/api/user/groupfolders/{groupfolderId}/columns', 'verb' => 'POST'],
+
+        // ========================================
         // 🔐 PERMISSION MANAGEMENT ROUTES (NEW)
         // ========================================
         
@@ -126,5 +138,18 @@ return [
 
         // Metadata statistics
         ['name' => 'apiField#getMetadataStatistics', 'url' => '/api/v1/metadata/statistics', 'verb' => 'GET'],
+
+        // ========================================
+        // 📊 COLUMN & DIRECTORY METADATA ROUTES
+        // ========================================
+
+        // Column configuration (for file list rendering)
+        ['name' => 'apiField#getGroupfolderColumnConfig', 'url' => '/api/v1/groupfolders/{groupfolderId}/columns', 'verb' => 'GET'],
+
+        // Bulk directory metadata (optimized for file list columns)
+        ['name' => 'apiField#getDirectoryMetadata', 'url' => '/api/v1/groupfolders/{groupfolderId}/directory-metadata', 'verb' => 'GET'],
+
+        // Filter values (distinct values for filter dropdowns)
+        ['name' => 'apiField#getFilterValues', 'url' => '/api/v1/groupfolders/{groupfolderId}/filter-values', 'verb' => 'GET'],
     ]
 ];
