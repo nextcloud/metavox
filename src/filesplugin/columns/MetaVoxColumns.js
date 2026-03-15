@@ -266,15 +266,15 @@ function injectColumnStyles() {
 		.${HEADER_MARKER} .files-list__column-sort-button .button-vue__icon {
 			display: flex;
 			align-items: center;
-			min-width: 20px;
+			min-width: 24px;
 		}
 		.${HEADER_MARKER} .files-list__column-sort-button-icon {
 			display: flex;
 			align-items: center;
 		}
 		.${HEADER_MARKER} .files-list__column-sort-button-icon svg {
-			width: 20px;
-			height: 20px;
+			width: 24px;
+			height: 24px;
 		}
 		.${HEADER_MARKER} .files-list__column-sort-button-text {
 			white-space: nowrap;
@@ -373,7 +373,7 @@ function injectHeaderColumns() {
 		iconSpan.className = 'button-vue__icon'
 		iconSpan.setAttribute('aria-hidden', 'true')
 		const iconInner = document.createElement('span')
-		iconInner.className = 'material-design-icon files-list__column-sort-button-icon'
+		iconInner.className = 'material-design-icon menu-up-icon files-list__column-sort-button-icon'
 		iconInner.setAttribute('aria-hidden', 'true')
 		iconInner.setAttribute('role', 'img')
 		if (currentSort?.fieldName === config.field_name) {
