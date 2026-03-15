@@ -6,7 +6,6 @@
  */
 
 import './MetaVoxFilterElement.js'
-import { registerFileListFilter, unregisterFileListFilter } from '@nextcloud/files'
 
 const METAVOX_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="-1 0 23 24"><path d="M0 0 C2.45685425 0.42359556 3.6964912 0.65510363 5.375 2.5625 C7.01309099 4.27469613 7.01309099 4.27469613 9.9375 4.4375 C13.65445502 3.90650643 14.5402558 2.7142005 17 0 C17.99 0 18.98 0 20 0 C20.93405225 4.35891051 20.81144268 7.63849557 20 12 C20.33 12.33 20.66 12.66 21 13 C21.04080783 14.99958364 21.04254356 17.00045254 21 19 C19.576875 19.680625 19.576875 19.680625 18.125 20.375 C14.99686321 21.80238254 14.99686321 21.80238254 13 24 C9.12472131 24.51670383 7.52342441 24.37735248 4.3125 22.0625 C3.549375 21.381875 2.78625 20.70125 2 20 C1.01 19.67 0.02 19.34 -1 19 C-1.125 13.25 -1.125 13.25 0 11 C-0.25556108 8.98745646 -0.51448107 6.97446167 -0.84375 4.97265625 C-1 3 -1 3 0 0 Z" fill="currentColor" transform="translate(2,0)"/></svg>'
 
@@ -218,17 +217,50 @@ export function registerMetaVoxFilter(columnConfigs, groupfolderId, metadataCach
 }
 
 function _registerDirect() {
-	try {
-		registerFileListFilter(filterInstance)
+	// NC33 uses the scoped fileListFilters map for its internal store.
+	// Writing there + emitting 'files:filters:changed' triggers NC33 to
+	// pick up the filter and wire the reactive chip listener via its store.
+	const scope = window._nc_files_scope?.v4_0
+	if (!scope) {
+		console.warn('MetaVox: NC33 scoped globals not found, cannot register filter')
+		return
+	}
+
+	scope.fileListFilters ??= new Map()
+	if (scope.fileListFilters.has(FILTER_ID)) {
 		registered = true
-		console.info('MetaVox: Filter registered via @nextcloud/files API')
-	} catch (e) {
-		if (e.message?.includes('already registered')) {
-			registered = true
+		return
+	}
+
+	scope.fileListFilters.set(FILTER_ID, filterInstance)
+
+	// Wire chip listener via NC33 store directly so chips are reactive
+	const container = document.querySelector('[class*="fileListFilters"]')
+	const store = container?.__vue__?._setupState?.filterStore
+	if (store?.filters && !store.filters.some(f => f.id === FILTER_ID)) {
+		// Use NC33's internal registerFilter action if available, else push
+		if (typeof store.registerFilter === 'function') {
+			store.registerFilter(filterInstance)
 		} else {
-			console.warn('MetaVox: Filter registration failed', e)
+			store.filters.push(filterInstance)
+			// Wire chip listener manually (mirrors NC33's internal a(filter))
+			filterInstance.addEventListener('update:chips', (e) => {
+				store.$patch(state => {
+					const chips = e.detail || []
+					const next = { ...state.chips }
+					if (chips.length > 0) {
+						next[FILTER_ID] = chips
+					} else {
+						delete next[FILTER_ID]
+					}
+					state.chips = next
+				})
+			})
 		}
 	}
+
+	registered = true
+	console.info('MetaVox: Filter registered in NC33 filter bar')
 }
 
 /**
@@ -237,10 +269,21 @@ function _registerDirect() {
 export function removeFilters() {
 	if (!registered || !filterInstance) return
 
-	try {
-		unregisterFileListFilter(FILTER_ID)
-	} catch (e) {
-		console.warn('MetaVox: Filter unregistration failed', e)
+	// Remove from NC33 scoped map
+	const scope = window._nc_files_scope?.v4_0
+	if (scope?.fileListFilters) {
+		scope.fileListFilters.delete(FILTER_ID)
+	}
+
+	// Remove from store filters array
+	const container = document.querySelector('[class*="fileListFilters"]')
+	const store = container?.__vue__?._setupState?.filterStore
+	if (store?.filters) {
+		const idx = store.filters.findIndex(f => f.id === FILTER_ID)
+		if (idx !== -1) store.filters.splice(idx, 1)
+	}
+	if (store?.chips && store.chips[FILTER_ID]) {
+		store.$patch(state => { delete state.chips[FILTER_ID] })
 	}
 
 	if (filterInstance) {
