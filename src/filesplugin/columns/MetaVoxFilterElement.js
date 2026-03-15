@@ -2,8 +2,8 @@
  * MetaVox Filter Web Component
  *
  * Custom element <metavox-metadata-filter> used by NC33's filter bar UI.
- * Shows collapsible sections per metadata field, each with button-style options
- * matching the NC33 native filter look.
+ * Shows collapsible sections per metadata field, each with checkbox options
+ * supporting multi-select (OR within field, AND between fields).
  */
 
 import axios from '@nextcloud/axios'
@@ -72,31 +72,50 @@ details[open] .summary-chevron {
 	transform: rotate(90deg);
 }
 
-/* Option buttons inside section */
+/* Options container */
 .options {
 	padding: 2px 0 6px 0;
 }
-.opt-btn {
-	display: block;
-	width: 100%;
+
+/* Checkbox option row */
+.opt-label {
+	display: flex;
+	align-items: center;
+	gap: 10px;
 	padding: 6px 14px;
-	border: none;
-	background: transparent;
+	cursor: pointer;
+	min-height: 36px;
 	color: var(--color-main-text, #222);
 	font-size: 14px;
 	font-family: inherit;
-	text-align: left;
-	cursor: pointer;
-	border-radius: 0;
-	min-height: 36px;
 }
-.opt-btn:hover {
+.opt-label:hover {
 	background: var(--color-background-hover, #f5f5f5);
 }
-.opt-btn[aria-pressed="true"] {
-	background: var(--color-primary-element-light, #e8f4fd);
+.opt-label input[type="checkbox"] {
+	width: 16px;
+	height: 16px;
+	flex-shrink: 0;
+	accent-color: var(--color-primary-element, #0082c9);
+	cursor: pointer;
+	margin: 0;
+}
+
+/* "Clear selection" link inside section */
+.clear-btn {
+	display: block;
+	width: 100%;
+	padding: 4px 14px 6px;
+	border: none;
+	background: transparent;
 	color: var(--color-primary-element, #0082c9);
-	font-weight: 600;
+	font-size: 12px;
+	font-family: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+.clear-btn:hover {
+	text-decoration: underline;
 }
 
 /* Reset button */
@@ -180,16 +199,14 @@ export class MetaVoxFilterElement extends HTMLElement {
 		}
 
 		const groupfolderId = this._filter.getGroupfolderId()
-		const activeFilters = this._filter.getActiveFilters()
 
 		this._container.innerHTML = ''
 
 		for (const config of configs) {
-			const isActive = activeFilters.has(config.field_name)
-			const currentVal = activeFilters.get(config.field_name)
+			const activeCount = this._filter.getFieldActiveCount(config.field_name)
 
 			const details = document.createElement('details')
-			if (isActive) details.open = true
+			if (activeCount > 0) details.open = true
 
 			// Summary (header row)
 			const summary = document.createElement('summary')
@@ -201,8 +218,8 @@ export class MetaVoxFilterElement extends HTMLElement {
 
 			const badge = document.createElement('span')
 			badge.className = 'summary-badge'
-			badge.textContent = '1'
-			badge.style.display = isActive ? 'inline-flex' : 'none'
+			badge.textContent = String(activeCount)
+			badge.style.display = activeCount > 0 ? 'inline-flex' : 'none'
 			summary.appendChild(badge)
 
 			summary.insertAdjacentHTML('beforeend', CHEVRON_SVG)
@@ -212,13 +229,17 @@ export class MetaVoxFilterElement extends HTMLElement {
 			const optionsDiv = document.createElement('div')
 			optionsDiv.className = 'options'
 
-			// "Alle" option
-			const allBtn = this._makeOptBtn('Alle', '', !isActive)
-			allBtn.addEventListener('click', () => {
-				this._filter.setFilterValue(config.field_name, null)
-				this._updateSection(details, optionsDiv, badge, '', config)
+			// "Clear selection" button — only shown when field has active filters
+			const clearBtn = document.createElement('button')
+			clearBtn.className = 'clear-btn'
+			clearBtn.textContent = 'Wis selectie'
+			clearBtn.style.display = activeCount > 0 ? 'block' : 'none'
+			clearBtn.addEventListener('click', () => {
+				this._filter.clearFieldFilter(config.field_name)
+				this._updateSection(details, optionsDiv, badge, clearBtn, config)
+				this._updateResetBtn()
 			})
-			optionsDiv.appendChild(allBtn)
+			optionsDiv.appendChild(clearBtn)
 
 			// Load values from API
 			if (groupfolderId) {
@@ -232,12 +253,8 @@ export class MetaVoxFilterElement extends HTMLElement {
 
 					for (const val of values) {
 						const label = formatOptionLabel(val, config.field_type)
-						const btn = this._makeOptBtn(label, val, currentVal === val)
-						btn.addEventListener('click', () => {
-							this._filter.setFilterValue(config.field_name, val)
-							this._updateSection(details, optionsDiv, badge, val, config)
-						})
-						optionsDiv.appendChild(btn)
+						const optLabel = this._makeCheckboxOption(label, val, config)
+						optionsDiv.appendChild(optLabel)
 					}
 				} catch (e) {
 					console.error('MetaVox: Failed to load filter values for', config.field_name, e)
@@ -250,45 +267,70 @@ export class MetaVoxFilterElement extends HTMLElement {
 
 		// Reset button
 		const resetBtn = document.createElement('button')
-		resetBtn.className = 'reset-btn' + (activeFilters.size > 0 ? ' has-filters' : '')
-		resetBtn.textContent = 'Reset filters'
+		resetBtn.className = 'reset-btn'
+		resetBtn.dataset.role = 'reset'
+		this._updateResetBtnState(resetBtn)
 		resetBtn.addEventListener('click', () => {
 			this._filter.reset()
 			this._shadow.querySelectorAll('details').forEach(d => {
 				d.open = false
-				d.querySelectorAll('.opt-btn').forEach(b => {
-					b.setAttribute('aria-pressed', b.dataset.value === '' ? 'true' : 'false')
-				})
-				const badge = d.querySelector('.summary-badge')
-				if (badge) badge.style.display = 'none'
+				d.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false })
+				const b = d.querySelector('.summary-badge')
+				if (b) b.style.display = 'none'
+				const cb2 = d.querySelector('.clear-btn')
+				if (cb2) cb2.style.display = 'none'
 			})
 			resetBtn.classList.remove('has-filters')
 		})
 		this._container.appendChild(resetBtn)
 	}
 
-	_makeOptBtn(label, value, isActive) {
-		const btn = document.createElement('button')
-		btn.type = 'button'
-		btn.className = 'opt-btn'
-		btn.textContent = label
-		btn.dataset.value = value
-		btn.setAttribute('aria-pressed', isActive ? 'true' : 'false')
-		return btn
+	_makeCheckboxOption(label, value, config) {
+		const optLabel = document.createElement('label')
+		optLabel.className = 'opt-label'
+
+		const checkbox = document.createElement('input')
+		checkbox.type = 'checkbox'
+		checkbox.checked = this._filter.isFieldValueActive(config.field_name, value)
+		checkbox.dataset.value = value
+
+		checkbox.addEventListener('change', () => {
+			this._filter.toggleFilterValue(config.field_name, value)
+			const optionsDiv = optLabel.closest('.options')
+			const details = optionsDiv?.parentElement
+			const badge = details?.querySelector('.summary-badge')
+			const clearBtn = optionsDiv?.querySelector('.clear-btn')
+			if (details && optionsDiv && badge && clearBtn) {
+				this._updateSection(details, optionsDiv, badge, clearBtn, config)
+			}
+			this._updateResetBtn()
+		})
+
+		optLabel.appendChild(checkbox)
+		optLabel.appendChild(document.createTextNode(label))
+		return optLabel
 	}
 
-	_updateSection(details, optionsDiv, badge, activeValue, config) {
-		optionsDiv.querySelectorAll('.opt-btn').forEach(btn => {
-			btn.setAttribute('aria-pressed', btn.dataset.value === activeValue ? 'true' : 'false')
-		})
-		const hasValue = activeValue !== ''
-		badge.style.display = hasValue ? 'inline-flex' : 'none'
+	_updateSection(details, optionsDiv, badge, clearBtn, config) {
+		const count = this._filter.getFieldActiveCount(config.field_name)
 
-		// Update reset button
-		const resetBtn = this._container.querySelector('.reset-btn')
-		if (resetBtn) {
-			resetBtn.classList.toggle('has-filters', this._filter.getActiveFilters().size > 0)
-		}
+		optionsDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+			cb.checked = this._filter.isFieldValueActive(config.field_name, cb.dataset.value)
+		})
+
+		badge.textContent = String(count)
+		badge.style.display = count > 0 ? 'inline-flex' : 'none'
+		clearBtn.style.display = count > 0 ? 'block' : 'none'
+	}
+
+	_updateResetBtn() {
+		const resetBtn = this._container.querySelector('[data-role="reset"]')
+		if (resetBtn) this._updateResetBtnState(resetBtn)
+	}
+
+	_updateResetBtnState(btn) {
+		btn.textContent = 'Reset filters'
+		btn.classList.toggle('has-filters', this._filter.getActiveFilters().size > 0)
 	}
 }
 

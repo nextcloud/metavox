@@ -33,7 +33,7 @@ class MetaVoxMetadataFilter extends EventTarget {
 		this.iconSvgInline = METAVOX_ICON_SVG
 		this.tagName = 'metavox-metadata-filter'
 
-		this._activeFilters = new Map() // fieldName -> value
+		this._activeFilters = new Map() // fieldName -> Set<value>
 		this._metadataCache = null
 		this._columnConfigs = []
 		this._groupfolderId = null
@@ -53,12 +53,14 @@ class MetaVoxMetadataFilter extends EventTarget {
 
 			const meta = this._metadataCache.get(fileId) || {}
 
-			for (const [fieldName, filterValue] of this._activeFilters) {
+			// AND between fields, OR within a field (multi-select)
+			for (const [fieldName, valueSet] of this._activeFilters) {
+				if (valueSet.size === 0) continue
 				const cellValue = meta[fieldName]
 				if (!cellValue) return false
-				// multiselect: check if any value matches
-				const values = String(cellValue).split(/;\s*/)
-				if (!values.includes(filterValue)) return false
+				const cellValues = String(cellValue).split(/;\s*/).filter(Boolean)
+				const matches = [...valueSet].some(v => cellValues.includes(v))
+				if (!matches) return false
 			}
 			return true
 		})
@@ -99,18 +101,52 @@ class MetaVoxMetadataFilter extends EventTarget {
 	}
 
 	/**
-	 * Set a filter value for a field. Called by the web component.
+	 * Toggle a single value for a field (multi-select). Called by the web component.
 	 * @param {string} fieldName
-	 * @param {string|null} value - null to clear
+	 * @param {string} value
 	 */
-	setFilterValue(fieldName, value) {
-		if (value) {
-			this._activeFilters.set(fieldName, value)
+	toggleFilterValue(fieldName, value) {
+		if (!this._activeFilters.has(fieldName)) {
+			this._activeFilters.set(fieldName, new Set())
+		}
+		const set = this._activeFilters.get(fieldName)
+		if (set.has(value)) {
+			set.delete(value)
+			if (set.size === 0) this._activeFilters.delete(fieldName)
 		} else {
-			this._activeFilters.delete(fieldName)
+			set.add(value)
 		}
 		this._emitChips()
 		this._emitFilterUpdate()
+	}
+
+	/**
+	 * Clear all selected values for a field.
+	 * @param {string} fieldName
+	 */
+	clearFieldFilter(fieldName) {
+		this._activeFilters.delete(fieldName)
+		this._emitChips()
+		this._emitFilterUpdate()
+	}
+
+	/**
+	 * Check if a specific value is active for a field.
+	 * @param {string} fieldName
+	 * @param {string} value
+	 * @returns {boolean}
+	 */
+	isFieldValueActive(fieldName, value) {
+		return this._activeFilters.get(fieldName)?.has(value) ?? false
+	}
+
+	/**
+	 * Get the number of active values for a field.
+	 * @param {string} fieldName
+	 * @returns {number}
+	 */
+	getFieldActiveCount(fieldName) {
+		return this._activeFilters.get(fieldName)?.size ?? 0
 	}
 
 	/**
@@ -135,11 +171,13 @@ class MetaVoxMetadataFilter extends EventTarget {
 
 	_emitChips() {
 		const chips = []
-		for (const [fieldName, value] of this._activeFilters) {
+		for (const [fieldName, valueSet] of this._activeFilters) {
+			if (valueSet.size === 0) continue
 			const config = this._columnConfigs.find(c => c.field_name === fieldName)
 			const label = config?.field_label || fieldName.replace('file_gf_', '')
+			const valuesText = [...valueSet].join(', ')
 			chips.push({
-				text: `${label}: ${value}`,
+				text: `${label}: ${valuesText}`,
 				onclick: () => {
 					this._activeFilters.delete(fieldName)
 					this._emitChips()
