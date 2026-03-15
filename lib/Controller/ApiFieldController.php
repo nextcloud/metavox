@@ -688,4 +688,114 @@ public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
             ], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
+
+    // ========================================
+    // Column & Directory Metadata Endpoints (OCS)
+    // ========================================
+
+    /**
+     * Get column configuration for a groupfolder (for file list rendering)
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     * @CORS
+     */
+    public function getGroupfolderColumnConfig(int $groupfolderId): DataResponse {
+        try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new DataResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
+            }
+            if (!$this->fieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
+                return new DataResponse(['error' => 'Access denied'], Http::STATUS_FORBIDDEN);
+            }
+
+            $columns = $this->fieldService->getColumnConfigForGroupfolder($groupfolderId);
+            return new DataResponse($columns, Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Get metadata for all files in a directory, filtered to column-configured fields.
+     * Optimized for file list column rendering.
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     * @CORS
+     */
+    public function getDirectoryMetadata(int $groupfolderId): DataResponse {
+        try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new DataResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
+            }
+            if (!$this->fieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
+                return new DataResponse(['error' => 'Access denied'], Http::STATUS_FORBIDDEN);
+            }
+
+            // Parse file_ids parameter
+            $fileIdsParam = $this->request->getParam('file_ids');
+            $fileIds = [];
+
+            if (is_array($fileIdsParam) && !empty($fileIdsParam)) {
+                $fileIds = $fileIdsParam;
+            } elseif (is_string($fileIdsParam) && !empty($fileIdsParam)) {
+                $fileIds = explode(',', $fileIdsParam);
+            }
+
+            $fileIds = array_map('intval', array_filter($fileIds, fn($id) => is_numeric($id) && intval($id) > 0));
+            $fileIds = array_unique($fileIds);
+
+            if (empty($fileIds)) {
+                return new DataResponse(['error' => 'No valid file IDs provided'], Http::STATUS_BAD_REQUEST);
+            }
+
+            if (count($fileIds) > 200) {
+                return new DataResponse(['error' => 'Maximum 200 file IDs per request'], Http::STATUS_BAD_REQUEST);
+            }
+
+            // Filter to accessible files
+            $accessibleFileIds = $this->filterAccessibleFileIds($fileIds);
+            if (empty($accessibleFileIds)) {
+                return new DataResponse([], Http::STATUS_OK);
+            }
+
+            $metadata = $this->fieldService->getDirectoryMetadata($accessibleFileIds, $groupfolderId);
+            return new DataResponse($metadata, Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Get distinct values for a metadata field in a groupfolder.
+     * Used for filter dropdowns.
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     * @CORS
+     */
+    public function getFilterValues(int $groupfolderId): DataResponse {
+        try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new DataResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
+            }
+            if (!$this->fieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
+                return new DataResponse(['error' => 'Access denied'], Http::STATUS_FORBIDDEN);
+            }
+
+            $fieldName = $this->request->getParam('field_name');
+            if (empty($fieldName)) {
+                return new DataResponse(['error' => 'field_name is required'], Http::STATUS_BAD_REQUEST);
+            }
+
+            $values = $this->fieldService->getDistinctFieldValues($groupfolderId, $fieldName);
+            return new DataResponse($values, Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
 }

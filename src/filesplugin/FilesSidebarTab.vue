@@ -50,10 +50,13 @@
 			<div v-else-if="isInGroupfolder">
 				<!-- Teamfolder Information Section (read-only with prominent styling) -->
 				<div v-if="groupfolderFields.length > 0" class="teamfolder-info-wrapper">
-					<div class="teamfolder-info-header">
+					<div
+						class="teamfolder-info-header teamfolder-info-header--collapsible"
+						@click="teamfolderInfoExpanded = !teamfolderInfoExpanded">
 						<h3>{{ t('metavox', 'Team folder Information') }}</h3>
+						<span class="collapse-icon">{{ teamfolderInfoExpanded ? "▼" : "▶" }}</span>
 					</div>
-					<div class="teamfolder-info-content">
+					<div v-show="teamfolderInfoExpanded" class="teamfolder-info-content">
 						<div
 							v-for="field in groupfolderFields"
 							:key="field.id"
@@ -164,6 +167,7 @@ export default {
 			groupfoldersCache: null,
 			groupfoldersCacheExpiry: null,
 			loadCancelToken: null,
+			teamfolderInfoExpanded: false,
 		}
 	},
 
@@ -683,6 +687,23 @@ export default {
 
 .teamfolder-info-header {
 	margin-bottom: 12px;
+}
+
+.teamfolder-info-header--collapsible {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	cursor: pointer;
+	user-select: none;
+}
+
+.teamfolder-info-header--collapsible:hover {
+	opacity: 0.8;
+}
+
+.collapse-icon {
+	font-size: 12px;
+	color: var(--color-text-maxcontrast);
 }
 
 .teamfolder-info-header h3 {
