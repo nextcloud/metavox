@@ -594,6 +594,9 @@ export default {
 
 				this.originalMetadata = { ...this.metadata }
 				showSuccess(this.t('metavox', 'Metadata saved successfully!'))
+				window.dispatchEvent(new CustomEvent('metavox:metadata:saved', {
+					detail: { fileId: this.currentFileInfo.id, metadata: { ...this.metadata } },
+				}))
 			} catch (error) {
 				console.error('Error saving metadata:', error)
 				this.error = error.response?.data?.error || this.t('metavox', 'Failed to save metadata')

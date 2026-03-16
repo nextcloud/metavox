@@ -1,7 +1,7 @@
 <template>
 	<div class="metavox-filter-panel">
 		<div v-if="!filter || configs.length === 0" class="empty-msg">
-			Geen filterbare velden
+			{{ t('metavox', 'No filterable fields') }}
 		</div>
 		<template v-else>
 			<details v-for="config in configs"
@@ -19,7 +19,7 @@
 					<button v-if="getActiveCount(config.field_name) > 0"
 						class="clear-btn"
 						@click="clearField(config.field_name)">
-						Wis selectie
+						{{ t('metavox', 'Clear selection') }}
 					</button>
 					<NcCheckboxRadioSwitch v-for="opt in optionsMap[config.field_name]"
 						:key="opt.value"
@@ -30,24 +30,27 @@
 					</NcCheckboxRadioSwitch>
 				</div>
 			</details>
-			<button class="reset-btn"
-				:class="{ 'has-filters': hasActiveFilters }"
-				@click="resetAll">
-				Filters wissen
-			</button>
+			<div class="reset-wrapper">
+				<NcButton :wide="true"
+					:variant="hasActiveFilters ? 'secondary' : 'tertiary'"
+					@click="resetAll">
+					{{ t('metavox', 'Clear filters') }}
+				</NcButton>
+			</div>
 		</template>
 	</div>
 </template>
 
 <script>
-import { NcCheckboxRadioSwitch } from '@nextcloud/vue'
+import { NcButton, NcCheckboxRadioSwitch } from '@nextcloud/vue'
+import { translate } from '@nextcloud/l10n'
 import ChevronRight from 'vue-material-design-icons/ChevronRight.vue'
 import { getPrefetchedFilterValues } from './MetaVoxColumns.js'
 
 function formatOptionLabel(value, fieldType) {
-	if (fieldType === 'checkbox') {
-		if (value === '1' || value === 'true') return 'Ja'
-		if (value === '0' || value === 'false') return 'Nee'
+	if (fieldType === 'checkbox' || fieldType === 'boolean') {
+		if (value === '1' || value === 'true') return translate('metavox', 'Yes')
+		if (value === '0' || value === 'false') return translate('metavox', 'No')
 	}
 	return value
 }
@@ -55,6 +58,7 @@ function formatOptionLabel(value, fieldType) {
 export default {
 	name: 'MetaVoxFilterPanel',
 	components: {
+		NcButton,
 		NcCheckboxRadioSwitch,
 		ChevronRight,
 	},
@@ -98,7 +102,7 @@ export default {
 
 			for (const config of this.configs) {
 				let values = allValues[config.field_name] || []
-				if (config.field_type === 'checkbox') {
+				if (config.field_type === 'checkbox' || config.field_type === 'boolean') {
 					values = ['1', '0']
 				}
 				this.optionsMap[config.field_name] = values.map(val => ({
@@ -201,6 +205,16 @@ details[open] .summary-chevron {
 	padding: 2px 8px 6px;
 }
 
+/* Compact NcCheckboxRadioSwitch voor filter dropdown */
+.options :deep(.checkbox-content) {
+	min-height: 32px;
+	padding-block: 4px;
+}
+/* Herstel icoon-uitlijning: verwijder de 'auto' margin-bottom die het icoon omhoog trekt */
+.options :deep(.checkbox-content__icon) {
+	margin-block: auto !important;
+}
+
 .clear-btn {
 	display: block;
 	width: 100%;
@@ -216,26 +230,8 @@ details[open] .summary-chevron {
 	text-decoration: underline;
 }
 
-.reset-btn {
-	display: block;
-	width: calc(100% - 16px);
-	margin: 6px 8px 4px;
-	height: 34px;
-	border: 1px solid var(--color-border, #ededed);
-	border-radius: var(--border-radius-element, 32px);
-	background: var(--color-background-hover);
-	color: var(--color-main-text, #222);
-	font-size: 13px;
-	cursor: pointer;
-	text-align: center;
-}
-.reset-btn:hover {
-	background: var(--color-border, #ededed);
-}
-.reset-btn.has-filters {
-	border-color: var(--color-primary-element, #0082c9);
-	color: var(--color-primary-element, #0082c9);
-	background: transparent;
+.reset-wrapper {
+	padding: 6px 8px 4px;
 }
 
 .empty-msg {

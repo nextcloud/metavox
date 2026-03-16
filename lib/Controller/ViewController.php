@@ -44,7 +44,7 @@ class ViewController extends Controller {
 
             $views = $this->viewService->getViewsForGroupfolder($gfId);
             $response = new JSONResponse(['views' => $views, 'can_manage' => $canManage]);
-            $response->addHeader('Cache-Control', 'private, max-age=600');
+            $response->addHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
             return $response;
         } catch (\Exception $e) {
             return new JSONResponse(['error' => $e->getMessage()], 500);

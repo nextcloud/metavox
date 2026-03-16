@@ -7,6 +7,7 @@
  */
 
 import { createApp, h } from 'vue'
+import { translate, translatePlural } from '@nextcloud/l10n'
 import MetaVoxFilterPanel from './MetaVoxFilterPanel.vue'
 
 export class MetaVoxFilterElement extends HTMLElement {
@@ -44,6 +45,8 @@ export class MetaVoxFilterElement extends HTMLElement {
 		this._vueApp = createApp({
 			render: () => h(MetaVoxFilterPanel, { filter }),
 		})
+		this._vueApp.config.globalProperties.t = translate
+		this._vueApp.config.globalProperties.n = translatePlural
 		this._vueApp.mount(mountEl)
 	}
 

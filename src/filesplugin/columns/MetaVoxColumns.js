@@ -6,6 +6,7 @@
  */
 
 import axios from '@nextcloud/axios'
+import { translate } from '@nextcloud/l10n'
 import { generateOcsUrl, generateUrl } from '@nextcloud/router'
 import { createApp, h } from 'vue'
 import { registerMetaVoxFilter, removeFilters, updateFilterCache, getFilterInstance } from './MetadataFilter.js'
@@ -65,6 +66,7 @@ function formatValue(value, fieldType) {
 
 	switch (fieldType) {
 	case 'checkbox':
+	case 'boolean':
 		return value === '1' || value === 'true' || value === true ? '\u2713' : ''
 	case 'date':
 		try {
@@ -92,6 +94,7 @@ function compareValues(a, b, fieldType) {
 	case 'date':
 		return new Date(aVal).getTime() - new Date(bVal).getTime()
 	case 'checkbox':
+	case 'boolean':
 		return (aVal === '1' ? 0 : 1) - (bVal === '1' ? 0 : 1)
 	default:
 		return String(aVal).localeCompare(String(bVal))
@@ -519,14 +522,16 @@ function injectRowColumns(row) {
 function setCellValue(td, value, config) {
 	if (value !== undefined && value !== null && value !== '') {
 		const formatted = formatValue(value, config.field_type)
-		td.textContent = formatted
-		td.title = formatted
-		td.classList.remove(MARKER_CLASS + '--empty')
-	} else {
-		td.textContent = '\u2014'
-		td.title = ''
-		td.classList.add(MARKER_CLASS + '--empty')
+		if (formatted !== '') {
+			td.textContent = formatted
+			td.title = formatted
+			td.classList.remove(MARKER_CLASS + '--empty')
+			return
+		}
 	}
+	td.textContent = '\u2014'
+	td.title = ''
+	td.classList.add(MARKER_CLASS + '--empty')
 }
 
 function updateAllRowCells() {
@@ -1071,7 +1076,7 @@ function injectViewTabs(views) {
 		const addBtn = document.createElement('button')
 		addBtn.type = 'button'
 		addBtn.className = 'mv-tab mv-tab-add'
-		addBtn.title = 'Nieuwe weergave'
+		addBtn.title = translate('metavox', 'New view')
 		addBtn.textContent = '+'
 		addBtn.addEventListener('click', () => openViewEditor(null))
 		container.appendChild(addBtn)
@@ -1121,7 +1126,7 @@ function _makeViewTab(view) {
 		const editBtn = document.createElement('button')
 		editBtn.type = 'button'
 		editBtn.className = 'mv-tab-edit-btn'
-		editBtn.title = 'Weergave bewerken'
+		editBtn.title = translate('metavox', 'Edit view')
 		editBtn.innerHTML = '✎'
 		editBtn.addEventListener('click', (e) => {
 			e.stopPropagation()
@@ -1173,7 +1178,7 @@ function updateActiveTabs() {
 					const editBtn = document.createElement('button')
 					editBtn.type = 'button'
 					editBtn.className = 'mv-tab-edit-btn'
-					editBtn.title = 'Weergave bewerken'
+					editBtn.title = translate('metavox', 'Edit view')
 					editBtn.innerHTML = '✎'
 					editBtn.addEventListener('click', (e) => { e.stopPropagation(); openViewEditor(view) })
 					tab.appendChild(editBtn)
@@ -1230,6 +1235,7 @@ function openViewEditor(view) {
 		}),
 	})
 
+	vueApp.config.globalProperties.t = translate
 	vueApp.mount(mountEl)
 	panel._vueApp = vueApp
 
@@ -1275,7 +1281,7 @@ async function _handleEditorSave(view, payload) {
 		}
 	} catch (e) {
 		console.error('MetaVox: Failed to save view', e)
-		alert('Opslaan mislukt: ' + (e.response?.data?.error || e.message))
+		alert(translate('metavox', 'Save failed: ') + (e.response?.data?.error || e.message))
 	}
 }
 
@@ -1289,7 +1295,7 @@ function closeViewEditor() {
 }
 
 async function _confirmDeleteView(view) {
-	if (!confirm(`Weergave "${view.name}" verwijderen?`)) return
+	if (!confirm(translate('metavox', 'Delete view "{name}"?', { name: view.name }))) return
 
 	try {
 		const url = generateUrl('/apps/metavox/api/groupfolders/{gfId}/views/{viewId}', {
@@ -1308,7 +1314,7 @@ async function _confirmDeleteView(view) {
 		injectViewTabs(activeViews)
 	} catch (e) {
 		console.error('MetaVox: Failed to delete view', e)
-		alert('Verwijderen mislukt: ' + (e.response?.data?.error || e.message))
+		alert(translate('metavox', 'Delete failed: ') + (e.response?.data?.error || e.message))
 	}
 }
 
@@ -1408,7 +1414,7 @@ function _applyViewColumns(view) {
 		// No view active — hide all MetaVox columns
 		activeColumnConfigs = []
 	} else {
-		// Build activeColumnConfigs from visible view columns (they carry full field data)
+		// Build activeColumnConfigs from visible view columns, enriched with availableFields data
 		const ordered = []
 		const usedNames = new Set()
 		for (const vc of view.columns) {
@@ -1416,6 +1422,14 @@ function _applyViewColumns(view) {
 			if (!visible) continue
 			const fieldName = vc.field_name
 			if (fieldName && !usedNames.has(fieldName)) {
+				// Enrich with field metadata from availableFields if missing
+				if (!vc.field_type) {
+					const af = availableFields.find(f => f.field_name === fieldName || String(f.id) === String(vc.field_id))
+					if (af) {
+						vc.field_type = af.field_type
+						if (!vc.field_options) vc.field_options = af.field_options
+					}
+				}
 				ordered.push(vc)
 				usedNames.add(fieldName)
 			}
@@ -1756,6 +1770,12 @@ export function startColumnWatcher() {
 	}
 
 	window.addEventListener('popstate', checkNavigation)
+
+	window.addEventListener('metavox:metadata:saved', (e) => {
+		const { fileId, metadata } = e.detail
+		metadataCache.set(Number(fileId), metadata)
+		updateAllRowCells()
+	})
 
 	const origPush = history.pushState.bind(history)
 	const origReplace = history.replaceState.bind(history)

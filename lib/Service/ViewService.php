@@ -39,6 +39,9 @@ class ViewService {
         }
         $result->closeCursor();
 
+        // Enrich view columns with field data (field_type, field_options) from metavox_gf_fields
+        $views = $this->enrichViewColumns($gfId, $views);
+
         $this->cache->set($cacheKey, $views, 600);
         return $views;
     }
@@ -58,7 +61,9 @@ class ViewService {
             return null;
         }
 
-        return $this->rowToArray($row);
+        $view = $this->rowToArray($row);
+        $enriched = $this->enrichViewColumns($gfId, [$view]);
+        return $enriched[0];
     }
 
     public function createView(
@@ -190,6 +195,62 @@ class ViewService {
         }
 
         $this->cache->remove("gf_{$gfId}_views");
+    }
+
+    /**
+     * Enrich view columns with field metadata (field_type, field_options) from metavox_gf_fields.
+     * Older views may not have these properties stored in their columns JSON.
+     */
+    private function enrichViewColumns(int $gfId, array $views): array {
+        // Collect all field_ids referenced in view columns
+        $fieldIds = [];
+        foreach ($views as $view) {
+            foreach ($view['columns'] ?? [] as $col) {
+                if (isset($col['field_id'])) {
+                    $fieldIds[(int)$col['field_id']] = true;
+                }
+            }
+        }
+        if (empty($fieldIds)) {
+            return $views;
+        }
+
+        // Load field metadata in one query
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('id', 'field_type', 'field_options')
+           ->from('metavox_gf_fields')
+           ->where($qb->expr()->in('id', $qb->createNamedParameter(
+               array_keys($fieldIds),
+               IQueryBuilder::PARAM_INT_ARRAY
+           )));
+        $result = $qb->executeQuery();
+        $fieldMap = [];
+        while ($row = $result->fetch()) {
+            $fieldMap[(int)$row['id']] = [
+                'field_type' => $row['field_type'],
+                'field_options' => $row['field_options'] ? json_decode($row['field_options'], true) : [],
+            ];
+        }
+        $result->closeCursor();
+
+        // Merge into view columns
+        foreach ($views as &$view) {
+            foreach ($view['columns'] as &$col) {
+                $fid = (int)($col['field_id'] ?? 0);
+                if (isset($fieldMap[$fid])) {
+                    if (!isset($col['field_type']) || $col['field_type'] === '') {
+                        $col['field_type'] = $fieldMap[$fid]['field_type'];
+                    }
+                    if (!isset($col['field_options']) || empty($col['field_options'])) {
+                        $col['field_options'] = $fieldMap[$fid]['field_options'];
+                    }
+                }
+            }
+            unset($col);
+        }
+        unset($view);
+
+        return $views;
     }
 
     private function clearDefaultForGroupfolder(int $gfId, ?int $excludeViewId = null): void {
