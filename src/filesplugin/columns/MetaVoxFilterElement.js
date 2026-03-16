@@ -123,25 +123,24 @@ details[open] .summary-chevron {
 	display: block;
 	width: calc(100% - 16px);
 	margin: 6px 8px 4px 8px;
-	height: 36px;
-	border: 2px solid var(--color-border-maxcontrast, #949494);
-	border-radius: var(--border-radius-element, 6px);
-	background: transparent;
-	color: var(--color-text-maxcontrast, #767676);
-	font-size: 14px;
+	height: 34px;
+	border: 1px solid var(--color-border, #ededed);
+	border-radius: var(--border-radius-element, 32px);
+	background: var(--color-background-hover);
+	color: var(--color-main-text, #222);
+	font-size: 13px;
 	font-family: inherit;
 	cursor: pointer;
 	text-align: center;
 	box-sizing: border-box;
 }
 .reset-btn:hover {
-	border-color: var(--color-primary-element, #0082c9);
-	color: var(--color-primary-element, #0082c9);
+	background: var(--color-border, #ededed);
 }
 .reset-btn.has-filters {
 	border-color: var(--color-primary-element, #0082c9);
 	color: var(--color-primary-element, #0082c9);
-	font-weight: 600;
+	background: transparent;
 }
 
 .empty-msg {
@@ -249,7 +248,10 @@ export class MetaVoxFilterElement extends HTMLElement {
 						{ groupfolderId },
 					)
 					const resp = await axios.get(url, { params: { field_name: config.field_name } })
-					const values = resp.data?.ocs?.data || resp.data || []
+					let values = resp.data?.ocs?.data || resp.data || []
+				if (config.field_type === 'checkbox') {
+					values = ['1', '0']  // altijd Ja + Nee aanbieden, ongeacht DB-inhoud
+				}
 
 					for (const val of values) {
 						const label = formatOptionLabel(val, config.field_type)
@@ -329,7 +331,7 @@ export class MetaVoxFilterElement extends HTMLElement {
 	}
 
 	_updateResetBtnState(btn) {
-		btn.textContent = 'Reset filters'
+		btn.textContent = 'Filters wissen'
 		btn.classList.toggle('has-filters', this._filter.getActiveFilters().size > 0)
 	}
 }

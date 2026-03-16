@@ -593,53 +593,6 @@ public function createGroupfolderField(): JSONResponse {
         }
     }
 
-    // ========================================
-    // Column Configuration Endpoints
-    // ========================================
-
-    /**
-     * Get column configuration for a groupfolder (admin)
-     * @NoAdminRequired
-     */
-    public function getGroupfolderColumnConfig(int $groupfolderId): JSONResponse {
-        try {
-            $user = $this->userSession->getUser();
-            if (!$user) {
-                return new JSONResponse(['error' => 'User not authenticated'], 401);
-            }
-            if (!$this->fieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
-                return new JSONResponse(['error' => 'Access denied'], 403);
-            }
-
-            $config = $this->fieldService->getFullColumnConfigForGroupfolder($groupfolderId);
-            return new JSONResponse($config);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
-        }
-    }
-
-    /**
-     * Save column configuration for a groupfolder (admin)
-     * @NoAdminRequired
-     */
-    public function setGroupfolderColumnConfig(int $groupfolderId): JSONResponse {
-        try {
-            $user = $this->userSession->getUser();
-            if (!$user) {
-                return new JSONResponse(['error' => 'User not authenticated'], 401);
-            }
-            if (!$this->fieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
-                return new JSONResponse(['error' => 'Access denied'], 403);
-            }
-
-            $columns = $this->request->getParam('columns', []);
-            $success = $this->fieldService->setColumnConfigForGroupfolder($groupfolderId, $columns);
-            return new JSONResponse(['success' => $success]);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
-        }
-    }
-
     /**
      * Detect groupfolder ID from file path
      */

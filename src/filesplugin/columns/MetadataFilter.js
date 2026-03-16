@@ -57,9 +57,17 @@ class MetaVoxMetadataFilter extends EventTarget {
 			for (const [fieldName, valueSet] of this._activeFilters) {
 				if (valueSet.size === 0) continue
 				const cellValue = meta[fieldName]
-				if (!cellValue) return false
+				const cellEmpty = !cellValue || cellValue === '0' || cellValue === 'false'
+
+				if (cellEmpty) {
+					// File heeft geen/lege/false waarde — matcht "Nee" (='0') filter
+					if (valueSet.has('0')) continue
+					return false
+				}
+
+				// File heeft een waarde — normale match; sla '0' over (is "Nee", niet een echte celwaarde)
 				const cellValues = String(cellValue).split(/;\s*/).filter(Boolean)
-				const matches = [...valueSet].some(v => cellValues.includes(v))
+				const matches = [...valueSet].some(v => v !== '0' && cellValues.includes(v))
 				if (!matches) return false
 			}
 			return true
@@ -257,11 +265,7 @@ class MetaVoxMetadataFilter extends EventTarget {
  * @param {Map<number, Object>} metadataCache - Metadata cache from MetaVoxColumns
  */
 export function registerMetaVoxFilter(columnConfigs, groupfolderId, metadataCache) {
-	// Only register if there are filterable fields
-	const filterableConfigs = columnConfigs.filter(c => c.filterable)
-	if (filterableConfigs.length === 0) return
-
-	// Create instance if not exists
+	// Always create the instance so getFilterInstance() is non-null for tab click handlers
 	if (!filterInstance) {
 		filterInstance = new MetaVoxMetadataFilter()
 	}
@@ -271,7 +275,9 @@ export function registerMetaVoxFilter(columnConfigs, groupfolderId, metadataCach
 	filterInstance.setGroupfolderId(groupfolderId)
 	filterInstance.setMetadataCache(metadataCache)
 
-	if (!registered) {
+	// Only register in NC33 filter bar if there are filterable fields
+	const filterableConfigs = columnConfigs.filter(c => c.filterable)
+	if (filterableConfigs.length > 0 && !registered) {
 		_registerDirect()
 	}
 }

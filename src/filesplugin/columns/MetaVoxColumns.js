@@ -42,11 +42,14 @@ let activeViews = []
 /** @type {Object|null} Currently applied view */
 let activeView = null
 
-/** @type {HTMLElement|null} The view-selector container element */
-let viewSelectorEl = null
+/** @type {HTMLElement|null} The view-tabs container element */
+let viewTabsEl = null
 
-/** @type {Array<Object>} Full column configs from server (before view filtering) */
-let fullColumnConfigs = []
+/** @type {boolean} Whether current user can manage views */
+let canManageViews = false
+
+/** @type {Array<Object>} File-level fields assigned to the current groupfolder (from /file-fields endpoint) */
+let availableFields = []
 
 // ========================================
 // Value Formatting
@@ -94,16 +97,16 @@ function compareValues(a, b, fieldType) {
 // API
 // ========================================
 
-async function fetchColumnConfig(groupfolderId) {
+async function fetchAvailableFields(groupfolderId) {
 	try {
 		const url = generateOcsUrl(
-			'/apps/metavox/api/v1/groupfolders/{groupfolderId}/columns',
+			'/apps/metavox/api/v1/groupfolders/{groupfolderId}/file-fields',
 			{ groupfolderId },
 		)
 		const resp = await axios.get(url)
 		return resp.data?.ocs?.data || resp.data || []
 	} catch (e) {
-		console.error('MetaVox: Failed to fetch column config', e)
+		console.error('MetaVox: Failed to fetch available fields', e)
 		return []
 	}
 }
@@ -130,9 +133,28 @@ async function fetchViews(groupfolderId) {
 			{ gfId: groupfolderId },
 		)
 		const resp = await axios.get(url)
-		return resp.data || []
+		// Response: { views: [...], can_manage: bool }
+		const data = resp.data || {}
+		return {
+			views: data.views || [],
+			canManage: data.can_manage === true,
+		}
 	} catch (e) {
 		console.error('MetaVox: Failed to fetch views', e)
+		return { views: [], canManage: false }
+	}
+}
+
+async function fetchFilterValues(groupfolderId, fieldName) {
+	try {
+		const url = generateOcsUrl(
+			'/apps/metavox/api/v1/groupfolders/{gfId}/filter-values',
+			{ gfId: groupfolderId },
+		)
+		const resp = await axios.get(url, { params: { field_name: fieldName } })
+		return resp.data?.ocs?.data || resp.data || []
+	} catch (e) {
+		console.error('MetaVox: Failed to fetch filter values', e)
 		return []
 	}
 }
@@ -550,268 +572,1409 @@ function updateTableMinWidth() {
 }
 
 // ========================================
-// View Selector
+// View Tabs + Editor
 // ========================================
 
-const VIEW_SELECTOR_ID = 'metavox-view-selector'
-const VIEW_SELECTOR_STYLE_ID = 'metavox-view-selector-styles'
-
-function injectViewSelectorStyles() {
-	if (document.getElementById(VIEW_SELECTOR_STYLE_ID)) return
-	const style = document.createElement('style')
-	style.id = VIEW_SELECTOR_STYLE_ID
-	style.textContent = `
-		#${VIEW_SELECTOR_ID} {
-			position: relative;
-			display: inline-flex;
-			align-items: center;
-		}
-		#${VIEW_SELECTOR_ID} .metavox-view-btn {
-			display: inline-flex;
-			align-items: center;
-			gap: 4px;
-			height: 34px;
-			padding: 0 12px;
-			background: transparent;
-			border: none;
-			border-radius: var(--border-radius-element, 32px);
-			color: var(--color-text-maxcontrast);
-			font: inherit;
-			font-size: 14px;
-			cursor: pointer;
-			white-space: nowrap;
-		}
-		#${VIEW_SELECTOR_ID} .metavox-view-btn:hover,
-		#${VIEW_SELECTOR_ID} .metavox-view-btn.active {
-			background: var(--color-background-hover);
-			color: var(--color-main-text);
-		}
-		#${VIEW_SELECTOR_ID} .metavox-view-btn-icon {
-			display: flex;
-			align-items: center;
-			width: 20px;
-			height: 20px;
-			flex-shrink: 0;
-		}
-		#${VIEW_SELECTOR_ID} .metavox-view-dropdown {
-			display: none;
-			position: absolute;
-			top: calc(100% + 4px);
-			left: 0;
-			min-width: 180px;
-			background: var(--color-main-background);
-			border: 1px solid var(--color-border);
-			border-radius: var(--border-radius-large, 8px);
-			box-shadow: 0 2px 12px rgba(0,0,0,0.15);
-			z-index: 1000;
-			padding: 4px 0;
-			list-style: none;
-			margin: 0;
-		}
-		#${VIEW_SELECTOR_ID} .metavox-view-dropdown.open {
-			display: block;
-		}
-		#${VIEW_SELECTOR_ID} .metavox-view-dropdown li {
-			padding: 0;
-			margin: 0;
-		}
-		#${VIEW_SELECTOR_ID} .metavox-view-dropdown li button {
-			width: 100%;
-			padding: 8px 16px;
-			background: transparent;
-			border: none;
-			text-align: left;
-			font: inherit;
-			font-size: 14px;
-			color: var(--color-main-text);
-			cursor: pointer;
-			display: block;
-		}
-		#${VIEW_SELECTOR_ID} .metavox-view-dropdown li button:hover {
-			background: var(--color-background-hover);
-		}
-		#${VIEW_SELECTOR_ID} .metavox-view-dropdown li button.metavox-view-active {
-			font-weight: bold;
-			color: var(--color-primary-element);
-		}
-	`
-	document.head.appendChild(style)
-}
-
-function removeViewSelectorStyles() {
-	document.getElementById(VIEW_SELECTOR_STYLE_ID)?.remove()
-}
-
-const VIEW_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5h2V3c-1.1 0-2 .9-2 2zm0 8h2v-2H3v2zm4 8h2v-2H7v2zM3 9h2V7H3v2zm10-6h-2v2h2V3zm6 0v2h2c0-1.1-.9-2-2-2zM5 21v-2H3c0 1.1.9 2 2 2zm-2-4h2v-2H3v2zM9 3H7v2h2V3zm2 18h2v-2h-2v2zm8-8h2v-2h-2v2zm0 8c1.1 0 2-.9 2-2h-2v2zm0-12h2V7h-2v2zm0 8h2v-2h-2v2zm-4 4h2v-2h-2v2zm0-16h2V3h-2v2z"/></svg>'
-
-/**
- * Inject the view-selector widget into the NC33 toolbar.
- * Inserts adjacent to the MetaVox filter button in the filter bar.
- */
-function injectViewSelector(views) {
-	removeViewSelector()
-
-	if (!views || views.length === 0) return
-
-	injectViewSelectorStyles()
-
-	const container = document.createElement('div')
-	container.id = VIEW_SELECTOR_ID
-
-	const btn = document.createElement('button')
-	btn.type = 'button'
-	btn.className = 'metavox-view-btn'
-	btn.setAttribute('aria-haspopup', 'listbox')
-	btn.setAttribute('aria-expanded', 'false')
-
-	const iconSpan = document.createElement('span')
-	iconSpan.className = 'metavox-view-btn-icon'
-	iconSpan.setAttribute('aria-hidden', 'true')
-	iconSpan.innerHTML = VIEW_ICON_SVG
-
-	const labelSpan = document.createElement('span')
-	labelSpan.className = 'metavox-view-btn-label'
-	labelSpan.textContent = activeView?.name || 'Weergave'
-
-	btn.appendChild(iconSpan)
-	btn.appendChild(labelSpan)
-
-	const dropdown = document.createElement('ul')
-	dropdown.className = 'metavox-view-dropdown'
-	dropdown.setAttribute('role', 'listbox')
-
-	// "No view" option
-	const noViewLi = document.createElement('li')
-	const noViewBtn = document.createElement('button')
-	noViewBtn.type = 'button'
-	noViewBtn.textContent = 'Geen weergave'
-	if (!activeView) noViewBtn.className = 'metavox-view-active'
-	noViewBtn.addEventListener('click', () => {
-		clearView()
-		closeDropdown()
-	})
-	noViewLi.appendChild(noViewBtn)
-	dropdown.appendChild(noViewLi)
-
-	for (const view of views) {
-		const li = document.createElement('li')
-		const vBtn = document.createElement('button')
-		vBtn.type = 'button'
-		vBtn.textContent = view.name
-		if (activeView?.id === view.id) vBtn.className = 'metavox-view-active'
-		vBtn.addEventListener('click', () => {
-			const fi = getFilterInstance()
-			if (fi) applyView(view, fi)
-			closeDropdown()
-		})
-		li.appendChild(vBtn)
-		dropdown.appendChild(li)
-	}
-
-	container.appendChild(btn)
-	container.appendChild(dropdown)
-
-	// Toggle dropdown on button click
-	btn.addEventListener('click', (e) => {
-		e.stopPropagation()
-		const isOpen = dropdown.classList.contains('open')
-		if (isOpen) {
-			dropdown.classList.remove('open')
-			btn.classList.remove('active')
-			btn.setAttribute('aria-expanded', 'false')
-		} else {
-			dropdown.classList.add('open')
-			btn.classList.add('active')
-			btn.setAttribute('aria-expanded', 'true')
-		}
-	})
-
-	// Close when clicking outside
-	document.addEventListener('click', closeDropdown)
-
-	// Insert into the filter bar near the MetaVox filter button
-	const inserted = _insertViewSelectorInToolbar(container)
-	if (!inserted) {
-		// Fallback: prepend to files-list header
-		const header = document.querySelector('.files-list__header')
-		if (header) {
-			header.prepend(container)
-		}
-	}
-
-	viewSelectorEl = container
-}
-
-function closeDropdown() {
-	if (!viewSelectorEl) return
-	const dropdown = viewSelectorEl.querySelector('.metavox-view-dropdown')
-	const btn = viewSelectorEl.querySelector('.metavox-view-btn')
-	dropdown?.classList.remove('open')
-	btn?.classList.remove('active')
-	btn?.setAttribute('aria-expanded', 'false')
-}
-
-/**
- * Try to insert the view-selector into the NC33 filter bar toolbar.
- * Returns true if successfully inserted.
- */
-function _insertViewSelectorInToolbar(container) {
-	// Try to find the MetaVox filter button by its id attribute on the filter element
-	const filterBtn = document.querySelector(`[data-filter-id="${FILTER_ID}"], #${FILTER_ID}, .files-list__filters [class*="metavox"]`)
-	if (filterBtn) {
-		const parent = filterBtn.closest('.files-list__filters') || filterBtn.parentElement
-		if (parent) {
-			parent.appendChild(container)
-			return true
-		}
-	}
-
-	// Try the native filter bar container
-	const filterBar = document.querySelector('.files-list__filters')
-	if (filterBar) {
-		filterBar.appendChild(container)
-		return true
-	}
-
-	// Try the breadcrumb/toolbar area
-	const toolbar = document.querySelector('.files-list__header .breadcrumb, .files-list__header nav, .files-list__header')
-	if (toolbar) {
-		toolbar.appendChild(container)
-		return true
-	}
-
-	return false
-}
+const VIEW_TABS_ID = 'metavox-view-tabs'
+const VIEW_EDITOR_ID = 'metavox-view-editor'
+const VIEW_STYLE_ID = 'metavox-view-styles'
 
 // Need FILTER_ID from MetadataFilter — re-declare locally for DOM lookup
 const FILTER_ID = 'metavox-metadata'
 
-function removeViewSelector() {
-	document.removeEventListener('click', closeDropdown)
-	viewSelectorEl?.remove()
-	viewSelectorEl = null
-	removeViewSelectorStyles()
+function injectViewStyles() {
+	if (document.getElementById(VIEW_STYLE_ID)) return
+	const style = document.createElement('style')
+	style.id = VIEW_STYLE_ID
+	style.textContent = `
+		/* ── Tab bar ── */
+		#${VIEW_TABS_ID} {
+			display: flex;
+			align-items: center;
+			gap: 2px;
+			padding: 4px 8px;
+			border-bottom: 1px solid var(--color-border);
+			background: var(--color-main-background);
+			flex-wrap: wrap;
+		}
+		.mv-tab {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			height: 30px;
+			padding: 0 12px;
+			border: none;
+			border-radius: var(--border-radius-element, 32px);
+			background: transparent;
+			color: var(--color-text-maxcontrast);
+			font: inherit;
+			font-size: 13px;
+			cursor: pointer;
+			white-space: nowrap;
+			flex-shrink: 0;
+			position: relative;
+		}
+		.mv-tab:hover {
+			background: var(--color-background-hover);
+			color: var(--color-main-text);
+		}
+		.mv-tab-active {
+			background: var(--color-primary-element-light, #e8f0fe);
+			color: var(--color-primary-element);
+			font-weight: 600;
+		}
+		.mv-tab-active:hover {
+			background: var(--color-primary-element-light, #e8f0fe);
+		}
+		.mv-tab-dot {
+			width: 6px;
+			height: 6px;
+			border-radius: 50%;
+			background: var(--color-primary-element);
+			flex-shrink: 0;
+		}
+		.mv-tab-edit-hint {
+			font-size: 11px;
+			opacity: 0.6;
+		}
+		.mv-tab-add {
+			margin-left: 4px;
+			font-size: 18px;
+			font-weight: 400;
+			line-height: 1;
+		}
+
+		/* ── Slide-over editor panel ── */
+		#${VIEW_EDITOR_ID} {
+			position: fixed;
+			top: 0;
+			right: -480px;
+			width: 460px;
+			max-width: 95vw;
+			height: 100vh;
+			background: var(--color-main-background);
+			border-left: 1px solid var(--color-border);
+			box-shadow: -4px 0 24px rgba(0,0,0,0.15);
+			z-index: 2000;
+			display: flex;
+			flex-direction: column;
+			transition: right 0.25s ease;
+			overflow: hidden;
+		}
+		#${VIEW_EDITOR_ID}.open {
+			right: 0;
+		}
+		.mv-editor-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 16px 20px 12px;
+			border-bottom: 1px solid var(--color-border);
+			flex-shrink: 0;
+		}
+		.mv-editor-header h3 {
+			margin: 0;
+			font-size: 16px;
+			font-weight: 600;
+		}
+		.mv-editor-close {
+			background: none;
+			border: none;
+			cursor: pointer;
+			padding: 4px;
+			border-radius: var(--border-radius);
+			color: var(--color-text-maxcontrast);
+			font-size: 20px;
+			line-height: 1;
+		}
+		.mv-editor-close:hover { color: var(--color-main-text); background: var(--color-background-hover); }
+		.mv-editor-body {
+			flex: 1;
+			overflow-y: auto;
+			padding: 16px 20px;
+		}
+		.mv-editor-row {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			margin-bottom: 16px;
+		}
+		.mv-editor-row label {
+			font-size: 13px;
+			font-weight: 600;
+			min-width: 60px;
+			flex-shrink: 0;
+		}
+		.mv-editor-row input[type="text"] {
+			flex: 1;
+			height: 34px;
+			padding: 0 10px;
+			border: 1px solid var(--color-border);
+			border-radius: var(--border-radius-element, 32px);
+			background: var(--color-main-background);
+			color: var(--color-main-text);
+			font: inherit;
+			font-size: 13px;
+		}
+		.mv-editor-section-title {
+			font-size: 11px;
+			font-weight: 700;
+			letter-spacing: 0.08em;
+			text-transform: uppercase;
+			color: var(--color-text-maxcontrast);
+			margin: 16px 0 8px;
+		}
+		.mv-col-row {
+			display: flex;
+			align-items: center;
+			padding: 6px 4px;
+			border-radius: var(--border-radius);
+			gap: 8px;
+		}
+		.mv-col-row:hover { background: var(--color-background-hover); }
+		.mv-col-drag {
+			cursor: grab;
+			color: var(--color-text-maxcontrast);
+			font-size: 16px;
+			flex-shrink: 0;
+			width: 20px;
+			text-align: center;
+		}
+		.mv-col-name {
+			flex: 1;
+			font-size: 13px;
+		}
+		.mv-col-check {
+			width: 70px;
+			display: flex;
+			justify-content: center;
+		}
+		.mv-col-check input[type="checkbox"] {
+			width: 16px;
+			height: 16px;
+			cursor: pointer;
+		}
+		.mv-disabled {
+			opacity: 0.4;
+			pointer-events: none;
+		}
+		.mv-col-header-row {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			padding: 0 4px 4px;
+			border-bottom: 1px solid var(--color-border);
+			margin-bottom: 4px;
+		}
+		.mv-col-header-row .mv-col-drag { visibility: hidden; }
+		.mv-col-header-label {
+			font-size: 11px;
+			font-weight: 600;
+			text-transform: uppercase;
+			color: var(--color-text-maxcontrast);
+		}
+		.mv-filter-row {
+			border-bottom: 1px solid var(--color-border);
+		}
+		.mv-filter-row:last-of-type {
+			border-bottom: none;
+		}
+		.mv-filter-summary {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 10px 4px;
+			cursor: pointer;
+			user-select: none;
+			list-style: none;
+			min-height: 40px;
+			font-size: 13px;
+			font-weight: 600;
+			color: var(--color-main-text);
+		}
+		.mv-filter-summary::-webkit-details-marker { display: none; }
+		.mv-filter-summary:hover { background: var(--color-background-hover); border-radius: var(--border-radius, 4px); }
+		.mv-filter-summary-text { flex: 1; }
+		.mv-filter-badge {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			min-width: 18px;
+			height: 18px;
+			padding: 0 4px;
+			border-radius: 9px;
+			background: var(--color-primary-element, #0082c9);
+			color: #fff;
+			font-size: 11px;
+			font-weight: 600;
+			margin-right: 6px;
+		}
+		.mv-filter-chevron {
+			width: 14px;
+			height: 14px;
+			transition: transform 0.15s;
+			color: var(--color-text-maxcontrast, #767676);
+			flex-shrink: 0;
+		}
+		details.mv-filter-row[open] .mv-filter-chevron {
+			transform: rotate(90deg);
+		}
+		.mv-filter-body {
+			padding: 4px 0 8px 0;
+		}
+		.mv-filter-tags {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 4px;
+			padding: 6px 8px;
+			border: 1px solid var(--color-border);
+			border-radius: var(--border-radius-element, 32px);
+			min-height: 34px;
+			align-items: center;
+			cursor: text;
+		}
+		.mv-filter-tag {
+			display: inline-flex;
+			align-items: center;
+			gap: 4px;
+			padding: 2px 8px;
+			background: var(--color-primary-element-light);
+			color: var(--color-primary-element);
+			border-radius: 12px;
+			font-size: 12px;
+		}
+		.mv-filter-tag-remove {
+			background: none;
+			border: none;
+			cursor: pointer;
+			padding: 0;
+			font-size: 14px;
+			line-height: 1;
+			color: inherit;
+			opacity: 0.7;
+		}
+		.mv-filter-tag-remove:hover { opacity: 1; }
+		.mv-filter-input {
+			border: none;
+			outline: none;
+			background: transparent;
+			font: inherit;
+			font-size: 12px;
+			min-width: 80px;
+			flex: 1;
+			color: var(--color-main-text);
+		}
+		.mv-sort-row {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+		.mv-sort-row select {
+			height: 34px;
+			padding: 0 8px;
+			border: 1px solid var(--color-border);
+			border-radius: var(--border-radius-element, 32px);
+			background: var(--color-main-background);
+			color: var(--color-main-text);
+			font: inherit;
+			font-size: 13px;
+			cursor: pointer;
+		}
+		.mv-editor-footer {
+			display: flex;
+			align-items: center;
+			justify-content: flex-end;
+			gap: 8px;
+			padding: 12px 20px;
+			border-top: 1px solid var(--color-border);
+			flex-shrink: 0;
+		}
+		.mv-btn {
+			height: 34px;
+			padding: 0 16px;
+			border: none;
+			border-radius: var(--border-radius-element, 32px);
+			font: inherit;
+			font-size: 13px;
+			cursor: pointer;
+		}
+		.mv-btn-primary {
+			background: var(--color-primary-element);
+			color: var(--color-primary-element-text);
+		}
+		.mv-btn-primary:hover { opacity: 0.9; }
+		.mv-btn-primary.loading { opacity: 0.6; cursor: wait; }
+		.mv-btn-secondary {
+			background: var(--color-background-hover);
+			color: var(--color-main-text);
+		}
+		.mv-btn-secondary:hover { background: var(--color-border); }
+		.mv-btn-danger {
+			background: transparent;
+			color: var(--color-error);
+			border: 1px solid var(--color-error);
+			margin-right: auto;
+		}
+		.mv-btn-danger:hover { background: var(--color-error); color: #fff; }
+		.mv-default-toggle {
+			display: inline-flex;
+			align-items: center;
+			gap: 4px;
+			padding: 4px 10px;
+			border: 1px solid var(--color-border);
+			border-radius: var(--border-radius-element, 32px);
+			background: transparent;
+			cursor: pointer;
+			font: inherit;
+			font-size: 13px;
+			color: var(--color-text-maxcontrast);
+			flex-shrink: 0;
+		}
+		.mv-default-toggle.active {
+			border-color: var(--color-primary-element);
+			color: var(--color-primary-element);
+			background: var(--color-primary-element-light);
+		}
+		.mv-editor-overlay {
+			position: fixed;
+			inset: 0;
+			z-index: 1999;
+			background: transparent;
+		}
+		/* ── Potlood-knop op actieve tab ── */
+		.mv-tab-edit-btn {
+			background: none;
+			border: none;
+			cursor: pointer;
+			padding: 0 0 0 2px;
+			font-size: 13px;
+			color: var(--color-primary-element);
+			opacity: 0.55;
+			line-height: 1;
+			flex-shrink: 0;
+		}
+		.mv-tab-edit-btn:hover { opacity: 1; }
+		/* ── Select-filter aanvinklijst ── */
+		.mv-select-filter-list {
+			max-height: 160px;
+			overflow-y: auto;
+			border: 1px solid var(--color-border);
+			border-radius: var(--border-radius-large, 8px);
+			padding: 4px 0;
+			background: var(--color-main-background);
+		}
+		.mv-select-filter-item {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			padding: 5px 10px;
+			cursor: pointer;
+			font-size: 13px;
+			user-select: none;
+		}
+		.mv-select-filter-item:hover { background: var(--color-background-hover); }
+		.mv-select-filter-item input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; flex-shrink: 0; }
+		/* ── Autocomplete wrapper (relatief voor dropdown positionering) ── */
+		.mv-autocomplete-wrap {
+			position: relative;
+		}
+		.mv-autocomplete-dropdown {
+			position: absolute;
+			left: 0;
+			right: 0;
+			top: calc(100% + 2px);
+			background: var(--color-main-background);
+			border: 1px solid var(--color-border);
+			border-radius: var(--border-radius-large, 8px);
+			box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+			z-index: 3000;
+			max-height: 180px;
+			overflow-y: auto;
+		}
+		.mv-autocomplete-item {
+			padding: 6px 12px;
+			font-size: 13px;
+			cursor: pointer;
+		}
+		.mv-autocomplete-item:hover { background: var(--color-background-hover); }
+		.mv-autocomplete-item.mv-item-selected { opacity: 0.4; cursor: default; }
+		.mv-autocomplete-item.mv-item-selected:hover { background: transparent; }
+		.mv-autocomplete-empty {
+			padding: 8px 12px;
+			font-size: 12px;
+			color: var(--color-text-maxcontrast);
+			font-style: italic;
+		}
+		/* ── Checkbox-filter toggle knoppen ── */
+		.mv-checkbox-filter {
+			display: flex;
+			gap: 8px;
+		}
+		.mv-checkbox-filter-btn {
+			height: 30px;
+			padding: 0 14px;
+			border: 1px solid var(--color-border);
+			border-radius: var(--border-radius-element, 32px);
+			background: transparent;
+			cursor: pointer;
+			font: inherit;
+			font-size: 13px;
+			color: var(--color-text-maxcontrast);
+		}
+		.mv-checkbox-filter-btn.active {
+			border-color: var(--color-primary-element);
+			background: var(--color-primary-element-light, #e8f0fe);
+			color: var(--color-primary-element);
+			font-weight: 600;
+		}
+		.mv-checkbox-filter-btn:hover:not(.active) { background: var(--color-background-hover); color: var(--color-main-text); }
+	`
+	document.head.appendChild(style)
 }
 
-function updateViewSelectorLabel() {
-	if (!viewSelectorEl) return
-	const label = viewSelectorEl.querySelector('.metavox-view-btn-label')
-	if (label) label.textContent = activeView?.name || 'Weergave'
+function removeViewStyles() {
+	document.getElementById(VIEW_STYLE_ID)?.remove()
+}
 
-	// Update active state on dropdown items
-	viewSelectorEl.querySelectorAll('.metavox-view-dropdown li button').forEach(btn => {
-		btn.classList.remove('metavox-view-active')
-	})
-	if (!activeView) {
-		const noViewBtn = viewSelectorEl.querySelector('.metavox-view-dropdown li:first-child button')
-		noViewBtn?.classList.add('metavox-view-active')
+/**
+ * Inject tab-bar above the file list filters.
+ */
+function injectViewTabs(views) {
+	removeViewTabs()
+
+	injectViewStyles()
+
+	const container = document.createElement('div')
+	container.id = VIEW_TABS_ID
+
+	// "Alle bestanden" tab
+	const allTab = document.createElement('button')
+	allTab.type = 'button'
+	allTab.className = 'mv-tab' + (!activeView ? ' mv-tab-active' : '')
+	allTab.textContent = 'Alle bestanden'
+	allTab.addEventListener('click', () => clearView())
+	container.appendChild(allTab)
+
+	// View tabs
+	for (const view of views) {
+		const tab = _makeViewTab(view)
+		container.appendChild(tab)
+	}
+
+	// "+ Add" button
+	if (canManageViews) {
+		const addBtn = document.createElement('button')
+		addBtn.type = 'button'
+		addBtn.className = 'mv-tab mv-tab-add'
+		addBtn.title = 'Nieuwe weergave'
+		addBtn.textContent = '+'
+		addBtn.addEventListener('click', () => openViewEditor(null))
+		container.appendChild(addBtn)
+	}
+
+	// Insert before .files-list__filters
+	const filterBar = document.querySelector('.files-list__filters')
+	if (filterBar) {
+		filterBar.insertAdjacentElement('beforebegin', container)
 	} else {
-		// Match by text content (simple approach)
-		viewSelectorEl.querySelectorAll('.metavox-view-dropdown li button').forEach(btn => {
-			if (btn.textContent === activeView.name) {
-				btn.classList.add('metavox-view-active')
+		// Fallback: insert before the files-list table
+		const table = document.querySelector('.files-list__table')
+		if (table) table.insertAdjacentElement('beforebegin', container)
+	}
+
+	viewTabsEl = container
+}
+
+function _makeViewTab(view) {
+	const tab = document.createElement('button')
+	tab.type = 'button'
+	tab.dataset.viewId = view.id
+	const isActive = activeView?.id === view.id
+	tab.className = 'mv-tab' + (isActive ? ' mv-tab-active' : '')
+
+	if (isActive) {
+		const dot = document.createElement('span')
+		dot.className = 'mv-tab-dot'
+		tab.appendChild(dot)
+	}
+
+	const nameSpan = document.createElement('span')
+	nameSpan.textContent = view.name
+	tab.appendChild(nameSpan)
+
+	if (isActive && canManageViews) {
+		const editBtn = document.createElement('button')
+		editBtn.type = 'button'
+		editBtn.className = 'mv-tab-edit-btn'
+		editBtn.title = 'Weergave bewerken'
+		editBtn.innerHTML = '✎'
+		editBtn.addEventListener('click', (e) => {
+			e.stopPropagation()
+			openViewEditor(view)
+		})
+		tab.appendChild(editBtn)
+	}
+
+	tab.addEventListener('click', () => {
+		if (activeView?.id === view.id) {
+			if (canManageViews) openViewEditor(view)
+		} else {
+			const fi = getFilterInstance()
+			if (fi) applyView(view, fi)
+		}
+	})
+
+	return tab
+}
+
+function removeViewTabs() {
+	viewTabsEl?.remove()
+	viewTabsEl = null
+}
+
+function updateActiveTabs() {
+	if (!viewTabsEl) return
+
+	viewTabsEl.querySelectorAll('.mv-tab').forEach(tab => {
+		const viewId = tab.dataset.viewId
+		if (!viewId) {
+			// "Alle bestanden" tab
+			tab.className = 'mv-tab' + (!activeView ? ' mv-tab-active' : '')
+			return
+		}
+
+		const isActive = activeView && String(activeView.id) === String(viewId)
+		if (isActive) {
+			tab.className = 'mv-tab mv-tab-active'
+			if (!tab.querySelector('.mv-tab-dot')) {
+				const dot = document.createElement('span')
+				dot.className = 'mv-tab-dot'
+				tab.prepend(dot)
+			}
+			// Add pencil if can manage and not already present
+			if (canManageViews && !tab.querySelector('.mv-tab-edit-btn')) {
+				const view = activeViews.find(v => String(v.id) === String(viewId))
+				if (view) {
+					const editBtn = document.createElement('button')
+					editBtn.type = 'button'
+					editBtn.className = 'mv-tab-edit-btn'
+					editBtn.title = 'Weergave bewerken'
+					editBtn.innerHTML = '✎'
+					editBtn.addEventListener('click', (e) => { e.stopPropagation(); openViewEditor(view) })
+					tab.appendChild(editBtn)
+				}
+			}
+		} else {
+			tab.className = 'mv-tab'
+			tab.querySelector('.mv-tab-dot')?.remove()
+			tab.querySelector('.mv-tab-edit-btn')?.remove()
+		}
+	})
+}
+
+// ── View Editor Panel ──────────────────────────────────────────
+
+let _editorDragState = null
+
+/** Cache voor filter-waarden per veld (fieldName → string[]), per editor-sessie */
+const _filterValuesCache = {}
+
+async function _getFilterValues(fieldName) {
+	if (_filterValuesCache[fieldName]) return _filterValuesCache[fieldName]
+	const values = await fetchFilterValues(activeGroupfolderId, fieldName)
+	_filterValuesCache[fieldName] = Array.isArray(values) ? values : []
+	return _filterValuesCache[fieldName]
+}
+
+/**
+ * Open the slide-over view editor.
+ * @param {Object|null} view - Existing view to edit, or null for new
+ */
+async function openViewEditor(view) {
+	// Remove existing editor
+	closeViewEditor()
+
+	injectViewStyles()
+
+	// Overlay to close on outside click
+	const overlay = document.createElement('div')
+	overlay.className = 'mv-editor-overlay'
+	overlay.addEventListener('click', closeViewEditor)
+	document.body.appendChild(overlay)
+
+	// Panel
+	const panel = document.createElement('div')
+	panel.id = VIEW_EDITOR_ID
+	document.body.appendChild(panel)
+
+	// Build editor state
+	const isNew = !view
+	const editorState = {
+		name: view?.name || '',
+		isDefault: view?.is_default || false,
+		// columns: [{field_id, field_label, visible, filterable}]
+		columns: _buildEditorColumns(view),
+		// filters: { fieldId: Set<string> }
+		filters: _buildEditorFilters(view),
+		sortField: view?.sort_field || '',
+		sortOrder: view?.sort_order || 'asc',
+	}
+
+	// Render
+	_renderEditorContent(panel, view, editorState, isNew)
+
+	// Trigger animation
+	requestAnimationFrame(() => {
+		requestAnimationFrame(() => panel.classList.add('open'))
+	})
+
+	// Escape key
+	const onKeyDown = (e) => {
+		if (e.key === 'Escape') { closeViewEditor(); document.removeEventListener('keydown', onKeyDown) }
+	}
+	document.addEventListener('keydown', onKeyDown)
+}
+
+function closeViewEditor() {
+	document.getElementById(VIEW_EDITOR_ID)?.remove()
+	document.querySelector('.mv-editor-overlay')?.remove()
+}
+
+function _buildEditorColumns(view) {
+	const viewCols = view?.columns || []
+
+	if (viewCols.length > 0) {
+		// Gebruik volgorde uit view.columns; kolommen niet in view komen achteraan
+		const result = []
+		const usedIds = new Set()
+
+		viewCols.forEach(vc => {
+			const cfg = availableFields.find(c =>
+				String(c.id) === String(vc.field_id) || c.field_name === vc.field_name,
+			)
+			if (!cfg) return
+			usedIds.add(cfg.id)
+			result.push({
+				field_id: cfg.id,
+				field_name: cfg.field_name,
+				field_label: cfg.field_label,
+				field_type: cfg.field_type,
+				visible: vc.visible !== false && vc.show_as_column !== false,
+				filterable: vc.filterable !== false,
+			})
+		})
+
+		// Voeg kolommen toe die niet in de view staan (bijv. nieuw toegevoegd)
+		availableFields.forEach(cfg => {
+			if (usedIds.has(cfg.id)) return
+			result.push({
+				field_id: cfg.id,
+				field_name: cfg.field_name,
+				field_label: cfg.field_label,
+				field_type: cfg.field_type,
+				visible: false,
+				filterable: false,
+			})
+		})
+
+		return result
+	}
+
+	// Geen view — alle beschikbare velden, standaard niet zichtbaar
+	return availableFields.map(cfg => ({
+		field_id: cfg.id,
+		field_name: cfg.field_name,
+		field_label: cfg.field_label,
+		field_type: cfg.field_type,
+		visible: false,
+		filterable: false,
+	}))
+}
+
+function _buildEditorFilters(view) {
+	const filters = {}
+	const raw = view?.filters || {}
+	for (const [fieldId, valStr] of Object.entries(raw)) {
+		if (!valStr) continue
+		filters[fieldId] = new Set(String(valStr).split(',').map(v => v.trim()).filter(Boolean))
+	}
+	return filters
+}
+
+function _renderEditorContent(panel, view, editorState, isNew) {
+	panel.innerHTML = ''
+
+	// Header
+	const header = document.createElement('div')
+	header.className = 'mv-editor-header'
+	const h3 = document.createElement('h3')
+	h3.textContent = isNew ? 'Nieuwe weergave' : `Weergave bewerken`
+	const closeBtn = document.createElement('button')
+	closeBtn.className = 'mv-editor-close'
+	closeBtn.innerHTML = '&times;'
+	closeBtn.addEventListener('click', closeViewEditor)
+	header.appendChild(h3)
+	header.appendChild(closeBtn)
+	panel.appendChild(header)
+
+	// Body
+	const body = document.createElement('div')
+	body.className = 'mv-editor-body'
+	panel.appendChild(body)
+
+	// Name row
+	const nameRow = document.createElement('div')
+	nameRow.className = 'mv-editor-row'
+	const nameLabel = document.createElement('label')
+	nameLabel.textContent = 'Naam'
+	const nameInput = document.createElement('input')
+	nameInput.type = 'text'
+	nameInput.value = editorState.name
+	nameInput.placeholder = 'Naam van de weergave'
+	nameInput.addEventListener('input', () => { editorState.name = nameInput.value })
+
+	const defaultBtn = document.createElement('button')
+	defaultBtn.type = 'button'
+	defaultBtn.className = 'mv-default-toggle' + (editorState.isDefault ? ' active' : '')
+	defaultBtn.innerHTML = (editorState.isDefault ? '&#9733;' : '&#9734;') + ' Standaard'
+	defaultBtn.addEventListener('click', () => {
+		editorState.isDefault = !editorState.isDefault
+		defaultBtn.className = 'mv-default-toggle' + (editorState.isDefault ? ' active' : '')
+		defaultBtn.innerHTML = (editorState.isDefault ? '&#9733;' : '&#9734;') + ' Standaard'
+	})
+
+	nameRow.appendChild(nameLabel)
+	nameRow.appendChild(nameInput)
+	nameRow.appendChild(defaultBtn)
+	body.appendChild(nameRow)
+
+	// Columns section
+	const colTitle = document.createElement('div')
+	colTitle.className = 'mv-editor-section-title'
+	colTitle.textContent = 'Kolommen'
+	body.appendChild(colTitle)
+
+	// Column header row
+	const colHeaderRow = document.createElement('div')
+	colHeaderRow.className = 'mv-col-header-row'
+	colHeaderRow.innerHTML = `
+		<span class="mv-col-drag"></span>
+		<span class="mv-col-name mv-col-header-label">Veld</span>
+		<span class="mv-col-check mv-col-header-label">Zichtbaar</span>
+		<span class="mv-col-check mv-col-header-label">Filterbaar</span>
+	`
+	body.appendChild(colHeaderRow)
+
+	// Column rows (drag-to-reorder)
+	const colList = document.createElement('div')
+	colList.id = 'mv-col-list'
+	editorState.columns.forEach((col, idx) => {
+		colList.appendChild(_makeColRow(col, idx, editorState, colList))
+	})
+	body.appendChild(colList)
+
+	// Filters section
+	const filtTitle = document.createElement('div')
+	filtTitle.className = 'mv-editor-section-title'
+	filtTitle.textContent = 'Filters (preset waarden)'
+	body.appendChild(filtTitle)
+
+	// Only visible + filterable columns get a filter row (null returned for unsupported types)
+	editorState.columns.forEach(col => {
+		if (!col.visible || !col.filterable) return
+		const filterRow = _makeFilterRow(col, editorState)
+		if (!filterRow) return
+		filterRow.dataset.filterFieldId = col.field_id
+		body.appendChild(filterRow)
+	})
+
+	// Sort section
+	const sortTitle = document.createElement('div')
+	sortTitle.className = 'mv-editor-section-title'
+	sortTitle.textContent = 'Sortering'
+	body.appendChild(sortTitle)
+
+	const sortRow = document.createElement('div')
+	sortRow.className = 'mv-sort-row'
+
+	const sortFieldSel = document.createElement('select')
+	sortFieldSel.dataset.role = 'sort-field'
+	const noSortOpt = document.createElement('option')
+	noSortOpt.value = ''
+	noSortOpt.textContent = '— geen sortering —'
+	sortFieldSel.appendChild(noSortOpt)
+	editorState.columns.forEach(col => {
+		if (!col.visible) return
+		const opt = document.createElement('option')
+		opt.value = col.field_name
+		opt.textContent = col.field_label
+		if (editorState.sortField === col.field_name) opt.selected = true
+		sortFieldSel.appendChild(opt)
+	})
+	sortFieldSel.addEventListener('change', () => { editorState.sortField = sortFieldSel.value })
+
+	const sortOrderSel = document.createElement('select')
+	;[['asc', 'Oplopend'], ['desc', 'Aflopend']].forEach(([val, label]) => {
+		const opt = document.createElement('option')
+		opt.value = val
+		opt.textContent = label
+		if (editorState.sortOrder === val) opt.selected = true
+		sortOrderSel.appendChild(opt)
+	})
+	sortOrderSel.addEventListener('change', () => { editorState.sortOrder = sortOrderSel.value })
+
+	sortRow.appendChild(sortFieldSel)
+	sortRow.appendChild(sortOrderSel)
+	body.appendChild(sortRow)
+
+	// Footer
+	const footer = document.createElement('div')
+	footer.className = 'mv-editor-footer'
+
+	if (!isNew) {
+		const delBtn = document.createElement('button')
+		delBtn.type = 'button'
+		delBtn.className = 'mv-btn mv-btn-danger'
+		delBtn.textContent = 'Verwijderen'
+		delBtn.addEventListener('click', () => _confirmDeleteView(view))
+		footer.appendChild(delBtn)
+	}
+
+	const cancelBtn = document.createElement('button')
+	cancelBtn.type = 'button'
+	cancelBtn.className = 'mv-btn mv-btn-secondary'
+	cancelBtn.textContent = 'Annuleren'
+	cancelBtn.addEventListener('click', closeViewEditor)
+
+	const saveBtn = document.createElement('button')
+	saveBtn.type = 'button'
+	saveBtn.className = 'mv-btn mv-btn-primary'
+	saveBtn.textContent = 'Opslaan'
+	saveBtn.addEventListener('click', () => _saveViewFromEditor(view, editorState))
+
+	footer.appendChild(cancelBtn)
+	footer.appendChild(saveBtn)
+	panel.appendChild(footer)
+}
+
+function _makeColRow(col, idx, editorState, colList) {
+	const row = document.createElement('div')
+	row.className = 'mv-col-row'
+	row.draggable = true
+	row.dataset.colIdx = idx
+
+	const drag = document.createElement('span')
+	drag.className = 'mv-col-drag'
+	drag.textContent = '⠿'
+	drag.title = 'Slepen om te herordenen'
+
+	const name = document.createElement('span')
+	name.className = 'mv-col-name'
+	name.textContent = col.field_label
+
+	const visCheck = document.createElement('span')
+	visCheck.className = 'mv-col-check'
+	const visInput = document.createElement('input')
+	visInput.type = 'checkbox'
+	visInput.checked = col.visible
+	visInput.title = 'Zichtbaar'
+	const filtCheck = document.createElement('span')
+	filtCheck.className = 'mv-col-check'
+	const filtInput = document.createElement('input')
+	filtInput.type = 'checkbox'
+	filtInput.checked = col.filterable
+	filtInput.title = 'Filterbaar'
+	filtInput.addEventListener('change', () => {
+		col.filterable = filtInput.checked
+		_refreshFilterRows(editorState)
+	})
+	filtCheck.appendChild(filtInput)
+
+	visInput.addEventListener('change', () => {
+		col.visible = visInput.checked
+		// Koppel Filterbaar aan Zichtbaar
+		if (!visInput.checked) {
+			col.filterable = false
+			filtInput.checked = false
+			filtInput.disabled = true
+			filtCheck.classList.add('mv-disabled')
+		} else {
+			filtInput.disabled = false
+			filtCheck.classList.remove('mv-disabled')
+		}
+		_refreshFilterRows(editorState)
+		_refreshSortSection(editorState)
+	})
+	visCheck.appendChild(visInput)
+
+	// Initieel synchroniseren
+	if (!col.visible) {
+		filtInput.disabled = true
+		filtCheck.classList.add('mv-disabled')
+	}
+
+	row.appendChild(drag)
+	row.appendChild(name)
+	row.appendChild(visCheck)
+	row.appendChild(filtCheck)
+
+	// Drag events
+	row.addEventListener('dragstart', (e) => {
+		_editorDragState = { from: parseInt(row.dataset.colIdx) }
+		e.dataTransfer.effectAllowed = 'move'
+		row.style.opacity = '0.4'
+	})
+	row.addEventListener('dragend', () => {
+		row.style.opacity = ''
+		_editorDragState = null
+		// Re-index all rows
+		colList.querySelectorAll('.mv-col-row').forEach((r, i) => { r.dataset.colIdx = i })
+	})
+	row.addEventListener('dragover', (e) => {
+		e.preventDefault()
+		e.dataTransfer.dropEffect = 'move'
+	})
+	row.addEventListener('drop', (e) => {
+		e.preventDefault()
+		if (!_editorDragState) return
+		const fromIdx = _editorDragState.from
+		const toIdx = parseInt(row.dataset.colIdx)
+		if (fromIdx === toIdx) return
+
+		// Reorder editorState.columns
+		const [moved] = editorState.columns.splice(fromIdx, 1)
+		editorState.columns.splice(toIdx, 0, moved)
+
+		// Re-render col list
+		colList.innerHTML = ''
+		editorState.columns.forEach((c, i) => {
+			colList.appendChild(_makeColRow(c, i, editorState, colList))
+		})
+	})
+
+	return row
+}
+
+/**
+ * Type-aware filter row factory.
+ * Returns null for types where preset filters don't make sense (date, file, filelink).
+ */
+function _makeFilterRow(col, editorState) {
+	const type = col.field_type
+
+	// No preset filters for date/file types
+	if (type === 'date' || type === 'file' || type === 'filelink') return null
+
+	if (type === 'checkbox') return _makeCheckboxFilterRow(col, editorState)
+
+	if (['select', 'multiselect', 'multi_select'].includes(type)) {
+		return _makeSelectFilterRow(col, editorState)
+	}
+
+	// text, textarea, number, url, user, and anything else: autocomplete
+	return _makeAutocompleteFilterRow(col, editorState)
+}
+
+/** Wraps a filter row as a collapsible <details> section with badge */
+function _wrapFilterRow(col, content, editorState) {
+	const activeCount = editorState?.filters[col.field_id]?.size || 0
+
+	const details = document.createElement('details')
+	details.className = 'mv-filter-row'
+	if (activeCount > 0) details.open = true
+
+	const summary = document.createElement('summary')
+	summary.className = 'mv-filter-summary'
+
+	const textSpan = document.createElement('span')
+	textSpan.className = 'mv-filter-summary-text'
+	textSpan.textContent = col.field_label
+	summary.appendChild(textSpan)
+
+	const badge = document.createElement('span')
+	badge.className = 'mv-filter-badge'
+	badge.dataset.badgeFor = col.field_id
+	badge.textContent = String(activeCount)
+	badge.style.display = activeCount > 0 ? 'inline-flex' : 'none'
+	summary.appendChild(badge)
+
+	summary.insertAdjacentHTML('beforeend', '<svg class="mv-filter-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>')
+
+	details.appendChild(summary)
+
+	const body = document.createElement('div')
+	body.className = 'mv-filter-body'
+	body.appendChild(content)
+	details.appendChild(body)
+
+	return details
+}
+
+/** Updates the badge count on a filter row's summary */
+function _updateFilterBadge(detailsEl, count) {
+	const badge = detailsEl?.querySelector('.mv-filter-badge')
+	if (!badge) return
+	badge.textContent = String(count)
+	badge.style.display = count > 0 ? 'inline-flex' : 'none'
+}
+
+/**
+ * Checkbox field: aanvinklijst met "Ja" / "Nee" — consistent met select-filter.
+ * Stores "1" for Ja, "0" for Nee in the tagSet.
+ */
+function _makeCheckboxFilterRow(col, editorState) {
+	const tagSet = editorState.filters[col.field_id] || new Set()
+	editorState.filters[col.field_id] = tagSet
+
+	const list = document.createElement('div')
+	list.className = 'mv-select-filter-list'
+
+	const detailsEl = _wrapFilterRow(col, list, editorState)
+
+	;[['1', 'Ja'], ['0', 'Nee']].forEach(([val, label]) => {
+		const item = document.createElement('label')
+		item.className = 'mv-select-filter-item'
+
+		const cb = document.createElement('input')
+		cb.type = 'checkbox'
+		cb.checked = tagSet.has(val)
+		cb.addEventListener('change', () => {
+			if (cb.checked) tagSet.add(val)
+			else tagSet.delete(val)
+			_updateFilterBadge(detailsEl, tagSet.size)
+		})
+
+		item.appendChild(cb)
+		item.appendChild(document.createTextNode(label))
+		list.appendChild(item)
+	})
+
+	return detailsEl
+}
+
+/**
+ * Select/multiselect field: scrollbare aanvinklijst met vaste opties uit cfg.options.
+ * cfg.options kan een string zijn ("opt1\nopt2") of array.
+ */
+function _makeSelectFilterRow(col, editorState) {
+	const tagSet = editorState.filters[col.field_id] || new Set()
+	editorState.filters[col.field_id] = tagSet
+
+	// Parse options from column (field_options is enriched by the server in view.columns)
+	const rawOptions = col.field_options ?? availableFields.find(c => String(c.id) === String(col.field_id))?.field_options
+	let options = []
+	if (rawOptions) {
+		if (Array.isArray(rawOptions)) {
+			options = rawOptions.map(o => (typeof o === 'object' ? (o.label || o.value || String(o)) : String(o)))
+		} else {
+			// Newline or comma separated string
+			options = String(rawOptions).split(/[\n,]/).map(s => s.trim()).filter(Boolean)
+		}
+	}
+
+	const list = document.createElement('div')
+	list.className = 'mv-select-filter-list'
+
+	const detailsEl = _wrapFilterRow(col, list, editorState)
+
+	if (options.length === 0) {
+		const empty = document.createElement('div')
+		empty.className = 'mv-autocomplete-empty'
+		empty.textContent = 'Geen opties beschikbaar'
+		list.appendChild(empty)
+	} else {
+		options.forEach(opt => {
+			const item = document.createElement('label')
+			item.className = 'mv-select-filter-item'
+
+			const cb = document.createElement('input')
+			cb.type = 'checkbox'
+			cb.checked = tagSet.has(opt)
+			cb.addEventListener('change', () => {
+				if (cb.checked) tagSet.add(opt)
+				else tagSet.delete(opt)
+				_updateFilterBadge(detailsEl, tagSet.size)
+			})
+
+			item.appendChild(cb)
+			item.appendChild(document.createTextNode(opt))
+			list.appendChild(item)
+		})
+	}
+
+	return detailsEl
+}
+
+/**
+ * Text/number/url/user/textarea field: tag-chips met autocomplete dropdown.
+ * Lazy-laadt bestaande DB-waarden bij focus.
+ */
+function _makeAutocompleteFilterRow(col, editorState) {
+	const tagSet = editorState.filters[col.field_id] || new Set()
+	editorState.filters[col.field_id] = tagSet
+
+	const wrap = document.createElement('div')
+	wrap.className = 'mv-autocomplete-wrap'
+
+	const tagsBox = document.createElement('div')
+	tagsBox.className = 'mv-filter-tags'
+	wrap.appendChild(tagsBox)
+
+	let detailsEl = null
+	let dropdownEl = null
+	let allValues = []
+
+	function removeDropdown() {
+		dropdownEl?.remove()
+		dropdownEl = null
+	}
+
+	function renderDropdown(query) {
+		removeDropdown()
+		const filtered = allValues.filter(v =>
+			(!query || v.toLowerCase().includes(query.toLowerCase())),
+		)
+		if (filtered.length === 0 && !query) return
+
+		dropdownEl = document.createElement('div')
+		dropdownEl.className = 'mv-autocomplete-dropdown'
+
+		if (filtered.length === 0) {
+			const empty = document.createElement('div')
+			empty.className = 'mv-autocomplete-empty'
+			empty.textContent = 'Geen overeenkomsten'
+			dropdownEl.appendChild(empty)
+		} else {
+			filtered.forEach(val => {
+				const item = document.createElement('div')
+				const alreadySelected = tagSet.has(val)
+				item.className = 'mv-autocomplete-item' + (alreadySelected ? ' mv-item-selected' : '')
+				item.textContent = val
+				if (!alreadySelected) {
+					item.addEventListener('mousedown', (e) => {
+						e.preventDefault()
+						tagSet.add(val)
+						renderTags()
+						removeDropdown()
+					})
+				}
+				dropdownEl.appendChild(item)
+			})
+		}
+
+		wrap.appendChild(dropdownEl)
+	}
+
+	function renderTags() {
+		tagsBox.innerHTML = ''
+		for (const val of tagSet) {
+			const tag = document.createElement('span')
+			tag.className = 'mv-filter-tag'
+			tag.textContent = val
+			const removeBtn = document.createElement('button')
+			removeBtn.type = 'button'
+			removeBtn.className = 'mv-filter-tag-remove'
+			removeBtn.innerHTML = '&times;'
+			removeBtn.addEventListener('click', () => { tagSet.delete(val); renderTags() })
+			tag.appendChild(removeBtn)
+			tagsBox.appendChild(tag)
+		}
+
+		const input = document.createElement('input')
+		input.type = 'text'
+		input.className = 'mv-filter-input'
+		input.placeholder = '+ waarde toevoegen'
+
+		input.addEventListener('focus', async () => {
+			if (allValues.length === 0) {
+				allValues = await _getFilterValues(col.field_name)
+			}
+			renderDropdown(input.value)
+		})
+
+		input.addEventListener('input', () => {
+			renderDropdown(input.value)
+		})
+
+		input.addEventListener('keydown', (e) => {
+			if ((e.key === 'Enter' || e.key === ',') && input.value.trim()) {
+				e.preventDefault()
+				tagSet.add(input.value.trim())
+				renderTags()
+				removeDropdown()
+			} else if (e.key === 'Escape') {
+				removeDropdown()
+			} else if (e.key === 'Backspace' && !input.value && tagSet.size > 0) {
+				const last = [...tagSet].pop()
+				tagSet.delete(last)
+				renderTags()
 			}
 		})
+
+		input.addEventListener('blur', () => {
+			// Slight delay so mousedown on dropdown item fires first
+			setTimeout(() => {
+				removeDropdown()
+				if (input.value.trim()) { tagSet.add(input.value.trim()); renderTags() }
+			}, 150)
+		})
+
+		tagsBox.appendChild(input)
+		_updateFilterBadge(detailsEl, tagSet.size)
+	}
+
+	detailsEl = _wrapFilterRow(col, wrap, editorState)
+	renderTags()
+	return detailsEl
+}
+
+function _refreshFilterRows(editorState) {
+	const body = document.querySelector(`#${VIEW_EDITOR_ID} .mv-editor-body`)
+	if (!body) return
+
+	// Remove existing filter rows
+	body.querySelectorAll('.mv-filter-row').forEach(r => r.remove())
+
+	// Find the sort section title to insert before it
+	const sortTitle = [...body.querySelectorAll('.mv-editor-section-title')].find(el => el.textContent.includes('Sortering'))
+
+	editorState.columns.forEach(col => {
+		if (!col.visible || !col.filterable) return
+		const filterRow = _makeFilterRow(col, editorState)
+		if (!filterRow) return
+		filterRow.dataset.filterFieldId = col.field_id
+		if (sortTitle) {
+			sortTitle.insertAdjacentElement('beforebegin', filterRow)
+		} else {
+			body.appendChild(filterRow)
+		}
+	})
+}
+
+function _refreshSortSection(editorState) {
+	const sortFieldSel = document.querySelector(`#${VIEW_EDITOR_ID} [data-role="sort-field"]`)
+	if (!sortFieldSel) return
+
+	const currentVal = editorState.sortField
+	sortFieldSel.innerHTML = ''
+
+	const noOpt = document.createElement('option')
+	noOpt.value = ''
+	noOpt.textContent = '— geen sortering —'
+	sortFieldSel.appendChild(noOpt)
+
+	editorState.columns.forEach(col => {
+		if (!col.visible) return
+		const opt = document.createElement('option')
+		opt.value = col.field_name
+		opt.textContent = col.field_label
+		if (editorState.sortField === col.field_name) opt.selected = true
+		sortFieldSel.appendChild(opt)
+	})
+
+	// Reset sortField als het geselecteerde veld niet meer zichtbaar is
+	const stillVisible = [...sortFieldSel.options].some(o => o.value === currentVal && currentVal !== '')
+	if (!stillVisible) {
+		editorState.sortField = ''
+		sortFieldSel.value = ''
+	}
+}
+
+async function _saveViewFromEditor(view, editorState) {
+	const name = editorState.name.trim()
+	if (!name) {
+		alert('Vul een naam in voor de weergave')
+		return
+	}
+
+	const saveBtn = document.querySelector(`#${VIEW_EDITOR_ID} .mv-btn-primary`)
+	if (saveBtn) saveBtn.classList.add('loading')
+
+	// Build columns payload: [{field_id, field_label, visible, filterable}]
+	const columns = editorState.columns.map(col => ({
+		field_id: col.field_id,
+		field_name: col.field_name,
+		field_label: col.field_label,
+		visible: col.visible,
+		filterable: col.filterable,
+	}))
+
+	// Build filters payload: { field_id: "val1,val2" }
+	const filters = {}
+	for (const [fieldId, tagSet] of Object.entries(editorState.filters)) {
+		if (tagSet.size > 0) {
+			filters[fieldId] = [...tagSet].join(',')
+		}
+	}
+
+	const payload = {
+		name,
+		is_default: editorState.isDefault,
+		columns,
+		filters,
+		sort_field: editorState.sortField || null,
+		sort_order: editorState.sortOrder || null,
+	}
+
+	try {
+		let savedView
+		if (!view) {
+			// Create
+			const url = generateUrl('/apps/metavox/api/groupfolders/{gfId}/views', { gfId: activeGroupfolderId })
+			const resp = await axios.post(url, payload)
+			savedView = resp.data
+		} else {
+			// Update
+			const url = generateUrl('/apps/metavox/api/groupfolders/{gfId}/views/{viewId}', {
+				gfId: activeGroupfolderId,
+				viewId: view.id,
+			})
+			const resp = await axios.put(url, payload)
+			savedView = resp.data
+		}
+
+		closeViewEditor()
+
+		// Reload views and rebuild tabs
+		const result = await fetchViews(activeGroupfolderId)
+		activeViews = result.views
+		canManageViews = result.canManage
+		injectViewTabs(activeViews)
+
+		// Auto-apply the saved view
+		if (savedView) {
+			const fi = getFilterInstance()
+			if (fi) applyView(savedView, fi)
+		}
+	} catch (e) {
+		console.error('MetaVox: Failed to save view', e)
+		const sb = document.querySelector(`#${VIEW_EDITOR_ID} .mv-btn-primary`)
+		if (sb) sb.classList.remove('loading')
+		alert('Opslaan mislukt: ' + (e.response?.data?.error || e.message))
+	}
+}
+
+async function _confirmDeleteView(view) {
+	if (!confirm(`Weergave "${view.name}" verwijderen?`)) return
+
+	try {
+		const url = generateUrl('/apps/metavox/api/groupfolders/{gfId}/views/{viewId}', {
+			gfId: activeGroupfolderId,
+			viewId: view.id,
+		})
+		await axios.delete(url)
+
+		closeViewEditor()
+		clearView()
+
+		// Reload views and rebuild tabs
+		const result = await fetchViews(activeGroupfolderId)
+		activeViews = result.views
+		canManageViews = result.canManage
+		injectViewTabs(activeViews)
+	} catch (e) {
+		console.error('MetaVox: Failed to delete view', e)
+		alert('Verwijderen mislukt: ' + (e.response?.data?.error || e.message))
 	}
 }
 
@@ -831,9 +1994,10 @@ function applyView(view, filterInstance) {
 	const filtersDict = view.filters || {}
 	for (const [fieldId, valuesStr] of Object.entries(filtersDict)) {
 		if (!valuesStr) continue
-		// Resolve field_id -> field_name using fullColumnConfigs
-		const config = fullColumnConfigs.find(c => String(c.field_id) === String(fieldId))
-		const fieldName = config?.field_name
+		// Resolve field_id -> field_name from the view's own columns (enriched by server)
+		const col = (view.columns || []).find(c => String(c.field_id) === String(fieldId))
+		const fieldName = col?.field_name
+			?? availableFields.find(c => String(c.id) === String(fieldId))?.field_name
 		if (!fieldName) continue
 		const values = String(valuesStr).split(',').map(v => v.trim()).filter(Boolean)
 		if (values.length > 0) {
@@ -846,15 +2010,17 @@ function applyView(view, filterInstance) {
 	filterInstance.dispatchEvent(new CustomEvent('update:filter'))
 	window._nc_event_bus?.emit('files:filters:changed')
 
-	// Apply column visibility
+	// Apply column visibility and update filter registration
 	_applyViewColumns(view)
+	registerMetaVoxFilter(activeColumnConfigs, activeGroupfolderId, metadataCache)
 
 	// Apply sort if specified
 	if (view.sort_field) {
-		const config = fullColumnConfigs.find(c => c.field_name === view.sort_field)
+		const col = (view.columns || []).find(c => c.field_name === view.sort_field)
+			?? availableFields.find(c => c.field_name === view.sort_field)
 		currentSort = {
 			fieldName: view.sort_field,
-			fieldType: config?.field_type || 'text',
+			fieldType: col?.field_type || 'text',
 			direction: view.sort_order || 'asc',
 		}
 		applySort()
@@ -867,7 +2033,7 @@ function applyView(view, filterInstance) {
 	params.delete('mvfilter')
 	history.replaceState(null, '', window.location.pathname + '?' + params.toString() + window.location.hash)
 
-	updateViewSelectorLabel()
+	updateActiveTabs()
 }
 
 /**
@@ -880,8 +2046,9 @@ function clearView() {
 		fi.reset()
 	}
 
-	// Restore full column visibility
+	// No view active — hide columns and update filter registration (reset to empty)
 	_applyViewColumns(null)
+	registerMetaVoxFilter([], activeGroupfolderId, metadataCache)
 
 	// Clear sort
 	currentSort = null
@@ -894,40 +2061,32 @@ function clearView() {
 	const search = params.toString()
 	history.replaceState(null, '', window.location.pathname + (search ? '?' + search : '') + window.location.hash)
 
-	updateViewSelectorLabel()
+	updateActiveTabs()
 }
 
 /**
  * Apply column visibility based on a view's column config.
- * If view is null, restore all columns from fullColumnConfigs.
+ * If view is null, hide all MetaVox columns (no active view = "Alle bestanden").
  * @param {Object|null} view
  */
 function _applyViewColumns(view) {
-	if (!fullColumnConfigs.length) return
-
 	if (!view || !view.columns || view.columns.length === 0) {
-		// Restore all columns that have show_as_column
-		activeColumnConfigs = fullColumnConfigs.filter(c => c.show_as_column)
+		// No view active — hide all MetaVox columns
+		activeColumnConfigs = []
 	} else {
-		// View columns are stored as [{field_id, field_label, visible}]
-		// Resolve field_id -> field_name and filter by visible flag
-		const visibleFieldNames = new Set()
+		// Build activeColumnConfigs from visible view columns (they carry full field data)
+		const ordered = []
+		const usedNames = new Set()
 		for (const vc of view.columns) {
 			const visible = vc.visible !== false && vc.show_as_column !== false
 			if (!visible) continue
-			// Try field_name directly first, then resolve via field_id
-			if (vc.field_name) {
-				visibleFieldNames.add(vc.field_name)
-			} else if (vc.field_id) {
-				const cfg = fullColumnConfigs.find(c => String(c.field_id) === String(vc.field_id))
-				if (cfg) visibleFieldNames.add(cfg.field_name)
+			const fieldName = vc.field_name
+			if (fieldName && !usedNames.has(fieldName)) {
+				ordered.push(vc)
+				usedNames.add(fieldName)
 			}
 		}
-		activeColumnConfigs = fullColumnConfigs.filter(c => visibleFieldNames.has(c.field_name))
-		// Fallback: if nothing resolved, show all
-		if (activeColumnConfigs.length === 0) {
-			activeColumnConfigs = fullColumnConfigs.filter(c => c.show_as_column)
-		}
+		activeColumnConfigs = ordered
 	}
 
 	// Re-inject header/footer/row columns with updated config
@@ -1122,7 +2281,8 @@ export async function updateColumnsForCurrentFolder() {
 		removeAllInjectedColumns()
 		removeColumnStyles()
 		removeFilters()
-		removeViewSelector()
+		removeViewTabs()
+		closeViewEditor()
 		stopRowObserver()
 		columnsActive = false
 	}
@@ -1130,7 +2290,7 @@ export async function updateColumnsForCurrentFolder() {
 	if (!groupfolderId) {
 		activeGroupfolderId = null
 		activeColumnConfigs = []
-		fullColumnConfigs = []
+		availableFields = []
 		activeViews = []
 		activeView = null
 		metadataCache.clear()
@@ -1140,31 +2300,30 @@ export async function updateColumnsForCurrentFolder() {
 
 	activeGroupfolderId = groupfolderId
 
-	// Fetch column config and views in parallel
-	const [configs, views] = await Promise.all([
-		fetchColumnConfig(groupfolderId),
+	// Fetch available fields and views in parallel
+	const [fields, viewsResult] = await Promise.all([
+		fetchAvailableFields(groupfolderId),
 		fetchViews(groupfolderId),
 	])
 
-	fullColumnConfigs = configs
-	activeViews = views
+	availableFields = fields
+	activeViews = viewsResult.views
+	canManageViews = viewsResult.canManage
 	activeView = null
-	activeColumnConfigs = configs.filter(c => c.show_as_column)
+	activeColumnConfigs = []
 
-	if (activeColumnConfigs.length === 0) {
+	if (availableFields.length === 0 && !canManageViews) {
 		return
 	}
 
-	console.info('MetaVox v1.8.28: Activating', activeColumnConfigs.length, 'columns')
-
-	// Bulk load metadata
+	// Bulk load metadata (for all possible fields — view filtering happens in rendering)
 	const rows = document.querySelectorAll('tr[data-cy-files-list-row]')
 	const fileIds = [...rows].map(r => Number(r.getAttribute('data-cy-files-list-row-fileid'))).filter(Boolean)
 
 	if (fileIds.length > 0) {
 		const data = await fetchDirectoryMetadata(groupfolderId, fileIds)
-		for (const [fileId, fields] of Object.entries(data)) {
-			metadataCache.set(Number(fileId), fields)
+		for (const [fileId, fields2] of Object.entries(data)) {
+			metadataCache.set(Number(fileId), fields2)
 		}
 		for (const id of fileIds) {
 			if (!metadataCache.has(id)) {
@@ -1178,34 +2337,30 @@ export async function updateColumnsForCurrentFolder() {
 
 	injectColumnStyles()
 	injectHeaderColumns()
-	registerMetaVoxFilter(activeColumnConfigs, groupfolderId, metadataCache)
+	registerMetaVoxFilter([], groupfolderId, metadataCache)
 	injectFooterColumns()
 	injectAllExistingRows()
 	startRowObserver()
 
-	// Inject view-selector and restore view/filter state from URL
+	// Inject view tabs and restore view/filter state from URL
 	const filterInstance = getFilterInstance()
-	if (activeViews.length > 0) {
+	if (activeViews.length > 0 || canManageViews) {
 		// Defer injection slightly so the filter bar DOM is ready
 		setTimeout(() => {
-			injectViewSelector(activeViews)
+			injectViewTabs(activeViews)
 			if (filterInstance) {
 				const params = new URLSearchParams(window.location.search)
 				if (params.has('mvview')) {
 					restoreViewFromUrl(activeViews, filterInstance)
-				} else if (params.has('mvfilter')) {
-					filterInstance.loadFromUrl(fullColumnConfigs)
+				} else {
+					// No URL state — auto-apply the default view if one is configured
+					const defaultView = activeViews.find(v => v.is_default)
+					if (defaultView) {
+						applyView(defaultView, filterInstance)
+					}
 				}
 			}
 		}, 200)
-	} else if (filterInstance) {
-		// No views, but still restore filter state from URL
-		const params = new URLSearchParams(window.location.search)
-		if (params.has('mvfilter')) {
-			setTimeout(() => {
-				filterInstance.loadFromUrl(fullColumnConfigs)
-			}, 200)
-		}
 	}
 }
 
@@ -1243,7 +2398,8 @@ export function startColumnWatcher() {
 				removeAllInjectedColumns()
 				removeColumnStyles()
 				removeFilters()
-				removeViewSelector()
+				removeViewTabs()
+				closeViewEditor()
 				stopRowObserver()
 				columnsActive = false
 				activeGroupfolderId = null
@@ -1252,7 +2408,7 @@ export function startColumnWatcher() {
 			currentSort = null
 			activeViews = []
 			activeView = null
-			fullColumnConfigs = []
+			availableFields = []
 			scheduleInjection()
 		}
 	}
