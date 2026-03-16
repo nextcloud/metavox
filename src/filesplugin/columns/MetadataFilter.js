@@ -47,6 +47,19 @@ class MetaVoxMetadataFilter extends EventTarget {
 		if (this._activeFilters.size === 0) return nodes
 		if (!this._metadataCache) return nodes
 
+		// Pre-compute filter entries once (avoid Map iteration overhead per node)
+		const filters = []
+		for (const [fieldName, valueSet] of this._activeFilters) {
+			if (valueSet.size === 0) continue
+			// Build a set of positive values (excluding '0' which means "empty/no")
+			const positiveValues = new Set()
+			for (const v of valueSet) {
+				if (v !== '0') positiveValues.add(v)
+			}
+			filters.push({ fieldName, valueSet, positiveValues, matchEmpty: valueSet.has('0') })
+		}
+		if (filters.length === 0) return nodes
+
 		return nodes.filter(node => {
 			const fileId = node.fileid
 			if (!fileId) return true
@@ -54,21 +67,34 @@ class MetaVoxMetadataFilter extends EventTarget {
 			const meta = this._metadataCache.get(fileId) || {}
 
 			// AND between fields, OR within a field (multi-select)
-			for (const [fieldName, valueSet] of this._activeFilters) {
-				if (valueSet.size === 0) continue
-				const cellValue = meta[fieldName]
+			for (const f of filters) {
+				const cellValue = meta[f.fieldName]
 				const cellEmpty = !cellValue || cellValue === '0' || cellValue === 'false'
 
 				if (cellEmpty) {
-					// File heeft geen/lege/false waarde — matcht "Nee" (='0') filter
-					if (valueSet.has('0')) continue
+					if (f.matchEmpty) continue
 					return false
 				}
 
-				// File heeft een waarde — normale match; sla '0' over (is "Nee", niet een echte celwaarde)
-				const cellValues = String(cellValue).split(/;\s*/).filter(Boolean)
-				const matches = [...valueSet].some(v => v !== '0' && cellValues.includes(v))
-				if (!matches) return false
+				// File has a value — check if any selected positive value matches
+				if (f.positiveValues.size === 0) return false
+				const cellStr = String(cellValue)
+				// Fast path: no semicolons (single value) — direct Set lookup
+				if (cellStr.indexOf(';') === -1) {
+					if (!f.positiveValues.has(cellStr)) return false
+				} else {
+					// Multi-value cell: split and check
+					const parts = cellStr.split(';')
+					let matched = false
+					for (let i = 0; i < parts.length; i++) {
+						const part = parts[i].trim()
+						if (part && f.positiveValues.has(part)) {
+							matched = true
+							break
+						}
+					}
+					if (!matched) return false
+				}
 			}
 			return true
 		})

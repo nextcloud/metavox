@@ -24,6 +24,10 @@ class FieldService {
     private ?array $fieldsCache = null;
     private array $fieldsByScopeCache = [];
 
+    // Request-scope cache for groupfolders (avoids repeated DB/API calls within same request)
+    private array $groupfoldersCache = [];
+    private array $folderAccessCache = [];
+
     public function __construct(IDBConnection $db, IGroupManager $groupManager, IUserManager $userManager, SearchIndexService $searchIndexService, ViewService $viewService, ICacheFactory $cacheFactory) {
         $this->db = $db;
         $this->groupManager = $groupManager;
@@ -443,6 +447,12 @@ public function saveFieldValue(int $fileId, int $fieldId, string $value): bool {
 
     // Groupfolder functionality
 public function getGroupfolders(string $userId, bool $adminMode = false): array {
+    // Request-scope cache
+    $cacheKey = $userId . ($adminMode ? '_admin' : '');
+    if (isset($this->groupfoldersCache[$cacheKey])) {
+        return $this->groupfoldersCache[$cacheKey];
+    }
+
     try {
         $user = $this->userManager->get($userId);
         if (!$user) {
@@ -454,7 +464,6 @@ public function getGroupfolders(string $userId, bool $adminMode = false): array 
             $folderManager = \OC::$server->get(\OCA\GroupFolders\Folder\FolderManager::class);
 
             if ($adminMode) {
-                // Admin: return all groupfolders
                 $gfFolders = $folderManager->getAllFolders();
                 $folders = [];
                 foreach ($gfFolders as $gfFolder) {
@@ -467,10 +476,10 @@ public function getGroupfolders(string $userId, bool $adminMode = false): array 
                         'acl' => $gfFolder->acl,
                     ];
                 }
+                $this->groupfoldersCache[$cacheKey] = $folders;
                 return $folders;
             }
 
-            // Non-admin: return only folders the user has access to
             $gfFolders = $folderManager->getFoldersForUser($user);
             $folders = [];
             foreach ($gfFolders as $gfFolder) {
@@ -483,71 +492,58 @@ public function getGroupfolders(string $userId, bool $adminMode = false): array 
                     'acl' => $gfFolder->acl,
                 ];
             }
+            $this->groupfoldersCache[$cacheKey] = $folders;
             return $folders;
         } catch (\Exception $e) {
             // FolderManager not available, fall back to direct DB query
         }
 
-        // Fallback: direct DB query (does not support circles/teams)
+        // Fallback: single JOINed query (no N+1)
         $userGroups = $adminMode ? null : $this->groupManager->getUserGroupIds($user);
 
         $qb = $this->db->getQueryBuilder();
-        $qb->select('folder_id', 'mount_point')
-           ->from('group_folders')
-           ->orderBy('folder_id');
+        $qb->select('gf.folder_id', 'gf.mount_point', 'gfg.group_id')
+           ->from('group_folders', 'gf')
+           ->leftJoin('gf', 'group_folders_groups', 'gfg', $qb->expr()->eq('gf.folder_id', 'gfg.folder_id'))
+           ->orderBy('gf.folder_id');
 
         $result = $qb->executeQuery();
-        $folders = [];
+        $foldersMap = [];
 
         while ($row = $result->fetch()) {
             $folderId = (int)($row['folder_id']);
-            $mountPoint = $row['mount_point'] ?? 'Team Folder ' . $folderId;
-
-            $qb2 = $this->db->getQueryBuilder();
-            $qb2->select('group_id')
-                ->from('group_folders_groups')
-                ->where($qb2->expr()->eq('folder_id', $qb2->createNamedParameter($folderId, IQueryBuilder::PARAM_INT)));
-
-            $result2 = $qb2->executeQuery();
-            $folderGroups = [];
-
-            while ($groupRow = $result2->fetch()) {
-                $folderGroups[] = $groupRow['group_id'];
-            }
-            $result2->closeCursor();
-
-            if ($adminMode) {
-                $folders[] = [
+            if (!isset($foldersMap[$folderId])) {
+                $foldersMap[$folderId] = [
                     'id' => $folderId,
-                    'mount_point' => $mountPoint,
-                    'groups' => $folderGroups,
+                    'mount_point' => $row['mount_point'] ?? 'Team Folder ' . $folderId,
+                    'groups' => [],
                     'quota' => -3,
                     'size' => 0,
                     'acl' => false,
                 ];
-            } else {
-                $hasAccess = false;
-                foreach ($userGroups as $userGroup) {
-                    if (in_array($userGroup, $folderGroups)) {
-                        $hasAccess = true;
-                        break;
-                    }
-                }
-
-                if ($hasAccess) {
-                    $folders[] = [
-                        'id' => $folderId,
-                        'mount_point' => $mountPoint,
-                        'groups' => $folderGroups,
-                        'quota' => -3,
-                        'size' => 0,
-                        'acl' => false,
-                    ];
-                }
+            }
+            if (!empty($row['group_id'])) {
+                $foldersMap[$folderId]['groups'][] = $row['group_id'];
             }
         }
         $result->closeCursor();
 
+        if ($adminMode) {
+            $folders = array_values($foldersMap);
+        } else {
+            $userGroupSet = array_flip($userGroups);
+            $folders = [];
+            foreach ($foldersMap as $folder) {
+                foreach ($folder['groups'] as $group) {
+                    if (isset($userGroupSet[$group])) {
+                        $folders[] = $folder;
+                        break;
+                    }
+                }
+            }
+        }
+
+        $this->groupfoldersCache[$cacheKey] = $folders;
         return $folders;
 
     } catch (\Exception $e) {
@@ -561,16 +557,24 @@ public function getGroupfolders(string $userId, bool $adminMode = false): array 
  * Admins always have access.
  */
 public function hasAccessToGroupfolder(string $userId, int $groupfolderId): bool {
+    $cacheKey = $userId . '_' . $groupfolderId;
+    if (isset($this->folderAccessCache[$cacheKey])) {
+        return $this->folderAccessCache[$cacheKey];
+    }
+
     if ($this->groupManager->isAdmin($userId)) {
+        $this->folderAccessCache[$cacheKey] = true;
         return true;
     }
 
     $folders = $this->getGroupfolders($userId);
     foreach ($folders as $folder) {
         if ((int)$folder['id'] === $groupfolderId) {
+            $this->folderAccessCache[$cacheKey] = true;
             return true;
         }
     }
+    $this->folderAccessCache[$cacheKey] = false;
     return false;
 }
 
@@ -1018,75 +1022,4 @@ public function getAssignedFileFieldsForGroupfolder(int $groupfolderId): array {
  * @param int $groupfolderId Groupfolder ID
  * @return array Keyed by file_id => [field_name => field_value, ...]
  */
-public function getDirectoryMetadata(array $fileIds, int $groupfolderId): array {
-    if (empty($fileIds)) {
-        return [];
-    }
-
-    try {
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('file_id', 'field_name', 'field_value')
-           ->from('metavox_file_gf_meta')
-           ->where($qb->expr()->in('file_id', $qb->createNamedParameter($fileIds, IQueryBuilder::PARAM_INT_ARRAY)))
-           ->andWhere($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)));
-
-        $result = $qb->executeQuery();
-        $metadataByFile = [];
-
-        foreach ($fileIds as $fileId) {
-            $metadataByFile[$fileId] = [];
-        }
-
-        while ($row = $result->fetch()) {
-            $fileId = (int)$row['file_id'];
-            $metadataByFile[$fileId][$row['field_name']] = $row['field_value'];
-        }
-        $result->closeCursor();
-
-        return $metadataByFile;
-    } catch (\Exception $e) {
-        error_log('MetaVox getDirectoryMetadata error: ' . $e->getMessage());
-        return [];
-    }
-}
-
-/**
- * Get distinct values for a metadata field within a groupfolder.
- * Used for filter dropdowns.
- *
- * @param int $groupfolderId
- * @param string $fieldName
- * @return array Array of unique non-empty values
- */
-public function getDistinctFieldValues(int $groupfolderId, string $fieldName): array {
-    $cacheKey = "gf_{$groupfolderId}_fv_{$fieldName}";
-    $cached = $this->cache->get($cacheKey);
-    if ($cached !== null) {
-        return $cached;
-    }
-
-    try {
-        $qb = $this->db->getQueryBuilder();
-        $qb->selectDistinct('field_value')
-           ->from('metavox_file_gf_meta')
-           ->where($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)))
-           ->andWhere($qb->expr()->eq('field_name', $qb->createNamedParameter($fieldName)))
-           ->andWhere($qb->expr()->neq('field_value', $qb->createNamedParameter('')))
-           ->andWhere($qb->expr()->isNotNull('field_value'))
-           ->orderBy('field_value', 'ASC');
-
-        $result = $qb->executeQuery();
-        $values = [];
-        while ($row = $result->fetch()) {
-            $values[] = $row['field_value'];
-        }
-        $result->closeCursor();
-
-        $this->cache->set($cacheKey, $values, 300);
-        return $values;
-    } catch (\Exception $e) {
-        error_log('MetaVox getDistinctFieldValues error: ' . $e->getMessage());
-        return [];
-    }
-}
 }
