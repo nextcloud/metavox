@@ -2,9 +2,9 @@
 	<div class="mv-editor-panel">
 		<!-- Header -->
 		<div class="mv-editor-header">
-			<h3>{{ isNew ? 'Nieuwe weergave' : 'Weergave bewerken' }}</h3>
+			<h3>{{ isNew ? t('metavox', 'New view') : t('metavox', 'Edit view') }}</h3>
 			<NcButton type="tertiary"
-				:aria-label="'Sluiten'"
+				:aria-label="t('metavox', 'Close')"
 				@click="$emit('close')">
 				<template #icon>
 					<CloseIcon :size="20" />
@@ -16,9 +16,9 @@
 		<div class="mv-editor-body">
 			<!-- Name row -->
 			<div class="mv-editor-row">
-				<label>Naam</label>
+				<label>{{ t('metavox', 'Name') }}</label>
 				<NcTextField :model-value="editorState.name"
-					placeholder="Naam van de weergave"
+					:placeholder="t('metavox', 'View name')"
 					@update:model-value="editorState.name = $event" />
 			</div>
 
@@ -27,18 +27,18 @@
 				<NcCheckboxRadioSwitch :model-value="editorState.isDefault"
 					type="checkbox"
 					@update:model-value="editorState.isDefault = $event">
-					Standaard weergave
+					{{ t('metavox', 'Default view') }}
 				</NcCheckboxRadioSwitch>
 			</div>
 
 			<!-- Columns section -->
-			<div class="mv-editor-section-title">Kolommen</div>
+			<div class="mv-editor-section-title">{{ t('metavox', 'Columns') }}</div>
 
 			<div class="mv-col-header-row">
 				<span class="mv-col-drag" />
-				<span class="mv-col-name mv-col-header-label">Veld</span>
-				<span class="mv-col-check mv-col-header-label">Zichtbaar</span>
-				<span class="mv-col-check mv-col-header-label">Filterbaar</span>
+				<span class="mv-col-name mv-col-header-label">{{ t('metavox', 'Field') }}</span>
+				<span class="mv-col-check mv-col-header-label">{{ t('metavox', 'Visible') }}</span>
+				<span class="mv-col-check mv-col-header-label">{{ t('metavox', 'Filterable') }}</span>
 			</div>
 
 			<div ref="colList" class="mv-col-list">
@@ -51,7 +51,7 @@
 					@dragend="onDragEnd"
 					@dragover.prevent
 					@drop.prevent="onDrop($event, index)">
-					<span class="mv-col-drag" title="Slepen om te herordenen">⠿</span>
+					<span class="mv-col-drag" :title="t('metavox', 'Drag to reorder')">⠿</span>
 					<span class="mv-col-name">{{ col.field_label }}</span>
 					<span class="mv-col-check">
 						<NcCheckboxRadioSwitch :model-value="col.visible"
@@ -68,7 +68,7 @@
 			</div>
 
 			<!-- Filters section -->
-			<div class="mv-editor-section-title">Filters (preset waarden)</div>
+			<div class="mv-editor-section-title">{{ t('metavox', 'Filters (preset values)') }}</div>
 
 			<template v-for="col in filterableColumns" :key="col.field_id">
 				<!-- Checkbox type filter -->
@@ -88,13 +88,13 @@
 								:model-value="hasFilterValue(col, '1')"
 								type="checkbox"
 								@update:model-value="toggleFilterValue(col, '1')">
-								Ja
+								{{ t('metavox', 'Yes') }}
 							</NcCheckboxRadioSwitch>
 							<NcCheckboxRadioSwitch
 								:model-value="hasFilterValue(col, '0')"
 								type="checkbox"
 								@update:model-value="toggleFilterValue(col, '0')">
-								Nee
+								{{ t('metavox', 'No') }}
 							</NcCheckboxRadioSwitch>
 						</div>
 					</div>
@@ -114,7 +114,7 @@
 					<div class="mv-filter-body">
 						<div class="mv-select-filter-list">
 							<div v-if="getSelectOptions(col).length === 0" class="mv-autocomplete-empty">
-								Geen opties beschikbaar
+								{{ t('metavox', 'No options available') }}
 							</div>
 							<NcCheckboxRadioSwitch v-for="opt in getSelectOptions(col)"
 								:key="opt"
@@ -153,7 +153,7 @@
 							<input ref="autocompleteInputs"
 								type="text"
 								class="mv-filter-input"
-								placeholder="+ waarde toevoegen"
+								:placeholder="t('metavox', '+ add value')"
 								:data-field-id="col.field_id"
 								@focus="onAutocompleteFocus(col, $event)"
 								@input="onAutocompleteInput(col, $event)"
@@ -175,13 +175,13 @@
 			</template>
 
 			<!-- Sort section -->
-			<div class="mv-editor-section-title">Sortering</div>
+			<div class="mv-editor-section-title">{{ t('metavox', 'Sorting') }}</div>
 			<div class="mv-sort-row">
 				<NcSelect v-model="editorState.sortField"
 					:options="sortOptions"
 					:reduce="opt => opt.id"
 					label="label"
-					:placeholder="'— geen sortering —'"
+					:placeholder="t('metavox', '— no sorting —')"
 					:clearable="true"
 					input-id="mv-sort-field" />
 				<template v-if="editorState.sortField">
@@ -189,13 +189,13 @@
 						value="asc"
 						type="radio"
 						name="mv_sort_order">
-						Oplopend
+						{{ t('metavox', 'Ascending') }}
 					</NcCheckboxRadioSwitch>
 					<NcCheckboxRadioSwitch v-model="editorState.sortOrder"
 						value="desc"
 						type="radio"
 						name="mv_sort_order">
-						Aflopend
+						{{ t('metavox', 'Descending') }}
 					</NcCheckboxRadioSwitch>
 				</template>
 			</div>
@@ -206,16 +206,16 @@
 			<NcButton v-if="!isNew"
 				type="error"
 				@click="onDelete">
-				Verwijderen
+				{{ t('metavox', 'Delete') }}
 			</NcButton>
 			<div class="mv-footer-spacer" />
 			<NcButton type="secondary" @click="$emit('close')">
-				Annuleren
+				{{ t('metavox', 'Cancel') }}
 			</NcButton>
 			<NcButton type="primary"
 				:disabled="saving"
 				@click="onSave">
-				{{ saving ? 'Opslaan...' : 'Opslaan' }}
+				{{ saving ? t('metavox', 'Saving…') : t('metavox', 'Save') }}
 			</NcButton>
 		</div>
 	</div>
@@ -223,6 +223,7 @@
 
 <script>
 import { NcButton, NcCheckboxRadioSwitch, NcTextField, NcSelect } from '@nextcloud/vue'
+import { translate } from '@nextcloud/l10n'
 import CloseIcon from 'vue-material-design-icons/Close.vue'
 import ChevronRightIcon from 'vue-material-design-icons/ChevronRight.vue'
 
@@ -510,7 +511,7 @@ export default {
 		async onSave() {
 			const name = this.editorState.name.trim()
 			if (!name) {
-				alert('Vul een naam in voor de weergave')
+				alert(translate('metavox', 'Enter a name for the view'))
 				return
 			}
 
@@ -542,7 +543,7 @@ export default {
 		},
 
 		onDelete() {
-			if (!confirm(`Weergave "${this.view.name}" verwijderen?`)) return
+			if (!confirm(translate('metavox', 'Delete view "{name}"?', { name: this.view.name }))) return
 			this.$emit('delete', this.view)
 		},
 	},

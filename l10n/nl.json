@@ -220,7 +220,36 @@
         "File Path": "Bestandspad",
         "File Name": "Bestandsnaam",
 
-        "Statistics": "Statistieken"
+        "Statistics": "Statistieken",
+
+        "No filterable fields": "Geen filterbare velden",
+        "Clear filters": "Filters wissen",
+        "Yes": "Ja",
+        "No": "Nee",
+        "New view": "Nieuwe weergave",
+        "Edit view": "Weergave bewerken",
+        "Close": "Sluiten",
+        "Name": "Naam",
+        "View name": "Naam van de weergave",
+        "Default view": "Standaard weergave",
+        "Columns": "Kolommen",
+        "Field": "Veld",
+        "Visible": "Zichtbaar",
+        "Filterable": "Filterbaar",
+        "Drag to reorder": "Slepen om te herordenen",
+        "Filters (preset values)": "Filters (preset waarden)",
+        "No options available": "Geen opties beschikbaar",
+        "+ add value": "+ waarde toevoegen",
+        "Sorting": "Sortering",
+        "— no sorting —": "— geen sortering —",
+        "Ascending": "Oplopend",
+        "Descending": "Aflopend",
+        "Delete": "Verwijderen",
+        "Saving…": "Opslaan…",
+        "Enter a name for the view": "Vul een naam in voor de weergave",
+        "Delete view \"{name}\"?": "Weergave \"{name}\" verwijderen?",
+        "Save failed: ": "Opslaan mislukt: ",
+        "Delete failed: ": "Verwijderen mislukt: "
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }
