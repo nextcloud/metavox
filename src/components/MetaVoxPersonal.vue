@@ -225,11 +225,6 @@
                   </div>
                 </form>
 
-                <!-- Column Configuration -->
-                <ColumnConfigSection
-                  :groupfolder-id="groupfolder.id"
-                  :api-base-path="'/apps/metavox/api/user'"
-                />
               </div>
             </div>
           </div>
@@ -419,7 +414,6 @@ import EditIcon from 'vue-material-design-icons/Pencil.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
 import ContentSaveIcon from 'vue-material-design-icons/ContentSave.vue'
 import MagnifyIcon from 'vue-material-design-icons/Magnify.vue'
-import ColumnConfigSection from './ColumnConfigSection.vue'
 
 export default {
   name: 'MetaVoxUser',
@@ -435,7 +429,6 @@ export default {
     CogIcon,
     ContentSaveIcon,
     MagnifyIcon,
-    ColumnConfigSection,
   },
   
   data() {

@@ -49,18 +49,6 @@ return [
         ['name' => 'user_field#setGroupfolderFields', 'url' => '/api/user/groupfolders/{groupfolderId}/fields', 'verb' => 'POST'],
 
         // ========================================
-        // 📊 COLUMN CONFIGURATION ROUTES
-        // ========================================
-
-        // Admin column config
-        ['name' => 'field#getGroupfolderColumnConfig', 'url' => '/api/groupfolders/{groupfolderId}/columns', 'verb' => 'GET'],
-        ['name' => 'field#setGroupfolderColumnConfig', 'url' => '/api/groupfolders/{groupfolderId}/columns', 'verb' => 'POST'],
-
-        // Owner column config (via personal settings)
-        ['name' => 'user_field#getGroupfolderColumnConfig', 'url' => '/api/user/groupfolders/{groupfolderId}/columns', 'verb' => 'GET'],
-        ['name' => 'user_field#setGroupfolderColumnConfig', 'url' => '/api/user/groupfolders/{groupfolderId}/columns', 'verb' => 'POST'],
-
-        // ========================================
         // 🔐 PERMISSION MANAGEMENT ROUTES (NEW)
         // ========================================
         
@@ -151,13 +139,25 @@ return [
         // 📊 COLUMN & DIRECTORY METADATA ROUTES
         // ========================================
 
-        // Column configuration (for file list rendering)
-        ['name' => 'apiField#getGroupfolderColumnConfig', 'url' => '/api/v1/groupfolders/{groupfolderId}/columns', 'verb' => 'GET'],
+        // Available file-level fields for a groupfolder (for view editor)
+        ['name' => 'apiField#getGroupfolderFileFields', 'url' => '/api/v1/groupfolders/{groupfolderId}/file-fields', 'verb' => 'GET'],
 
         // Bulk directory metadata (optimized for file list columns)
         ['name' => 'apiField#getDirectoryMetadata', 'url' => '/api/v1/groupfolders/{groupfolderId}/directory-metadata', 'verb' => 'GET'],
 
         // Filter values (distinct values for filter dropdowns)
         ['name' => 'apiField#getFilterValues', 'url' => '/api/v1/groupfolders/{groupfolderId}/filter-values', 'verb' => 'GET'],
+
+        // Field update and delete (OCS)
+        ['name' => 'apiField#updateGroupfolderField', 'url' => '/api/v1/groupfolder-fields/{id}', 'verb' => 'PUT'],
+        ['name' => 'apiField#deleteGroupfolderField', 'url' => '/api/v1/groupfolder-fields/{id}', 'verb' => 'DELETE'],
+
+        // ========================================
+        // 👁 VIEWS ROUTES (OCS — CSRF-free)
+        // ========================================
+        ['name' => 'apiField#listViews',  'url' => '/api/v1/groupfolders/{groupfolderId}/views',           'verb' => 'GET'],
+        ['name' => 'apiField#createView', 'url' => '/api/v1/groupfolders/{groupfolderId}/views',           'verb' => 'POST'],
+        ['name' => 'apiField#updateView', 'url' => '/api/v1/groupfolders/{groupfolderId}/views/{viewId}',  'verb' => 'PUT'],
+        ['name' => 'apiField#deleteView', 'url' => '/api/v1/groupfolders/{groupfolderId}/views/{viewId}',  'verb' => 'DELETE'],
     ]
 ];

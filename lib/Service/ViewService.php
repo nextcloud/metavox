@@ -6,16 +6,26 @@ namespace OCA\MetaVox\Service;
 
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
+use OCP\ICacheFactory;
+use OCP\ICache;
 
 class ViewService {
 
     private IDBConnection $db;
+    private ICache $cache;
 
-    public function __construct(IDBConnection $db) {
+    public function __construct(IDBConnection $db, ICacheFactory $cacheFactory) {
         $this->db = $db;
+        $this->cache = $cacheFactory->createDistributed('metavox');
     }
 
     public function getViewsForGroupfolder(int $gfId): array {
+        $cacheKey = "gf_{$gfId}_views";
+        $cached = $this->cache->get($cacheKey);
+        if ($cached !== null) {
+            return $cached;
+        }
+
         $qb = $this->db->getQueryBuilder();
         $qb->select('*')
            ->from('metavox_gf_views')
@@ -29,6 +39,7 @@ class ViewService {
         }
         $result->closeCursor();
 
+        $this->cache->set($cacheKey, $views, 600);
         return $views;
     }
 
@@ -81,6 +92,7 @@ class ViewService {
         $qb->executeStatement();
         $newId = $this->db->lastInsertId('metavox_gf_views');
 
+        $this->cache->remove("gf_{$gfId}_views");
         return $this->getView((int)$newId, $gfId);
     }
 
@@ -113,6 +125,7 @@ class ViewService {
 
         $qb->executeStatement();
 
+        $this->cache->remove("gf_{$gfId}_views");
         return $this->getView($viewId, $gfId);
     }
 
@@ -123,6 +136,60 @@ class ViewService {
            ->andWhere($qb->expr()->eq('gf_id', $qb->createNamedParameter($gfId, IQueryBuilder::PARAM_INT)));
 
         $qb->executeStatement();
+        $this->cache->remove("gf_{$gfId}_views");
+    }
+
+    /**
+     * Remove references to deleted/unassigned fields from all views of a groupfolder.
+     * Called after field assignments change.
+     *
+     * @param int   $gfId             The groupfolder ID
+     * @param int[] $activeFieldIds   Field IDs still assigned to this groupfolder
+     * @param string[] $activeFieldNames  Field names still assigned (for sort_field check)
+     */
+    public function pruneViewsForGroupfolder(int $gfId, array $activeFieldIds, array $activeFieldNames): void {
+        $views = $this->getViewsForGroupfolder($gfId);
+
+        foreach ($views as $view) {
+            $changed = false;
+
+            // Filter columns — keep only entries whose field_id is still active
+            $newColumns = array_values(array_filter($view['columns'] ?? [], function ($c) use ($activeFieldIds) {
+                return in_array((int)($c['field_id'] ?? 0), $activeFieldIds, true);
+            }));
+            if (count($newColumns) !== count($view['columns'] ?? [])) {
+                $changed = true;
+            }
+
+            // Filter filters — keys are field_ids (stored as strings)
+            $newFilters = array_filter($view['filters'] ?? [], function ($fieldId) use ($activeFieldIds) {
+                return in_array((int)$fieldId, $activeFieldIds, true);
+            }, ARRAY_FILTER_USE_KEY);
+            if (count($newFilters) !== count($view['filters'] ?? [])) {
+                $changed = true;
+            }
+
+            // Reset sort_field if its field_name is no longer active
+            $sortField = $view['sort_field'] ?? null;
+            if ($sortField !== null && $sortField !== '' && !in_array($sortField, $activeFieldNames, true)) {
+                $sortField = null;
+                $changed = true;
+            }
+
+            if ($changed) {
+                $qb = $this->db->getQueryBuilder();
+                $qb->update('metavox_gf_views')
+                   ->set('columns', $qb->createNamedParameter(json_encode(array_values($newColumns))))
+                   ->set('filters', $qb->createNamedParameter(json_encode((object)$newFilters)))
+                   ->set('sort_field', $qb->createNamedParameter($sortField))
+                   ->set('updated_at', $qb->createNamedParameter(new \DateTime(), IQueryBuilder::PARAM_DATE))
+                   ->where($qb->expr()->eq('id', $qb->createNamedParameter($view['id'], IQueryBuilder::PARAM_INT)))
+                   ->andWhere($qb->expr()->eq('gf_id', $qb->createNamedParameter($gfId, IQueryBuilder::PARAM_INT)));
+                $qb->executeStatement();
+            }
+        }
+
+        $this->cache->remove("gf_{$gfId}_views");
     }
 
     private function clearDefaultForGroupfolder(int $gfId, ?int $excludeViewId = null): void {

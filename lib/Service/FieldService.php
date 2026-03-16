@@ -8,6 +8,8 @@ use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 use OCP\IGroupManager;
 use OCP\IUserManager;
+use OCP\ICacheFactory;
+use OCP\ICache;
 
 class FieldService {
 
@@ -15,22 +17,33 @@ class FieldService {
     private IGroupManager $groupManager;
     private IUserManager $userManager;
     private SearchIndexService $searchIndexService;
+    private ViewService $viewService;
+    private ICache $cache;
 
     // Request-scope cache for fields
     private ?array $fieldsCache = null;
     private array $fieldsByScopeCache = [];
 
-    public function __construct(IDBConnection $db, IGroupManager $groupManager, IUserManager $userManager, SearchIndexService $searchIndexService) {
+    public function __construct(IDBConnection $db, IGroupManager $groupManager, IUserManager $userManager, SearchIndexService $searchIndexService, ViewService $viewService, ICacheFactory $cacheFactory) {
         $this->db = $db;
         $this->groupManager = $groupManager;
         $this->userManager = $userManager;
         $this->searchIndexService = $searchIndexService;
+        $this->viewService = $viewService;
+        $this->cache = $cacheFactory->createDistributed('metavox');
     }
 
 public function getAllFields(): array {
-    // Return from cache if available
+    // L1: request-scope cache
     if ($this->fieldsCache !== null) {
         return $this->fieldsCache;
+    }
+
+    // L2: distributed cache
+    $cached = $this->cache->get('fields_all');
+    if ($cached !== null) {
+        $this->fieldsCache = $cached;
+        return $cached;
     }
 
     // Only groupfolder fields are supported now
@@ -57,7 +70,7 @@ public function getAllFields(): array {
     }
     $result->closeCursor();
 
-    // Cache the results for this request
+    $this->cache->set('fields_all', $fields, 600);
     $this->fieldsCache = $fields;
 
     return $fields;
@@ -146,6 +159,7 @@ public function getFieldsByScope(string $scope = 'global'): array {
     private function clearFieldCache(): void {
         $this->fieldsCache = null;
         $this->fieldsByScopeCache = [];
+        $this->cache->remove('fields_all');
     }
 
     // Universal update method - only groupfolder fields supported now
@@ -703,6 +717,22 @@ public function setGroupfolderFields(int $groupfolderId, array $fieldIds): bool 
         }
 
         $this->db->commit();
+
+        // Cascade: prune views — remove references to fields no longer assigned
+        $activeFieldNames = [];
+        if (!empty($fieldIds)) {
+            $qb = $this->db->getQueryBuilder();
+            $qb->select('field_name')
+               ->from('metavox_gf_fields')
+               ->where($qb->expr()->in('id', $qb->createNamedParameter($fieldIds, IQueryBuilder::PARAM_INT_ARRAY)));
+            $result = $qb->executeQuery();
+            while ($row = $result->fetch()) {
+                $activeFieldNames[] = $row['field_name'];
+            }
+            $result->closeCursor();
+        }
+        $this->viewService->pruneViewsForGroupfolder($groupfolderId, $fieldIds, $activeFieldNames);
+
         return true;
     } catch (\Exception $e) {
         $this->db->rollBack();
@@ -908,16 +938,17 @@ public function saveGroupfolderFileFieldValue(int $groupfolderId, int $fileId, i
         $now = date('Y-m-d H:i:s');
         $this->db->executeStatement($sql, [
             $fileId,
-            $groupfolderId, 
-            $fieldName, 
-            $value, 
+            $groupfolderId,
+            $fieldName,
+            $value,
             $now,
             $now
         ]);
-        
+
+        $this->cache->remove("gf_{$groupfolderId}_fv_{$fieldName}");
         $this->queueSearchIndexUpdate($fileId);
         return true;
-        
+
     } catch (\Exception $e) {
         error_log('MetaVox saveGroupfolderFileFieldValue error: ' . $e->getMessage());
         return false;
@@ -969,147 +1000,19 @@ private function clearSearchIndex(int $fileId): void {
     }
 }
 
-// ========================================
-// Column Configuration Methods
-// ========================================
-
 /**
- * Get column configuration for a groupfolder.
- * Returns fields configured as columns, ordered by column_order.
+ * Get all file-level fields assigned to a groupfolder.
+ * Used by the view editor to populate the available columns list.
+ * Returns only fields with applies_to_groupfolder = 0 (file-level fields).
  */
-public function getColumnConfigForGroupfolder(int $groupfolderId): array {
-    try {
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('c.id', 'c.field_id', 'c.show_as_column', 'c.column_order', 'c.filterable',
-                    'f.field_name', 'f.field_label', 'f.field_type', 'f.field_options', 'f.field_description')
-           ->from('metavox_gf_column_config', 'c')
-           ->innerJoin('c', 'metavox_gf_fields', 'f', $qb->expr()->eq('c.field_id', 'f.id'))
-           ->where($qb->expr()->eq('c.groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)))
-           ->andWhere($qb->expr()->eq('c.show_as_column', $qb->createNamedParameter(true, IQueryBuilder::PARAM_BOOL)))
-           ->orderBy('c.column_order', 'ASC');
-
-        $result = $qb->executeQuery();
-        $columns = [];
-        while ($row = $result->fetch()) {
-            $columns[] = [
-                'id' => (int)$row['id'],
-                'field_id' => (int)$row['field_id'],
-                'field_name' => $row['field_name'],
-                'field_label' => $row['field_label'],
-                'field_type' => $row['field_type'],
-                'field_options' => $row['field_options'] ? json_decode($row['field_options'], true) : [],
-                'field_description' => $row['field_description'] ?? '',
-                'show_as_column' => (bool)$row['show_as_column'],
-                'column_order' => (int)$row['column_order'],
-                'filterable' => (bool)$row['filterable'],
-            ];
-        }
-        $result->closeCursor();
-
-        return $columns;
-    } catch (\Exception $e) {
-        error_log('MetaVox getColumnConfigForGroupfolder error: ' . $e->getMessage());
-        return [];
-    }
+public function getAssignedFileFieldsForGroupfolder(int $groupfolderId): array {
+    $allAssigned = $this->getAssignedFieldsWithDataForGroupfolder($groupfolderId);
+    return array_values(array_filter($allAssigned, fn($f) => ($f['applies_to_groupfolder'] ?? 0) === 0));
 }
 
 /**
- * Get full column configuration including disabled columns (for admin UI).
- */
-public function getFullColumnConfigForGroupfolder(int $groupfolderId): array {
-    try {
-        // Get assigned file-level fields for this groupfolder
-        $assignedFields = $this->getAssignedFieldsWithDataForGroupfolder($groupfolderId);
-        // Filter to file-level fields only (applies_to_groupfolder = 0)
-        $fileFields = array_filter($assignedFields, fn($f) => ($f['applies_to_groupfolder'] ?? 0) === 0);
-
-        // Get existing column config
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('*')
-           ->from('metavox_gf_column_config')
-           ->where($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)));
-
-        $result = $qb->executeQuery();
-        $configByFieldId = [];
-        while ($row = $result->fetch()) {
-            $configByFieldId[(int)$row['field_id']] = [
-                'show_as_column' => (bool)$row['show_as_column'],
-                'column_order' => (int)$row['column_order'],
-                'filterable' => (bool)$row['filterable'],
-            ];
-        }
-        $result->closeCursor();
-
-        // Merge: all assigned file fields with their column config (or defaults)
-        $columns = [];
-        $order = 0;
-        foreach ($fileFields as $field) {
-            $config = $configByFieldId[$field['id']] ?? null;
-            $columns[] = [
-                'field_id' => $field['id'],
-                'field_name' => $field['field_name'],
-                'field_label' => $field['field_label'],
-                'field_type' => $field['field_type'],
-                'show_as_column' => $config ? $config['show_as_column'] : false,
-                'column_order' => $config ? $config['column_order'] : $order,
-                'filterable' => $config ? $config['filterable'] : true,
-            ];
-            $order++;
-        }
-
-        // Sort by column_order
-        usort($columns, fn($a, $b) => $a['column_order'] - $b['column_order']);
-
-        return $columns;
-    } catch (\Exception $e) {
-        error_log('MetaVox getFullColumnConfigForGroupfolder error: ' . $e->getMessage());
-        return [];
-    }
-}
-
-/**
- * Save column configuration for a groupfolder.
- * @param int $groupfolderId
- * @param array $columns Array of [{field_id, show_as_column, column_order, filterable}]
- */
-public function setColumnConfigForGroupfolder(int $groupfolderId, array $columns): bool {
-    $this->db->beginTransaction();
-    try {
-        // Delete existing config for this groupfolder
-        $qb = $this->db->getQueryBuilder();
-        $qb->delete('metavox_gf_column_config')
-           ->where($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)));
-        $qb->executeStatement();
-
-        // Insert new config
-        $now = date('Y-m-d H:i:s');
-        foreach ($columns as $col) {
-            $qb = $this->db->getQueryBuilder();
-            $qb->insert('metavox_gf_column_config')
-               ->values([
-                   'groupfolder_id' => $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT),
-                   'field_id' => $qb->createNamedParameter((int)$col['field_id'], IQueryBuilder::PARAM_INT),
-                   'show_as_column' => $qb->createNamedParameter((bool)($col['show_as_column'] ?? true), IQueryBuilder::PARAM_BOOL),
-                   'column_order' => $qb->createNamedParameter((int)($col['column_order'] ?? 0), IQueryBuilder::PARAM_INT),
-                   'filterable' => $qb->createNamedParameter((bool)($col['filterable'] ?? true), IQueryBuilder::PARAM_BOOL),
-                   'created_at' => $qb->createNamedParameter($now),
-                   'updated_at' => $qb->createNamedParameter($now),
-               ]);
-            $qb->executeStatement();
-        }
-
-        $this->db->commit();
-        return true;
-    } catch (\Exception $e) {
-        $this->db->rollBack();
-        error_log('MetaVox setColumnConfigForGroupfolder error: ' . $e->getMessage());
-        return false;
-    }
-}
-
-/**
- * Get metadata for multiple files, filtered to only column-configured fields.
- * Optimized for file list column rendering.
+ * Get metadata for multiple files within a groupfolder.
+ * Returns ALL metadata for the requested files — column filtering is handled by the frontend based on the active view.
  *
  * @param array $fileIds Array of file IDs
  * @param int $groupfolderId Groupfolder ID
@@ -1121,26 +1024,15 @@ public function getDirectoryMetadata(array $fileIds, int $groupfolderId): array 
     }
 
     try {
-        // Get column-configured field names for this groupfolder
-        $columnConfig = $this->getColumnConfigForGroupfolder($groupfolderId);
-        if (empty($columnConfig)) {
-            return [];
-        }
-
-        $columnFieldNames = array_map(fn($c) => $c['field_name'], $columnConfig);
-
-        // Fetch metadata for these files and fields
         $qb = $this->db->getQueryBuilder();
         $qb->select('file_id', 'field_name', 'field_value')
            ->from('metavox_file_gf_meta')
            ->where($qb->expr()->in('file_id', $qb->createNamedParameter($fileIds, IQueryBuilder::PARAM_INT_ARRAY)))
-           ->andWhere($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)))
-           ->andWhere($qb->expr()->in('field_name', $qb->createNamedParameter($columnFieldNames, IQueryBuilder::PARAM_STR_ARRAY)));
+           ->andWhere($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)));
 
         $result = $qb->executeQuery();
         $metadataByFile = [];
 
-        // Initialize all file IDs
         foreach ($fileIds as $fileId) {
             $metadataByFile[$fileId] = [];
         }
@@ -1167,6 +1059,12 @@ public function getDirectoryMetadata(array $fileIds, int $groupfolderId): array 
  * @return array Array of unique non-empty values
  */
 public function getDistinctFieldValues(int $groupfolderId, string $fieldName): array {
+    $cacheKey = "gf_{$groupfolderId}_fv_{$fieldName}";
+    $cached = $this->cache->get($cacheKey);
+    if ($cached !== null) {
+        return $cached;
+    }
+
     try {
         $qb = $this->db->getQueryBuilder();
         $qb->selectDistinct('field_value')
@@ -1184,6 +1082,7 @@ public function getDistinctFieldValues(int $groupfolderId, string $fieldName): a
         }
         $result->closeCursor();
 
+        $this->cache->set($cacheKey, $values, 300);
         return $values;
     } catch (\Exception $e) {
         error_log('MetaVox getDistinctFieldValues error: ' . $e->getMessage());

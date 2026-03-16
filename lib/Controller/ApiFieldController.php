@@ -6,6 +6,8 @@ namespace OCA\MetaVox\Controller;
 
 use OCA\MetaVox\Service\FieldService;
 use OCA\MetaVox\Service\ApiFieldService;
+use OCA\MetaVox\Service\ViewService;
+use OCA\MetaVox\Service\PermissionService;
 use OCP\AppFramework\OCSController;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
@@ -18,6 +20,8 @@ class ApiFieldController extends OCSController {
 
     private FieldService $fieldService;
     private ApiFieldService $apiFieldService;
+    private ViewService $viewService;
+    private PermissionService $permissionService;
     private IUserSession $userSession;
     private IRootFolder $rootFolder;
 
@@ -26,12 +30,16 @@ class ApiFieldController extends OCSController {
         IRequest $request,
         FieldService $fieldService,
         ApiFieldService $apiFieldService,
+        ViewService $viewService,
+        PermissionService $permissionService,
         IUserSession $userSession,
         IRootFolder $rootFolder
     ) {
         parent::__construct($appName, $request);
         $this->fieldService = $fieldService;
         $this->apiFieldService = $apiFieldService;
+        $this->viewService = $viewService;
+        $this->permissionService = $permissionService;
         $this->userSession = $userSession;
         $this->rootFolder = $rootFolder;
     }
@@ -694,13 +702,14 @@ public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
     // ========================================
 
     /**
-     * Get column configuration for a groupfolder (for file list rendering)
+     * Get all file-level fields assigned to a groupfolder.
+     * Used by the view editor to populate the available columns list.
      *
      * @NoAdminRequired
      * @NoCSRFRequired
      * @CORS
      */
-    public function getGroupfolderColumnConfig(int $groupfolderId): DataResponse {
+    public function getGroupfolderFileFields(int $groupfolderId): DataResponse {
         try {
             $user = $this->userSession->getUser();
             if (!$user) {
@@ -710,15 +719,17 @@ public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
                 return new DataResponse(['error' => 'Access denied'], Http::STATUS_FORBIDDEN);
             }
 
-            $columns = $this->fieldService->getColumnConfigForGroupfolder($groupfolderId);
-            return new DataResponse($columns, Http::STATUS_OK);
+            $fields = $this->fieldService->getAssignedFileFieldsForGroupfolder($groupfolderId);
+            $response = new DataResponse($fields, Http::STATUS_OK);
+            $response->addHeader('Cache-Control', 'private, max-age=600');
+            return $response;
         } catch (\Exception $e) {
             return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
-     * Get metadata for all files in a directory, filtered to column-configured fields.
+     * Get metadata for all files in a directory.
      * Optimized for file list column rendering.
      *
      * @NoAdminRequired
@@ -793,7 +804,223 @@ public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
             }
 
             $values = $this->fieldService->getDistinctFieldValues($groupfolderId, $fieldName);
-            return new DataResponse($values, Http::STATUS_OK);
+            $response = new DataResponse($values, Http::STATUS_OK);
+            $response->addHeader('Cache-Control', 'private, max-age=300');
+            return $response;
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // ========================================
+    // Field Update / Delete (OCS)
+    // ========================================
+
+    /**
+     * Update a groupfolder field definition. Requires Nextcloud admin.
+     *
+     * @NoCSRFRequired
+     * @CORS
+     */
+    public function updateGroupfolderField(int $id): DataResponse {
+        try {
+            $fieldData = [
+                'field_name'             => $this->request->getParam('field_name'),
+                'field_label'            => $this->request->getParam('field_label'),
+                'field_type'             => $this->request->getParam('field_type', 'text'),
+                'field_description'      => $this->request->getParam('field_description', ''),
+                'field_options'          => $this->request->getParam('field_options', []),
+                'is_required'            => $this->request->getParam('is_required', false),
+                'sort_order'             => $this->request->getParam('sort_order', 0),
+                'applies_to_groupfolder' => $this->request->getParam('applies_to_groupfolder', false),
+            ];
+
+            if (empty($fieldData['field_name']) || empty($fieldData['field_label'])) {
+                return new DataResponse(['error' => 'field_name and field_label are required'], Http::STATUS_BAD_REQUEST);
+            }
+
+            $success = $this->fieldService->updateField($id, $fieldData);
+            if (!$success) {
+                return new DataResponse(['error' => 'Field not found or update failed'], Http::STATUS_NOT_FOUND);
+            }
+            return new DataResponse(['success' => true], Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Delete a groupfolder field definition. Requires Nextcloud admin.
+     *
+     * @NoCSRFRequired
+     * @CORS
+     */
+    public function deleteGroupfolderField(int $id): DataResponse {
+        try {
+            $success = $this->fieldService->deleteField($id);
+            if (!$success) {
+                return new DataResponse(['error' => 'Field not found or delete failed'], Http::STATUS_NOT_FOUND);
+            }
+            return new DataResponse(['success' => true], Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // ========================================
+    // Views (OCS)
+    // ========================================
+
+    /**
+     * List views for a groupfolder.
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     * @CORS
+     */
+    public function listViews(int $groupfolderId): DataResponse {
+        try {
+            $user = $this->userSession->getUser();
+            $canManage = $user
+                ? $this->permissionService->hasPermission($user->getUID(), PermissionService::PERM_MANAGE_FIELDS, $groupfolderId)
+                : false;
+
+            $views = $this->viewService->getViewsForGroupfolder($groupfolderId);
+
+            // Enrich view columns with full field data (field_name, field_label, field_type, field_options)
+            // so the frontend doesn't need a separate column-config lookup
+            $allFields = $this->fieldService->getAllFields();
+            $fieldMap = [];
+            foreach ($allFields as $field) {
+                $fieldMap[$field['id']] = $field;
+            }
+            foreach ($views as &$view) {
+                foreach ($view['columns'] as &$col) {
+                    $fieldId = (int)($col['field_id'] ?? 0);
+                    if (isset($fieldMap[$fieldId])) {
+                        $f = $fieldMap[$fieldId];
+                        $col['field_name']    = $f['field_name'];
+                        $col['field_label']   = $f['field_label'] ?? $f['field_name'];
+                        $col['field_type']    = $f['field_type'];
+                        $col['field_options'] = $f['field_options'] ?? [];
+                    }
+                }
+                unset($col);
+            }
+            unset($view);
+
+            $response = new DataResponse(['views' => $views, 'can_manage' => $canManage], Http::STATUS_OK);
+            $response->addHeader('Cache-Control', 'private, max-age=600');
+            return $response;
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Create a view for a groupfolder. Requires manage-fields permission.
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     * @CORS
+     */
+    public function createView(int $groupfolderId): DataResponse {
+        try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new DataResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
+            }
+            if (!$this->permissionService->hasPermission($user->getUID(), PermissionService::PERM_MANAGE_FIELDS, $groupfolderId)) {
+                return new DataResponse(['error' => 'Manage fields permission required'], Http::STATUS_FORBIDDEN);
+            }
+
+            $name = $this->request->getParam('name');
+            if (empty($name)) {
+                return new DataResponse(['error' => 'name is required'], Http::STATUS_BAD_REQUEST);
+            }
+
+            $view = $this->viewService->createView(
+                $groupfolderId,
+                $name,
+                (bool)$this->request->getParam('is_default', false),
+                $this->request->getParam('columns', []),
+                $this->request->getParam('filters', []),
+                $this->request->getParam('sort_field'),
+                $this->request->getParam('sort_order')
+            );
+            return new DataResponse($view, Http::STATUS_CREATED);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Update a view. Requires manage-fields permission.
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     * @CORS
+     */
+    public function updateView(int $groupfolderId, int $viewId): DataResponse {
+        try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new DataResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
+            }
+            if (!$this->permissionService->hasPermission($user->getUID(), PermissionService::PERM_MANAGE_FIELDS, $groupfolderId)) {
+                return new DataResponse(['error' => 'Manage fields permission required'], Http::STATUS_FORBIDDEN);
+            }
+
+            $name = $this->request->getParam('name');
+            if (empty($name)) {
+                return new DataResponse(['error' => 'name is required'], Http::STATUS_BAD_REQUEST);
+            }
+
+            $existing = $this->viewService->getView($viewId, $groupfolderId);
+            if ($existing === null) {
+                return new DataResponse(['error' => 'View not found'], Http::STATUS_NOT_FOUND);
+            }
+
+            $view = $this->viewService->updateView(
+                $viewId,
+                $groupfolderId,
+                $name,
+                (bool)$this->request->getParam('is_default', false),
+                $this->request->getParam('columns', []),
+                $this->request->getParam('filters', []),
+                $this->request->getParam('sort_field'),
+                $this->request->getParam('sort_order')
+            );
+            return new DataResponse($view, Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Delete a view. Requires manage-fields permission.
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     * @CORS
+     */
+    public function deleteView(int $groupfolderId, int $viewId): DataResponse {
+        try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new DataResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
+            }
+            if (!$this->permissionService->hasPermission($user->getUID(), PermissionService::PERM_MANAGE_FIELDS, $groupfolderId)) {
+                return new DataResponse(['error' => 'Manage fields permission required'], Http::STATUS_FORBIDDEN);
+            }
+
+            $existing = $this->viewService->getView($viewId, $groupfolderId);
+            if ($existing === null) {
+                return new DataResponse(['error' => 'View not found'], Http::STATUS_NOT_FOUND);
+            }
+
+            $this->viewService->deleteView($viewId, $groupfolderId);
+            return new DataResponse(['success' => true], Http::STATUS_OK);
         } catch (\Exception $e) {
             return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }

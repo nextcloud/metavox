@@ -31,6 +31,16 @@
           </div>
           <div class="view-item-right">
             <NcButton
+              v-if="!view.is_default"
+              type="tertiary"
+              :aria-label="t('metavox', 'Set as default view')"
+              @click="setDefaultView(view)"
+            >
+              <template #icon>
+                <StarOutlineIcon :size="20" />
+              </template>
+            </NcButton>
+            <NcButton
               type="tertiary"
               :aria-label="t('metavox', 'Edit view')"
               @click="startEdit(view)"
@@ -234,6 +244,7 @@ import ChevronDownIcon from 'vue-material-design-icons/ChevronDown.vue'
 import PencilIcon from 'vue-material-design-icons/Pencil.vue'
 import DeleteIcon from 'vue-material-design-icons/Delete.vue'
 import StarIcon from 'vue-material-design-icons/Star.vue'
+import StarOutlineIcon from 'vue-material-design-icons/StarOutline.vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
 
 export default {
@@ -247,6 +258,7 @@ export default {
     PencilIcon,
     DeleteIcon,
     StarIcon,
+    StarOutlineIcon,
     PlusIcon,
   },
 
@@ -327,11 +339,11 @@ export default {
     async loadColumns() {
       this.loadingColumns = true
       try {
-        const url = generateUrl(`${this.apiBasePath}/groupfolders/${this.groupfolderId}/columns`)
+        const url = generateUrl(`${this.apiBasePath}/groupfolders/${this.groupfolderId}/file-fields`)
         const response = await axios.get(url)
         this.availableColumns = response.data || []
       } catch (error) {
-        console.error('MetaVox: Failed to load columns', error)
+        console.error('MetaVox: Failed to load available fields', error)
         this.availableColumns = []
       } finally {
         this.loadingColumns = false
@@ -346,9 +358,9 @@ export default {
       })
 
       return this.availableColumns.map(col => ({
-        field_id: col.field_id,
+        field_id: col.id,
         field_label: col.field_label,
-        visible: existingMap[col.field_id] ? existingMap[col.field_id].visible !== false : true,
+        visible: existingMap[col.id] ? existingMap[col.id].visible !== false : false,
       }))
     },
 
@@ -435,6 +447,23 @@ export default {
         this.formSuccess = false
       } finally {
         this.saving = false
+      }
+    },
+
+    async setDefaultView(view) {
+      try {
+        const url = generateUrl(`${this.apiBasePath}/groupfolders/${this.groupfolderId}/views/${view.id}`)
+        await axios.put(url, {
+          name: view.name,
+          is_default: true,
+          columns: view.columns || [],
+          filters: view.filters || {},
+          sort_field: view.sort_field || null,
+          sort_order: view.sort_order || 'asc',
+        })
+        await this.loadViews()
+      } catch (error) {
+        console.error('MetaVox: Failed to set default view', error)
       }
     },
 

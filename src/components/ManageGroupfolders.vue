@@ -225,11 +225,6 @@
                   </div>
                 </form>
 
-                <!-- Column Configuration -->
-                <ColumnConfigSection
-                  :groupfolder-id="groupfolder.id"
-                  :api-base-path="'/apps/metavox/api'"
-                />
               </div>
             </div>
           </div>
@@ -440,7 +435,6 @@ import EditIcon from 'vue-material-design-icons/Pencil.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
 import ContentSaveIcon from 'vue-material-design-icons/ContentSave.vue'
 import MagnifyIcon from 'vue-material-design-icons/Magnify.vue'
-import ColumnConfigSection from './ColumnConfigSection.vue'
 
 export default {
   name: 'ManageGroupfolders',
@@ -456,7 +450,6 @@ export default {
     CogIcon,
     ContentSaveIcon,
     MagnifyIcon,
-    ColumnConfigSection
   },
   
   data() {
@@ -719,7 +712,7 @@ export default {
           } else if (field.field_type === 'multiselect') {
             const value = values[field.field_name]
             if (value) {
-              this.multiSelectValues[field.field_name] = value.split(';#'.filter(v => v.trim()))
+              this.multiSelectValues[field.field_name] = value.split(';#').filter(v => v.trim())
             } else {
               this.multiSelectValues[field.field_name] = []
             }
@@ -901,7 +894,7 @@ export default {
     
     getAssignedGroupfolderFieldsCount(groupfolderId) {
       const assignedIds = this.assignedFields[groupfolderId] || []
-      return this.groupfolderMetadataFields.filter(field => 
+      return this.groupfolderMetadataFields.filter(field =>
         assignedIds.includes(field.id)
       ).length
     },

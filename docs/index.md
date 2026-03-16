@@ -7,6 +7,7 @@ Welcome to the MetaVox documentation. Choose your path based on your role:
 Learn how to work with metadata in your daily workflow.
 
 - [Overview](user/overview.md) - What is MetaVox and why use it
+- [Views](user/views.md) - Switch between predefined column, filter, and sort combinations
 - [Bulk Editing](user/bulk-editing.md) - Edit metadata for multiple files at once
 - [Field Types](user/field-types.md) - Understanding different metadata field types
 
@@ -16,6 +17,7 @@ Configure and manage MetaVox for your organization.
 
 - [Installation](admin/installation.md) - Install and update MetaVox
 - [Permissions](admin/permissions.md) - Roles and access control
+- [Views](admin/views.md) - Create and manage views per team folder
 - [Compliance Templates](admin/compliance-templates.md) - GDPR, WOO, and Archives Act templates
 - [Flow Integration](admin/flow-integration.md) - Automate workflows with metadata
 

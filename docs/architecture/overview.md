@@ -46,9 +46,11 @@ Technology: Vue 3, Nextcloud Vue components library
 
 | Component | Responsibility |
 |-----------|---------------|
-| `FieldService` | Core metadata operations (CRUD) |
+| `FieldService` | Core metadata operations (CRUD), column config, distributed cache |
+| `ViewService` | View CRUD with distributed cache |
 | `ApiFieldService` | Batch operations for API |
 | `ApiFieldController` | OCS API request handling |
+| `ViewController` | Views API (list, create, update, delete) |
 | `MetadataCheck` | Flow integration (ICheck implementation) |
 
 ### Database Schema
@@ -61,8 +63,17 @@ MetaVox uses Nextcloud's database abstraction layer with the following tables:
 - Required flag, description
 
 **`metavox_file_gf_meta`** - Document metadata values
-- File ID, Groupfolder ID
-- Field values (JSON)
+- File ID, Groupfolder ID, field name, field value
+- Indexed for fast bulk lookup and filter queries
+
+**`metavox_gf_column_config`** - Column display configuration per groupfolder
+- Which fields appear as columns in the file list
+- Column order and filterable flag per field
+
+**`metavox_gf_views`** - Saved views per groupfolder
+- Name, default flag
+- Column visibility and order (JSON)
+- Preset filters (JSON) and sort configuration
 
 ## Integration Points
 
@@ -135,10 +146,12 @@ See [Privacy & Security](privacy.md) for details.
 
 ## Performance Considerations
 
-- Metadata queries are indexed by file_id and groupfolder_id
+- Metadata queries are indexed by `file_id`, `groupfolder_id`, and `(groupfolder_id, field_name, field_value)` for fast filter lookups
 - Batch operations use database transactions
-- Frontend uses lazy loading for large field sets
-- API supports pagination for bulk operations
+- Frontend loads metadata in debounced batches (max 200 files per request) as files appear in the list
+- Stable data (field definitions, column config, views, filter values) is cached in distributed cache (Redis/APCu) with automatic invalidation on write
+- HTTP `Cache-Control: private` headers on read-only API endpoints reduce redundant requests
+- Current filtering is client-side; server-side filtering is the planned next step for folders with >5,000 files
 
 ## Technology Stack
 

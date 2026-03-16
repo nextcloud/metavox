@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Controller;
 
+use OCA\MetaVox\Service\PermissionService;
 use OCA\MetaVox\Service\ViewService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\JSONResponse;
-use OCP\IGroupManager;
 use OCP\IRequest;
 use OCP\IUserSession;
 
@@ -15,19 +15,19 @@ class ViewController extends Controller {
 
     private ViewService $viewService;
     private IUserSession $userSession;
-    private IGroupManager $groupManager;
+    private PermissionService $permissionService;
 
     public function __construct(
         string $appName,
         IRequest $request,
         ViewService $viewService,
         IUserSession $userSession,
-        IGroupManager $groupManager
+        PermissionService $permissionService
     ) {
         parent::__construct($appName, $request);
         $this->viewService = $viewService;
         $this->userSession = $userSession;
-        $this->groupManager = $groupManager;
+        $this->permissionService = $permissionService;
     }
 
     /**
@@ -37,8 +37,15 @@ class ViewController extends Controller {
      */
     public function listViews(int $gfId): JSONResponse {
         try {
+            $user = $this->userSession->getUser();
+            $canManage = $user
+                ? $this->permissionService->hasPermission($user->getUID(), PermissionService::PERM_MANAGE_FIELDS, $gfId)
+                : false;
+
             $views = $this->viewService->getViewsForGroupfolder($gfId);
-            return new JSONResponse($views);
+            $response = new JSONResponse(['views' => $views, 'can_manage' => $canManage]);
+            $response->addHeader('Cache-Control', 'private, max-age=600');
+            return $response;
         } catch (\Exception $e) {
             return new JSONResponse(['error' => $e->getMessage()], 500);
         }
@@ -55,8 +62,8 @@ class ViewController extends Controller {
                 return new JSONResponse(['error' => 'User not authenticated'], 401);
             }
 
-            if (!$this->groupManager->isAdmin($user->getUID())) {
-                return new JSONResponse(['error' => 'Admin privileges required'], 403);
+            if (!$this->permissionService->hasPermission($user->getUID(), PermissionService::PERM_MANAGE_FIELDS, $gfId)) {
+                return new JSONResponse(['error' => 'Manage fields permission required'], 403);
             }
 
             $name = $this->request->getParam('name');
@@ -88,8 +95,8 @@ class ViewController extends Controller {
                 return new JSONResponse(['error' => 'User not authenticated'], 401);
             }
 
-            if (!$this->groupManager->isAdmin($user->getUID())) {
-                return new JSONResponse(['error' => 'Admin privileges required'], 403);
+            if (!$this->permissionService->hasPermission($user->getUID(), PermissionService::PERM_MANAGE_FIELDS, $gfId)) {
+                return new JSONResponse(['error' => 'Manage fields permission required'], 403);
             }
 
             $name = $this->request->getParam('name');
@@ -126,8 +133,8 @@ class ViewController extends Controller {
                 return new JSONResponse(['error' => 'User not authenticated'], 401);
             }
 
-            if (!$this->groupManager->isAdmin($user->getUID())) {
-                return new JSONResponse(['error' => 'Admin privileges required'], 403);
+            if (!$this->permissionService->hasPermission($user->getUID(), PermissionService::PERM_MANAGE_FIELDS, $gfId)) {
+                return new JSONResponse(['error' => 'Manage fields permission required'], 403);
             }
 
             $existing = $this->viewService->getView($viewId, $gfId);
