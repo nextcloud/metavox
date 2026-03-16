@@ -1,0 +1,71 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OCA\MetaVox\Controller;
+
+use OCA\MetaVox\Service\AiAutofillService;
+use OCP\AppFramework\Controller;
+use OCP\AppFramework\Http\JSONResponse;
+use OCP\IRequest;
+use OCP\IUserSession;
+
+class AiAutofillController extends Controller {
+
+    private AiAutofillService $aiService;
+    private IUserSession $userSession;
+
+    public function __construct(
+        string $appName,
+        IRequest $request,
+        AiAutofillService $aiService,
+        IUserSession $userSession
+    ) {
+        parent::__construct($appName, $request);
+        $this->aiService = $aiService;
+        $this->userSession = $userSession;
+    }
+
+    /**
+     * Check if AI is available
+     * @NoAdminRequired
+     */
+    public function status(): JSONResponse {
+        return new JSONResponse([
+            'available' => $this->aiService->isAvailable(),
+        ]);
+    }
+
+    /**
+     * Generate metadata suggestions for a file
+     * @NoAdminRequired
+     */
+    public function generate(): JSONResponse {
+        try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new JSONResponse(['error' => 'User not authenticated'], 401);
+            }
+
+            $fileId = (int)$this->request->getParam('fileId');
+            $groupfolderId = (int)$this->request->getParam('groupfolderId');
+
+            if (!$fileId || !$groupfolderId) {
+                return new JSONResponse(['error' => 'fileId and groupfolderId are required'], 400);
+            }
+
+            error_log('MetaVox AI: generating metadata for file ' . $fileId . ' in gf ' . $groupfolderId);
+            $suggestions = $this->aiService->generateMetadata($fileId, $groupfolderId, $user->getUID());
+            error_log('MetaVox AI: got ' . count($suggestions) . ' suggestions');
+
+            return new JSONResponse([
+                'suggestions' => $suggestions,
+            ]);
+        } catch (\Exception $e) {
+            error_log('MetaVox AI autofill error: ' . $e->getMessage() . ' | trace: ' . $e->getTraceAsString());
+            return new JSONResponse([
+                'error' => 'AI generation failed: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+}

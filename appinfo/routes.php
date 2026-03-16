@@ -88,6 +88,12 @@ return [
         ['name' => 'view#deleteView', 'url' => '/api/groupfolders/{gfId}/views/{viewId}',  'verb' => 'DELETE'],
 
         // ========================================
+        // 🤖 AI AUTOFILL ROUTES
+        // ========================================
+        ['name' => 'aiAutofill#status', 'url' => '/api/ai/status', 'verb' => 'GET'],
+        ['name' => 'aiAutofill#generate', 'url' => '/api/ai/generate', 'verb' => 'POST'],
+
+        // ========================================
         // 💾 BACKUP & RESTORE ROUTES
         // ========================================
         ['name' => 'backup#list', 'url' => '/api/backup/list', 'verb' => 'GET'],

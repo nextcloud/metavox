@@ -128,6 +128,23 @@
 				:disabled="readonly"
 				:placeholder="`Unknown field type: ${field.field_type}`"
 				@update:model-value="handleUpdate(field.field_name, $event)" />
+
+			<!-- AI Suggestion -->
+			<div v-if="aiSuggestions[field.field_name]" class="ai-suggestion">
+				<div class="ai-suggestion-header">
+					<CreationIcon :size="16" />
+					<span>{{ t('metavox', 'AI suggests:') }}</span>
+				</div>
+				<div class="ai-suggestion-value">{{ formatSuggestion(field, aiSuggestions[field.field_name]) }}</div>
+				<div class="ai-suggestion-actions">
+					<NcButton type="primary" size="small" @click="$emit('accept-suggestion', field.field_name, aiSuggestions[field.field_name])">
+						{{ t('metavox', 'Accept') }}
+					</NcButton>
+					<NcButton type="tertiary" size="small" @click="$emit('dismiss-suggestion', field.field_name)">
+						{{ t('metavox', 'Dismiss') }}
+					</NcButton>
+				</div>
+			</div>
 		</div>
 	</div>
 </template>
@@ -137,7 +154,10 @@ import {
 	NcTextField,
 	NcSelect,
 	NcCheckboxRadioSwitch,
+	NcButton,
 } from '@nextcloud/vue'
+import { translate as t } from '@nextcloud/l10n'
+import CreationIcon from 'vue-material-design-icons/Creation.vue'
 import UrlFieldInput from '../components/fields/UrlFieldInput.vue'
 import UserGroupFieldInput from '../components/fields/UserGroupFieldInput.vue'
 import FileLinkFieldInput from '../components/fields/FileLinkFieldInput.vue'
@@ -149,6 +169,8 @@ export default {
 		NcTextField,
 		NcSelect,
 		NcCheckboxRadioSwitch,
+		NcButton,
+		CreationIcon,
 		UrlFieldInput,
 		UserGroupFieldInput,
 		FileLinkFieldInput,
@@ -179,11 +201,27 @@ export default {
 			type: Number,
 			default: 0,
 		},
+		aiSuggestions: {
+			type: Object,
+			default: () => ({}),
+		},
 	},
 
-	emits: ['update'],
+	emits: ['update', 'accept-suggestion', 'dismiss-suggestion'],
 
 	methods: {
+		t,
+
+		formatSuggestion(field, value) {
+			if (field.field_type === 'checkbox') {
+				return value === '1' ? t('metavox', 'Yes') : t('metavox', 'No')
+			}
+			if (field.field_type === 'multiselect' && value.includes(';#')) {
+				return value.split(';#').filter(v => v.trim()).join(', ')
+			}
+			return value
+		},
+
 		handleUpdate(fieldName, value) {
 			this.$emit('update', fieldName, value)
 		},
@@ -361,6 +399,37 @@ export default {
 
 .textarea-field::placeholder {
 	color: var(--color-text-maxcontrast);
+}
+
+/* AI Suggestion styling */
+.ai-suggestion {
+	margin-top: 8px;
+	padding: 10px 12px;
+	background: var(--color-primary-element-light);
+	border: 1px solid var(--color-primary-element);
+	border-radius: var(--border-radius);
+}
+
+.ai-suggestion-header {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--color-primary-element);
+	margin-bottom: 4px;
+}
+
+.ai-suggestion-value {
+	font-size: 13px;
+	color: var(--color-main-text);
+	margin-bottom: 8px;
+	word-break: break-word;
+}
+
+.ai-suggestion-actions {
+	display: flex;
+	gap: 8px;
 }
 
 /* Add hover effect to Nextcloud Vue components */
