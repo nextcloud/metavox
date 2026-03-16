@@ -30,16 +30,36 @@ class AiAutofillService {
         $this->fieldService = $fieldService;
     }
 
+    private const TASK_TYPES = ['core:text2text', 'core:text2text:chat'];
+
     /**
      * Check if AI text generation is available
      */
     public function isAvailable(): bool {
         try {
             $types = $this->taskManager->getAvailableTaskTypes();
-            return isset($types['core:text2text']);
+            foreach (self::TASK_TYPES as $type) {
+                if (isset($types[$type])) {
+                    return true;
+                }
+            }
+            return false;
         } catch (\Exception $e) {
             return false;
         }
+    }
+
+    /**
+     * Get the best available task type
+     */
+    private function getTaskType(): string {
+        $types = $this->taskManager->getAvailableTaskTypes();
+        foreach (self::TASK_TYPES as $type) {
+            if (isset($types[$type])) {
+                return $type;
+            }
+        }
+        throw new \RuntimeException('No AI text generation provider available');
     }
 
     /**
@@ -73,8 +93,11 @@ class AiAutofillService {
         $prompt = $this->buildPrompt($aiFields, $fileContent['content'], $fileContent['name']);
 
         // Schedule TaskProcessing task (async — background workers pick it up)
+        $taskType = $this->getTaskType();
+        error_log('MetaVox AI: using task type ' . $taskType);
+
         $task = new Task(
-            'core:text2text',
+            $taskType,
             ['input' => $prompt],
             'metavox',
             $userId,

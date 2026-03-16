@@ -86,5 +86,5 @@ module.exports = {
     maxAssetSize: 512000,
     maxEntrypointSize: 512000
   },
-  mode: 'development'
+  devtool: false,
 }
