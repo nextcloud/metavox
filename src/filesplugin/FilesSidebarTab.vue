@@ -74,6 +74,19 @@
 				<div v-if="itemFields.length > 0" class="metadata-section">
 					<div class="item-metadata-header">
 						<h3>{{ t('metavox', '{itemType} Metadata', { itemType }) }}</h3>
+						<NcButton v-if="aiAvailable && canEdit && !isGroupfolderRoot"
+							type="tertiary"
+							:disabled="aiGenerating"
+							@click="generateAiMetadata">
+							<template #icon>
+								<NcLoadingIcon v-if="aiGenerating" :size="20" />
+								<CreationIcon v-else :size="20" />
+							</template>
+							{{ aiGenerating ? t('metavox', 'Generating...') : t('metavox', 'Generate with AI') }}
+						</NcButton>
+					</div>
+					<div v-if="aiError" class="ai-error">
+						<p>{{ aiError }}</p>
 					</div>
 					<MetadataForm
 						:fields="itemFields"
@@ -82,7 +95,10 @@
 						:select-values="selectValues"
 						:multi-select-values="multiSelectValues"
 						:select-key="selectKey"
-						@update="handleMetadataUpdate" />
+						:ai-suggestions="aiSuggestions"
+						@update="handleMetadataUpdate"
+						@accept-suggestion="acceptAiSuggestion"
+						@dismiss-suggestion="dismissAiSuggestion" />
 					<div v-if="canEdit && hasChanges" class="metadata-actions">
 						<NcButton
 							type="primary"
@@ -105,13 +121,14 @@
 </template>
 
 <script>
-import { NcButton } from '@nextcloud/vue'
+import { NcButton, NcLoadingIcon } from '@nextcloud/vue'
 import { generateUrl } from '@nextcloud/router'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 import axios from '@nextcloud/axios'
 import ContentSaveIcon from 'vue-material-design-icons/ContentSave.vue'
 import LoadingIcon from 'vue-material-design-icons/Loading.vue'
+import CreationIcon from 'vue-material-design-icons/Creation.vue'
 
 import MetadataForm from './MetadataForm.vue'
 
@@ -120,8 +137,10 @@ export default {
 
 	components: {
 		NcButton,
+		NcLoadingIcon,
 		ContentSaveIcon,
 		LoadingIcon,
+		CreationIcon,
 		MetadataForm,
 	},
 
@@ -168,6 +187,10 @@ export default {
 			groupfoldersCacheExpiry: null,
 			loadCancelToken: null,
 			teamfolderInfoExpanded: false,
+			aiAvailable: false,
+			aiGenerating: false,
+			aiSuggestions: {},
+			aiError: null,
 		}
 	},
 
@@ -278,6 +301,13 @@ export default {
 
 				// Check permissions (synchronous - uses fileInfo.permissions)
 				this.permissions = this.checkPermissions()
+
+				// Check AI availability (non-blocking)
+				this.checkAiAvailability()
+
+				// Reset AI state
+				this.aiSuggestions = {}
+				this.aiError = null
 
 				// Load fields with their values (single API call)
 				const fieldsWithValues = await this.loadFields()
@@ -584,6 +614,72 @@ export default {
 			this.loadMetadata()
 		},
 
+		async checkAiAvailability() {
+			try {
+				const response = await axios.get(generateUrl('/apps/metavox/api/ai/status'))
+				this.aiAvailable = response.data?.available === true
+			} catch (e) {
+				this.aiAvailable = false
+			}
+		},
+
+		async generateAiMetadata() {
+			if (!this.groupfolderId || !this.currentFileInfo?.id) return
+
+			this.aiGenerating = true
+			this.aiError = null
+			this.aiSuggestions = {}
+
+			try {
+				const response = await axios.post(
+					generateUrl('/apps/metavox/api/ai/generate'),
+					{
+						fileId: this.currentFileInfo.id,
+						groupfolderId: this.groupfolderId,
+					},
+				)
+
+				const suggestions = response.data?.suggestions || {}
+				if (Object.keys(suggestions).length === 0) {
+					this.aiError = this.t('metavox', 'AI could not generate any suggestions for this file.')
+				} else {
+					this.aiSuggestions = suggestions
+				}
+			} catch (error) {
+				console.error('AI autofill error:', error)
+				this.aiError = error.response?.data?.error || this.t('metavox', 'AI generation failed. Please try again.')
+			} finally {
+				this.aiGenerating = false
+			}
+		},
+
+		acceptAiSuggestion(fieldName, value) {
+			this.handleMetadataUpdate(fieldName, value)
+
+			// Update select/multiselect values if needed
+			const field = this.itemFields.find(f => f.field_name === fieldName)
+			if (field) {
+				if (field.field_type === 'select') {
+					this.selectValues[fieldName] = value
+					this.selectKey++
+				} else if (field.field_type === 'multiselect') {
+					this.multiSelectValues[fieldName] = value ? value.split(';#').filter(v => v.trim()) : []
+					this.selectKey++
+				}
+			}
+
+			// Remove from suggestions
+			const newSuggestions = { ...this.aiSuggestions }
+			delete newSuggestions[fieldName]
+			this.aiSuggestions = newSuggestions
+		},
+
+		dismissAiSuggestion(fieldName) {
+			const newSuggestions = { ...this.aiSuggestions }
+			delete newSuggestions[fieldName]
+			this.aiSuggestions = newSuggestions
+		},
+
 		formatFieldValue(field) {
 			// For groupfolder fields, the value is in field.value
 			// For item fields, the value is in this.metadata[field.field_name]
@@ -722,6 +818,9 @@ export default {
 
 /* Item Metadata Header - subtle per Nextcloud guidelines */
 .item-metadata-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
 	margin-bottom: 16px;
 	padding-bottom: 12px;
 	border-bottom: 1px solid var(--color-border);
@@ -732,6 +831,19 @@ export default {
 	font-size: 16px;
 	font-weight: 600;
 	color: var(--color-main-text);
+}
+
+.ai-error {
+	padding: 8px 12px;
+	margin-bottom: 12px;
+	background-color: var(--color-error);
+	color: var(--color-primary-element-text);
+	border-radius: var(--border-radius);
+	font-size: 13px;
+}
+
+.ai-error p {
+	margin: 0;
 }
 
 .admin-notice {
