@@ -7,7 +7,9 @@
 
 import axios from '@nextcloud/axios'
 import { generateOcsUrl, generateUrl } from '@nextcloud/router'
+import { createApp, h } from 'vue'
 import { registerMetaVoxFilter, removeFilters, updateFilterCache, getFilterInstance } from './MetadataFilter.js'
+import ViewEditorPanel from './ViewEditorPanel.vue'
 
 /** @type {Array<Object>} Column configs from API */
 let activeColumnConfigs = []
@@ -50,6 +52,9 @@ let canManageViews = false
 
 /** @type {Array<Object>} File-level fields assigned to the current groupfolder (from /file-fields endpoint) */
 let availableFields = []
+
+/** @type {Object|null} Prefetched filter values: { field_name: [val1, val2, ...] } */
+let prefetchedFilterValues = null
 
 // ========================================
 // Value Formatting
@@ -145,17 +150,17 @@ async function fetchViews(groupfolderId) {
 	}
 }
 
-async function fetchFilterValues(groupfolderId, fieldName) {
+async function fetchAllFilterValues(groupfolderId) {
 	try {
 		const url = generateOcsUrl(
-			'/apps/metavox/api/v1/groupfolders/{gfId}/filter-values',
+			'/apps/metavox/api/v1/groupfolders/{gfId}/all-filter-values',
 			{ gfId: groupfolderId },
 		)
-		const resp = await axios.get(url, { params: { field_name: fieldName } })
-		return resp.data?.ocs?.data || resp.data || []
+		const resp = await axios.get(url)
+		return resp.data?.ocs?.data || resp.data || {}
 	} catch (e) {
 		console.error('MetaVox: Failed to fetch filter values', e)
-		return []
+		return {}
 	}
 }
 
@@ -1079,7 +1084,17 @@ function injectViewTabs(views) {
 	} else {
 		// Fallback: insert before the files-list table
 		const table = document.querySelector('.files-list__table')
-		if (table) table.insertAdjacentElement('beforebegin', container)
+		if (table) {
+			table.insertAdjacentElement('beforebegin', container)
+		} else {
+			// DOM not ready yet — retry shortly
+			setTimeout(() => {
+				const fb = document.querySelector('.files-list__filters')
+				const tbl = document.querySelector('.files-list__table')
+				const target = fb || tbl
+				if (target) target.insertAdjacentElement('beforebegin', container)
+			}, 150)
+		}
 	}
 
 	viewTabsEl = container
@@ -1174,23 +1189,11 @@ function updateActiveTabs() {
 
 // ── View Editor Panel ──────────────────────────────────────────
 
-let _editorDragState = null
-
-/** Cache voor filter-waarden per veld (fieldName → string[]), per editor-sessie */
-const _filterValuesCache = {}
-
-async function _getFilterValues(fieldName) {
-	if (_filterValuesCache[fieldName]) return _filterValuesCache[fieldName]
-	const values = await fetchFilterValues(activeGroupfolderId, fieldName)
-	_filterValuesCache[fieldName] = Array.isArray(values) ? values : []
-	return _filterValuesCache[fieldName]
-}
-
 /**
- * Open the slide-over view editor.
+ * Open the slide-over view editor (Vue component).
  * @param {Object|null} view - Existing view to edit, or null for new
  */
-async function openViewEditor(view) {
+function openViewEditor(view) {
 	// Remove existing editor
 	closeViewEditor()
 
@@ -1202,26 +1205,33 @@ async function openViewEditor(view) {
 	overlay.addEventListener('click', closeViewEditor)
 	document.body.appendChild(overlay)
 
-	// Panel
+	// Panel container
 	const panel = document.createElement('div')
 	panel.id = VIEW_EDITOR_ID
 	document.body.appendChild(panel)
 
-	// Build editor state
-	const isNew = !view
-	const editorState = {
-		name: view?.name || '',
-		isDefault: view?.is_default || false,
-		// columns: [{field_id, field_label, visible, filterable}]
-		columns: _buildEditorColumns(view),
-		// filters: { fieldId: Set<string> }
-		filters: _buildEditorFilters(view),
-		sortField: view?.sort_field || '',
-		sortOrder: view?.sort_order || 'asc',
-	}
+	const mountEl = document.createElement('div')
+	mountEl.style.height = '100%'
+	panel.appendChild(mountEl)
 
-	// Render
-	_renderEditorContent(panel, view, editorState, isNew)
+	const vueApp = createApp({
+		render: () => h(ViewEditorPanel, {
+			view,
+			availableFields,
+			fetchFilterValuesFn: (fieldName) => {
+				// Use prefetched filter values (already loaded in parallel on directory init)
+				const allValues = prefetchedFilterValues || {}
+				const values = allValues[fieldName]
+				return Array.isArray(values) ? values : []
+			},
+			onClose: () => closeViewEditor(),
+			onSave: (payload) => _handleEditorSave(view, payload),
+			onDelete: (v) => _confirmDeleteView(v),
+		}),
+	})
+
+	vueApp.mount(mountEl)
+	panel._vueApp = vueApp
 
 	// Trigger animation
 	requestAnimationFrame(() => {
@@ -1235,696 +1245,15 @@ async function openViewEditor(view) {
 	document.addEventListener('keydown', onKeyDown)
 }
 
-function closeViewEditor() {
-	document.getElementById(VIEW_EDITOR_ID)?.remove()
-	document.querySelector('.mv-editor-overlay')?.remove()
-}
-
-function _buildEditorColumns(view) {
-	const viewCols = view?.columns || []
-
-	if (viewCols.length > 0) {
-		// Gebruik volgorde uit view.columns; kolommen niet in view komen achteraan
-		const result = []
-		const usedIds = new Set()
-
-		viewCols.forEach(vc => {
-			const cfg = availableFields.find(c =>
-				String(c.id) === String(vc.field_id) || c.field_name === vc.field_name,
-			)
-			if (!cfg) return
-			usedIds.add(cfg.id)
-			result.push({
-				field_id: cfg.id,
-				field_name: cfg.field_name,
-				field_label: cfg.field_label,
-				field_type: cfg.field_type,
-				visible: vc.visible !== false && vc.show_as_column !== false,
-				filterable: vc.filterable !== false,
-			})
-		})
-
-		// Voeg kolommen toe die niet in de view staan (bijv. nieuw toegevoegd)
-		availableFields.forEach(cfg => {
-			if (usedIds.has(cfg.id)) return
-			result.push({
-				field_id: cfg.id,
-				field_name: cfg.field_name,
-				field_label: cfg.field_label,
-				field_type: cfg.field_type,
-				visible: false,
-				filterable: false,
-			})
-		})
-
-		return result
-	}
-
-	// Geen view — alle beschikbare velden, standaard niet zichtbaar
-	return availableFields.map(cfg => ({
-		field_id: cfg.id,
-		field_name: cfg.field_name,
-		field_label: cfg.field_label,
-		field_type: cfg.field_type,
-		visible: false,
-		filterable: false,
-	}))
-}
-
-function _buildEditorFilters(view) {
-	const filters = {}
-	const raw = view?.filters || {}
-	for (const [fieldId, valStr] of Object.entries(raw)) {
-		if (!valStr) continue
-		filters[fieldId] = new Set(String(valStr).split(',').map(v => v.trim()).filter(Boolean))
-	}
-	return filters
-}
-
-function _renderEditorContent(panel, view, editorState, isNew) {
-	panel.innerHTML = ''
-
-	// Header
-	const header = document.createElement('div')
-	header.className = 'mv-editor-header'
-	const h3 = document.createElement('h3')
-	h3.textContent = isNew ? 'Nieuwe weergave' : `Weergave bewerken`
-	const closeBtn = document.createElement('button')
-	closeBtn.className = 'mv-editor-close'
-	closeBtn.innerHTML = '&times;'
-	closeBtn.addEventListener('click', closeViewEditor)
-	header.appendChild(h3)
-	header.appendChild(closeBtn)
-	panel.appendChild(header)
-
-	// Body
-	const body = document.createElement('div')
-	body.className = 'mv-editor-body'
-	panel.appendChild(body)
-
-	// Name row
-	const nameRow = document.createElement('div')
-	nameRow.className = 'mv-editor-row'
-	const nameLabel = document.createElement('label')
-	nameLabel.textContent = 'Naam'
-	const nameInput = document.createElement('input')
-	nameInput.type = 'text'
-	nameInput.value = editorState.name
-	nameInput.placeholder = 'Naam van de weergave'
-	nameInput.addEventListener('input', () => { editorState.name = nameInput.value })
-
-	const defaultBtn = document.createElement('button')
-	defaultBtn.type = 'button'
-	defaultBtn.className = 'mv-default-toggle' + (editorState.isDefault ? ' active' : '')
-	defaultBtn.innerHTML = (editorState.isDefault ? '&#9733;' : '&#9734;') + ' Standaard'
-	defaultBtn.addEventListener('click', () => {
-		editorState.isDefault = !editorState.isDefault
-		defaultBtn.className = 'mv-default-toggle' + (editorState.isDefault ? ' active' : '')
-		defaultBtn.innerHTML = (editorState.isDefault ? '&#9733;' : '&#9734;') + ' Standaard'
-	})
-
-	nameRow.appendChild(nameLabel)
-	nameRow.appendChild(nameInput)
-	nameRow.appendChild(defaultBtn)
-	body.appendChild(nameRow)
-
-	// Columns section
-	const colTitle = document.createElement('div')
-	colTitle.className = 'mv-editor-section-title'
-	colTitle.textContent = 'Kolommen'
-	body.appendChild(colTitle)
-
-	// Column header row
-	const colHeaderRow = document.createElement('div')
-	colHeaderRow.className = 'mv-col-header-row'
-	colHeaderRow.innerHTML = `
-		<span class="mv-col-drag"></span>
-		<span class="mv-col-name mv-col-header-label">Veld</span>
-		<span class="mv-col-check mv-col-header-label">Zichtbaar</span>
-		<span class="mv-col-check mv-col-header-label">Filterbaar</span>
-	`
-	body.appendChild(colHeaderRow)
-
-	// Column rows (drag-to-reorder)
-	const colList = document.createElement('div')
-	colList.id = 'mv-col-list'
-	editorState.columns.forEach((col, idx) => {
-		colList.appendChild(_makeColRow(col, idx, editorState, colList))
-	})
-	body.appendChild(colList)
-
-	// Filters section
-	const filtTitle = document.createElement('div')
-	filtTitle.className = 'mv-editor-section-title'
-	filtTitle.textContent = 'Filters (preset waarden)'
-	body.appendChild(filtTitle)
-
-	// Only visible + filterable columns get a filter row (null returned for unsupported types)
-	editorState.columns.forEach(col => {
-		if (!col.visible || !col.filterable) return
-		const filterRow = _makeFilterRow(col, editorState)
-		if (!filterRow) return
-		filterRow.dataset.filterFieldId = col.field_id
-		body.appendChild(filterRow)
-	})
-
-	// Sort section
-	const sortTitle = document.createElement('div')
-	sortTitle.className = 'mv-editor-section-title'
-	sortTitle.textContent = 'Sortering'
-	body.appendChild(sortTitle)
-
-	const sortRow = document.createElement('div')
-	sortRow.className = 'mv-sort-row'
-
-	const sortFieldSel = document.createElement('select')
-	sortFieldSel.dataset.role = 'sort-field'
-	const noSortOpt = document.createElement('option')
-	noSortOpt.value = ''
-	noSortOpt.textContent = '— geen sortering —'
-	sortFieldSel.appendChild(noSortOpt)
-	editorState.columns.forEach(col => {
-		if (!col.visible) return
-		const opt = document.createElement('option')
-		opt.value = col.field_name
-		opt.textContent = col.field_label
-		if (editorState.sortField === col.field_name) opt.selected = true
-		sortFieldSel.appendChild(opt)
-	})
-	sortFieldSel.addEventListener('change', () => { editorState.sortField = sortFieldSel.value })
-
-	const sortOrderSel = document.createElement('select')
-	;[['asc', 'Oplopend'], ['desc', 'Aflopend']].forEach(([val, label]) => {
-		const opt = document.createElement('option')
-		opt.value = val
-		opt.textContent = label
-		if (editorState.sortOrder === val) opt.selected = true
-		sortOrderSel.appendChild(opt)
-	})
-	sortOrderSel.addEventListener('change', () => { editorState.sortOrder = sortOrderSel.value })
-
-	sortRow.appendChild(sortFieldSel)
-	sortRow.appendChild(sortOrderSel)
-	body.appendChild(sortRow)
-
-	// Footer
-	const footer = document.createElement('div')
-	footer.className = 'mv-editor-footer'
-
-	if (!isNew) {
-		const delBtn = document.createElement('button')
-		delBtn.type = 'button'
-		delBtn.className = 'mv-btn mv-btn-danger'
-		delBtn.textContent = 'Verwijderen'
-		delBtn.addEventListener('click', () => _confirmDeleteView(view))
-		footer.appendChild(delBtn)
-	}
-
-	const cancelBtn = document.createElement('button')
-	cancelBtn.type = 'button'
-	cancelBtn.className = 'mv-btn mv-btn-secondary'
-	cancelBtn.textContent = 'Annuleren'
-	cancelBtn.addEventListener('click', closeViewEditor)
-
-	const saveBtn = document.createElement('button')
-	saveBtn.type = 'button'
-	saveBtn.className = 'mv-btn mv-btn-primary'
-	saveBtn.textContent = 'Opslaan'
-	saveBtn.addEventListener('click', () => _saveViewFromEditor(view, editorState))
-
-	footer.appendChild(cancelBtn)
-	footer.appendChild(saveBtn)
-	panel.appendChild(footer)
-}
-
-function _makeColRow(col, idx, editorState, colList) {
-	const row = document.createElement('div')
-	row.className = 'mv-col-row'
-	row.draggable = true
-	row.dataset.colIdx = idx
-
-	const drag = document.createElement('span')
-	drag.className = 'mv-col-drag'
-	drag.textContent = '⠿'
-	drag.title = 'Slepen om te herordenen'
-
-	const name = document.createElement('span')
-	name.className = 'mv-col-name'
-	name.textContent = col.field_label
-
-	const visCheck = document.createElement('span')
-	visCheck.className = 'mv-col-check'
-	const visInput = document.createElement('input')
-	visInput.type = 'checkbox'
-	visInput.checked = col.visible
-	visInput.title = 'Zichtbaar'
-	const filtCheck = document.createElement('span')
-	filtCheck.className = 'mv-col-check'
-	const filtInput = document.createElement('input')
-	filtInput.type = 'checkbox'
-	filtInput.checked = col.filterable
-	filtInput.title = 'Filterbaar'
-	filtInput.addEventListener('change', () => {
-		col.filterable = filtInput.checked
-		_refreshFilterRows(editorState)
-	})
-	filtCheck.appendChild(filtInput)
-
-	visInput.addEventListener('change', () => {
-		col.visible = visInput.checked
-		// Koppel Filterbaar aan Zichtbaar
-		if (!visInput.checked) {
-			col.filterable = false
-			filtInput.checked = false
-			filtInput.disabled = true
-			filtCheck.classList.add('mv-disabled')
-		} else {
-			filtInput.disabled = false
-			filtCheck.classList.remove('mv-disabled')
-		}
-		_refreshFilterRows(editorState)
-		_refreshSortSection(editorState)
-	})
-	visCheck.appendChild(visInput)
-
-	// Initieel synchroniseren
-	if (!col.visible) {
-		filtInput.disabled = true
-		filtCheck.classList.add('mv-disabled')
-	}
-
-	row.appendChild(drag)
-	row.appendChild(name)
-	row.appendChild(visCheck)
-	row.appendChild(filtCheck)
-
-	// Drag events
-	row.addEventListener('dragstart', (e) => {
-		_editorDragState = { from: parseInt(row.dataset.colIdx) }
-		e.dataTransfer.effectAllowed = 'move'
-		row.style.opacity = '0.4'
-	})
-	row.addEventListener('dragend', () => {
-		row.style.opacity = ''
-		_editorDragState = null
-		// Re-index all rows
-		colList.querySelectorAll('.mv-col-row').forEach((r, i) => { r.dataset.colIdx = i })
-	})
-	row.addEventListener('dragover', (e) => {
-		e.preventDefault()
-		e.dataTransfer.dropEffect = 'move'
-	})
-	row.addEventListener('drop', (e) => {
-		e.preventDefault()
-		if (!_editorDragState) return
-		const fromIdx = _editorDragState.from
-		const toIdx = parseInt(row.dataset.colIdx)
-		if (fromIdx === toIdx) return
-
-		// Reorder editorState.columns
-		const [moved] = editorState.columns.splice(fromIdx, 1)
-		editorState.columns.splice(toIdx, 0, moved)
-
-		// Re-render col list
-		colList.innerHTML = ''
-		editorState.columns.forEach((c, i) => {
-			colList.appendChild(_makeColRow(c, i, editorState, colList))
-		})
-	})
-
-	return row
-}
-
-/**
- * Type-aware filter row factory.
- * Returns null for types where preset filters don't make sense (date, file, filelink).
- */
-function _makeFilterRow(col, editorState) {
-	const type = col.field_type
-
-	// No preset filters for date/file types
-	if (type === 'date' || type === 'file' || type === 'filelink') return null
-
-	if (type === 'checkbox') return _makeCheckboxFilterRow(col, editorState)
-
-	if (['select', 'multiselect', 'multi_select'].includes(type)) {
-		return _makeSelectFilterRow(col, editorState)
-	}
-
-	// text, textarea, number, url, user, and anything else: autocomplete
-	return _makeAutocompleteFilterRow(col, editorState)
-}
-
-/** Wraps a filter row as a collapsible <details> section with badge */
-function _wrapFilterRow(col, content, editorState) {
-	const activeCount = editorState?.filters[col.field_id]?.size || 0
-
-	const details = document.createElement('details')
-	details.className = 'mv-filter-row'
-	if (activeCount > 0) details.open = true
-
-	const summary = document.createElement('summary')
-	summary.className = 'mv-filter-summary'
-
-	const textSpan = document.createElement('span')
-	textSpan.className = 'mv-filter-summary-text'
-	textSpan.textContent = col.field_label
-	summary.appendChild(textSpan)
-
-	const badge = document.createElement('span')
-	badge.className = 'mv-filter-badge'
-	badge.dataset.badgeFor = col.field_id
-	badge.textContent = String(activeCount)
-	badge.style.display = activeCount > 0 ? 'inline-flex' : 'none'
-	summary.appendChild(badge)
-
-	summary.insertAdjacentHTML('beforeend', '<svg class="mv-filter-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>')
-
-	details.appendChild(summary)
-
-	const body = document.createElement('div')
-	body.className = 'mv-filter-body'
-	body.appendChild(content)
-	details.appendChild(body)
-
-	return details
-}
-
-/** Updates the badge count on a filter row's summary */
-function _updateFilterBadge(detailsEl, count) {
-	const badge = detailsEl?.querySelector('.mv-filter-badge')
-	if (!badge) return
-	badge.textContent = String(count)
-	badge.style.display = count > 0 ? 'inline-flex' : 'none'
-}
-
-/**
- * Checkbox field: aanvinklijst met "Ja" / "Nee" — consistent met select-filter.
- * Stores "1" for Ja, "0" for Nee in the tagSet.
- */
-function _makeCheckboxFilterRow(col, editorState) {
-	const tagSet = editorState.filters[col.field_id] || new Set()
-	editorState.filters[col.field_id] = tagSet
-
-	const list = document.createElement('div')
-	list.className = 'mv-select-filter-list'
-
-	const detailsEl = _wrapFilterRow(col, list, editorState)
-
-	;[['1', 'Ja'], ['0', 'Nee']].forEach(([val, label]) => {
-		const item = document.createElement('label')
-		item.className = 'mv-select-filter-item'
-
-		const cb = document.createElement('input')
-		cb.type = 'checkbox'
-		cb.checked = tagSet.has(val)
-		cb.addEventListener('change', () => {
-			if (cb.checked) tagSet.add(val)
-			else tagSet.delete(val)
-			_updateFilterBadge(detailsEl, tagSet.size)
-		})
-
-		item.appendChild(cb)
-		item.appendChild(document.createTextNode(label))
-		list.appendChild(item)
-	})
-
-	return detailsEl
-}
-
-/**
- * Select/multiselect field: scrollbare aanvinklijst met vaste opties uit cfg.options.
- * cfg.options kan een string zijn ("opt1\nopt2") of array.
- */
-function _makeSelectFilterRow(col, editorState) {
-	const tagSet = editorState.filters[col.field_id] || new Set()
-	editorState.filters[col.field_id] = tagSet
-
-	// Parse options from column (field_options is enriched by the server in view.columns)
-	const rawOptions = col.field_options ?? availableFields.find(c => String(c.id) === String(col.field_id))?.field_options
-	let options = []
-	if (rawOptions) {
-		if (Array.isArray(rawOptions)) {
-			options = rawOptions.map(o => (typeof o === 'object' ? (o.label || o.value || String(o)) : String(o)))
-		} else {
-			// Newline or comma separated string
-			options = String(rawOptions).split(/[\n,]/).map(s => s.trim()).filter(Boolean)
-		}
-	}
-
-	const list = document.createElement('div')
-	list.className = 'mv-select-filter-list'
-
-	const detailsEl = _wrapFilterRow(col, list, editorState)
-
-	if (options.length === 0) {
-		const empty = document.createElement('div')
-		empty.className = 'mv-autocomplete-empty'
-		empty.textContent = 'Geen opties beschikbaar'
-		list.appendChild(empty)
-	} else {
-		options.forEach(opt => {
-			const item = document.createElement('label')
-			item.className = 'mv-select-filter-item'
-
-			const cb = document.createElement('input')
-			cb.type = 'checkbox'
-			cb.checked = tagSet.has(opt)
-			cb.addEventListener('change', () => {
-				if (cb.checked) tagSet.add(opt)
-				else tagSet.delete(opt)
-				_updateFilterBadge(detailsEl, tagSet.size)
-			})
-
-			item.appendChild(cb)
-			item.appendChild(document.createTextNode(opt))
-			list.appendChild(item)
-		})
-	}
-
-	return detailsEl
-}
-
-/**
- * Text/number/url/user/textarea field: tag-chips met autocomplete dropdown.
- * Lazy-laadt bestaande DB-waarden bij focus.
- */
-function _makeAutocompleteFilterRow(col, editorState) {
-	const tagSet = editorState.filters[col.field_id] || new Set()
-	editorState.filters[col.field_id] = tagSet
-
-	const wrap = document.createElement('div')
-	wrap.className = 'mv-autocomplete-wrap'
-
-	const tagsBox = document.createElement('div')
-	tagsBox.className = 'mv-filter-tags'
-	wrap.appendChild(tagsBox)
-
-	let detailsEl = null
-	let dropdownEl = null
-	let allValues = []
-
-	function removeDropdown() {
-		dropdownEl?.remove()
-		dropdownEl = null
-	}
-
-	function renderDropdown(query) {
-		removeDropdown()
-		const filtered = allValues.filter(v =>
-			(!query || v.toLowerCase().includes(query.toLowerCase())),
-		)
-		if (filtered.length === 0 && !query) return
-
-		dropdownEl = document.createElement('div')
-		dropdownEl.className = 'mv-autocomplete-dropdown'
-
-		if (filtered.length === 0) {
-			const empty = document.createElement('div')
-			empty.className = 'mv-autocomplete-empty'
-			empty.textContent = 'Geen overeenkomsten'
-			dropdownEl.appendChild(empty)
-		} else {
-			filtered.forEach(val => {
-				const item = document.createElement('div')
-				const alreadySelected = tagSet.has(val)
-				item.className = 'mv-autocomplete-item' + (alreadySelected ? ' mv-item-selected' : '')
-				item.textContent = val
-				if (!alreadySelected) {
-					item.addEventListener('mousedown', (e) => {
-						e.preventDefault()
-						tagSet.add(val)
-						renderTags()
-						removeDropdown()
-					})
-				}
-				dropdownEl.appendChild(item)
-			})
-		}
-
-		wrap.appendChild(dropdownEl)
-	}
-
-	function renderTags() {
-		tagsBox.innerHTML = ''
-		for (const val of tagSet) {
-			const tag = document.createElement('span')
-			tag.className = 'mv-filter-tag'
-			tag.textContent = val
-			const removeBtn = document.createElement('button')
-			removeBtn.type = 'button'
-			removeBtn.className = 'mv-filter-tag-remove'
-			removeBtn.innerHTML = '&times;'
-			removeBtn.addEventListener('click', () => { tagSet.delete(val); renderTags() })
-			tag.appendChild(removeBtn)
-			tagsBox.appendChild(tag)
-		}
-
-		const input = document.createElement('input')
-		input.type = 'text'
-		input.className = 'mv-filter-input'
-		input.placeholder = '+ waarde toevoegen'
-
-		input.addEventListener('focus', async () => {
-			if (allValues.length === 0) {
-				allValues = await _getFilterValues(col.field_name)
-			}
-			renderDropdown(input.value)
-		})
-
-		input.addEventListener('input', () => {
-			renderDropdown(input.value)
-		})
-
-		input.addEventListener('keydown', (e) => {
-			if ((e.key === 'Enter' || e.key === ',') && input.value.trim()) {
-				e.preventDefault()
-				tagSet.add(input.value.trim())
-				renderTags()
-				removeDropdown()
-			} else if (e.key === 'Escape') {
-				removeDropdown()
-			} else if (e.key === 'Backspace' && !input.value && tagSet.size > 0) {
-				const last = [...tagSet].pop()
-				tagSet.delete(last)
-				renderTags()
-			}
-		})
-
-		input.addEventListener('blur', () => {
-			// Slight delay so mousedown on dropdown item fires first
-			setTimeout(() => {
-				removeDropdown()
-				if (input.value.trim()) { tagSet.add(input.value.trim()); renderTags() }
-			}, 150)
-		})
-
-		tagsBox.appendChild(input)
-		_updateFilterBadge(detailsEl, tagSet.size)
-	}
-
-	detailsEl = _wrapFilterRow(col, wrap, editorState)
-	renderTags()
-	return detailsEl
-}
-
-function _refreshFilterRows(editorState) {
-	const body = document.querySelector(`#${VIEW_EDITOR_ID} .mv-editor-body`)
-	if (!body) return
-
-	// Remove existing filter rows
-	body.querySelectorAll('.mv-filter-row').forEach(r => r.remove())
-
-	// Find the sort section title to insert before it
-	const sortTitle = [...body.querySelectorAll('.mv-editor-section-title')].find(el => el.textContent.includes('Sortering'))
-
-	editorState.columns.forEach(col => {
-		if (!col.visible || !col.filterable) return
-		const filterRow = _makeFilterRow(col, editorState)
-		if (!filterRow) return
-		filterRow.dataset.filterFieldId = col.field_id
-		if (sortTitle) {
-			sortTitle.insertAdjacentElement('beforebegin', filterRow)
-		} else {
-			body.appendChild(filterRow)
-		}
-	})
-}
-
-function _refreshSortSection(editorState) {
-	const sortFieldSel = document.querySelector(`#${VIEW_EDITOR_ID} [data-role="sort-field"]`)
-	if (!sortFieldSel) return
-
-	const currentVal = editorState.sortField
-	sortFieldSel.innerHTML = ''
-
-	const noOpt = document.createElement('option')
-	noOpt.value = ''
-	noOpt.textContent = '— geen sortering —'
-	sortFieldSel.appendChild(noOpt)
-
-	editorState.columns.forEach(col => {
-		if (!col.visible) return
-		const opt = document.createElement('option')
-		opt.value = col.field_name
-		opt.textContent = col.field_label
-		if (editorState.sortField === col.field_name) opt.selected = true
-		sortFieldSel.appendChild(opt)
-	})
-
-	// Reset sortField als het geselecteerde veld niet meer zichtbaar is
-	const stillVisible = [...sortFieldSel.options].some(o => o.value === currentVal && currentVal !== '')
-	if (!stillVisible) {
-		editorState.sortField = ''
-		sortFieldSel.value = ''
-	}
-}
-
-async function _saveViewFromEditor(view, editorState) {
-	const name = editorState.name.trim()
-	if (!name) {
-		alert('Vul een naam in voor de weergave')
-		return
-	}
-
-	const saveBtn = document.querySelector(`#${VIEW_EDITOR_ID} .mv-btn-primary`)
-	if (saveBtn) saveBtn.classList.add('loading')
-
-	// Build columns payload: [{field_id, field_label, visible, filterable}]
-	const columns = editorState.columns.map(col => ({
-		field_id: col.field_id,
-		field_name: col.field_name,
-		field_label: col.field_label,
-		visible: col.visible,
-		filterable: col.filterable,
-	}))
-
-	// Build filters payload: { field_id: "val1,val2" }
-	const filters = {}
-	for (const [fieldId, tagSet] of Object.entries(editorState.filters)) {
-		if (tagSet.size > 0) {
-			filters[fieldId] = [...tagSet].join(',')
-		}
-	}
-
-	const payload = {
-		name,
-		is_default: editorState.isDefault,
-		columns,
-		filters,
-		sort_field: editorState.sortField || null,
-		sort_order: editorState.sortOrder || null,
-	}
-
+/** Handle save from Vue editor component */
+async function _handleEditorSave(view, payload) {
 	try {
 		let savedView
 		if (!view) {
-			// Create
 			const url = generateUrl('/apps/metavox/api/groupfolders/{gfId}/views', { gfId: activeGroupfolderId })
 			const resp = await axios.post(url, payload)
 			savedView = resp.data
 		} else {
-			// Update
 			const url = generateUrl('/apps/metavox/api/groupfolders/{gfId}/views/{viewId}', {
 				gfId: activeGroupfolderId,
 				viewId: view.id,
@@ -1935,23 +1264,28 @@ async function _saveViewFromEditor(view, editorState) {
 
 		closeViewEditor()
 
-		// Reload views and rebuild tabs
 		const result = await fetchViews(activeGroupfolderId)
 		activeViews = result.views
 		canManageViews = result.canManage
 		injectViewTabs(activeViews)
 
-		// Auto-apply the saved view
 		if (savedView) {
 			const fi = getFilterInstance()
 			if (fi) applyView(savedView, fi)
 		}
 	} catch (e) {
 		console.error('MetaVox: Failed to save view', e)
-		const sb = document.querySelector(`#${VIEW_EDITOR_ID} .mv-btn-primary`)
-		if (sb) sb.classList.remove('loading')
 		alert('Opslaan mislukt: ' + (e.response?.data?.error || e.message))
 	}
+}
+
+function closeViewEditor() {
+	const panel = document.getElementById(VIEW_EDITOR_ID)
+	if (panel?._vueApp) {
+		panel._vueApp.unmount()
+	}
+	panel?.remove()
+	document.querySelector('.mv-editor-overlay')?.remove()
 }
 
 async function _confirmDeleteView(view) {
@@ -2294,17 +1628,21 @@ export async function updateColumnsForCurrentFolder() {
 		activeViews = []
 		activeView = null
 		metadataCache.clear()
+		prefetchedFilterValues = null
 		currentSort = null
 		return
 	}
 
 	activeGroupfolderId = groupfolderId
 
-	// Fetch available fields and views in parallel
-	const [fields, viewsResult] = await Promise.all([
+	// Fetch available fields, views, and filter values in parallel
+	const [fields, viewsResult, filterValues] = await Promise.all([
 		fetchAvailableFields(groupfolderId),
 		fetchViews(groupfolderId),
+		fetchAllFilterValues(groupfolderId),
 	])
+
+	prefetchedFilterValues = filterValues
 
 	availableFields = fields
 	activeViews = viewsResult.views
@@ -2316,25 +1654,10 @@ export async function updateColumnsForCurrentFolder() {
 		return
 	}
 
-	// Bulk load metadata (for all possible fields — view filtering happens in rendering)
-	const rows = document.querySelectorAll('tr[data-cy-files-list-row]')
-	const fileIds = [...rows].map(r => Number(r.getAttribute('data-cy-files-list-row-fileid'))).filter(Boolean)
-
-	if (fileIds.length > 0) {
-		const data = await fetchDirectoryMetadata(groupfolderId, fileIds)
-		for (const [fileId, fields2] of Object.entries(data)) {
-			metadataCache.set(Number(fileId), fields2)
-		}
-		for (const id of fileIds) {
-			if (!metadataCache.has(id)) {
-				metadataCache.set(id, {})
-			}
-		}
-	}
-
 	columnsActive = true
 	loadPersistedWidths()
 
+	// Inject UI immediately (don't wait for metadata)
 	injectColumnStyles()
 	injectHeaderColumns()
 	registerMetaVoxFilter([], groupfolderId, metadataCache)
@@ -2342,25 +1665,40 @@ export async function updateColumnsForCurrentFolder() {
 	injectAllExistingRows()
 	startRowObserver()
 
-	// Inject view tabs and restore view/filter state from URL
+	// Inject view tabs and restore view/filter state from URL immediately
 	const filterInstance = getFilterInstance()
 	if (activeViews.length > 0 || canManageViews) {
-		// Defer injection slightly so the filter bar DOM is ready
-		setTimeout(() => {
-			injectViewTabs(activeViews)
-			if (filterInstance) {
-				const params = new URLSearchParams(window.location.search)
-				if (params.has('mvview')) {
-					restoreViewFromUrl(activeViews, filterInstance)
-				} else {
-					// No URL state — auto-apply the default view if one is configured
-					const defaultView = activeViews.find(v => v.is_default)
-					if (defaultView) {
-						applyView(defaultView, filterInstance)
-					}
+		injectViewTabs(activeViews)
+		if (filterInstance) {
+			const params = new URLSearchParams(window.location.search)
+			if (params.has('mvview')) {
+				restoreViewFromUrl(activeViews, filterInstance)
+			} else {
+				const defaultView = activeViews.find(v => v.is_default)
+				if (defaultView) {
+					applyView(defaultView, filterInstance)
 				}
 			}
-		}, 200)
+		}
+	}
+
+	// Load metadata in the background (non-blocking)
+	const rows = document.querySelectorAll('tr[data-cy-files-list-row]')
+	const fileIds = [...rows].map(r => Number(r.getAttribute('data-cy-files-list-row-fileid'))).filter(Boolean)
+
+	if (fileIds.length > 0) {
+		fetchDirectoryMetadata(groupfolderId, fileIds).then(data => {
+			for (const [fileId, fields2] of Object.entries(data)) {
+				metadataCache.set(Number(fileId), fields2)
+			}
+			for (const id of fileIds) {
+				if (!metadataCache.has(id)) {
+					metadataCache.set(id, {})
+				}
+			}
+			updateAllRowCells()
+			updateFilterCache(metadataCache)
+		})
 	}
 }
 
@@ -2382,6 +1720,10 @@ export function getActiveColumnConfigs() {
 
 export function getActiveGroupfolderId() {
 	return activeGroupfolderId
+}
+
+export function getPrefetchedFilterValues() {
+	return prefetchedFilterValues
 }
 
 export function startColumnWatcher() {

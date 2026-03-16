@@ -143,10 +143,10 @@ return [
         ['name' => 'apiField#getGroupfolderFileFields', 'url' => '/api/v1/groupfolders/{groupfolderId}/file-fields', 'verb' => 'GET'],
 
         // Bulk directory metadata (optimized for file list columns)
-        ['name' => 'apiField#getDirectoryMetadata', 'url' => '/api/v1/groupfolders/{groupfolderId}/directory-metadata', 'verb' => 'GET'],
+        ['name' => 'apiFilter#getDirectoryMetadata', 'url' => '/api/v1/groupfolders/{groupfolderId}/directory-metadata', 'verb' => 'GET'],
 
-        // Filter values (distinct values for filter dropdowns)
-        ['name' => 'apiField#getFilterValues', 'url' => '/api/v1/groupfolders/{groupfolderId}/filter-values', 'verb' => 'GET'],
+        // Filter values (distinct values for filter dropdowns — batch)
+        ['name' => 'apiFilter#getAllFilterValues', 'url' => '/api/v1/groupfolders/{groupfolderId}/all-filter-values', 'verb' => 'GET'],
 
         // Field update and delete (OCS)
         ['name' => 'apiField#updateGroupfolderField', 'url' => '/api/v1/groupfolder-fields/{id}', 'verb' => 'PUT'],
@@ -155,9 +155,9 @@ return [
         // ========================================
         // 👁 VIEWS ROUTES (OCS — CSRF-free)
         // ========================================
-        ['name' => 'apiField#listViews',  'url' => '/api/v1/groupfolders/{groupfolderId}/views',           'verb' => 'GET'],
-        ['name' => 'apiField#createView', 'url' => '/api/v1/groupfolders/{groupfolderId}/views',           'verb' => 'POST'],
-        ['name' => 'apiField#updateView', 'url' => '/api/v1/groupfolders/{groupfolderId}/views/{viewId}',  'verb' => 'PUT'],
-        ['name' => 'apiField#deleteView', 'url' => '/api/v1/groupfolders/{groupfolderId}/views/{viewId}',  'verb' => 'DELETE'],
+        ['name' => 'apiView#listViews',  'url' => '/api/v1/groupfolders/{groupfolderId}/views',           'verb' => 'GET'],
+        ['name' => 'apiView#createView', 'url' => '/api/v1/groupfolders/{groupfolderId}/views',           'verb' => 'POST'],
+        ['name' => 'apiView#updateView', 'url' => '/api/v1/groupfolders/{groupfolderId}/views/{viewId}',  'verb' => 'PUT'],
+        ['name' => 'apiView#deleteView', 'url' => '/api/v1/groupfolders/{groupfolderId}/views/{viewId}',  'verb' => 'DELETE'],
     ]
 ];

@@ -33,7 +33,7 @@ class ViewController extends Controller {
     /**
      * List all views for a groupfolder
      * @NoAdminRequired
-     * @NoCSRFRequired
+
      */
     public function listViews(int $gfId): JSONResponse {
         try {
@@ -53,7 +53,7 @@ class ViewController extends Controller {
 
     /**
      * Create a new view for a groupfolder
-     * @NoCSRFRequired
+
      */
     public function createView(int $gfId): JSONResponse {
         try {
@@ -86,7 +86,7 @@ class ViewController extends Controller {
 
     /**
      * Update an existing view
-     * @NoCSRFRequired
+
      */
     public function updateView(int $gfId, int $viewId): JSONResponse {
         try {
@@ -124,7 +124,7 @@ class ViewController extends Controller {
 
     /**
      * Delete a view
-     * @NoCSRFRequired
+
      */
     public function deleteView(int $gfId, int $viewId): JSONResponse {
         try {
