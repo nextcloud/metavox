@@ -70,3 +70,9 @@ Open the view editor and click **Delete** (red button, bottom left). This cannot
 - Views are shared across all users of a team folder; there are no per-user views
 - The Filters section only shows fields that are Visible in the current view — hiding a field also removes it from the filter options
 - Checkbox fields (Yes/No) always offer both "Yes" and "No" as filter options, even if no documents have been checked yet
+
+## See Also
+
+- [Using Views](../user/views.md) - How users interact with views
+- [Permissions](permissions.md) - Roles and access control
+- [Field Types](../user/field-types.md) - Available metadata field types

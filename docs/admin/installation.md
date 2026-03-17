@@ -106,8 +106,15 @@ Or update manually by replacing the app folder with the new version.
 - Check for duplicate field names
 - Ensure field types are valid
 
+### MetaVox settings not visible
+
+- Verify MetaVox is enabled in **Apps**
+- Clear browser cache and reload the page
+- Check Nextcloud logs for errors related to MetaVox
+
 ## Next Steps
 
 - [Permissions](permissions.md) - Configure access control
 - [Compliance Templates](compliance-templates.md) - Use pre-built templates
 - [Flow Integration](flow-integration.md) - Automate workflows
+- [Licensing](licensing.md) - Configure license management

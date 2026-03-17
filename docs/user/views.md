@@ -12,6 +12,8 @@ A view defines:
 
 Views are configured by an administrator and apply per team folder. Each team folder can have multiple views for different workflows or audiences.
 
+> **Administrators**: To create and manage views, see [Managing Views](../admin/views.md).
+
 ## Switching views
 
 Above the file list you'll see a bar with the available views for the current team folder. Click a tab to activate that view.
@@ -61,3 +63,9 @@ A team folder can have a default view that activates automatically when you open
 - Views only affect the file list display; they do not change or restrict the actual files or metadata
 - Only fields that are both **Visible** and **Filterable** appear in the filter panel
 - Column order in the file list follows the order set by the administrator per view
+
+## See Also
+
+- [Bulk Editing](bulk-editing.md) - Edit metadata for multiple files
+- [Field Types](field-types.md) - Understanding metadata field types
+- [Managing Views](../admin/views.md) - Creating and configuring views (administrators)

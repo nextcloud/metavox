@@ -74,25 +74,7 @@ Combines the most important fields from all three templates for organizations th
 
 Combine MetaVox metadata with Nextcloud Flow for automation:
 
-### Example 1: Block access to unclassified documents
-
-1. Go to **Settings** > **Flow**
-2. Click **Add new flow**
-3. Trigger: "File accessed"
-4. Condition: MetaVox metadata > `openbaarheid_status` **is** `Nog te beoordelen`
-5. Action: **Block access**
-
-### Example 2: Notification for approaching destruction date
-
-1. Create a Flow rule with trigger "File accessed"
-2. Condition: MetaVox metadata > `vernietigingsjaar` **is** `2026`
-3. Action: **Send notification** "Document approaching destruction date"
-
-### Example 3: Automatically mark for archival
-
-1. Trigger: "Tag assigned" or periodically via background job
-2. Condition: MetaVox metadata > `dossier_status` **is** `Afgesloten`
-3. Action: Move to archive folder or send notification to archivist
+For detailed Flow rule examples, see [Flow Integration](flow-integration.md).
 
 ## Legal Context
 
@@ -148,3 +130,10 @@ The templates are a starting point. Customize them for your organization:
 - [VNG Selection List](https://vng.nl/selectielijst) - Official municipal selection list (Dutch)
 - [Dutch Data Protection Authority](https://autoriteitpersoonsgegevens.nl) - GDPR information (Dutch)
 - [Open Government Act](https://wetten.overheid.nl/BWBR0045754) - Official legal text (Dutch)
+
+## See Also
+
+- [Flow Integration](flow-integration.md) - Automate workflows with metadata
+- [Installation](installation.md) - Import templates during setup
+- [Permissions](permissions.md) - Access control
+- [Privacy & Security](../architecture/privacy.md) - GDPR compliance details

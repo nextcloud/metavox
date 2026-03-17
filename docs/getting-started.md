@@ -28,6 +28,7 @@ See [User Overview](user/overview.md) for detailed instructions.
 2. Select a Team folder to configure
 3. Define metadata fields (text, dropdown, date, etc.)
 4. Optionally import a [compliance template](admin/compliance-templates.md)
+5. Optionally configure [licensing](admin/licensing.md)
 
 See [Installation Guide](admin/installation.md) for setup details.
 
@@ -53,3 +54,10 @@ Review the [Architecture Overview](architecture/overview.md) to understand:
 - [User Guide](user/overview.md) - Working with metadata daily
 - [Admin Guide](admin/installation.md) - Configuring MetaVox
 - [API Reference](architecture/api-reference.md) - Programmatic access
+- [Roadmap](../ROADMAP.md)
+
+## See Also
+
+- [User Overview](user/overview.md) - Getting started as a user
+- [Installation Guide](admin/installation.md) - Setup and configuration
+- [Architecture Overview](architecture/overview.md) - System design and internals

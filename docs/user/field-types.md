@@ -11,6 +11,8 @@ A simple single-line text input for short values.
 
 **Use cases:** Title, author name, document ID, short descriptions
 
+**Example:** "Q4 Budget Report"
+
 **Options:** None
 
 ---
@@ -19,6 +21,8 @@ A simple single-line text input for short values.
 A multi-line text input for longer content.
 
 **Use cases:** Descriptions, notes, summaries, comments
+
+**Example:** "This document outlines the proposed budget for Q4, including projections for..."
 
 **Options:** None
 
@@ -29,6 +33,8 @@ Numeric input that only accepts numbers.
 
 **Use cases:** Version numbers, counts, quantities, years
 
+**Example:** `42`
+
 **Options:** None
 
 ---
@@ -37,6 +43,8 @@ Numeric input that only accepts numbers.
 A date picker for selecting dates.
 
 **Use cases:** Publication date, expiry date, review date
+
+**Example:** 2026-04-15
 
 **Options:** None
 
@@ -47,6 +55,8 @@ A boolean yes/no toggle.
 
 **Use cases:** Approved status, confidential flag, published status
 
+**Example:** ✅ (checked) or ☐ (unchecked)
+
 **Options:** None
 
 ---
@@ -56,6 +66,8 @@ A dropdown menu with predefined options. Users can select one value.
 
 **Use cases:** Status, category, department, document type
 
+**Example:** "In Review" (from options: Draft, In Review, Approved, Archived)
+
 **Options:** Define the available choices as comma-separated values in the field configuration.
 
 ---
@@ -64,6 +76,8 @@ A dropdown menu with predefined options. Users can select one value.
 Similar to Select, but allows multiple selections.
 
 **Use cases:** Tags, applicable departments, related topics
+
+**Example:** "Legal, Finance" (from options: Legal, Finance, HR, IT)
 
 **Options:** Define the available choices as comma-separated values in the field configuration.
 
@@ -124,7 +138,7 @@ When creating a field in the admin settings, you can configure:
 | **Field Type** | One of the types described above |
 | **Description** | Help text shown below the field |
 | **Required** | Whether the field must be filled in |
-| **Options** | For Select/Multi-select: comma-separated list of choices |
+| **Options** | For Select and Multi-select fields: comma-separated list of choices |
 
 ---
 
@@ -142,6 +156,7 @@ Metadata specific to individual documents within a Team folder. Editable by user
 
 ## See Also
 
-- [API Reference](../architecture/api-reference.md) - API examples for batch operations
-- [Changelog](../../CHANGELOG.md) - Version history
-- [README](../../README.md) - Main documentation
+- [User Overview](overview.md) - Getting started with metadata
+- [Views](views.md) - Filtering and sorting by field values
+- [Bulk Editing](bulk-editing.md) - Edit fields for multiple files
+- [Exporting Data](exporting-data.md) - Export metadata to CSV
