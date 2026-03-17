@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Controller;
 
-use OCA\MetaVox\Service\AiAutofillService;
 use OCA\MetaVox\Service\TelemetryService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
@@ -29,7 +28,6 @@ class TelemetryController extends Controller {
         string $appName,
         IRequest $request,
         private TelemetryService $telemetryService,
-        private AiAutofillService $aiService,
         private IUserSession $userSession,
         private IGroupManager $groupManager,
         private LoggerInterface $logger
@@ -71,7 +69,6 @@ class TelemetryController extends Controller {
             return new DataResponse([
                 'success' => true,
                 ...$status,
-                'aiEnabled' => $this->aiService->isEnabledByAdmin(),
             ]);
         } catch (\Exception $e) {
             $this->logger->error('Failed to get telemetry status', [
@@ -176,19 +173,14 @@ class TelemetryController extends Controller {
 
         try {
             $enabled = $this->request->getParam('enabled');
-            $aiEnabled = $this->request->getParam('aiEnabled');
 
             if ($enabled !== null) {
                 $this->telemetryService->setEnabled($enabled === 'true' || $enabled === true || $enabled === '1' || $enabled === 1);
             }
 
-            if ($aiEnabled !== null) {
-                $this->aiService->setEnabled($aiEnabled === 'true' || $aiEnabled === true || $aiEnabled === '1' || $aiEnabled === 1);
-            }
-
             return new DataResponse([
                 'success' => true,
-                'message' => 'Settings saved successfully'
+                'message' => 'Telemetry settings saved successfully'
             ]);
         } catch (\Exception $e) {
             $this->logger->error('Failed to save telemetry settings', [

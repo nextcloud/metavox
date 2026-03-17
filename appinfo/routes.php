@@ -72,6 +72,12 @@ return [
         ['name' => 'permission#revokeGroupPermission', 'url' => '/api/permissions/group/{permissionId}', 'verb' => 'DELETE'],
 
         // ========================================
+        // ⚙️ ADMIN SETTINGS ROUTES
+        // ========================================
+        ['name' => 'settings#get', 'url' => '/api/settings', 'verb' => 'GET'],
+        ['name' => 'settings#save', 'url' => '/api/settings', 'verb' => 'POST'],
+
+        // ========================================
         // 📊 TELEMETRY ROUTES
         // ========================================
         ['name' => 'telemetry#getStatus', 'url' => '/api/telemetry/status', 'verb' => 'GET'],
