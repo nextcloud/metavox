@@ -308,9 +308,18 @@ PROMPT;
             $json = $matches[1];
         } elseif (preg_match('/(\{.*\})/s', $response, $matches)) {
             $json = $matches[1];
+        } elseif (preg_match('/(\{.*)/s', $response, $matches)) {
+            // JSON was truncated (no closing brace) — try to repair
+            $json = $matches[1];
         }
 
         $decoded = json_decode($json, true);
+        if (!is_array($decoded)) {
+            // Attempt to fix truncated JSON: remove trailing incomplete entry and close
+            $repaired = preg_replace('/,\s*"[^"]*"?\s*:?\s*"?[^"]*$/', '', $json);
+            $repaired = rtrim($repaired, ", \n\r\t") . '}';
+            $decoded = json_decode($repaired, true);
+        }
         if (!is_array($decoded)) {
             return [];
         }
