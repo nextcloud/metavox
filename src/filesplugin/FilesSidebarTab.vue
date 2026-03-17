@@ -868,12 +868,14 @@ export default {
 }
 
 .ai-error {
-	padding: 8px 12px;
+	padding: 10px 14px;
 	margin-bottom: 12px;
-	background-color: var(--color-error);
-	color: var(--color-primary-element-text);
+	background-color: var(--color-error-hover, #fdd);
+	color: var(--color-error-text, #900);
+	border: 1px solid var(--color-error, #c00);
 	border-radius: var(--border-radius);
 	font-size: 13px;
+	line-height: 1.4;
 }
 
 .ai-error p {
