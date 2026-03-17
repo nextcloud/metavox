@@ -45,6 +45,28 @@
 			</div>
 		</div>
 
+		<!-- AI Autofill Section -->
+		<div class="settings-section">
+			<h2>{{ t('metavox', 'AI Metadata Generation') }}</h2>
+			<p class="settings-section-desc">
+				{{ t('metavox', 'Allow users to generate metadata suggestions using AI. Requires an AI provider to be configured in Nextcloud.') }}
+			</p>
+
+			<div class="telemetry-settings">
+				<div class="engagement-option">
+					<NcCheckboxRadioSwitch
+						type="switch"
+						:model-value="aiEnabled"
+						@update:model-value="toggleAi">
+						<div class="option-info">
+							<span class="option-label">{{ t('metavox', 'Enable AI metadata generation') }}</span>
+							<span class="option-desc">{{ t('metavox', 'When enabled, users see a "Generate with AI" button in the metadata sidebar. The AI reads file content and suggests values for metadata fields.') }}</span>
+						</div>
+					</NcCheckboxRadioSwitch>
+				</div>
+			</div>
+		</div>
+
 		<!-- Telemetry Section -->
 		<div class="settings-section">
 			<h2>{{ t('metavox', 'Anonymous Usage Statistics') }}</h2>
@@ -123,6 +145,7 @@ export default {
 	data() {
 		return {
 			telemetryEnabled: true,
+			aiEnabled: true,
 			lastReport: null,
 			sendingTelemetry: false,
 			message: '',
@@ -147,6 +170,9 @@ export default {
 				if (response.data.success) {
 					this.telemetryEnabled = response.data.enabled
 					this.lastReport = response.data.lastReport
+					if (response.data.aiEnabled !== undefined) {
+						this.aiEnabled = response.data.aiEnabled
+					}
 				}
 			} catch (error) {
 				console.error('Failed to load telemetry status:', error)
@@ -183,6 +209,24 @@ export default {
 				this.showMessage(this.t('metavox', 'Failed to send report'), 'error')
 			} finally {
 				this.sendingTelemetry = false
+			}
+		},
+
+		async toggleAi(enabled) {
+			try {
+				await axios.post(generateUrl('/apps/metavox/api/telemetry/settings'), {
+					aiEnabled: enabled,
+				})
+				this.aiEnabled = enabled
+				this.showMessage(
+					enabled
+						? this.t('metavox', 'AI metadata generation enabled.')
+						: this.t('metavox', 'AI metadata generation disabled.'),
+					'success',
+				)
+			} catch (error) {
+				console.error('Failed to update AI settings:', error)
+				this.showMessage(this.t('metavox', 'Failed to update settings'), 'error')
 			}
 		},
 
