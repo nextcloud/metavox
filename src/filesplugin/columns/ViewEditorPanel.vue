@@ -2,7 +2,7 @@
 	<div class="mv-editor-panel">
 		<!-- Header -->
 		<div class="mv-editor-header">
-			<h3>{{ isNew ? t('metavox', 'New view') : t('metavox', 'Edit view') }}</h3>
+			<h3>{{ readonly ? t('metavox', 'View details') : (isNew ? t('metavox', 'New view') : t('metavox', 'Edit view')) }}</h3>
 			<NcButton type="tertiary"
 				:aria-label="t('metavox', 'Close')"
 				@click="emit('close')">
@@ -19,6 +19,7 @@
 				<label>{{ t('metavox', 'Name') }}</label>
 				<NcTextField :model-value="editorState.name"
 					:placeholder="t('metavox', 'View name')"
+					:disabled="readonly"
 					@update:model-value="editorState.name = $event" />
 			</div>
 
@@ -26,6 +27,7 @@
 			<div class="mv-editor-row">
 				<NcCheckboxRadioSwitch :model-value="editorState.isDefault"
 					type="checkbox"
+					:disabled="readonly"
 					@update:model-value="editorState.isDefault = $event">
 					{{ t('metavox', 'Default view') }}
 				</NcCheckboxRadioSwitch>
@@ -45,23 +47,24 @@
 				<div v-for="(col, index) in editorState.columns"
 					:key="col.field_id"
 					class="mv-col-row"
-					draggable="true"
+					:draggable="!readonly"
 					:data-col-idx="index"
-					@dragstart="onDragStart($event, index)"
+					@dragstart="!readonly && onDragStart($event, index)"
 					@dragend="onDragEnd"
 					@dragover.prevent
-					@drop.prevent="onDrop($event, index)">
-					<DragVerticalIcon :size="18" class="mv-col-drag" :title="t('metavox', 'Drag to reorder')" />
+					@drop.prevent="!readonly && onDrop($event, index)">
+					<DragVerticalIcon :size="18" class="mv-col-drag" :class="{ 'mv-disabled': readonly }" :title="t('metavox', 'Drag to reorder')" />
 					<span class="mv-col-name">{{ col.field_label }}</span>
 					<span class="mv-col-check">
 						<NcCheckboxRadioSwitch :model-value="col.visible"
 							type="checkbox"
+							:disabled="readonly"
 							@update:model-value="toggleVisible(col, $event)" />
 					</span>
 					<span class="mv-col-check" :class="{ 'mv-disabled': !col.visible }">
 						<NcCheckboxRadioSwitch :model-value="col.filterable"
 							type="checkbox"
-							:disabled="!col.visible"
+							:disabled="readonly || !col.visible"
 							@update:model-value="toggleFilterable(col, $event)" />
 					</span>
 				</div>
@@ -87,12 +90,14 @@
 							<NcCheckboxRadioSwitch
 								:model-value="hasFilterValue(col, '1')"
 								type="checkbox"
+								:disabled="readonly"
 								@update:model-value="toggleFilterValue(col, '1')">
 								{{ t('metavox', 'Yes') }}
 							</NcCheckboxRadioSwitch>
 							<NcCheckboxRadioSwitch
 								:model-value="hasFilterValue(col, '0')"
 								type="checkbox"
+								:disabled="readonly"
 								@update:model-value="toggleFilterValue(col, '0')">
 								{{ t('metavox', 'No') }}
 							</NcCheckboxRadioSwitch>
@@ -120,6 +125,7 @@
 								:key="opt"
 								:model-value="hasFilterValue(col, opt)"
 								type="checkbox"
+								:disabled="readonly"
 								@update:model-value="toggleFilterValue(col, opt)">
 								{{ opt }}
 							</NcCheckboxRadioSwitch>
@@ -144,13 +150,15 @@
 								:key="val"
 								class="mv-filter-tag">
 								{{ val }}
-								<button type="button"
+								<button v-if="!readonly"
+									type="button"
 									class="mv-filter-tag-remove"
 									@click="removeFilterValue(col, val)">
 									&times;
 								</button>
 							</span>
-							<input ref="autocompleteInputs"
+							<input v-if="!readonly"
+								ref="autocompleteInputs"
 								type="text"
 								class="mv-filter-input"
 								:placeholder="t('metavox', '+ add value')"
@@ -182,41 +190,52 @@
 					:reduce="opt => opt.id"
 					label="label"
 					:placeholder="t('metavox', '— no sorting —')"
-					:clearable="true"
+					:clearable="!readonly"
+					:disabled="readonly"
 					input-id="mv-sort-field" />
-				<template v-if="editorState.sortField">
+				<div v-if="editorState.sortField" class="mv-sort-direction">
 					<NcCheckboxRadioSwitch v-model="editorState.sortOrder"
 						value="asc"
 						type="radio"
-						name="mv_sort_order">
+						name="mv_sort_order"
+						:disabled="readonly">
 						{{ t('metavox', 'Ascending') }}
 					</NcCheckboxRadioSwitch>
 					<NcCheckboxRadioSwitch v-model="editorState.sortOrder"
 						value="desc"
 						type="radio"
-						name="mv_sort_order">
+						name="mv_sort_order"
+						:disabled="readonly">
 						{{ t('metavox', 'Descending') }}
 					</NcCheckboxRadioSwitch>
-				</template>
+				</div>
 			</div>
 		</div>
 
 		<!-- Footer -->
 		<div class="mv-editor-footer">
-			<NcButton v-if="!isNew"
-				type="error"
-				@click="onDelete">
-				{{ t('metavox', 'Delete') }}
-			</NcButton>
-			<div class="mv-footer-spacer" />
-			<NcButton type="secondary" @click="emit('close')">
-				{{ t('metavox', 'Cancel') }}
-			</NcButton>
-			<NcButton type="primary"
-				:disabled="saving"
-				@click="onSave">
-				{{ saving ? t('metavox', 'Saving…') : t('metavox', 'Save') }}
-			</NcButton>
+			<template v-if="!readonly">
+				<NcButton v-if="!isNew"
+					type="error"
+					@click="onDelete">
+					{{ t('metavox', 'Delete') }}
+				</NcButton>
+				<div class="mv-footer-spacer" />
+				<NcButton type="secondary" @click="emit('close')">
+					{{ t('metavox', 'Cancel') }}
+				</NcButton>
+				<NcButton type="primary"
+					:disabled="saving"
+					@click="onSave">
+					{{ saving ? t('metavox', 'Saving…') : t('metavox', 'Save') }}
+				</NcButton>
+			</template>
+			<template v-else>
+				<div class="mv-footer-spacer" />
+				<NcButton type="secondary" @click="emit('close')">
+					{{ t('metavox', 'Close') }}
+				</NcButton>
+			</template>
 		</div>
 	</div>
 </template>
@@ -233,6 +252,10 @@ const props = defineProps({
 	view: {
 		type: Object,
 		default: null,
+	},
+	readonly: {
+		type: Boolean,
+		default: false,
 	},
 	availableFields: {
 		type: Array,
@@ -851,9 +874,28 @@ details.mv-filter-row[open] .mv-filter-chevron {
 /* Sort */
 .mv-sort-row {
 	display: flex;
-	align-items: center;
+	flex-direction: column;
 	gap: 8px;
-	flex-wrap: wrap;
+}
+
+.mv-sort-row :deep(.v-select) {
+	width: 100%;
+}
+
+.mv-sort-direction {
+	display: flex;
+	align-items: center;
+	gap: calc(var(--default-grid-baseline, 4px) * 2);
+}
+
+.mv-sort-direction :deep(.checkbox-radio-switch) {
+	display: inline-flex;
+	align-items: center;
+}
+
+.mv-sort-direction :deep(.checkbox-radio-switch__label) {
+	display: inline-flex;
+	align-items: center;
 }
 
 /* Footer */

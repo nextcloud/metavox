@@ -80,11 +80,11 @@ class MetaVoxMetadataFilter extends EventTarget {
 				if (f.positiveValues.size === 0) return false
 				const cellStr = String(cellValue)
 				// Fast path: no semicolons (single value) — direct Set lookup
-				if (cellStr.indexOf(';') === -1) {
+				if (!cellStr.includes(';#')) {
 					if (!f.positiveValues.has(cellStr)) return false
 				} else {
-					// Multi-value cell: split and check
-					const parts = cellStr.split(';')
+					// Multi-value cell: split on ;# separator
+					const parts = cellStr.split(';#')
 					let matched = false
 					for (let i = 0; i < parts.length; i++) {
 						const part = parts[i].trim()
