@@ -37,6 +37,20 @@ class FieldService {
         $this->cache = $cacheFactory->createDistributed('metavox');
     }
 
+private function parseFieldOptions(?string $raw): array {
+    if (empty($raw)) {
+        return [];
+    }
+    $decoded = json_decode($raw, true);
+    if (is_array($decoded)) {
+        return $decoded;
+    }
+    // json_decode returns a string for JSON strings, or null for invalid JSON
+    // In both cases, try splitting on newlines
+    $str = is_string($decoded) ? $decoded : $raw;
+    return array_values(array_filter(explode("\n", $str), fn($v) => $v !== ''));
+}
+
 public function getAllFields(): array {
     // L1: request-scope cache
     if ($this->fieldsCache !== null) {
@@ -65,7 +79,7 @@ public function getAllFields(): array {
             'field_label' => $row['field_label'],
             'field_type' => $row['field_type'],
             'field_description' => $row['field_description'] ?? '',
-            'field_options' => $row['field_options'] ? json_decode($row['field_options'], true) : [],
+            'field_options' => $this->parseFieldOptions($row['field_options'] ?? null),
             'is_required' => (bool)$row['is_required'],
             'sort_order' => (int)$row['sort_order'],
             'scope' => 'groupfolder',
@@ -100,7 +114,7 @@ public function getFieldById(int $id): ?array {
                 'field_label' => $row['field_label'],
                 'field_type' => $row['field_type'],
                 'field_description' => $row['field_description'] ?? '',
-                'field_options' => $row['field_options'] ? json_decode($row['field_options'], true) : [],
+                'field_options' => $this->parseFieldOptions($row['field_options'] ?? null),
                 'is_required' => (bool)$row['is_required'],
                 'sort_order' => (int)$row['sort_order'],
                 'scope' => 'groupfolder',
@@ -136,7 +150,7 @@ public function getFieldsByScope(string $scope = 'global'): array {
             'field_label' => $row['field_label'],
             'field_type' => $row['field_type'],
             'field_description' => $row['field_description'] ?? '',
-            'field_options' => $row['field_options'] ? json_decode($row['field_options'], true) : [],
+            'field_options' => $this->parseFieldOptions($row['field_options'] ?? null),
             'is_required' => (bool)$row['is_required'],
             'sort_order' => (int)$row['sort_order'],
             'scope' => 'groupfolder',
@@ -383,7 +397,7 @@ public function getFieldMetadata(int $fileId): array {
                 'field_name' => $row['field_name'],
                 'field_label' => $row['field_label'],
                 'field_type' => $row['field_type'],
-                'field_options' => $row['field_options'] ? json_decode($row['field_options'], true) : [],
+                'field_options' => $this->parseFieldOptions($row['field_options'] ?? null),
                 'is_required' => (bool)$row['is_required'],
                 'value' => $row['value'],
             ];
@@ -596,7 +610,7 @@ public function getGroupfolderMetadata(int $groupfolderId): array {
                     'field_name' => $row['field_name'],
                     'field_label' => $row['field_label'],
                     'field_type' => $row['field_type'],
-                    'field_options' => $row['field_options'] ? json_decode($row['field_options'], true) : [],
+                    'field_options' => $this->parseFieldOptions($row['field_options'] ?? null),
                     'is_required' => (bool)$row['is_required'],
                     'applies_to_groupfolder' => (int)($row['applies_to_groupfolder'] ?? 0),
                     'value' => $row['value'],
@@ -668,7 +682,7 @@ public function getAssignedFieldsWithDataForGroupfolder(int $groupfolderId): arr
                 'field_label' => $row['field_label'],
                 'field_type' => $row['field_type'],
                 'field_description' => $row['field_description'] ?? '',
-                'field_options' => $row['field_options'] ? json_decode($row['field_options'], true) : [],
+                'field_options' => $this->parseFieldOptions($row['field_options'] ?? null),
                 'is_required' => (bool)$row['is_required'],
                 'sort_order' => (int)$row['sort_order'],
                 'scope' => 'groupfolder',
@@ -763,7 +777,7 @@ public function getGroupfolderFileMetadata(int $groupfolderId, int $fileId): arr
                     'field_name' => $row['field_name'],
                     'field_label' => $row['field_label'],
                     'field_type' => $row['field_type'],
-                    'field_options' => $row['field_options'] ? json_decode($row['field_options'], true) : [],
+                    'field_options' => $this->parseFieldOptions($row['field_options'] ?? null),
                     'is_required' => (bool)$row['is_required'],
                     'applies_to_groupfolder' => (int)($row['applies_to_groupfolder'] ?? 0),
                     'value' => $row['value'],
@@ -874,7 +888,7 @@ public function getBulkFileMetadata(array $fileIds): array {
                     'field_label' => $row['field_label'],
                     'field_type' => $row['field_type'],
                     'field_description' => $row['field_description'] ?? '',
-                    'field_options' => $row['field_options'] ? json_decode($row['field_options'], true) : [],
+                    'field_options' => $this->parseFieldOptions($row['field_options'] ?? null),
                     'is_required' => (bool)$row['is_required'],
                 ];
             }
