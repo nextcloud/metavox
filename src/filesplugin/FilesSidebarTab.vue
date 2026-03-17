@@ -74,7 +74,7 @@
 				<div v-if="itemFields.length > 0" class="metadata-section">
 					<div class="item-metadata-header">
 						<h3>{{ t('metavox', '{itemType} Metadata', { itemType }) }}</h3>
-						<NcButton v-if="aiAvailable && canEdit && !isGroupfolderRoot"
+						<NcButton v-if="(aiAvailable || aiGenerating) && canEdit && !isGroupfolderRoot"
 							type="tertiary"
 							:disabled="aiGenerating"
 							@click="generateAiMetadata">
