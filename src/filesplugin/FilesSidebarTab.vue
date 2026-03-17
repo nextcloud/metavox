@@ -96,9 +96,11 @@
 						:multi-select-values="multiSelectValues"
 						:select-key="selectKey"
 						:ai-suggestions="aiSuggestions"
+						:regenerating-field="regeneratingField"
 						@update="handleMetadataUpdate"
 						@accept-suggestion="acceptAiSuggestion"
-						@dismiss-suggestion="dismissAiSuggestion" />
+						@dismiss-suggestion="dismissAiSuggestion"
+						@regenerate-suggestion="regenerateAiSuggestion" />
 					<div v-if="canEdit && hasChanges" class="metadata-actions">
 						<NcButton
 							type="primary"
@@ -191,6 +193,7 @@ export default {
 			aiGenerating: false,
 			aiSuggestions: {},
 			aiError: null,
+			regeneratingField: null,
 		}
 	},
 
@@ -712,6 +715,39 @@ export default {
 			const newSuggestions = { ...this.aiSuggestions }
 			delete newSuggestions[fieldName]
 			this.aiSuggestions = newSuggestions
+		},
+
+		async regenerateAiSuggestion(fieldName) {
+			if (!this.groupfolderId || !this.currentFileInfo?.id) return
+			if (this.regeneratingField) return
+
+			this.regeneratingField = fieldName
+			const previousValue = this.aiSuggestions[fieldName] || ''
+
+			try {
+				const response = await axios.post(
+					generateUrl('/apps/metavox/api/ai/generate'),
+					{
+						fileId: this.currentFileInfo.id,
+						groupfolderId: this.groupfolderId,
+						rejectedSuggestions: { [fieldName]: previousValue },
+					},
+				)
+
+				const suggestions = response.data?.suggestions || {}
+				if (suggestions[fieldName]) {
+					const newSuggestions = { ...this.aiSuggestions }
+					newSuggestions[fieldName] = suggestions[fieldName]
+					this.aiSuggestions = newSuggestions
+				} else {
+					this.aiError = this.t('metavox', 'AI could not generate a new suggestion for this field.')
+				}
+			} catch (error) {
+				console.error('AI regenerate error:', error)
+				this.aiError = error.response?.data?.error || this.t('metavox', 'Failed to regenerate suggestion.')
+			} finally {
+				this.regeneratingField = null
+			}
 		},
 
 		formatFieldValue(field) {

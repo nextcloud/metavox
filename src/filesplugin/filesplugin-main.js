@@ -3,6 +3,10 @@
  * Registers metadata sidebar tab in Nextcloud Files app
  */
 
+// Dynamically set public path for chunk loading based on where this script is served from
+// eslint-disable-next-line camelcase
+__webpack_public_path__ = document.querySelector('script[src*="metavox/js/filesplugin"]')?.src?.replace(/filesplugin\.js.*$/, '') || '/apps/metavox/js/'
+
 import { translate, translatePlural } from '@nextcloud/l10n'
 import { registerBulkMetadataAction } from './BulkMetadataAction.js'
 import { startColumnWatcher } from './columns/MetaVoxColumns.js'

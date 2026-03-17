@@ -8,6 +8,7 @@ use OCP\Files\IRootFolder;
 use OCP\IConfig;
 use OCP\TaskProcessing\IManager as ITaskManager;
 use OCP\TaskProcessing\Task;
+use Psr\Log\LoggerInterface;
 
 class AiAutofillService {
 
@@ -15,6 +16,7 @@ class AiAutofillService {
     private IRootFolder $rootFolder;
     private FieldService $fieldService;
     private IConfig $config;
+    private LoggerInterface $logger;
 
     private const APP_ID = 'metavox';
     private const MAX_CONTENT_LENGTH = 32000;
@@ -27,12 +29,14 @@ class AiAutofillService {
         ITaskManager $taskManager,
         IRootFolder $rootFolder,
         FieldService $fieldService,
-        IConfig $config
+        IConfig $config,
+        LoggerInterface $logger
     ) {
         $this->taskManager = $taskManager;
         $this->rootFolder = $rootFolder;
         $this->fieldService = $fieldService;
         $this->config = $config;
+        $this->logger = $logger;
     }
 
     /**
@@ -87,7 +91,7 @@ class AiAutofillService {
     /**
      * Generate metadata suggestions for a file using AI
      */
-    public function generateMetadata(int $fileId, int $groupfolderId, string $userId): array {
+    public function generateMetadata(int $fileId, int $groupfolderId, string $userId, array $rejectedSuggestions = []): array {
         // Get assigned fields for this groupfolder
         $fields = $this->fieldService->getAssignedFieldsWithDataForGroupfolder($groupfolderId);
 
@@ -112,7 +116,7 @@ class AiAutofillService {
         $fileContent = $this->getFileContent($fileId, $userId);
 
         // Build prompt
-        $prompt = $this->buildPrompt($aiFields, $fileContent['content'], $fileContent['name']);
+        $prompt = $this->buildPrompt($aiFields, $fileContent['content'], $fileContent['name'], $rejectedSuggestions);
 
         // Schedule TaskProcessing task (async — background workers pick it up)
         $taskType = $this->getTaskType();
@@ -191,7 +195,13 @@ class AiAutofillService {
         $mimetype = $node->getMimeType();
         $content = '';
 
-        // Try to read text-based files
+        // Try to read file content based on type
+        $assistantMimes = [
+            'application/pdf',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.oasis.opendocument.text',
+        ];
+
         if ($this->isTextMime($mimetype)) {
             try {
                 $raw = $node->getContent();
@@ -199,6 +209,9 @@ class AiAutofillService {
             } catch (\Exception $e) {
                 // Fall back to filename-only
             }
+        } elseif (in_array($mimetype, $assistantMimes, true)) {
+            // Use Nextcloud Assistant's native parse-file API for PDF, DOCX, ODT
+            $content = $this->extractTextViaAssistant($node->getId());
         }
 
         // If no content, provide file info as context
@@ -221,9 +234,144 @@ class AiAutofillService {
     }
 
     /**
+     * Extract text from PDF, DOCX, or ODT using the same libraries as Nextcloud Assistant.
+     * Loads smalot/pdfparser and phpoffice/phpword from the Assistant app's vendor directory.
+     * Path is resolved dynamically via OC_App::getAppPath('assistant').
+     * Falls back to empty string if Assistant app is not installed.
+     */
+    private function extractTextViaAssistant(int $fileId): string {
+        try {
+            // Dynamically resolve the assistant app path
+            try {
+                $assistantPath = \OC::$server->getAppManager()->getAppPath('assistant');
+            } catch (\Exception $e) {
+                $this->logger->debug('MetaVox AI: Assistant app not installed, cannot parse file');
+                return '';
+            }
+
+            $autoloader = $assistantPath . '/vendor/autoload.php';
+            if (!file_exists($autoloader)) {
+                $this->logger->debug('MetaVox AI: Assistant vendor autoloader not found at ' . $autoloader);
+                return '';
+            }
+
+            require_once $autoloader;
+
+            // Get the file node
+            $userFolder = null;
+            // Try to get the node from any mount
+            $nodes = $this->rootFolder->getById($fileId);
+            if (empty($nodes)) {
+                return '';
+            }
+            $node = $nodes[0];
+            $mimetype = $node->getMimeType();
+
+            if ($mimetype === 'application/pdf') {
+                return $this->parsePdf($node);
+            } elseif ($mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                return $this->parseDocx($node);
+            } elseif ($mimetype === 'application/vnd.oasis.opendocument.text') {
+                return $this->parseOdt($node);
+            }
+
+            return '';
+        } catch (\Exception $e) {
+            $this->logger->debug('MetaVox AI: file parsing failed: ' . $e->getMessage());
+            return '';
+        }
+    }
+
+    /**
+     * Parse PDF using smalot/pdfparser (same as Nextcloud Assistant)
+     */
+    private function parsePdf($node): string {
+        try {
+            $parser = new \Smalot\PdfParser\Parser();
+            $pdf = $parser->parseContent($node->getContent());
+            $text = $pdf->getText();
+            return mb_substr(trim($text), 0, self::MAX_CONTENT_LENGTH);
+        } catch (\Exception $e) {
+            $this->logger->debug('MetaVox AI: PDF parsing failed: ' . $e->getMessage());
+            return '';
+        }
+    }
+
+    /**
+     * Parse DOCX using phpoffice/phpword (same as Nextcloud Assistant)
+     */
+    private function parseDocx($node): string {
+        try {
+            $tmpFile = tempnam(sys_get_temp_dir(), 'metavox_docx_');
+            file_put_contents($tmpFile, $node->getContent());
+
+            $reader = \PhpOffice\PhpWord\IOFactory::createReader('Word2007');
+            $phpWord = $reader->load($tmpFile);
+            unlink($tmpFile);
+
+            $text = '';
+            foreach ($phpWord->getSections() as $section) {
+                foreach ($section->getElements() as $element) {
+                    $text .= $this->extractPhpWordElementText($element) . "\n";
+                }
+            }
+            return mb_substr(trim($text), 0, self::MAX_CONTENT_LENGTH);
+        } catch (\Exception $e) {
+            $this->logger->debug('MetaVox AI: DOCX parsing failed: ' . $e->getMessage());
+            return '';
+        }
+    }
+
+    /**
+     * Parse ODT using phpoffice/phpword (same as Nextcloud Assistant)
+     */
+    private function parseOdt($node): string {
+        try {
+            $tmpFile = tempnam(sys_get_temp_dir(), 'metavox_odt_');
+            file_put_contents($tmpFile, $node->getContent());
+
+            $reader = \PhpOffice\PhpWord\IOFactory::createReader('ODText');
+            $phpWord = $reader->load($tmpFile);
+            unlink($tmpFile);
+
+            $text = '';
+            foreach ($phpWord->getSections() as $section) {
+                foreach ($section->getElements() as $element) {
+                    $text .= $this->extractPhpWordElementText($element) . "\n";
+                }
+            }
+            return mb_substr(trim($text), 0, self::MAX_CONTENT_LENGTH);
+        } catch (\Exception $e) {
+            $this->logger->debug('MetaVox AI: ODT parsing failed: ' . $e->getMessage());
+            return '';
+        }
+    }
+
+    /**
+     * Recursively extract text from PhpWord elements
+     */
+    private function extractPhpWordElementText($element): string {
+        $text = '';
+        if (method_exists($element, 'getText')) {
+            $t = $element->getText();
+            if (is_string($t)) {
+                $text .= $t;
+            } elseif (is_object($t) && method_exists($t, 'getText')) {
+                $text .= $t->getText();
+            }
+        }
+        if (method_exists($element, 'getElements')) {
+            foreach ($element->getElements() as $child) {
+                $text .= $this->extractPhpWordElementText($child);
+            }
+        }
+        return $text;
+    }
+
+    /**
      * Build the AI prompt with field definitions and file content
      */
-    private function buildPrompt(array $fields, string $fileContent, string $fileName): string {
+    private function buildPrompt(array $fields, string $fileContent, string $fileName, array $rejectedSuggestions = []): string {
         $fieldDescriptions = [];
         foreach ($fields as $field) {
             $desc = '"' . $field['field_name'] . '" (' . $field['field_type'];
@@ -277,6 +425,15 @@ class AiAutofillService {
 
         $fieldsBlock = implode("\n", $fieldDescriptions);
 
+        $rejectedBlock = '';
+        if (!empty($rejectedSuggestions)) {
+            $rejectedLines = [];
+            foreach ($rejectedSuggestions as $fieldName => $oldValue) {
+                $rejectedLines[] = '- "' . $fieldName . '": rejected value was "' . $oldValue . '"';
+            }
+            $rejectedBlock = "\n\nPREVIOUSLY REJECTED SUGGESTIONS (the user did not accept these — provide DIFFERENT values):\n" . implode("\n", $rejectedLines);
+        }
+
         return <<<PROMPT
 Analyze the following file and extract metadata values.
 Use the field label and description to understand the context and tone for each field.
@@ -291,7 +448,7 @@ IMPORTANT RULES:
 2. For select/dropdown/multiselect fields: you MUST use EXACTLY one of the ALLOWED VALUES listed. Do NOT invent or rephrase options. If none of the allowed values match, skip the field entirely.
 3. Match the tone and style implied by each field's label and description.
 4. Try your best to fill as many fields as possible. Use the file name, path, type, and any available context to make reasonable suggestions. Only skip a field if you truly have no basis for a suggestion.
-5. For checkbox fields, always provide a value ("1" or "0") based on your best judgment.
+5. For checkbox fields, always provide a value ("1" or "0") based on your best judgment.{$rejectedBlock}
 
 File content:
 {$fileContent}

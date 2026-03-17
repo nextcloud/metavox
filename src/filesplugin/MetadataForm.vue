@@ -137,11 +137,21 @@
 				</div>
 				<div class="ai-suggestion-value">{{ formatSuggestion(field, aiSuggestions[field.field_name]) }}</div>
 				<div class="ai-suggestion-actions">
-					<NcButton type="primary" size="small" @click="$emit('accept-suggestion', field.field_name, aiSuggestions[field.field_name])">
-						{{ t('metavox', 'Accept') }}
+					<NcButton type="primary" size="small" :aria-label="t('metavox', 'Accept')" :title="t('metavox', 'Accept')" @click="$emit('accept-suggestion', field.field_name, aiSuggestions[field.field_name])">
+						<template #icon>
+							<CheckIcon :size="20" />
+						</template>
 					</NcButton>
-					<NcButton type="tertiary" size="small" @click="$emit('dismiss-suggestion', field.field_name)">
-						{{ t('metavox', 'Dismiss') }}
+					<NcButton type="secondary" size="small" :aria-label="t('metavox', 'Regenerate')" :title="t('metavox', 'Regenerate')" :disabled="regeneratingField === field.field_name" @click="$emit('regenerate-suggestion', field.field_name)">
+						<template #icon>
+							<NcLoadingIcon v-if="regeneratingField === field.field_name" :size="20" />
+							<RefreshIcon v-else :size="20" />
+						</template>
+					</NcButton>
+					<NcButton type="tertiary" size="small" :aria-label="t('metavox', 'Dismiss')" :title="t('metavox', 'Dismiss')" @click="$emit('dismiss-suggestion', field.field_name)">
+						<template #icon>
+							<CloseIcon :size="20" />
+						</template>
 					</NcButton>
 				</div>
 			</div>
@@ -155,9 +165,13 @@ import {
 	NcSelect,
 	NcCheckboxRadioSwitch,
 	NcButton,
+	NcLoadingIcon,
 } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
+import CheckIcon from 'vue-material-design-icons/Check.vue'
+import CloseIcon from 'vue-material-design-icons/Close.vue'
 import CreationIcon from 'vue-material-design-icons/Creation.vue'
+import RefreshIcon from 'vue-material-design-icons/Refresh.vue'
 import UrlFieldInput from '../components/fields/UrlFieldInput.vue'
 import UserGroupFieldInput from '../components/fields/UserGroupFieldInput.vue'
 import FileLinkFieldInput from '../components/fields/FileLinkFieldInput.vue'
@@ -170,7 +184,11 @@ export default {
 		NcSelect,
 		NcCheckboxRadioSwitch,
 		NcButton,
+		NcLoadingIcon,
+		CheckIcon,
+		CloseIcon,
 		CreationIcon,
+		RefreshIcon,
 		UrlFieldInput,
 		UserGroupFieldInput,
 		FileLinkFieldInput,
@@ -205,9 +223,13 @@ export default {
 			type: Object,
 			default: () => ({}),
 		},
+		regeneratingField: {
+			type: String,
+			default: null,
+		},
 	},
 
-	emits: ['update', 'accept-suggestion', 'dismiss-suggestion'],
+	emits: ['update', 'accept-suggestion', 'dismiss-suggestion', 'regenerate-suggestion'],
 
 	methods: {
 		t,
@@ -429,7 +451,7 @@ export default {
 
 .ai-suggestion-actions {
 	display: flex;
-	gap: 8px;
+	gap: 4px;
 }
 
 /* Add hover effect to Nextcloud Vue components */

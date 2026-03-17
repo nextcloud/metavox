@@ -54,8 +54,10 @@ class AiAutofillController extends Controller {
                 return new JSONResponse(['error' => 'fileId and groupfolderId are required'], 400);
             }
 
+            $rejectedSuggestions = $this->request->getParam('rejectedSuggestions', []);
+
             error_log('MetaVox AI: generating metadata for file ' . $fileId . ' in gf ' . $groupfolderId);
-            $suggestions = $this->aiService->generateMetadata($fileId, $groupfolderId, $user->getUID());
+            $suggestions = $this->aiService->generateMetadata($fileId, $groupfolderId, $user->getUID(), $rejectedSuggestions);
             error_log('MetaVox AI: got ' . count($suggestions) . ' suggestions');
 
             return new JSONResponse([
