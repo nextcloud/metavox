@@ -4,7 +4,7 @@
     <div class="page-header">
       <h2>{{ t('metavox', 'User Permissions') }}</h2>
       <p class="page-description">
-        {{ t('metavox', 'Manage user and group permissions for metadata access') }}
+        {{ t('metavox', 'Manage user and group permissions for metadata fields and views') }}
       </p>
     </div>
 
@@ -49,7 +49,7 @@
               </template>
             </NcSelect>
             <p class="field-help-text">
-              {{ t('metavox', 'Users in selected groups will be able to manage metadata fields') }}
+              {{ t('metavox', 'Users in selected groups will be able to manage metadata fields and views') }}
             </p>
           </div>
 
@@ -386,7 +386,7 @@ filteredPermissions() {
     
     getPermissionLabel(permissionType) {
       const labels = {
-        'manage_fields': this.t('metavox', 'Manage Metadata Fields'),
+        'manage_fields': this.t('metavox', 'Manage metadata fields & views'),
       }
       return labels[permissionType] || permissionType
     },
@@ -576,10 +576,8 @@ th {
   padding: 12px;
   text-align: left;
   font-weight: 600;
-  color: var(--color-text-lighter);
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: var(--color-text-maxcontrast);
+  font-size: 13px;
 }
 
 td {
@@ -616,11 +614,11 @@ tr:hover {
 .permission-badge {
   display: inline-block;
   padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-  background: var(--color-primary-light);
-  color: var(--color-primary-text);
+  border-radius: var(--border-radius-pill, 12px);
+  font-size: 13px;
+  font-weight: normal;
+  background: var(--color-primary-element-light, #e8f0fe);
+  color: var(--color-primary-element, #0082c9);
 }
 
 .scope-cell {
