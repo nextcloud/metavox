@@ -302,19 +302,21 @@ export default {
 				// Check permissions (synchronous - uses fileInfo.permissions)
 				this.permissions = this.checkPermissions()
 
+				// Immediately restore spinner if a generation was in progress before refresh
+				const pendingKey = `metavox_ai_generating_${this.currentFileInfo?.id}`
+				if (sessionStorage.getItem(pendingKey) === '1') {
+					this.aiGenerating = true
+				} else {
+					this.aiSuggestions = {}
+					this.aiError = null
+				}
+
 				// Check AI availability (non-blocking), then check for pending generation
 				this.checkAiAvailability().then(() => {
 					if (this.aiAvailable) {
 						this.checkPendingAiGeneration()
 					}
 				})
-
-				// Reset AI state (only if no pending generation)
-				const pendingKey = `metavox_ai_generating_${this.currentFileInfo?.id}`
-				if (!sessionStorage.getItem(pendingKey)) {
-					this.aiSuggestions = {}
-					this.aiError = null
-				}
 
 				// Load fields with their values (single API call)
 				const fieldsWithValues = await this.loadFields()
