@@ -212,7 +212,9 @@ class AiAutofillService {
             }
 
             if (in_array($field['field_type'], ['select', 'multiselect', 'dropdown'], true) && !empty($field['field_options'])) {
-                $options = is_array($field['field_options']) ? $field['field_options'] : [];
+                $options = is_array($field['field_options'])
+                    ? $field['field_options']
+                    : array_filter(explode("\n", (string)$field['field_options']));
                 // Quote each option so the AI knows the exact values
                 $quoted = array_map(fn($o) => '"' . $o . '"', $options);
                 $desc .= ', ALLOWED VALUES: [' . implode(', ', $quoted) . ']';
@@ -298,8 +300,10 @@ PROMPT;
         foreach ($fields as $field) {
             $validFieldNames[] = $field['field_name'];
             $fieldTypes[$field['field_name']] = $field['field_type'];
-            if (!empty($field['field_options']) && is_array($field['field_options'])) {
-                $fieldOptions[$field['field_name']] = $field['field_options'];
+            if (!empty($field['field_options'])) {
+                $fieldOptions[$field['field_name']] = is_array($field['field_options'])
+                    ? $field['field_options']
+                    : array_filter(explode("\n", (string)$field['field_options']));
             }
         }
 
