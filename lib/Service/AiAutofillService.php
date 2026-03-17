@@ -213,7 +213,9 @@ class AiAutofillService {
 
             if (in_array($field['field_type'], ['select', 'multiselect', 'dropdown'], true) && !empty($field['field_options'])) {
                 $options = is_array($field['field_options']) ? $field['field_options'] : [];
-                $desc .= ', options: ' . implode(', ', $options);
+                // Quote each option so the AI knows the exact values
+                $quoted = array_map(fn($o) => '"' . $o . '"', $options);
+                $desc .= ', ALLOWED VALUES: [' . implode(', ', $quoted) . ']';
             }
 
             $desc .= '): ';
@@ -231,13 +233,13 @@ class AiAutofillService {
                     break;
                 case 'select':
                 case 'dropdown':
-                    $desc .= 'pick exactly one of the options listed above';
+                    $desc .= 'MUST return exactly one of the ALLOWED VALUES listed above, or skip this field. Do NOT invent new values.';
                     break;
                 case 'multiselect':
-                    $desc .= 'pick one or more of the options, return as semicolon-separated values';
+                    $desc .= 'MUST return one or more of the ALLOWED VALUES as semicolon-separated string (e.g. "val1;#val2"), or skip this field. Do NOT invent new values.';
                     break;
                 case 'checkbox':
-                    $desc .= 'return 1 for yes or 0 for no';
+                    $desc .= 'return "1" for yes or "0" for no';
                     break;
                 case 'url':
                     $desc .= 'return a valid URL';
@@ -260,10 +262,11 @@ File: {$fileName}
 Fields to fill:
 {$fieldsBlock}
 
-Return ONLY valid JSON with field names as keys and suggested values as strings.
-Skip fields you cannot determine from the content.
-Use exact option values for select/multiselect fields.
-Match the tone and style implied by each field's label and description.
+IMPORTANT RULES:
+1. Return ONLY valid JSON with field names as keys and suggested values as strings.
+2. Skip fields you cannot determine from the content.
+3. For select/dropdown/multiselect fields: you MUST use EXACTLY one of the ALLOWED VALUES listed. Do NOT invent or rephrase options. If none of the allowed values match, skip the field entirely.
+4. Match the tone and style implied by each field's label and description.
 
 File content:
 {$fileContent}
@@ -290,9 +293,13 @@ PROMPT;
         // Validate suggestions against field definitions
         $validFieldNames = [];
         $fieldTypes = [];
+        $fieldOptions = [];
         foreach ($fields as $field) {
             $validFieldNames[] = $field['field_name'];
             $fieldTypes[$field['field_name']] = $field['field_type'];
+            if (!empty($field['field_options']) && is_array($field['field_options'])) {
+                $fieldOptions[$field['field_name']] = $field['field_options'];
+            }
         }
 
         $suggestions = [];
@@ -321,6 +328,52 @@ PROMPT;
                     break;
                 case 'checkbox':
                     $stringValue = ($stringValue === '1' || strtolower($stringValue) === 'true' || strtolower($stringValue) === 'yes') ? '1' : '0';
+                    break;
+                case 'select':
+                case 'dropdown':
+                    // Must match one of the allowed options
+                    if (isset($fieldOptions[$fieldName])) {
+                        if (!in_array($stringValue, $fieldOptions[$fieldName], true)) {
+                            // Try case-insensitive match
+                            $matched = false;
+                            foreach ($fieldOptions[$fieldName] as $opt) {
+                                if (strcasecmp($opt, $stringValue) === 0) {
+                                    $stringValue = $opt; // Use exact option value
+                                    $matched = true;
+                                    break;
+                                }
+                            }
+                            if (!$matched) {
+                                continue 2; // Skip invalid value
+                            }
+                        }
+                    }
+                    break;
+                case 'multiselect':
+                    // Validate each value in the semicolon-separated list
+                    if (isset($fieldOptions[$fieldName])) {
+                        $parts = preg_split('/[;#]+/', $stringValue);
+                        $validParts = [];
+                        foreach ($parts as $part) {
+                            $part = trim($part);
+                            if (empty($part)) continue;
+                            if (in_array($part, $fieldOptions[$fieldName], true)) {
+                                $validParts[] = $part;
+                            } else {
+                                // Try case-insensitive match
+                                foreach ($fieldOptions[$fieldName] as $opt) {
+                                    if (strcasecmp($opt, $part) === 0) {
+                                        $validParts[] = $opt;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        if (empty($validParts)) {
+                            continue 2;
+                        }
+                        $stringValue = implode(';#', $validParts);
+                    }
                     break;
             }
 
