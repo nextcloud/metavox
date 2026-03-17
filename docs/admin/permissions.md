@@ -115,4 +115,6 @@ Only administrators can edit Team folder metadata. If a regular user needs to se
 ## See Also
 
 - [Installation](installation.md) - Initial setup
+- [Managing Views](views.md) - Create views per team folder
+- [Compliance Templates](compliance-templates.md) - Pre-built metadata schemas
 - [Getting Started](../getting-started.md) - Quick start guide

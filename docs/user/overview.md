@@ -74,6 +74,12 @@ Need to update metadata for many files at once? Use the Bulk Editor:
 
 See [Bulk Editing](bulk-editing.md) for details.
 
+## Using Views
+
+Views let you switch between predefined combinations of columns, filters, and sort order. Your administrator creates views for each Team folder to suit different workflows.
+
+See [Views](views.md) for details.
+
 ## Tips
 
 - **Required fields** are marked with an asterisk (*)
@@ -83,7 +89,16 @@ See [Bulk Editing](bulk-editing.md) for details.
 
 ## Need Help?
 
+- Check the [Getting Started](../getting-started.md) guide for an introduction
+
 Contact your Nextcloud administrator if:
 - You need different metadata fields
 - You can't edit fields you should be able to edit
 - You have questions about what values to enter
+
+## See Also
+
+- [Field Types](field-types.md) - All available field types
+- [Views](views.md) - Switching between predefined views
+- [Bulk Editing](bulk-editing.md) - Edit metadata for multiple files
+- [Exporting Data](exporting-data.md) - Export metadata to CSV

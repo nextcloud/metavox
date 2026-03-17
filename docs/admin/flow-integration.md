@@ -103,5 +103,6 @@ Result: Files created in the Legal department are automatically tagged.
 
 ## See Also
 
-- [Compliance Templates](compliance-templates.md) - Pre-built metadata schemas
+- [Compliance Templates](compliance-templates.md) - Pre-built metadata schemas with Flow examples
 - [Permissions](permissions.md) - Access control basics
+- [Architecture Overview](../architecture/overview.md) - How Flow integration works technically

@@ -48,11 +48,7 @@ Click the **"Clear All"** button to remove all metadata from the selected files.
 
 ### Export to CSV
 
-Click the **"Export CSV"** button to download metadata from the selected files.
-
-- Exports file path, file name, and all metadata field values
-- Automatic download with date-stamped filename (e.g., `metadata-export-2025-12-29.csv`)
-- Proper CSV escaping for special characters
+Export metadata from the selected files to a CSV file. See [Exporting Data](exporting-data.md) for details.
 
 ---
 
@@ -66,5 +62,6 @@ Click the **"Export CSV"** button to download metadata from the selected files.
 
 ## See Also
 
-- [Field Types](field-types.md) - Documentation for all field types
-- [API Reference](../architecture/api-reference.md) - API examples for programmatic batch operations
+- [Exporting Data](exporting-data.md) - Export metadata to CSV
+- [Field Types](field-types.md) - All available field types
+- [API Reference](../architecture/api-reference.md) - Batch operations via API
