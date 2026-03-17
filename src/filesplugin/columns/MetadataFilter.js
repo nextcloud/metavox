@@ -266,7 +266,14 @@ class MetaVoxMetadataFilter extends EventTarget {
 			if (valueSet.size === 0) continue
 			const config = this._columnConfigs.find(c => c.field_name === fieldName)
 			const label = config?.field_label || fieldName.replace('file_gf_', '')
-			const valuesText = [...valueSet].join(', ')
+			const values = [...valueSet]
+			const MAX_DISPLAY = 2
+			let valuesText
+			if (values.length <= MAX_DISPLAY) {
+				valuesText = values.join(', ')
+			} else {
+				valuesText = values.slice(0, MAX_DISPLAY).join(', ') + ` (+${values.length - MAX_DISPLAY})`
+			}
 			chips.push({
 				text: `${label}: ${valuesText}`,
 				onclick: () => {
@@ -274,6 +281,13 @@ class MetaVoxMetadataFilter extends EventTarget {
 					this._emitChips()
 					this._emitFilterUpdate()
 				},
+			})
+		}
+		// Add "Clear all" chip when multiple fields are active
+		if (chips.length > 1) {
+			chips.push({
+				text: '✕ Clear all',
+				onclick: () => this.reset(),
 			})
 		}
 		this.dispatchEvent(new CustomEvent('update:chips', { detail: chips }))

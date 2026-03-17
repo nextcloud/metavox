@@ -379,9 +379,19 @@ const SORT_ICON_DESC = '<svg fill="currentColor" width="24" height="24" viewBox=
  * NC33 uses display:flex on rows; the actions cell is 0px in the header
  * but ~150px in data rows, causing all columns after it to misalign.
  */
+/** @type {number|null} Cached actions column width — reset on folder change */
+let _cachedActionsWidth = null
+
 function _syncActionsWidth(theadTr) {
 	const hActions = theadTr.querySelector('.files-list__row-actions')
 	if (!hActions) return
+
+	if (_cachedActionsWidth !== null) {
+		hActions.style.minWidth = _cachedActionsWidth + 'px'
+		hActions.style.width = _cachedActionsWidth + 'px'
+		hActions.style.flexShrink = '0'
+		return
+	}
 
 	const dataRow = document.querySelector('.files-list__table tbody tr')
 	if (!dataRow) return
@@ -391,6 +401,7 @@ function _syncActionsWidth(theadTr) {
 
 	const dWidth = dActions.getBoundingClientRect().width
 	if (dWidth > 0) {
+		_cachedActionsWidth = dWidth
 		hActions.style.minWidth = dWidth + 'px'
 		hActions.style.width = dWidth + 'px'
 		hActions.style.flexShrink = '0'
@@ -406,6 +417,7 @@ function injectHeaderColumns() {
 	// Fix alignment: sync header actions cell width with data row actions cell
 	_syncActionsWidth(theadTr)
 
+	const headerFrag = document.createDocumentFragment()
 	for (const config of activeColumnConfigs) {
 		const th = document.createElement('th')
 		th.className = `files-list__column ${HEADER_MARKER} files-list__column--sortable`
@@ -468,10 +480,12 @@ function injectHeaderColumns() {
 		})
 		th.appendChild(handle)
 
-		theadTr.appendChild(th)
+		headerFrag.appendChild(th)
 	}
+	theadTr.appendChild(headerFrag)
 
-	updateTableMinWidth()
+	// Defer layout read to after DOM writes complete
+	requestAnimationFrame(() => updateTableMinWidth())
 }
 
 function injectFooterColumns() {
@@ -480,6 +494,7 @@ function injectFooterColumns() {
 
 	tfootTr.querySelectorAll('.' + MARKER_CLASS).forEach(el => el.remove())
 
+	const footerFrag = document.createDocumentFragment()
 	for (const config of activeColumnConfigs) {
 		const td = document.createElement('td')
 		td.className = MARKER_CLASS
@@ -487,8 +502,9 @@ function injectFooterColumns() {
 		td.style.width = w + 'px'
 		td.style.minWidth = w + 'px'
 		td.style.maxWidth = w + 'px'
-		tfootTr.appendChild(td)
+		footerFrag.appendChild(td)
 	}
+	tfootTr.appendChild(footerFrag)
 }
 
 function injectRowColumns(row) {
@@ -497,6 +513,7 @@ function injectRowColumns(row) {
 	const fileId = Number(row.getAttribute('data-cy-files-list-row-fileid'))
 	const meta = metadataCache.get(fileId)
 
+	const rowFrag = document.createDocumentFragment()
 	for (const config of activeColumnConfigs) {
 		const td = document.createElement('td')
 		td.className = `files-list__column ${MARKER_CLASS}`
@@ -515,8 +532,9 @@ function injectRowColumns(row) {
 			if (fileId) queueMetadataLoad(fileId)
 		}
 
-		row.appendChild(td)
+		rowFrag.appendChild(td)
 	}
+	row.appendChild(rowFrag)
 }
 
 function setCellValue(td, value, config) {
@@ -600,12 +618,12 @@ function injectViewStyles() {
 		/* ── Tab bar ── */
 		#${VIEW_TABS_ID} {
 			display: flex;
+			flex-wrap: wrap;
 			align-items: center;
-			gap: 2px;
-			padding: 4px 8px;
+			gap: calc(var(--default-grid-baseline, 4px) / 2);
+			padding: var(--default-grid-baseline, 4px) calc(var(--default-grid-baseline, 4px) * 2);
 			border-bottom: 1px solid var(--color-border);
 			background: var(--color-main-background);
-			flex-wrap: wrap;
 		}
 		.mv-tab {
 			display: inline-flex;
@@ -628,12 +646,12 @@ function injectViewStyles() {
 			background: var(--color-background-hover);
 			color: var(--color-main-text);
 		}
-		.mv-tab-active {
+		#${VIEW_TABS_ID} .mv-tab-active {
 			background: var(--color-primary-element-light, #e8f0fe);
 			color: var(--color-primary-element);
 			font-weight: 600;
 		}
-		.mv-tab-active:hover {
+		#${VIEW_TABS_ID} .mv-tab-active:hover {
 			background: var(--color-primary-element-light, #e8f0fe);
 		}
 		.mv-tab-dot {
@@ -674,277 +692,6 @@ function injectViewStyles() {
 		#${VIEW_EDITOR_ID}.open {
 			right: 0;
 		}
-		.mv-editor-header {
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			padding: 16px 20px 12px;
-			border-bottom: 1px solid var(--color-border);
-			flex-shrink: 0;
-		}
-		.mv-editor-header h3 {
-			margin: 0;
-			font-size: 16px;
-			font-weight: 600;
-		}
-		.mv-editor-close {
-			background: none;
-			border: none;
-			cursor: pointer;
-			padding: 4px;
-			border-radius: var(--border-radius);
-			color: var(--color-text-maxcontrast);
-			font-size: 20px;
-			line-height: 1;
-		}
-		.mv-editor-close:hover { color: var(--color-main-text); background: var(--color-background-hover); }
-		.mv-editor-body {
-			flex: 1;
-			overflow-y: auto;
-			padding: 16px 20px;
-		}
-		.mv-editor-row {
-			display: flex;
-			align-items: center;
-			gap: 12px;
-			margin-bottom: 16px;
-		}
-		.mv-editor-row label {
-			font-size: 13px;
-			font-weight: 600;
-			min-width: 60px;
-			flex-shrink: 0;
-		}
-		.mv-editor-row input[type="text"] {
-			flex: 1;
-			height: 34px;
-			padding: 0 10px;
-			border: 1px solid var(--color-border);
-			border-radius: var(--border-radius-element, 32px);
-			background: var(--color-main-background);
-			color: var(--color-main-text);
-			font: inherit;
-			font-size: 13px;
-		}
-		.mv-editor-section-title {
-			font-size: 11px;
-			font-weight: 700;
-			letter-spacing: 0.08em;
-			text-transform: uppercase;
-			color: var(--color-text-maxcontrast);
-			margin: 16px 0 8px;
-		}
-		.mv-col-row {
-			display: flex;
-			align-items: center;
-			padding: 6px 4px;
-			border-radius: var(--border-radius);
-			gap: 8px;
-		}
-		.mv-col-row:hover { background: var(--color-background-hover); }
-		.mv-col-drag {
-			cursor: grab;
-			color: var(--color-text-maxcontrast);
-			font-size: 16px;
-			flex-shrink: 0;
-			width: 20px;
-			text-align: center;
-		}
-		.mv-col-name {
-			flex: 1;
-			font-size: 13px;
-		}
-		.mv-col-check {
-			width: 70px;
-			display: flex;
-			justify-content: center;
-		}
-		.mv-col-check input[type="checkbox"] {
-			width: 16px;
-			height: 16px;
-			cursor: pointer;
-		}
-		.mv-disabled {
-			opacity: 0.4;
-			pointer-events: none;
-		}
-		.mv-col-header-row {
-			display: flex;
-			align-items: center;
-			gap: 8px;
-			padding: 0 4px 4px;
-			border-bottom: 1px solid var(--color-border);
-			margin-bottom: 4px;
-		}
-		.mv-col-header-row .mv-col-drag { visibility: hidden; }
-		.mv-col-header-label {
-			font-size: 11px;
-			font-weight: 600;
-			text-transform: uppercase;
-			color: var(--color-text-maxcontrast);
-		}
-		.mv-filter-row {
-			border-bottom: 1px solid var(--color-border);
-		}
-		.mv-filter-row:last-of-type {
-			border-bottom: none;
-		}
-		.mv-filter-summary {
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			padding: 10px 4px;
-			cursor: pointer;
-			user-select: none;
-			list-style: none;
-			min-height: 40px;
-			font-size: 13px;
-			font-weight: 600;
-			color: var(--color-main-text);
-		}
-		.mv-filter-summary::-webkit-details-marker { display: none; }
-		.mv-filter-summary:hover { background: var(--color-background-hover); border-radius: var(--border-radius, 4px); }
-		.mv-filter-summary-text { flex: 1; }
-		.mv-filter-badge {
-			display: inline-flex;
-			align-items: center;
-			justify-content: center;
-			min-width: 18px;
-			height: 18px;
-			padding: 0 4px;
-			border-radius: 9px;
-			background: var(--color-primary-element, #0082c9);
-			color: #fff;
-			font-size: 11px;
-			font-weight: 600;
-			margin-right: 6px;
-		}
-		.mv-filter-chevron {
-			width: 14px;
-			height: 14px;
-			transition: transform 0.15s;
-			color: var(--color-text-maxcontrast, #767676);
-			flex-shrink: 0;
-		}
-		details.mv-filter-row[open] .mv-filter-chevron {
-			transform: rotate(90deg);
-		}
-		.mv-filter-body {
-			padding: 4px 0 8px 0;
-		}
-		.mv-filter-tags {
-			display: flex;
-			flex-wrap: wrap;
-			gap: 4px;
-			padding: 6px 8px;
-			border: 1px solid var(--color-border);
-			border-radius: var(--border-radius-element, 32px);
-			min-height: 34px;
-			align-items: center;
-			cursor: text;
-		}
-		.mv-filter-tag {
-			display: inline-flex;
-			align-items: center;
-			gap: 4px;
-			padding: 2px 8px;
-			background: var(--color-primary-element-light);
-			color: var(--color-primary-element);
-			border-radius: 12px;
-			font-size: 12px;
-		}
-		.mv-filter-tag-remove {
-			background: none;
-			border: none;
-			cursor: pointer;
-			padding: 0;
-			font-size: 14px;
-			line-height: 1;
-			color: inherit;
-			opacity: 0.7;
-		}
-		.mv-filter-tag-remove:hover { opacity: 1; }
-		.mv-filter-input {
-			border: none;
-			outline: none;
-			background: transparent;
-			font: inherit;
-			font-size: 12px;
-			min-width: 80px;
-			flex: 1;
-			color: var(--color-main-text);
-		}
-		.mv-sort-row {
-			display: flex;
-			align-items: center;
-			gap: 8px;
-		}
-		.mv-sort-row select {
-			height: 34px;
-			padding: 0 8px;
-			border: 1px solid var(--color-border);
-			border-radius: var(--border-radius-element, 32px);
-			background: var(--color-main-background);
-			color: var(--color-main-text);
-			font: inherit;
-			font-size: 13px;
-			cursor: pointer;
-		}
-		.mv-editor-footer {
-			display: flex;
-			align-items: center;
-			justify-content: flex-end;
-			gap: 8px;
-			padding: 12px 20px;
-			border-top: 1px solid var(--color-border);
-			flex-shrink: 0;
-		}
-		.mv-btn {
-			height: 34px;
-			padding: 0 16px;
-			border: none;
-			border-radius: var(--border-radius-element, 32px);
-			font: inherit;
-			font-size: 13px;
-			cursor: pointer;
-		}
-		.mv-btn-primary {
-			background: var(--color-primary-element);
-			color: var(--color-primary-element-text);
-		}
-		.mv-btn-primary:hover { opacity: 0.9; }
-		.mv-btn-primary.loading { opacity: 0.6; cursor: wait; }
-		.mv-btn-secondary {
-			background: var(--color-background-hover);
-			color: var(--color-main-text);
-		}
-		.mv-btn-secondary:hover { background: var(--color-border); }
-		.mv-btn-danger {
-			background: transparent;
-			color: var(--color-error);
-			border: 1px solid var(--color-error);
-			margin-right: auto;
-		}
-		.mv-btn-danger:hover { background: var(--color-error); color: #fff; }
-		.mv-default-toggle {
-			display: inline-flex;
-			align-items: center;
-			gap: 4px;
-			padding: 4px 10px;
-			border: 1px solid var(--color-border);
-			border-radius: var(--border-radius-element, 32px);
-			background: transparent;
-			cursor: pointer;
-			font: inherit;
-			font-size: 13px;
-			color: var(--color-text-maxcontrast);
-			flex-shrink: 0;
-		}
-		.mv-default-toggle.active {
-			border-color: var(--color-primary-element);
-			color: var(--color-primary-element);
-			background: var(--color-primary-element-light);
-		}
 		.mv-editor-overlay {
 			position: fixed;
 			inset: 0;
@@ -964,80 +711,30 @@ function injectViewStyles() {
 			flex-shrink: 0;
 		}
 		.mv-tab-edit-btn:hover { opacity: 1; }
-		/* ── Select-filter aanvinklijst ── */
-		.mv-select-filter-list {
-			max-height: 160px;
-			overflow-y: auto;
-			border: 1px solid var(--color-border);
-			border-radius: var(--border-radius-large, 8px);
-			padding: 4px 0;
-			background: var(--color-main-background);
+
+		/* ── Responsive (NC33 breakpoints) ── */
+		@media only screen and (max-width: 1024px) {
+			#${VIEW_TABS_ID} {
+				padding: var(--default-grid-baseline, 4px);
+				gap: calc(var(--default-grid-baseline, 4px) / 2);
+			}
+			.mv-tab {
+				height: 28px;
+				padding: 0 calc(var(--default-grid-baseline, 4px) * 2);
+				font-size: 12px;
+			}
 		}
-		.mv-select-filter-item {
-			display: flex;
-			align-items: center;
-			gap: 8px;
-			padding: 5px 10px;
-			cursor: pointer;
-			font-size: 13px;
-			user-select: none;
+
+		@media only screen and (max-width: 512px) {
+			.mv-tab {
+				height: 26px;
+				padding: 0 calc(var(--default-grid-baseline, 4px) * 1.5);
+				font-size: 11px;
+			}
+			.mv-tab-add {
+				font-size: 16px;
+			}
 		}
-		.mv-select-filter-item:hover { background: var(--color-background-hover); }
-		.mv-select-filter-item input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; flex-shrink: 0; }
-		/* ── Autocomplete wrapper (relatief voor dropdown positionering) ── */
-		.mv-autocomplete-wrap {
-			position: relative;
-		}
-		.mv-autocomplete-dropdown {
-			position: absolute;
-			left: 0;
-			right: 0;
-			top: calc(100% + 2px);
-			background: var(--color-main-background);
-			border: 1px solid var(--color-border);
-			border-radius: var(--border-radius-large, 8px);
-			box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-			z-index: 3000;
-			max-height: 180px;
-			overflow-y: auto;
-		}
-		.mv-autocomplete-item {
-			padding: 6px 12px;
-			font-size: 13px;
-			cursor: pointer;
-		}
-		.mv-autocomplete-item:hover { background: var(--color-background-hover); }
-		.mv-autocomplete-item.mv-item-selected { opacity: 0.4; cursor: default; }
-		.mv-autocomplete-item.mv-item-selected:hover { background: transparent; }
-		.mv-autocomplete-empty {
-			padding: 8px 12px;
-			font-size: 12px;
-			color: var(--color-text-maxcontrast);
-			font-style: italic;
-		}
-		/* ── Checkbox-filter toggle knoppen ── */
-		.mv-checkbox-filter {
-			display: flex;
-			gap: 8px;
-		}
-		.mv-checkbox-filter-btn {
-			height: 30px;
-			padding: 0 14px;
-			border: 1px solid var(--color-border);
-			border-radius: var(--border-radius-element, 32px);
-			background: transparent;
-			cursor: pointer;
-			font: inherit;
-			font-size: 13px;
-			color: var(--color-text-maxcontrast);
-		}
-		.mv-checkbox-filter-btn.active {
-			border-color: var(--color-primary-element);
-			background: var(--color-primary-element-light, #e8f0fe);
-			color: var(--color-primary-element);
-			font-weight: 600;
-		}
-		.mv-checkbox-filter-btn:hover:not(.active) { background: var(--color-background-hover); color: var(--color-main-text); }
 	`
 	document.head.appendChild(style)
 }
@@ -1061,7 +758,7 @@ function injectViewTabs(views) {
 	const allTab = document.createElement('button')
 	allTab.type = 'button'
 	allTab.className = 'mv-tab' + (!activeView ? ' mv-tab-active' : '')
-	allTab.textContent = 'Alle bestanden'
+	allTab.textContent = translate('metavox', 'All files')
 	allTab.addEventListener('click', () => clearView())
 	container.appendChild(allTab)
 
@@ -1136,12 +833,8 @@ function _makeViewTab(view) {
 	}
 
 	tab.addEventListener('click', () => {
-		if (activeView?.id === view.id) {
-			if (canManageViews) openViewEditor(view)
-		} else {
-			const fi = getFilterInstance()
-			if (fi) applyView(view, fi)
-		}
+		const fi = getFilterInstance()
+		if (fi) applyView(view, fi)
 	})
 
 	return tab
@@ -1190,6 +883,7 @@ function updateActiveTabs() {
 			tab.querySelector('.mv-tab-edit-btn')?.remove()
 		}
 	})
+
 }
 
 // ── View Editor Panel ──────────────────────────────────────────
@@ -1377,6 +1071,21 @@ function applyView(view, filterInstance) {
 }
 
 /**
+ * Build default filterable configs from all available fields.
+ * Used when no view is active — all fields are filterable by default.
+ */
+function buildDefaultFilterConfigs() {
+	return availableFields.map(field => ({
+		field_name: field.field_name,
+		field_label: field.field_label,
+		field_type: field.field_type,
+		field_options: field.field_options,
+		visible: false,
+		filterable: true,
+	}))
+}
+
+/**
  * Clear the active view: restore default column visibility and clear filter/sort state.
  */
 function clearView() {
@@ -1386,9 +1095,9 @@ function clearView() {
 		fi.reset()
 	}
 
-	// No view active — hide columns and update filter registration (reset to empty)
+	// No view active — hide columns but keep all fields filterable
 	_applyViewColumns(null)
-	registerMetaVoxFilter([], activeGroupfolderId, metadataCache)
+	registerMetaVoxFilter(buildDefaultFilterConfigs(), activeGroupfolderId, metadataCache)
 
 	// Clear sort
 	currentSort = null
@@ -1411,8 +1120,12 @@ function clearView() {
  */
 function _applyViewColumns(view) {
 	if (!view || !view.columns || view.columns.length === 0) {
-		// No view active — hide all MetaVox columns
+		// No view active — hide all MetaVox columns and reset table widths
 		activeColumnConfigs = []
+		const table = document.querySelector('.files-list__table')
+		if (table) table.style.minWidth = ''
+		const filesList = document.querySelector('.files-list')
+		if (filesList) filesList.style.minWidth = ''
 	} else {
 		// Build activeColumnConfigs from visible view columns, enriched with availableFields data
 		const ordered = []
@@ -1441,9 +1154,9 @@ function _applyViewColumns(view) {
 	injectHeaderColumns()
 	injectFooterColumns()
 
-	// Remove existing data cells and re-inject
+	// Batch remove all existing data cells in one query, then re-inject per row
+	document.querySelectorAll('tr[data-cy-files-list-row] .' + MARKER_CLASS).forEach(el => el.remove())
 	document.querySelectorAll('tr[data-cy-files-list-row]').forEach(row => {
-		row.querySelectorAll('.' + MARKER_CLASS).forEach(el => el.remove())
 		injectRowColumns(row)
 	})
 }
@@ -1554,10 +1267,12 @@ function applySort() {
 		return multiplier * compareValues(metaA[fieldName], metaB[fieldName], fieldType)
 	})
 
-	// Re-append in sorted order (moves DOM nodes)
+	// Re-append in sorted order via DocumentFragment (single reflow)
+	const sortFrag = document.createDocumentFragment()
 	for (const row of rows) {
-		tbody.appendChild(row)
+		sortFrag.appendChild(row)
 	}
+	tbody.appendChild(sortFrag)
 }
 
 function updateSortIndicators() {
@@ -1633,6 +1348,7 @@ export async function updateColumnsForCurrentFolder() {
 		closeViewEditor()
 		stopRowObserver()
 		columnsActive = false
+		_cachedActionsWidth = null
 	}
 
 	if (!groupfolderId) {
@@ -1644,6 +1360,7 @@ export async function updateColumnsForCurrentFolder() {
 		metadataCache.clear()
 		prefetchedFilterValues = null
 		currentSort = null
+		_cachedActionsWidth = null
 		return
 	}
 
@@ -1674,7 +1391,7 @@ export async function updateColumnsForCurrentFolder() {
 	// Inject UI immediately (don't wait for metadata)
 	injectColumnStyles()
 	injectHeaderColumns()
-	registerMetaVoxFilter([], groupfolderId, metadataCache)
+	registerMetaVoxFilter(buildDefaultFilterConfigs(), groupfolderId, metadataCache)
 	injectFooterColumns()
 	injectAllExistingRows()
 	startRowObserver()
@@ -1716,16 +1433,33 @@ export async function updateColumnsForCurrentFolder() {
 	}
 }
 
-function scheduleInjection(attempt = 0) {
-	const table = document.querySelector('.files-list__table tbody')
-	if (table && table.children.length > 0) {
-		updateColumnsForCurrentFolder()
-		return
+function scheduleInjection() {
+	// Use MutationObserver to reliably detect when the file list table is populated.
+	// NC33's Vue app renders the table asynchronously — a simple polling loop with
+	// a fixed number of attempts is too fragile.
+	const check = () => {
+		const table = document.querySelector('.files-list__table tbody')
+		if (table && table.children.length > 0) {
+			updateColumnsForCurrentFolder()
+			return true
+		}
+		return false
 	}
 
-	if (attempt < 30) {
-		setTimeout(() => scheduleInjection(attempt + 1), 200)
-	}
+	// Try immediately
+	if (check()) return
+
+	// Otherwise observe the DOM until the table appears
+	const observer = new MutationObserver(() => {
+		if (check()) {
+			observer.disconnect()
+		}
+	})
+
+	observer.observe(document.body, { childList: true, subtree: true })
+
+	// Safety timeout: disconnect after 30 seconds to avoid leaks
+	setTimeout(() => observer.disconnect(), 30000)
 }
 
 export function getActiveColumnConfigs() {

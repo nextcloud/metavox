@@ -5,7 +5,7 @@
 			<h3>{{ isNew ? t('metavox', 'New view') : t('metavox', 'Edit view') }}</h3>
 			<NcButton type="tertiary"
 				:aria-label="t('metavox', 'Close')"
-				@click="$emit('close')">
+				@click="emit('close')">
 				<template #icon>
 					<CloseIcon :size="20" />
 				</template>
@@ -51,7 +51,7 @@
 					@dragend="onDragEnd"
 					@dragover.prevent
 					@drop.prevent="onDrop($event, index)">
-					<span class="mv-col-drag" :title="t('metavox', 'Drag to reorder')">⠿</span>
+					<DragVerticalIcon :size="18" class="mv-col-drag" :title="t('metavox', 'Drag to reorder')" />
 					<span class="mv-col-name">{{ col.field_label }}</span>
 					<span class="mv-col-check">
 						<NcCheckboxRadioSwitch :model-value="col.visible"
@@ -209,7 +209,7 @@
 				{{ t('metavox', 'Delete') }}
 			</NcButton>
 			<div class="mv-footer-spacer" />
-			<NcButton type="secondary" @click="$emit('close')">
+			<NcButton type="secondary" @click="emit('close')">
 				{{ t('metavox', 'Cancel') }}
 			</NcButton>
 			<NcButton type="primary"
@@ -221,113 +221,117 @@
 	</div>
 </template>
 
-<script>
+<script setup>
+import { ref, computed } from 'vue'
 import { NcButton, NcCheckboxRadioSwitch, NcTextField, NcSelect } from '@nextcloud/vue'
-import { translate } from '@nextcloud/l10n'
+import { translate as t, translate } from '@nextcloud/l10n'
 import CloseIcon from 'vue-material-design-icons/Close.vue'
 import ChevronRightIcon from 'vue-material-design-icons/ChevronRight.vue'
+import DragVerticalIcon from 'vue-material-design-icons/DragVertical.vue'
 
-export default {
-	name: 'ViewEditorPanel',
-	components: {
-		NcButton,
-		NcCheckboxRadioSwitch,
-		NcTextField,
-		NcSelect,
-		CloseIcon,
-		ChevronRightIcon,
+const props = defineProps({
+	view: {
+		type: Object,
+		default: null,
 	},
-	props: {
-		view: {
-			type: Object,
-			default: null,
-		},
-		availableFields: {
-			type: Array,
-			required: true,
-		},
-		fetchFilterValuesFn: {
-			type: Function,
-			required: true,
-		},
+	availableFields: {
+		type: Array,
+		required: true,
 	},
-	emits: ['close', 'save', 'delete'],
-	data() {
-		const editorState = this.buildEditorState()
-		return {
-			editorState,
-			saving: false,
-			dragFrom: null,
-			autocompleteField: null,
-			autocompleteItems: [],
-			autocompleteCache: {},
-			updateKey: 0,
+	fetchFilterValuesFn: {
+		type: Function,
+		required: true,
+	},
+})
+const emit = defineEmits(['close', 'save', 'delete'])
+
+// ========================================
+// State
+// ========================================
+
+const editorState = ref(buildEditorState())
+const saving = ref(false)
+const dragFrom = ref(null)
+const autocompleteField = ref(null)
+const autocompleteItems = ref([])
+const autocompleteCache = ref({})
+const colList = ref(null)
+
+// ========================================
+// Computeds
+// ========================================
+
+const isNew = computed(() => !props.view)
+
+const filterableColumns = computed(() =>
+	editorState.value.columns.filter(c => c.visible && c.filterable),
+)
+
+const sortOptions = computed(() =>
+	editorState.value.columns
+		.filter(c => c.visible)
+		.map(c => ({ id: c.field_name, label: c.field_label })),
+)
+
+// ========================================
+// Reactivity helper
+// ========================================
+
+function touchFilters() {
+	editorState.value.filters = { ...editorState.value.filters }
+}
+
+function ensureFilterSet(fieldId) {
+	if (!editorState.value.filters[fieldId]) {
+		editorState.value.filters = {
+			...editorState.value.filters,
+			[fieldId]: new Set(),
 		}
-	},
-	computed: {
-		isNew() {
-			return !this.view
-		},
-		filterableColumns() {
-			return this.editorState.columns.filter(c => c.visible && c.filterable)
-		},
-		sortOptions() {
-			return this.editorState.columns
-				.filter(c => c.visible)
-				.map(c => ({ id: c.field_name, label: c.field_label }))
-		},
-	},
-	methods: {
-		buildEditorState() {
-			const view = this.view
-			const columns = this.buildColumns(view)
-			const filters = this.buildFilters(view)
-			return {
-				name: view?.name || '',
-				isDefault: view?.is_default || false,
-				columns,
-				filters,
-				sortField: view?.sort_field || '',
-				sortOrder: view?.sort_order || 'asc',
-			}
-		},
+	}
+}
 
-		buildColumns(view) {
-			const viewCols = view?.columns || []
-			if (viewCols.length > 0) {
-				const result = []
-				const usedIds = new Set()
-				viewCols.forEach(vc => {
-					const cfg = this.availableFields.find(c =>
-						String(c.id) === String(vc.field_id) || c.field_name === vc.field_name,
-					)
-					if (!cfg) return
-					usedIds.add(cfg.id)
-					result.push({
-						field_id: cfg.id,
-						field_name: cfg.field_name,
-						field_label: cfg.field_label,
-						field_type: cfg.field_type,
-						field_options: cfg.field_options,
-						visible: vc.visible !== false && vc.show_as_column !== false,
-						filterable: vc.filterable !== false,
-					})
-				})
-				this.availableFields.forEach(cfg => {
-					if (usedIds.has(cfg.id)) return
-					result.push({
-						field_id: cfg.id,
-						field_name: cfg.field_name,
-						field_label: cfg.field_label,
-						field_type: cfg.field_type,
-						field_options: cfg.field_options,
-						visible: false,
-						filterable: false,
-					})
-				})
-				return result
-			}
-			return this.availableFields.map(cfg => ({
+// ========================================
+// Builder functions
+// ========================================
+
+function buildEditorState() {
+	const view = props.view
+	const columns = buildColumns(view)
+	const filters = buildFilters(view)
+	return {
+		name: view?.name || '',
+		isDefault: view?.is_default || false,
+		columns,
+		filters,
+		sortField: view?.sort_field || '',
+		sortOrder: view?.sort_order || 'asc',
+	}
+}
+
+function buildColumns(view) {
+	const viewCols = view?.columns || []
+	if (viewCols.length > 0) {
+		const result = []
+		const usedIds = new Set()
+		viewCols.forEach(vc => {
+			const cfg = props.availableFields.find(c =>
+				String(c.id) === String(vc.field_id) || c.field_name === vc.field_name,
+			)
+			if (!cfg) return
+			usedIds.add(cfg.id)
+			result.push({
+				field_id: cfg.id,
+				field_name: cfg.field_name,
+				field_label: cfg.field_label,
+				field_type: cfg.field_type,
+				field_options: cfg.field_options,
+				visible: vc.visible !== false && vc.show_as_column !== false,
+				filterable: vc.filterable !== false,
+			})
+		})
+		props.availableFields.forEach(cfg => {
+			if (usedIds.has(cfg.id)) return
+			result.push({
 				field_id: cfg.id,
 				field_name: cfg.field_name,
 				field_label: cfg.field_label,
@@ -335,218 +339,227 @@ export default {
 				field_options: cfg.field_options,
 				visible: false,
 				filterable: false,
-			}))
-		},
-
-		buildFilters(view) {
-			const filters = {}
-			const raw = view?.filters || {}
-			for (const [fieldId, valStr] of Object.entries(raw)) {
-				if (!valStr) continue
-				filters[fieldId] = new Set(String(valStr).split(',').map(v => v.trim()).filter(Boolean))
-			}
-			return filters
-		},
-
-		// Column toggles
-		toggleVisible(col, val) {
-			col.visible = val
-			if (!val) {
-				col.filterable = false
-			}
-			this.updateKey++
-		},
-
-		toggleFilterable(col, val) {
-			col.filterable = val
-			this.updateKey++
-		},
-
-		// Drag & drop
-		onDragStart(e, index) {
-			this.dragFrom = index
-			e.dataTransfer.effectAllowed = 'move'
-			e.target.style.opacity = '0.4'
-		},
-
-		onDragEnd(e) {
-			e.target.style.opacity = ''
-			this.dragFrom = null
-		},
-
-		onDrop(e, toIndex) {
-			if (this.dragFrom === null || this.dragFrom === toIndex) return
-			const [moved] = this.editorState.columns.splice(this.dragFrom, 1)
-			this.editorState.columns.splice(toIndex, 0, moved)
-			this.dragFrom = null
-		},
-
-		// Filter helpers
-		getFilterCount(col) {
-			// eslint-disable-next-line no-unused-expressions
-			this.updateKey
-			return this.editorState.filters[col.field_id]?.size || 0
-		},
-
-		hasFilterValue(col, val) {
-			// eslint-disable-next-line no-unused-expressions
-			this.updateKey
-			return this.editorState.filters[col.field_id]?.has(val) || false
-		},
-
-		getFilterValues(col) {
-			// eslint-disable-next-line no-unused-expressions
-			this.updateKey
-			return [...(this.editorState.filters[col.field_id] || [])]
-		},
-
-		toggleFilterValue(col, val) {
-			if (!this.editorState.filters[col.field_id]) {
-				this.editorState.filters[col.field_id] = new Set()
-			}
-			const set = this.editorState.filters[col.field_id]
-			if (set.has(val)) {
-				set.delete(val)
-			} else {
-				set.add(val)
-			}
-			this.updateKey++
-		},
-
-		removeFilterValue(col, val) {
-			this.editorState.filters[col.field_id]?.delete(val)
-			this.updateKey++
-		},
-
-		isSelectType(col) {
-			return ['select', 'multiselect', 'multi_select'].includes(col.field_type)
-		},
-
-		getSelectOptions(col) {
-			const rawOptions = col.field_options
-				?? this.availableFields.find(c => String(c.id) === String(col.field_id))?.field_options
-			if (!rawOptions) return []
-			if (Array.isArray(rawOptions)) {
-				return rawOptions.map(o => (typeof o === 'object' ? (o.label || o.value || String(o)) : String(o)))
-			}
-			return String(rawOptions).split(/[\n,]/).map(s => s.trim()).filter(Boolean)
-		},
-
-		// Autocomplete
-		onAutocompleteFocus(col, e) {
-			this.autocompleteField = col.field_id
-			if (!this.autocompleteCache[col.field_name]) {
-				this.autocompleteCache[col.field_name] = this.fetchFilterValuesFn(col.field_name)
-			}
-			this.renderAutocomplete(col, e.target.value)
-		},
-
-		onAutocompleteInput(col, e) {
-			this.renderAutocomplete(col, e.target.value)
-		},
-
-		renderAutocomplete(col, query) {
-			const allValues = this.autocompleteCache[col.field_name] || []
-			const tagSet = this.editorState.filters[col.field_id] || new Set()
-			const filtered = allValues.filter(v =>
-				(!query || v.toLowerCase().includes(query.toLowerCase())),
-			)
-			this.autocompleteItems = filtered.map(v => ({
-				value: v,
-				selected: tagSet.has(v),
-			}))
-		},
-
-		selectAutocompleteItem(col, item) {
-			if (item.selected) return
-			if (!this.editorState.filters[col.field_id]) {
-				this.editorState.filters[col.field_id] = new Set()
-			}
-			this.editorState.filters[col.field_id].add(item.value)
-			this.autocompleteField = null
-			this.autocompleteItems = []
-			this.updateKey++
-		},
-
-		onAutocompleteKeydown(col, e) {
-			if ((e.key === 'Enter' || e.key === ',') && e.target.value.trim()) {
-				e.preventDefault()
-				if (!this.editorState.filters[col.field_id]) {
-					this.editorState.filters[col.field_id] = new Set()
-				}
-				this.editorState.filters[col.field_id].add(e.target.value.trim())
-				e.target.value = ''
-				this.autocompleteField = null
-				this.autocompleteItems = []
-				this.updateKey++
-			} else if (e.key === 'Escape') {
-				this.autocompleteField = null
-				this.autocompleteItems = []
-			} else if (e.key === 'Backspace' && !e.target.value) {
-				const set = this.editorState.filters[col.field_id]
-				if (set && set.size > 0) {
-					const last = [...set].pop()
-					set.delete(last)
-					this.updateKey++
-				}
-			}
-		},
-
-		onAutocompleteBlur(col, e) {
-			setTimeout(() => {
-				if (e.target.value.trim()) {
-					if (!this.editorState.filters[col.field_id]) {
-						this.editorState.filters[col.field_id] = new Set()
-					}
-					this.editorState.filters[col.field_id].add(e.target.value.trim())
-					e.target.value = ''
-					this.updateKey++
-				}
-				this.autocompleteField = null
-				this.autocompleteItems = []
-			}, 150)
-		},
-
-		// Save / Delete
-		async onSave() {
-			const name = this.editorState.name.trim()
-			if (!name) {
-				alert(translate('metavox', 'Enter a name for the view'))
-				return
-			}
-
-			this.saving = true
-
-			const columns = this.editorState.columns.map(col => ({
-				field_id: col.field_id,
-				field_name: col.field_name,
-				field_label: col.field_label,
-				visible: col.visible,
-				filterable: col.filterable,
-			}))
-
-			const filters = {}
-			for (const [fieldId, tagSet] of Object.entries(this.editorState.filters)) {
-				if (tagSet.size > 0) {
-					filters[fieldId] = [...tagSet].join(',')
-				}
-			}
-
-			this.$emit('save', {
-				name,
-				is_default: this.editorState.isDefault,
-				columns,
-				filters,
-				sort_field: this.editorState.sortField || null,
-				sort_order: this.editorState.sortOrder || null,
 			})
-		},
+		})
+		return result
+	}
+	return props.availableFields.map(cfg => ({
+		field_id: cfg.id,
+		field_name: cfg.field_name,
+		field_label: cfg.field_label,
+		field_type: cfg.field_type,
+		field_options: cfg.field_options,
+		visible: false,
+		filterable: false,
+	}))
+}
 
-		onDelete() {
-			if (!confirm(translate('metavox', 'Delete view "{name}"?', { name: this.view.name }))) return
-			this.$emit('delete', this.view)
-		},
-	},
+function buildFilters(view) {
+	const filters = {}
+	const raw = view?.filters || {}
+	for (const [fieldId, valStr] of Object.entries(raw)) {
+		if (!valStr) continue
+		filters[fieldId] = new Set(String(valStr).split(',').map(v => v.trim()).filter(Boolean))
+	}
+	return filters
+}
+
+// ========================================
+// Column toggles
+// ========================================
+
+function toggleVisible(col, val) {
+	col.visible = val
+	if (!val) {
+		col.filterable = false
+	}
+}
+
+function toggleFilterable(col, val) {
+	col.filterable = val
+}
+
+// ========================================
+// Drag & drop
+// ========================================
+
+function onDragStart(e, index) {
+	dragFrom.value = index
+	e.dataTransfer.effectAllowed = 'move'
+	e.target.style.opacity = '0.4'
+}
+
+function onDragEnd(e) {
+	e.target.style.opacity = ''
+	dragFrom.value = null
+}
+
+function onDrop(e, toIndex) {
+	if (dragFrom.value === null || dragFrom.value === toIndex) return
+	const [moved] = editorState.value.columns.splice(dragFrom.value, 1)
+	editorState.value.columns.splice(toIndex, 0, moved)
+	dragFrom.value = null
+}
+
+// ========================================
+// Filter helpers
+// ========================================
+
+function getFilterCount(col) {
+	return editorState.value.filters[col.field_id]?.size || 0
+}
+
+function hasFilterValue(col, val) {
+	return editorState.value.filters[col.field_id]?.has(val) || false
+}
+
+function getFilterValues(col) {
+	return [...(editorState.value.filters[col.field_id] || [])]
+}
+
+function toggleFilterValue(col, val) {
+	ensureFilterSet(col.field_id)
+	const set = editorState.value.filters[col.field_id]
+	if (set.has(val)) {
+		set.delete(val)
+	} else {
+		set.add(val)
+	}
+	touchFilters()
+}
+
+function removeFilterValue(col, val) {
+	editorState.value.filters[col.field_id]?.delete(val)
+	touchFilters()
+}
+
+function isSelectType(col) {
+	return ['select', 'multiselect', 'multi_select'].includes(col.field_type)
+}
+
+function getSelectOptions(col) {
+	const rawOptions = col.field_options
+		?? props.availableFields.find(c => String(c.id) === String(col.field_id))?.field_options
+	if (!rawOptions) return []
+	if (Array.isArray(rawOptions)) {
+		return rawOptions.map(o => (typeof o === 'object' ? (o.label || o.value || String(o)) : String(o)))
+	}
+	return String(rawOptions).split(/[\n,]/).map(s => s.trim()).filter(Boolean)
+}
+
+// ========================================
+// Autocomplete
+// ========================================
+
+function onAutocompleteFocus(col, e) {
+	autocompleteField.value = col.field_id
+	if (!autocompleteCache.value[col.field_name]) {
+		autocompleteCache.value[col.field_name] = props.fetchFilterValuesFn(col.field_name)
+	}
+	renderAutocomplete(col, e.target.value)
+}
+
+function onAutocompleteInput(col, e) {
+	renderAutocomplete(col, e.target.value)
+}
+
+function renderAutocomplete(col, query) {
+	const allValues = autocompleteCache.value[col.field_name] || []
+	const tagSet = editorState.value.filters[col.field_id] || new Set()
+	const filtered = allValues.filter(v =>
+		(!query || v.toLowerCase().includes(query.toLowerCase())),
+	)
+	autocompleteItems.value = filtered.map(v => ({
+		value: v,
+		selected: tagSet.has(v),
+	}))
+}
+
+function selectAutocompleteItem(col, item) {
+	if (item.selected) return
+	ensureFilterSet(col.field_id)
+	editorState.value.filters[col.field_id].add(item.value)
+	autocompleteField.value = null
+	autocompleteItems.value = []
+	touchFilters()
+}
+
+function onAutocompleteKeydown(col, e) {
+	if ((e.key === 'Enter' || e.key === ',') && e.target.value.trim()) {
+		e.preventDefault()
+		ensureFilterSet(col.field_id)
+		editorState.value.filters[col.field_id].add(e.target.value.trim())
+		e.target.value = ''
+		autocompleteField.value = null
+		autocompleteItems.value = []
+		touchFilters()
+	} else if (e.key === 'Escape') {
+		autocompleteField.value = null
+		autocompleteItems.value = []
+	} else if (e.key === 'Backspace' && !e.target.value) {
+		const set = editorState.value.filters[col.field_id]
+		if (set && set.size > 0) {
+			const last = [...set].pop()
+			set.delete(last)
+			touchFilters()
+		}
+	}
+}
+
+function onAutocompleteBlur(col, e) {
+	setTimeout(() => {
+		if (e.target.value.trim()) {
+			ensureFilterSet(col.field_id)
+			editorState.value.filters[col.field_id].add(e.target.value.trim())
+			e.target.value = ''
+			touchFilters()
+		}
+		autocompleteField.value = null
+		autocompleteItems.value = []
+	}, 150)
+}
+
+// ========================================
+// Save / Delete
+// ========================================
+
+async function onSave() {
+	const name = editorState.value.name.trim()
+	if (!name) {
+		alert(translate('metavox', 'Enter a name for the view'))
+		return
+	}
+
+	saving.value = true
+
+	const columns = editorState.value.columns.map(col => ({
+		field_id: col.field_id,
+		field_name: col.field_name,
+		field_label: col.field_label,
+		visible: col.visible,
+		filterable: col.filterable,
+	}))
+
+	const filters = {}
+	for (const [fieldId, tagSet] of Object.entries(editorState.value.filters)) {
+		if (tagSet.size > 0) {
+			filters[fieldId] = [...tagSet].join(',')
+		}
+	}
+
+	emit('save', {
+		name,
+		is_default: editorState.value.isDefault,
+		columns,
+		filters,
+		sort_field: editorState.value.sortField || null,
+		sort_order: editorState.value.sortOrder || null,
+	})
+}
+
+function onDelete() {
+	if (!confirm(translate('metavox', 'Delete view "{name}"?', { name: props.view.name }))) return
+	emit('delete', props.view)
 }
 </script>
 
@@ -590,12 +603,10 @@ export default {
 }
 
 .mv-editor-section-title {
-	font-size: 11px;
-	font-weight: 700;
-	letter-spacing: 0.08em;
-	text-transform: uppercase;
-	color: var(--color-text-maxcontrast);
-	margin: 16px 0 8px;
+	font-size: var(--default-font-size);
+	font-weight: bold;
+	color: var(--color-main-text);
+	margin: 20px 0 8px;
 }
 
 .mv-col-header-row {
@@ -612,9 +623,8 @@ export default {
 }
 
 .mv-col-header-label {
-	font-size: 11px;
+	font-size: 12px;
 	font-weight: 600;
-	text-transform: uppercase;
 	color: var(--color-text-maxcontrast);
 }
 
@@ -637,15 +647,16 @@ export default {
 .mv-col-drag {
 	cursor: grab;
 	color: var(--color-text-maxcontrast);
-	font-size: 16px;
 	flex-shrink: 0;
 	width: 20px;
-	text-align: center;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .mv-col-name {
 	flex: 1;
-	font-size: 13px;
+	font-size: 14px;
 }
 
 .mv-col-check {
@@ -657,6 +668,20 @@ export default {
 .mv-disabled {
 	opacity: 0.4;
 	pointer-events: none;
+}
+
+/* Verticale centrering van checkbox labels (NcCheckboxRadioSwitch) */
+.mv-col-check :deep(.checkbox-content),
+.mv-filter-body :deep(.checkbox-content),
+.mv-editor-row :deep(.checkbox-content) {
+	min-height: 32px;
+	padding-block: 4px;
+}
+
+.mv-col-check :deep(.checkbox-content__icon),
+.mv-filter-body :deep(.checkbox-content__icon),
+.mv-editor-row :deep(.checkbox-content__icon) {
+	margin-block: auto !important;
 }
 
 /* Filter rows */
@@ -677,8 +702,8 @@ export default {
 	user-select: none;
 	list-style: none;
 	min-height: 40px;
-	font-size: 13px;
-	font-weight: 600;
+	font-size: 14px;
+	font-weight: 500;
 	color: var(--color-main-text);
 }
 
@@ -754,7 +779,7 @@ details.mv-filter-row[open] .mv-filter-chevron {
 	background: var(--color-primary-element-light);
 	color: var(--color-primary-element);
 	border-radius: 12px;
-	font-size: 12px;
+	font-size: 13px;
 }
 
 .mv-filter-tag-remove {
@@ -799,7 +824,7 @@ details.mv-filter-row[open] .mv-filter-chevron {
 
 .mv-autocomplete-item {
 	padding: 6px 12px;
-	font-size: 13px;
+	font-size: 14px;
 	cursor: pointer;
 }
 

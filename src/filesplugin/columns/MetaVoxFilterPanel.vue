@@ -4,23 +4,20 @@
 			{{ t('metavox', 'No filterable fields') }}
 		</div>
 		<template v-else>
-			<details v-for="config in configs"
-				:key="config.field_name"
-				:open="getActiveCount(config.field_name) > 0 || undefined">
-				<summary>
+			<div v-for="config in configs" :key="config.field_name"
+				class="filter-section">
+				<button class="filter-summary"
+					type="button"
+					@click="toggleSection(config.field_name)">
 					<span class="summary-text">{{ config.field_label }}</span>
 					<span v-if="getActiveCount(config.field_name) > 0"
 						class="summary-badge">
 						{{ getActiveCount(config.field_name) }}
 					</span>
-					<ChevronRight :size="16" class="summary-chevron" />
-				</summary>
-				<div class="options">
-					<button v-if="getActiveCount(config.field_name) > 0"
-						class="clear-btn"
-						@click="clearField(config.field_name)">
-						{{ t('metavox', 'Clear selection') }}
-					</button>
+					<ChevronRight :size="16" class="summary-chevron"
+						:class="{ open: isSectionOpen(config.field_name) }" />
+				</button>
+				<div v-if="isSectionOpen(config.field_name)" class="options">
 					<NcCheckboxRadioSwitch v-for="opt in optionsMap[config.field_name]"
 						:key="opt.value"
 						:model-value="isActive(config.field_name, opt.value)"
@@ -29,112 +26,106 @@
 						{{ opt.label }}
 					</NcCheckboxRadioSwitch>
 				</div>
-			</details>
-			<div class="reset-wrapper">
-				<NcButton :wide="true"
-					:variant="hasActiveFilters ? 'secondary' : 'tertiary'"
-					@click="resetAll">
-					{{ t('metavox', 'Clear filters') }}
-				</NcButton>
 			</div>
 		</template>
 	</div>
 </template>
 
-<script>
-import { NcButton, NcCheckboxRadioSwitch } from '@nextcloud/vue'
-import { translate } from '@nextcloud/l10n'
+<script setup>
+import { ref, computed, watch } from 'vue'
+import { NcCheckboxRadioSwitch } from '@nextcloud/vue'
+import { translate as t } from '@nextcloud/l10n'
 import ChevronRight from 'vue-material-design-icons/ChevronRight.vue'
 import { getPrefetchedFilterValues } from './MetaVoxColumns.js'
 
+const props = defineProps({
+	filter: {
+		type: Object,
+		default: null,
+	},
+})
+
+const optionsMap = ref({})
+const activeState = ref({})
+const openSections = ref({})
+
+const configs = computed(() => {
+	if (!props.filter) return []
+	return props.filter.getFilterableConfigs()
+})
+
 function formatOptionLabel(value, fieldType) {
 	if (fieldType === 'checkbox' || fieldType === 'boolean') {
-		if (value === '1' || value === 'true') return translate('metavox', 'Yes')
-		if (value === '0' || value === 'false') return translate('metavox', 'No')
+		if (value === '1' || value === 'true') return t('metavox', 'Yes')
+		if (value === '0' || value === 'false') return t('metavox', 'No')
 	}
 	return value
 }
 
-export default {
-	name: 'MetaVoxFilterPanel',
-	components: {
-		NcButton,
-		NcCheckboxRadioSwitch,
-		ChevronRight,
-	},
-	props: {
-		filter: {
-			type: Object,
-			default: null,
-		},
-	},
-	data() {
-		return {
-			optionsMap: {},
-			updateKey: 0,
+function loadAllOptions() {
+	const allValues = getPrefetchedFilterValues() || {}
+	const map = {}
+	for (const config of configs.value) {
+		let values = allValues[config.field_name] || []
+		if (config.field_type === 'checkbox' || config.field_type === 'boolean') {
+			values = ['1', '0']
 		}
-	},
-	computed: {
-		configs() {
-			if (!this.filter) return []
-			return this.filter.getFilterableConfigs()
-		},
-		hasActiveFilters() {
-			// eslint-disable-next-line no-unused-expressions
-			this.updateKey
-			return this.filter ? this.filter.getActiveFilters().size > 0 : false
-		},
-	},
-	watch: {
-		filter: {
-			immediate: true,
-			handler() {
-				if (this.filter) {
-					this.loadAllOptions()
-				}
-			},
-		},
-	},
-	methods: {
-		loadAllOptions() {
-			// Use prefetched filter values (loaded in parallel with fields/views)
-			const allValues = getPrefetchedFilterValues() || {}
-
-			for (const config of this.configs) {
-				let values = allValues[config.field_name] || []
-				if (config.field_type === 'checkbox' || config.field_type === 'boolean') {
-					values = ['1', '0']
-				}
-				this.optionsMap[config.field_name] = values.map(val => ({
-					value: val,
-					label: formatOptionLabel(val, config.field_type),
-				}))
-			}
-		},
-		getActiveCount(fieldName) {
-			// eslint-disable-next-line no-unused-expressions
-			this.updateKey
-			return this.filter ? this.filter.getFieldActiveCount(fieldName) : 0
-		},
-		isActive(fieldName, value) {
-			// eslint-disable-next-line no-unused-expressions
-			this.updateKey
-			return this.filter ? this.filter.isFieldValueActive(fieldName, value) : false
-		},
-		toggleValue(fieldName, value) {
-			this.filter.toggleFilterValue(fieldName, value)
-			this.updateKey++
-		},
-		clearField(fieldName) {
-			this.filter.clearFieldFilter(fieldName)
-			this.updateKey++
-		},
-		resetAll() {
-			this.filter.reset()
-			this.updateKey++
-		},
-	},
+		map[config.field_name] = values.map(val => ({
+			value: val,
+			label: formatOptionLabel(val, config.field_type),
+		}))
+	}
+	optionsMap.value = map
 }
+
+function syncActiveState() {
+	if (!props.filter) return
+	const state = {}
+	const filters = props.filter.getActiveFilters()
+	for (const config of configs.value) {
+		const values = filters.get(config.field_name)
+		if (values && values.size > 0) {
+			state[config.field_name] = {}
+			for (const v of values) {
+				state[config.field_name][v] = true
+			}
+		}
+	}
+	activeState.value = state
+}
+
+function getActiveCount(fieldName) {
+	const s = activeState.value[fieldName]
+	return s ? Object.keys(s).length : 0
+}
+
+function isActive(fieldName, value) {
+	return !!activeState.value[fieldName]?.[value]
+}
+
+function isSectionOpen(fieldName) {
+	if (activeState.value[fieldName]) return true
+	return !!openSections.value[fieldName]
+}
+
+function toggleSection(fieldName) {
+	openSections.value = {
+		...openSections.value,
+		[fieldName]: !openSections.value[fieldName],
+	}
+}
+
+function toggleValue(fieldName, value) {
+	props.filter.toggleFilterValue(fieldName, value)
+	syncActiveState()
+}
+
+watch(() => props.filter, () => {
+	if (props.filter) {
+		loadAllOptions()
+		syncActiveState()
+	}
+}, { immediate: true })
 </script>
 
 <style scoped>
@@ -146,29 +137,29 @@ export default {
 	padding: 4px 0;
 }
 
-details {
+.filter-section {
 	border-bottom: 1px solid var(--color-border, #e8e8e8);
 }
-details:last-of-type {
+.filter-section:last-child {
 	border-bottom: none;
 }
 
-summary {
+.filter-summary {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	width: 100%;
 	padding: 8px 14px;
+	border: none;
+	background: transparent;
 	cursor: pointer;
 	user-select: none;
 	font-size: 14px;
 	color: var(--color-main-text, #222);
-	list-style: none;
 	min-height: 44px;
+	text-align: left;
 }
-summary::-webkit-details-marker {
-	display: none;
-}
-summary:hover {
+.filter-summary:hover {
 	background: var(--color-background-hover, #f5f5f5);
 }
 
@@ -197,7 +188,7 @@ summary:hover {
 	color: var(--color-text-maxcontrast, #767676);
 	flex-shrink: 0;
 }
-details[open] .summary-chevron {
+.summary-chevron.open {
 	transform: rotate(90deg);
 }
 
@@ -213,25 +204,6 @@ details[open] .summary-chevron {
 /* Herstel icoon-uitlijning: verwijder de 'auto' margin-bottom die het icoon omhoog trekt */
 .options :deep(.checkbox-content__icon) {
 	margin-block: auto !important;
-}
-
-.clear-btn {
-	display: block;
-	width: 100%;
-	padding: 4px 6px 6px;
-	border: none;
-	background: transparent;
-	color: var(--color-primary-element, #0082c9);
-	font-size: 12px;
-	text-align: left;
-	cursor: pointer;
-}
-.clear-btn:hover {
-	text-decoration: underline;
-}
-
-.reset-wrapper {
-	padding: 6px 8px 4px;
 }
 
 .empty-msg {
