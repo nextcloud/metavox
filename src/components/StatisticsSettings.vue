@@ -166,16 +166,19 @@ export default {
 	methods: {
 		async loadStatus() {
 			try {
-				const response = await axios.get(generateUrl('/apps/metavox/api/telemetry/status'))
-				if (response.data.success) {
-					this.telemetryEnabled = response.data.enabled
-					this.lastReport = response.data.lastReport
-					if (response.data.aiEnabled !== undefined) {
-						this.aiEnabled = response.data.aiEnabled
-					}
+				const [telemetryRes, settingsRes] = await Promise.all([
+					axios.get(generateUrl('/apps/metavox/api/telemetry/status')),
+					axios.get(generateUrl('/apps/metavox/api/settings')),
+				])
+				if (telemetryRes.data.success) {
+					this.telemetryEnabled = telemetryRes.data.enabled
+					this.lastReport = telemetryRes.data.lastReport
+				}
+				if (settingsRes.data.success) {
+					this.aiEnabled = settingsRes.data.settings.ai_enabled
 				}
 			} catch (error) {
-				console.error('Failed to load telemetry status:', error)
+				console.error('Failed to load settings:', error)
 			}
 		},
 
@@ -214,8 +217,8 @@ export default {
 
 		async toggleAi(enabled) {
 			try {
-				await axios.post(generateUrl('/apps/metavox/api/telemetry/settings'), {
-					aiEnabled: enabled,
+				await axios.post(generateUrl('/apps/metavox/api/settings'), {
+					ai_enabled: enabled,
 				})
 				this.aiEnabled = enabled
 				this.showMessage(
