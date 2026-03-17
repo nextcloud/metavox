@@ -313,7 +313,7 @@ PROMPT;
 
             // Basic type validation
             $type = $fieldTypes[$fieldName] ?? 'text';
-            $stringValue = (string)$value;
+            $stringValue = is_bool($value) ? ($value ? '1' : '0') : (string)$value;
 
             switch ($type) {
                 case 'number':
@@ -344,6 +344,7 @@ PROMPT;
                                 }
                             }
                             if (!$matched) {
+                                error_log('MetaVox AI: dropped invalid dropdown value "' . $stringValue . '" for field ' . $fieldName . ' (allowed: ' . implode(', ', $fieldOptions[$fieldName]) . ')');
                                 continue 2; // Skip invalid value
                             }
                         }
