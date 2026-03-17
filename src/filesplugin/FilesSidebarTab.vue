@@ -3,7 +3,7 @@
 		<!-- Loading State -->
 		<div v-if="loading" class="loading-container">
 			<div class="icon-loading"></div>
-			<p>{{ t('metavox', 'Loading metadata...') }}</p>
+			<p>{{ aiGenerating ? t('metavox', 'Generating metadata with AI...') : t('metavox', 'Loading metadata...') }}</p>
 		</div>
 
 		<!-- Error State -->
@@ -638,6 +638,11 @@ export default {
 		async generateAiMetadata() {
 			if (!this.groupfolderId || !this.currentFileInfo?.id) return
 
+			// Prevent duplicate concurrent calls
+			if (this._aiGeneratePromise) {
+				return
+			}
+
 			this.aiGenerating = true
 			this.aiError = null
 			this.aiSuggestions = {}
@@ -646,14 +651,16 @@ export default {
 			const aiKey = `metavox_ai_generating_${this.currentFileInfo.id}`
 			sessionStorage.setItem(aiKey, '1')
 
+			this._aiGeneratePromise = axios.post(
+				generateUrl('/apps/metavox/api/ai/generate'),
+				{
+					fileId: this.currentFileInfo.id,
+					groupfolderId: this.groupfolderId,
+				},
+			)
+
 			try {
-				const response = await axios.post(
-					generateUrl('/apps/metavox/api/ai/generate'),
-					{
-						fileId: this.currentFileInfo.id,
-						groupfolderId: this.groupfolderId,
-					},
-				)
+				const response = await this._aiGeneratePromise
 
 				const suggestions = response.data?.suggestions || {}
 				if (Object.keys(suggestions).length === 0) {
@@ -666,6 +673,7 @@ export default {
 				this.aiError = error.response?.data?.error || this.t('metavox', 'AI generation failed. Please try again.')
 			} finally {
 				this.aiGenerating = false
+				this._aiGeneratePromise = null
 				sessionStorage.removeItem(aiKey)
 			}
 		},
