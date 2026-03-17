@@ -264,9 +264,10 @@ Fields to fill:
 
 IMPORTANT RULES:
 1. Return ONLY valid JSON with field names as keys and suggested values as strings.
-2. Skip fields you cannot determine from the content.
-3. For select/dropdown/multiselect fields: you MUST use EXACTLY one of the ALLOWED VALUES listed. Do NOT invent or rephrase options. If none of the allowed values match, skip the field entirely.
-4. Match the tone and style implied by each field's label and description.
+2. For select/dropdown/multiselect fields: you MUST use EXACTLY one of the ALLOWED VALUES listed. Do NOT invent or rephrase options. If none of the allowed values match, skip the field entirely.
+3. Match the tone and style implied by each field's label and description.
+4. Try your best to fill as many fields as possible. Use the file name, path, type, and any available context to make reasonable suggestions. Only skip a field if you truly have no basis for a suggestion.
+5. For checkbox fields, always provide a value ("1" or "0") based on your best judgment.
 
 File content:
 {$fileContent}
