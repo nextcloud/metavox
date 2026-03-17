@@ -250,6 +250,9 @@ public function getBulkFileMetadata(): DataResponse {
 
             foreach ($metadata as $fieldName => $value) {
                 if (isset($fieldMap[$fieldName])) {
+                    if (is_array($value)) {
+                        $value = implode(';#', $value);
+                    }
                     $this->fieldService->saveFieldValue($fileId, $fieldMap[$fieldName], (string)$value);
                 }
             }
@@ -315,6 +318,9 @@ public function getBulkFileMetadata(): DataResponse {
             
             foreach ($metadata as $fieldName => $value) {
                 if (isset($fieldMap[$fieldName])) {
+                    if (is_array($value)) {
+                        $value = implode(';#', $value);
+                    }
                     $this->fieldService->saveGroupfolderFieldValue($groupfolderId, $fieldMap[$fieldName], (string)$value);
                 }
             }
@@ -421,6 +427,10 @@ public function getGroupfolderFields(): DataResponse {
 
             foreach ($metadata as $fieldName => $value) {
                 if (isset($fieldMap[$fieldName])) {
+                    // Arrays (multiselect) → join with ;# separator
+                    if (is_array($value)) {
+                        $value = implode(';#', $value);
+                    }
                     $this->fieldService->saveGroupfolderFileFieldValue($groupfolderId, $fileId, $fieldMap[$fieldName], (string)$value);
                 }
             }

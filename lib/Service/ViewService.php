@@ -217,7 +217,7 @@ class ViewService {
 
         // Load field metadata in one query
         $qb = $this->db->getQueryBuilder();
-        $qb->select('id', 'field_type', 'field_options')
+        $qb->select('id', 'field_name', 'field_label', 'field_type', 'field_options')
            ->from('metavox_gf_fields')
            ->where($qb->expr()->in('id', $qb->createNamedParameter(
                array_keys($fieldIds),
@@ -227,6 +227,8 @@ class ViewService {
         $fieldMap = [];
         while ($row = $result->fetch()) {
             $fieldMap[(int)$row['id']] = [
+                'field_name' => $row['field_name'],
+                'field_label' => $row['field_label'],
                 'field_type' => $row['field_type'],
                 'field_options' => $row['field_options'] ? json_decode($row['field_options'], true) : [],
             ];
@@ -238,6 +240,12 @@ class ViewService {
             foreach ($view['columns'] as &$col) {
                 $fid = (int)($col['field_id'] ?? 0);
                 if (isset($fieldMap[$fid])) {
+                    if (!isset($col['field_name']) || $col['field_name'] === '') {
+                        $col['field_name'] = $fieldMap[$fid]['field_name'];
+                    }
+                    if (!isset($col['field_label']) || $col['field_label'] === '') {
+                        $col['field_label'] = $fieldMap[$fid]['field_label'];
+                    }
                     if (!isset($col['field_type']) || $col['field_type'] === '') {
                         $col['field_type'] = $fieldMap[$fid]['field_type'];
                     }

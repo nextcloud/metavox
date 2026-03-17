@@ -75,7 +75,7 @@ function formatValue(value, fieldType) {
 		} catch (e) { /* fall through */ }
 		return value
 	case 'multiselect':
-		return value.replace(/;\s*/g, ', ')
+		return value.split(';#').filter(v => v.trim()).join(', ')
 	default:
 		return String(value)
 	}
@@ -367,8 +367,30 @@ function removeColumnStyles() {
 	document.getElementById(STYLE_ID)?.remove()
 }
 
-function getColWidth(fieldName) {
-	return columnWidths.get(fieldName) || 150
+function getDefaultColWidth(fieldType) {
+	switch (fieldType) {
+	case 'checkbox': return 80
+	case 'number': return 100
+	case 'date': return 120
+	case 'select': return 120
+	case 'user': return 140
+	case 'text': return 150
+	case 'multiselect': return 160
+	case 'url': return 160
+	case 'textarea': return 180
+	case 'filelink': return 160
+	default: return 150
+	}
+}
+
+function getColWidth(fieldName, fieldType, fieldLabel) {
+	const persisted = columnWidths.get(fieldName)
+	if (persisted) return persisted
+	const typeDefault = getDefaultColWidth(fieldType)
+	if (!fieldLabel) return typeDefault
+	// Ensure header text fits: ~7.5px per char at 13px font + 48px for sort icon + padding
+	const labelMin = Math.ceil(fieldLabel.length * 7.5) + 48
+	return Math.max(typeDefault, labelMin)
 }
 
 const SORT_ICON_ASC = '<svg fill="currentColor" width="24" height="24" viewBox="0 0 24 24"><path d="M7,15L12,10L17,15H7Z"></path></svg>'
@@ -421,7 +443,7 @@ function injectHeaderColumns() {
 	for (const config of activeColumnConfigs) {
 		const th = document.createElement('th')
 		th.className = `files-list__column ${HEADER_MARKER} files-list__column--sortable`
-		const w = getColWidth(config.field_name)
+		const w = getColWidth(config.field_name, config.field_type, config.field_label)
 		th.style.width = w + 'px'
 		th.style.minWidth = w + 'px'
 		th.style.maxWidth = w + 'px'
@@ -498,7 +520,7 @@ function injectFooterColumns() {
 	for (const config of activeColumnConfigs) {
 		const td = document.createElement('td')
 		td.className = MARKER_CLASS
-		const w = getColWidth(config.field_name)
+		const w = getColWidth(config.field_name, config.field_type, config.field_label)
 		td.style.width = w + 'px'
 		td.style.minWidth = w + 'px'
 		td.style.maxWidth = w + 'px'
@@ -517,7 +539,7 @@ function injectRowColumns(row) {
 	for (const config of activeColumnConfigs) {
 		const td = document.createElement('td')
 		td.className = `files-list__column ${MARKER_CLASS}`
-		const w = getColWidth(config.field_name)
+		const w = getColWidth(config.field_name, config.field_type, config.field_label)
 		td.style.width = w + 'px'
 		td.style.minWidth = w + 'px'
 		td.style.maxWidth = w + 'px'
@@ -615,22 +637,83 @@ function injectViewStyles() {
 	const style = document.createElement('style')
 	style.id = VIEW_STYLE_ID
 	style.textContent = `
-		/* ── Tab bar ── */
+		/* ── Tab bar container (sticky All + scrollable tabs) ── */
 		#${VIEW_TABS_ID} {
 			display: flex;
-			flex-wrap: wrap;
 			align-items: center;
-			gap: calc(var(--default-grid-baseline, 4px) / 2);
-			padding: var(--default-grid-baseline, 4px) calc(var(--default-grid-baseline, 4px) * 2);
+			gap: 0;
+			padding: var(--default-grid-baseline, 4px) 0;
 			border-bottom: 1px solid var(--color-border);
 			background: var(--color-main-background);
+			position: relative;
 		}
+		/* Sticky "All" tab */
+		#${VIEW_TABS_ID} > .mv-tab-all {
+			flex-shrink: 0;
+			margin-left: calc(var(--default-grid-baseline, 4px) * 2);
+			margin-right: calc(var(--default-grid-baseline, 4px) / 2);
+			z-index: 1;
+		}
+		/* Sticky default view tab */
+		#${VIEW_TABS_ID} > .mv-tab-default {
+			flex-shrink: 0;
+			margin-right: calc(var(--default-grid-baseline, 4px) / 2);
+			z-index: 1;
+		}
+		.mv-tab-default-icon {
+			font-size: 11px;
+			opacity: 0.6;
+			margin-right: 2px;
+		}
+		/* Scrollable area for view tabs */
+		.mv-tabs-scroll {
+			display: flex;
+			align-items: center;
+			gap: calc(var(--default-grid-baseline, 4px) / 2);
+			overflow-x: auto;
+			overflow-y: hidden;
+			flex: 1;
+			min-width: 0;
+			padding-right: calc(var(--default-grid-baseline, 4px) * 2);
+			scrollbar-width: none;   /* Firefox */
+			-ms-overflow-style: none; /* IE/Edge */
+		}
+		.mv-tabs-scroll::-webkit-scrollbar { display: none; }
+		/* Fade indicators for scroll overflow */
+		.mv-tabs-scroll-wrap {
+			position: relative;
+			display: flex;
+			flex: 1;
+			min-width: 0;
+		}
+		.mv-tabs-scroll-wrap::before,
+		.mv-tabs-scroll-wrap::after {
+			content: '';
+			position: absolute;
+			top: 0;
+			bottom: 0;
+			width: 24px;
+			pointer-events: none;
+			z-index: 1;
+			opacity: 0;
+			transition: opacity 0.2s ease;
+		}
+		.mv-tabs-scroll-wrap::before {
+			left: 0;
+			background: linear-gradient(to right, var(--color-main-background), transparent);
+		}
+		.mv-tabs-scroll-wrap::after {
+			right: 0;
+			background: linear-gradient(to left, var(--color-main-background), transparent);
+		}
+		.mv-tabs-scroll-wrap.can-scroll-left::before { opacity: 1; }
+		.mv-tabs-scroll-wrap.can-scroll-right::after { opacity: 1; }
 		.mv-tab {
 			display: inline-flex;
 			align-items: center;
-			gap: 6px;
+			gap: 4px;
 			height: 30px;
-			padding: 0 12px;
+			padding: 0 10px;
 			border: none;
 			border-radius: var(--border-radius-element, 32px);
 			background: transparent;
@@ -654,13 +737,6 @@ function injectViewStyles() {
 		#${VIEW_TABS_ID} .mv-tab-active:hover {
 			background: var(--color-primary-element-light, #e8f0fe);
 		}
-		.mv-tab-dot {
-			width: 6px;
-			height: 6px;
-			border-radius: 50%;
-			background: var(--color-primary-element);
-			flex-shrink: 0;
-		}
 		.mv-tab-edit-hint {
 			font-size: 11px;
 			opacity: 0.6;
@@ -671,15 +747,14 @@ function injectViewStyles() {
 			font-weight: 400;
 			line-height: 1;
 		}
-
 		/* ── Slide-over editor panel ── */
 		#${VIEW_EDITOR_ID} {
 			position: fixed;
-			top: 0;
+			top: var(--header-height, 50px);
 			right: -480px;
 			width: 460px;
 			max-width: 95vw;
-			height: 100vh;
+			height: calc(100vh - var(--header-height, 50px));
 			background: var(--color-main-background);
 			border-left: 1px solid var(--color-border);
 			box-shadow: -4px 0 24px rgba(0,0,0,0.15);
@@ -694,29 +769,35 @@ function injectViewStyles() {
 		}
 		.mv-editor-overlay {
 			position: fixed;
-			inset: 0;
+			inset: var(--header-height, 50px) 0 0 0;
 			z-index: 1999;
-			background: transparent;
+			background: rgba(0, 0, 0, 0.15);
 		}
-		/* ── Potlood-knop op actieve tab ── */
-		.mv-tab-edit-btn {
-			background: none;
-			border: none;
+		/* ── Action icon on active tab (pencil for admin, eye for viewer) ── */
+		.mv-tab-action-icon {
 			cursor: pointer;
-			padding: 0 0 0 2px;
-			font-size: 13px;
-			color: var(--color-primary-element);
-			opacity: 0.55;
 			line-height: 1;
 			flex-shrink: 0;
+			display: inline-flex;
+			align-items: center;
+			opacity: 0.6;
 		}
-		.mv-tab-edit-btn:hover { opacity: 1; }
+		.mv-tab-action-icon.mv-tab-edit-icon {
+			color: var(--color-primary-element);
+		}
+		.mv-tab-action-icon.mv-tab-view-icon {
+			color: var(--color-text-maxcontrast);
+		}
+		.mv-tab-action-icon:hover { opacity: 1; }
 
 		/* ── Responsive (NC33 breakpoints) ── */
 		@media only screen and (max-width: 1024px) {
 			#${VIEW_TABS_ID} {
-				padding: var(--default-grid-baseline, 4px);
-				gap: calc(var(--default-grid-baseline, 4px) / 2);
+				padding: var(--default-grid-baseline, 4px) 0;
+			}
+			#${VIEW_TABS_ID} > .mv-tab-all,
+			#${VIEW_TABS_ID} > .mv-tab-default {
+				margin-left: var(--default-grid-baseline, 4px);
 			}
 			.mv-tab {
 				height: 28px;
@@ -754,18 +835,38 @@ function injectViewTabs(views) {
 	const container = document.createElement('div')
 	container.id = VIEW_TABS_ID
 
-	// "Alle bestanden" tab
+	// "All" tab — sticky, always visible
 	const allTab = document.createElement('button')
 	allTab.type = 'button'
-	allTab.className = 'mv-tab' + (!activeView ? ' mv-tab-active' : '')
-	allTab.textContent = translate('metavox', 'All files')
+	allTab.className = 'mv-tab mv-tab-all' + (!activeView ? ' mv-tab-active' : '')
+	allTab.textContent = translate('metavox', 'All')
 	allTab.addEventListener('click', () => clearView())
 	container.appendChild(allTab)
 
-	// View tabs
+	// Default view tab — sticky, next to "All"
+	const defaultView = views.find(v => v.is_default)
+	if (defaultView) {
+		const defTab = _makeViewTab(defaultView)
+		defTab.classList.add('mv-tab-default')
+		// Add star icon before the name
+		const star = document.createElement('span')
+		star.className = 'mv-tab-default-icon'
+		star.textContent = '★'
+		defTab.insertBefore(star, defTab.firstChild)
+		container.appendChild(defTab)
+	}
+
+	// Scrollable wrapper for view tabs
+	const scrollWrap = document.createElement('div')
+	scrollWrap.className = 'mv-tabs-scroll-wrap'
+	const scrollArea = document.createElement('div')
+	scrollArea.className = 'mv-tabs-scroll'
+
+	// View tabs (skip default — already rendered as sticky)
 	for (const view of views) {
+		if (view.is_default) continue
 		const tab = _makeViewTab(view)
-		container.appendChild(tab)
+		scrollArea.appendChild(tab)
 	}
 
 	// "+ Add" button
@@ -776,8 +877,22 @@ function injectViewTabs(views) {
 		addBtn.title = translate('metavox', 'New view')
 		addBtn.textContent = '+'
 		addBtn.addEventListener('click', () => openViewEditor(null))
-		container.appendChild(addBtn)
+		scrollArea.appendChild(addBtn)
 	}
+
+	scrollWrap.appendChild(scrollArea)
+	container.appendChild(scrollWrap)
+
+	// Update fade indicators on scroll
+	const updateFades = () => {
+		const sl = scrollArea.scrollLeft
+		const maxScroll = scrollArea.scrollWidth - scrollArea.clientWidth
+		scrollWrap.classList.toggle('can-scroll-left', sl > 2)
+		scrollWrap.classList.toggle('can-scroll-right', maxScroll - sl > 2)
+	}
+	scrollArea.addEventListener('scroll', updateFades, { passive: true })
+	// Initial fade check after DOM insertion
+	requestAnimationFrame(updateFades)
 
 	// Insert before .files-list__filters
 	const filterBar = document.querySelector('.files-list__filters')
@@ -809,27 +924,24 @@ function _makeViewTab(view) {
 	const isActive = activeView?.id === view.id
 	tab.className = 'mv-tab' + (isActive ? ' mv-tab-active' : '')
 
-	if (isActive) {
-		const dot = document.createElement('span')
-		dot.className = 'mv-tab-dot'
-		tab.appendChild(dot)
-	}
-
 	const nameSpan = document.createElement('span')
 	nameSpan.textContent = view.name
 	tab.appendChild(nameSpan)
 
-	if (isActive && canManageViews) {
-		const editBtn = document.createElement('button')
-		editBtn.type = 'button'
-		editBtn.className = 'mv-tab-edit-btn'
-		editBtn.title = translate('metavox', 'Edit view')
-		editBtn.innerHTML = '✎'
-		editBtn.addEventListener('click', (e) => {
-			e.stopPropagation()
-			openViewEditor(view)
-		})
-		tab.appendChild(editBtn)
+	if (isActive) {
+		const icon = document.createElement('span')
+		if (canManageViews) {
+			icon.className = 'mv-tab-action-icon mv-tab-edit-icon'
+			icon.title = translate('metavox', 'Edit view')
+			icon.innerHTML = '<svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/></svg>'
+			icon.addEventListener('click', (e) => { e.stopPropagation(); openViewEditor(view) })
+		} else {
+			icon.className = 'mv-tab-action-icon mv-tab-view-icon'
+			icon.title = translate('metavox', 'View details')
+			icon.innerHTML = '<svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5M3.18,12C4.83,15.36 8.24,17.5 12,17.5C15.76,17.5 19.17,15.36 20.82,12C19.17,8.64 15.76,6.5 12,6.5C8.24,6.5 4.83,8.64 3.18,12Z"/></svg>'
+			icon.addEventListener('click', (e) => { e.stopPropagation(); openViewEditor(view, true) })
+		}
+		tab.appendChild(icon)
 	}
 
 	tab.addEventListener('click', () => {
@@ -851,39 +963,48 @@ function updateActiveTabs() {
 	viewTabsEl.querySelectorAll('.mv-tab').forEach(tab => {
 		const viewId = tab.dataset.viewId
 		if (!viewId) {
-			// "Alle bestanden" tab
-			tab.className = 'mv-tab' + (!activeView ? ' mv-tab-active' : '')
+			// "All" tab — preserve mv-tab-all class
+			const isAll = tab.classList.contains('mv-tab-all')
+			tab.className = 'mv-tab' + (isAll ? ' mv-tab-all' : '') + (!activeView ? ' mv-tab-active' : '')
 			return
 		}
 
+		const isDefault = tab.classList.contains('mv-tab-default')
 		const isActive = activeView && String(activeView.id) === String(viewId)
 		if (isActive) {
-			tab.className = 'mv-tab mv-tab-active'
-			if (!tab.querySelector('.mv-tab-dot')) {
-				const dot = document.createElement('span')
-				dot.className = 'mv-tab-dot'
-				tab.prepend(dot)
-			}
-			// Add pencil if can manage and not already present
-			if (canManageViews && !tab.querySelector('.mv-tab-edit-btn')) {
+			tab.className = 'mv-tab mv-tab-active' + (isDefault ? ' mv-tab-default' : '')
+			tab.querySelector('.mv-tab-dot')?.remove()
+			// Add action icon if not already present
+			if (!tab.querySelector('.mv-tab-action-icon')) {
 				const view = activeViews.find(v => String(v.id) === String(viewId))
 				if (view) {
-					const editBtn = document.createElement('button')
-					editBtn.type = 'button'
-					editBtn.className = 'mv-tab-edit-btn'
-					editBtn.title = translate('metavox', 'Edit view')
-					editBtn.innerHTML = '✎'
-					editBtn.addEventListener('click', (e) => { e.stopPropagation(); openViewEditor(view) })
-					tab.appendChild(editBtn)
+					const icon = document.createElement('span')
+					if (canManageViews) {
+						icon.className = 'mv-tab-action-icon mv-tab-edit-icon'
+						icon.title = translate('metavox', 'Edit view')
+						icon.innerHTML = '<svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/></svg>'
+						icon.addEventListener('click', (e) => { e.stopPropagation(); openViewEditor(view) })
+					} else {
+						icon.className = 'mv-tab-action-icon mv-tab-view-icon'
+						icon.title = translate('metavox', 'View details')
+						icon.innerHTML = '<svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5M3.18,12C4.83,15.36 8.24,17.5 12,17.5C15.76,17.5 19.17,15.36 20.82,12C19.17,8.64 15.76,6.5 12,6.5C8.24,6.5 4.83,8.64 3.18,12Z"/></svg>'
+						icon.addEventListener('click', (e) => { e.stopPropagation(); openViewEditor(view, true) })
+					}
+					tab.appendChild(icon)
 				}
 			}
 		} else {
-			tab.className = 'mv-tab'
+			tab.className = 'mv-tab' + (isDefault ? ' mv-tab-default' : '')
 			tab.querySelector('.mv-tab-dot')?.remove()
-			tab.querySelector('.mv-tab-edit-btn')?.remove()
+			tab.querySelector('.mv-tab-action-icon')?.remove()
 		}
 	})
 
+	// Scroll active tab into view within the scroll area
+	const activeTabEl = viewTabsEl.querySelector('.mv-tab-active[data-view-id]')
+	if (activeTabEl) {
+		activeTabEl.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
+	}
 }
 
 // ── View Editor Panel ──────────────────────────────────────────
@@ -891,10 +1012,16 @@ function updateActiveTabs() {
 /**
  * Open the slide-over view editor (Vue component).
  * @param {Object|null} view - Existing view to edit, or null for new
+ * @param {boolean} readonly - Open in readonly mode (view details only)
  */
-function openViewEditor(view) {
+function openViewEditor(view, readonly = false) {
 	// Remove existing editor
 	closeViewEditor()
+
+	// Close NC Details sidebar if open
+	if (window.OCA?.Files?.Sidebar?.close) {
+		window.OCA.Files.Sidebar.close()
+	}
 
 	injectViewStyles()
 
@@ -916,6 +1043,7 @@ function openViewEditor(view) {
 	const vueApp = createApp({
 		render: () => h(ViewEditorPanel, {
 			view,
+			readonly,
 			availableFields,
 			fetchFilterValuesFn: (fieldName) => {
 				// Use prefetched filter values (already loaded in parallel on directory init)
@@ -1020,6 +1148,11 @@ async function _confirmDeleteView(view) {
 function applyView(view, filterInstance) {
 	activeView = view
 
+	// Close NC Details sidebar — the displayed file may not exist in the new view
+	if (window.OCA?.Files?.Sidebar?.close) {
+		window.OCA.Files.Sidebar.close()
+	}
+
 	// Reset existing filters (suppresses URL update; we'll set URL after)
 	filterInstance._activeFilters.clear()
 	filterInstance._emitChips()
@@ -1090,6 +1223,11 @@ function buildDefaultFilterConfigs() {
  */
 function clearView() {
 	activeView = null
+
+	// Close NC Details sidebar — view context is changing
+	if (window.OCA?.Files?.Sidebar?.close) {
+		window.OCA.Files.Sidebar.close()
+	}
 	const fi = getFilterInstance()
 	if (fi) {
 		fi.reset()
