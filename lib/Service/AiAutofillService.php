@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\MetaVox\Service;
 
 use OCP\Files\IRootFolder;
+use OCP\IConfig;
 use OCP\TaskProcessing\IManager as ITaskManager;
 use OCP\TaskProcessing\Task;
 
@@ -13,7 +14,9 @@ class AiAutofillService {
     private ITaskManager $taskManager;
     private IRootFolder $rootFolder;
     private FieldService $fieldService;
+    private IConfig $config;
 
+    private const APP_ID = 'metavox';
     private const MAX_CONTENT_LENGTH = 32000;
     private const SUPPORTED_TEXT_MIMES = [
         'text/plain', 'text/csv', 'text/html', 'text/xml', 'text/markdown',
@@ -23,19 +26,38 @@ class AiAutofillService {
     public function __construct(
         ITaskManager $taskManager,
         IRootFolder $rootFolder,
-        FieldService $fieldService
+        FieldService $fieldService,
+        IConfig $config
     ) {
         $this->taskManager = $taskManager;
         $this->rootFolder = $rootFolder;
         $this->fieldService = $fieldService;
+        $this->config = $config;
+    }
+
+    /**
+     * Check if AI is enabled by admin
+     */
+    public function isEnabledByAdmin(): bool {
+        return $this->config->getAppValue(self::APP_ID, 'ai_enabled', 'true') === 'true';
+    }
+
+    /**
+     * Enable or disable AI autofill
+     */
+    public function setEnabled(bool $enabled): void {
+        $this->config->setAppValue(self::APP_ID, 'ai_enabled', $enabled ? 'true' : 'false');
     }
 
     private const TASK_TYPES = ['core:text2text', 'core:text2text:chat'];
 
     /**
-     * Check if AI text generation is available
+     * Check if AI text generation is available and enabled
      */
     public function isAvailable(): bool {
+        if (!$this->isEnabledByAdmin()) {
+            return false;
+        }
         try {
             $types = $this->taskManager->getAvailableTaskTypes();
             foreach (self::TASK_TYPES as $type) {
