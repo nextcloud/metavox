@@ -302,12 +302,19 @@ export default {
 				// Check permissions (synchronous - uses fileInfo.permissions)
 				this.permissions = this.checkPermissions()
 
-				// Check AI availability (non-blocking)
-				this.checkAiAvailability()
+				// Check AI availability (non-blocking), then check for pending generation
+				this.checkAiAvailability().then(() => {
+					if (this.aiAvailable) {
+						this.checkPendingAiGeneration()
+					}
+				})
 
-				// Reset AI state
-				this.aiSuggestions = {}
-				this.aiError = null
+				// Reset AI state (only if no pending generation)
+				const pendingKey = `metavox_ai_generating_${this.currentFileInfo?.id}`
+				if (!sessionStorage.getItem(pendingKey)) {
+					this.aiSuggestions = {}
+					this.aiError = null
+				}
 
 				// Load fields with their values (single API call)
 				const fieldsWithValues = await this.loadFields()
@@ -633,6 +640,10 @@ export default {
 			this.aiError = null
 			this.aiSuggestions = {}
 
+			// Persist generating state so it survives page refresh
+			const aiKey = `metavox_ai_generating_${this.currentFileInfo.id}`
+			sessionStorage.setItem(aiKey, '1')
+
 			try {
 				const response = await axios.post(
 					generateUrl('/apps/metavox/api/ai/generate'),
@@ -653,6 +664,16 @@ export default {
 				this.aiError = error.response?.data?.error || this.t('metavox', 'AI generation failed. Please try again.')
 			} finally {
 				this.aiGenerating = false
+				sessionStorage.removeItem(aiKey)
+			}
+		},
+
+		checkPendingAiGeneration() {
+			if (!this.currentFileInfo?.id || !this.groupfolderId) return
+			const aiKey = `metavox_ai_generating_${this.currentFileInfo.id}`
+			if (sessionStorage.getItem(aiKey) === '1') {
+				// A generation was in progress before refresh — restart it
+				this.generateAiMetadata()
 			}
 		},
 
