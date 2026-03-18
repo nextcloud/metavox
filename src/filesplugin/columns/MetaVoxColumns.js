@@ -121,18 +121,27 @@ async function fetchAvailableFields(groupfolderId) {
 
 async function fetchDirectoryMetadata(groupfolderId, fileIds) {
 	if (fileIds.length === 0) return {}
+
+	// Send only visible field names to reduce query size
+	const visibleFields = activeColumnConfigs.map(c => c.field_name).filter(Boolean)
+	const params = { file_ids: fileIds.join(',') }
+	if (visibleFields.length > 0) {
+		params.field_names = visibleFields.join(',')
+	}
+
 	try {
 		const url = generateOcsUrl(
 			'/apps/metavox/api/v1/groupfolders/{groupfolderId}/directory-metadata',
 			{ groupfolderId },
 		)
-		const resp = await axios.get(url, { params: { file_ids: fileIds.join(',') } })
+		const resp = await axios.get(url, { params })
 		return resp.data?.ocs?.data || resp.data || {}
 	} catch (e) {
 		console.error('MetaVox: Failed to fetch directory metadata', e)
 		return {}
 	}
 }
+
 
 async function fetchViews(groupfolderId) {
 	try {
@@ -1927,8 +1936,14 @@ export async function updateColumnsForCurrentFolder() {
 
 	if (fileIds.length > 0) {
 		fetchDirectoryMetadata(groupfolderId, fileIds).then(data => {
+			const NC_PERMISSION_UPDATE = 2
 			for (const [fileId, fields2] of Object.entries(data)) {
-				metadataCache.set(Number(fileId), fields2)
+				const id = Number(fileId)
+				if (fields2._permissions !== undefined) {
+					permissionCache.set(id, (fields2._permissions & NC_PERMISSION_UPDATE) !== 0)
+					delete fields2._permissions
+				}
+				metadataCache.set(id, fields2)
 			}
 			for (const id of fileIds) {
 				if (!metadataCache.has(id)) {

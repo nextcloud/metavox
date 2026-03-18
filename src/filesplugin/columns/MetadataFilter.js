@@ -322,19 +322,23 @@ export function registerMetaVoxFilter(columnConfigs, groupfolderId, metadataCach
 	}
 }
 
+let _registerRetries = 0
+const _MAX_REGISTER_RETRIES = 10
+
 function _registerDirect() {
 	// NC33 uses the scoped fileListFilters map for its internal store.
 	// Writing there + emitting 'files:filters:changed' triggers NC33 to
 	// pick up the filter and wire the reactive chip listener via its store.
 	const scope = window._nc_files_scope?.v4_0
 	if (!scope) {
-		console.warn('MetaVox: NC33 scoped globals not found, cannot register filter')
+		_scheduleRetry('scoped globals not found')
 		return
 	}
 
 	scope.fileListFilters ??= new Map()
 	if (scope.fileListFilters.has(FILTER_ID)) {
 		registered = true
+		_registerRetries = 0
 		return
 	}
 
@@ -343,7 +347,14 @@ function _registerDirect() {
 	// Wire chip listener via NC33 store directly so chips are reactive
 	const container = document.querySelector('[class*="fileListFilters"]')
 	const store = container?.__vue__?._setupState?.filterStore
-	if (store?.filters && !store.filters.some(f => f.id === FILTER_ID)) {
+	if (!store?.filters) {
+		// Filter bar DOM not ready yet — retry
+		scope.fileListFilters.delete(FILTER_ID)
+		_scheduleRetry('filter bar DOM not ready')
+		return
+	}
+
+	if (!store.filters.some(f => f.id === FILTER_ID)) {
 		// Use NC33's internal registerFilter action if available, else push
 		if (typeof store.registerFilter === 'function') {
 			store.registerFilter(filterInstance)
@@ -366,7 +377,20 @@ function _registerDirect() {
 	}
 
 	registered = true
+	_registerRetries = 0
 	console.info('MetaVox: Filter registered in NC33 filter bar')
+}
+
+function _scheduleRetry(reason) {
+	if (_registerRetries >= _MAX_REGISTER_RETRIES) {
+		console.warn(`MetaVox: Filter registration failed after ${_MAX_REGISTER_RETRIES} retries (${reason})`)
+		return
+	}
+	_registerRetries++
+	const delay = Math.min(200 * _registerRetries, 2000)
+	setTimeout(() => {
+		if (!registered) _registerDirect()
+	}, delay)
 }
 
 /**
