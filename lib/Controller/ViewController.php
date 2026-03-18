@@ -114,9 +114,38 @@ class ViewController extends Controller {
             $filters   = $this->request->getParam('filters', []);
             $sortField = $this->request->getParam('sort_field');
             $sortOrder = $this->request->getParam('sort_order');
+            $position  = $this->request->getParam('position');
+            $position  = $position !== null ? (int)$position : null;
 
-            $view = $this->viewService->updateView($viewId, $gfId, $name, $isDefault, $columns, $filters, $sortField, $sortOrder);
+            $view = $this->viewService->updateView($viewId, $gfId, $name, $isDefault, $columns, $filters, $sortField, $sortOrder, $position);
             return new JSONResponse($view);
+        } catch (\Exception $e) {
+            return new JSONResponse(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Reorder views for a groupfolder
+     *
+     */
+    public function reorderViews(int $gfId): JSONResponse {
+        try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new JSONResponse(['error' => 'User not authenticated'], 401);
+            }
+
+            if (!$this->permissionService->hasPermission($user->getUID(), PermissionService::PERM_MANAGE_FIELDS, $gfId)) {
+                return new JSONResponse(['error' => 'Manage fields permission required'], 403);
+            }
+
+            $viewIds = $this->request->getParam('view_ids', []);
+            if (empty($viewIds) || !is_array($viewIds)) {
+                return new JSONResponse(['error' => 'view_ids array is required'], 400);
+            }
+
+            $this->viewService->reorderViews($gfId, $viewIds);
+            return new JSONResponse(['success' => true]);
         } catch (\Exception $e) {
             return new JSONResponse(['error' => $e->getMessage()], 500);
         }

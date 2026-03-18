@@ -265,6 +265,10 @@ const props = defineProps({
 		type: Function,
 		required: true,
 	},
+	totalViews: {
+		type: Number,
+		default: 0,
+	},
 })
 const emit = defineEmits(['close', 'save', 'delete'])
 
@@ -324,6 +328,7 @@ function buildEditorState() {
 	return {
 		name: view?.name || '',
 		isDefault: view?.is_default || false,
+		position: view?.position ?? (props.totalViews || 0),
 		columns,
 		filters,
 		sortField: view?.sort_field || '',
@@ -573,6 +578,7 @@ async function onSave() {
 	emit('save', {
 		name,
 		is_default: editorState.value.isDefault,
+		position: editorState.value.isDefault ? 0 : undefined,
 		columns,
 		filters,
 		sort_field: editorState.value.sortField || null,
@@ -627,9 +633,16 @@ function onDelete() {
 
 .mv-editor-section-title {
 	font-size: var(--default-font-size);
-	font-weight: bold;
+	font-weight: 700;
 	color: var(--color-main-text);
 	margin: 20px 0 8px;
+	padding-top: 12px;
+	border-top: 1px solid var(--color-border);
+}
+
+.mv-editor-section-title:first-of-type {
+	border-top: none;
+	padding-top: 0;
 }
 
 .mv-col-header-row {
@@ -896,6 +909,14 @@ details.mv-filter-row[open] .mv-filter-chevron {
 .mv-sort-direction :deep(.checkbox-radio-switch__label) {
 	display: inline-flex;
 	align-items: center;
+	min-height: unset;
+	padding: 4px 8px 4px 0;
+}
+
+.mv-sort-direction :deep(.checkbox-radio-switch__icon) {
+	display: inline-flex;
+	align-items: center;
+	margin-right: 4px;
 }
 
 /* Footer */

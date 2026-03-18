@@ -144,6 +144,9 @@ class ApiViewController extends OCSController {
                 return new DataResponse(['error' => 'View not found'], Http::STATUS_NOT_FOUND);
             }
 
+            $position = $this->request->getParam('position');
+            $position = $position !== null ? (int)$position : null;
+
             $view = $this->viewService->updateView(
                 $viewId,
                 $groupfolderId,
@@ -152,9 +155,39 @@ class ApiViewController extends OCSController {
                 $this->request->getParam('columns', []),
                 $this->request->getParam('filters', []),
                 $this->request->getParam('sort_field'),
-                $this->request->getParam('sort_order')
+                $this->request->getParam('sort_order'),
+                $position
             );
             return new DataResponse($view, Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Reorder views for a groupfolder.
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     * @CORS
+     */
+    public function reorderViews(int $groupfolderId): DataResponse {
+        try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new DataResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
+            }
+            if (!$this->permissionService->hasPermission($user->getUID(), PermissionService::PERM_MANAGE_FIELDS, $groupfolderId)) {
+                return new DataResponse(['error' => 'Manage fields permission required'], Http::STATUS_FORBIDDEN);
+            }
+
+            $viewIds = $this->request->getParam('view_ids', []);
+            if (empty($viewIds) || !is_array($viewIds)) {
+                return new DataResponse(['error' => 'view_ids array is required'], Http::STATUS_BAD_REQUEST);
+            }
+
+            $this->viewService->reorderViews($groupfolderId, $viewIds);
+            return new DataResponse(['success' => true], Http::STATUS_OK);
         } catch (\Exception $e) {
             return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
