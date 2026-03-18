@@ -49,13 +49,13 @@ class PermissionService {
             return true;
         }
 
-        // Check group-based permissions
+        // Check group-based permissions (single query for all groups)
         $userGroups = $this->groupManager->getUserGroupIds(
             $this->userManager->get($userId)
         );
 
-        foreach ($userGroups as $groupId) {
-            if ($this->checkGroupPermission($groupId, $permissionType, $groupfolderId, $fieldScope)) {
+        if (!empty($userGroups)) {
+            if ($this->checkGroupPermissions($userGroups, $permissionType, $groupfolderId, $fieldScope)) {
                 return true;
             }
         }
@@ -104,7 +104,7 @@ class PermissionService {
     }
 
     /**
-     * Check group-based permission
+     * Check group-based permission for a single group
      */
     private function checkGroupPermission(
         string $groupId,
@@ -112,11 +112,28 @@ class PermissionService {
         ?int $groupfolderId,
         ?string $fieldScope
     ): bool {
+        return $this->checkGroupPermissions([$groupId], $permissionType, $groupfolderId, $fieldScope);
+    }
+
+    /**
+     * Check group-based permission for multiple groups in a single query
+     */
+    private function checkGroupPermissions(
+        array $groupIds,
+        string $permissionType,
+        ?int $groupfolderId,
+        ?string $fieldScope
+    ): bool {
+        if (empty($groupIds)) {
+            return false;
+        }
+
         $qb = $this->db->getQueryBuilder();
         $qb->select('id')
            ->from('metavox_permissions')
-           ->where($qb->expr()->eq('group_id', $qb->createNamedParameter($groupId)))
-           ->andWhere($qb->expr()->eq('permission_type', $qb->createNamedParameter($permissionType)));
+           ->where($qb->expr()->in('group_id', $qb->createNamedParameter($groupIds, IQueryBuilder::PARAM_STR_ARRAY)))
+           ->andWhere($qb->expr()->eq('permission_type', $qb->createNamedParameter($permissionType)))
+           ->setMaxResults(1);
 
         if ($groupfolderId !== null) {
             $qb->andWhere($qb->expr()->orX(
@@ -337,23 +354,23 @@ class PermissionService {
         }
         $result->closeCursor();
 
-        // Get group permissions
+        // Get group permissions (single query for all groups)
         $userGroups = $this->groupManager->getUserGroupIds(
             $this->userManager->get($userId)
         );
 
-        foreach ($userGroups as $groupId) {
+        if (!empty($userGroups)) {
             $qb = $this->db->getQueryBuilder();
             $qb->select('*')
                ->from('metavox_permissions')
-               ->where($qb->expr()->eq('group_id', $qb->createNamedParameter($groupId)));
+               ->where($qb->expr()->in('group_id', $qb->createNamedParameter($userGroups, IQueryBuilder::PARAM_STR_ARRAY)));
 
             $result = $qb->executeQuery();
             while ($row = $result->fetch()) {
                 $permissions[] = [
                     'id' => (int)$row['id'],
                     'source' => 'group',
-                    'group_id' => $groupId,
+                    'group_id' => $row['group_id'],
                     'permission_type' => $row['permission_type'],
                     'groupfolder_id' => $row['groupfolder_id'] ? (int)$row['groupfolder_id'] : null,
                     'field_scope' => $row['field_scope'],
