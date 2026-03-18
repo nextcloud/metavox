@@ -88,10 +88,11 @@ return [
         // ========================================
         // 👁 VIEWS ROUTES
         // ========================================
-        ['name' => 'view#listViews',  'url' => '/api/groupfolders/{gfId}/views',           'verb' => 'GET'],
-        ['name' => 'view#createView', 'url' => '/api/groupfolders/{gfId}/views',           'verb' => 'POST'],
-        ['name' => 'view#updateView', 'url' => '/api/groupfolders/{gfId}/views/{viewId}',  'verb' => 'PUT'],
-        ['name' => 'view#deleteView', 'url' => '/api/groupfolders/{gfId}/views/{viewId}',  'verb' => 'DELETE'],
+        ['name' => 'view#listViews',    'url' => '/api/groupfolders/{gfId}/views',           'verb' => 'GET'],
+        ['name' => 'view#createView',   'url' => '/api/groupfolders/{gfId}/views',           'verb' => 'POST'],
+        ['name' => 'view#reorderViews', 'url' => '/api/groupfolders/{gfId}/views/reorder',   'verb' => 'PUT'],
+        ['name' => 'view#updateView',   'url' => '/api/groupfolders/{gfId}/views/{viewId}',  'verb' => 'PUT'],
+        ['name' => 'view#deleteView',   'url' => '/api/groupfolders/{gfId}/views/{viewId}',  'verb' => 'DELETE'],
 
         // ========================================
         // 🤖 AI AUTOFILL ROUTES
@@ -167,9 +168,10 @@ return [
         // ========================================
         // 👁 VIEWS ROUTES (OCS — CSRF-free)
         // ========================================
-        ['name' => 'apiView#listViews',  'url' => '/api/v1/groupfolders/{groupfolderId}/views',           'verb' => 'GET'],
-        ['name' => 'apiView#createView', 'url' => '/api/v1/groupfolders/{groupfolderId}/views',           'verb' => 'POST'],
-        ['name' => 'apiView#updateView', 'url' => '/api/v1/groupfolders/{groupfolderId}/views/{viewId}',  'verb' => 'PUT'],
-        ['name' => 'apiView#deleteView', 'url' => '/api/v1/groupfolders/{groupfolderId}/views/{viewId}',  'verb' => 'DELETE'],
+        ['name' => 'apiView#listViews',    'url' => '/api/v1/groupfolders/{groupfolderId}/views',           'verb' => 'GET'],
+        ['name' => 'apiView#createView',   'url' => '/api/v1/groupfolders/{groupfolderId}/views',           'verb' => 'POST'],
+        ['name' => 'apiView#reorderViews', 'url' => '/api/v1/groupfolders/{groupfolderId}/views/reorder',   'verb' => 'PUT'],
+        ['name' => 'apiView#updateView',   'url' => '/api/v1/groupfolders/{groupfolderId}/views/{viewId}',  'verb' => 'PUT'],
+        ['name' => 'apiView#deleteView',   'url' => '/api/v1/groupfolders/{groupfolderId}/views/{viewId}',  'verb' => 'DELETE'],
     ]
 ];

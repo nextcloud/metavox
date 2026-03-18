@@ -30,7 +30,8 @@ class ViewService {
         $qb->select('*')
            ->from('metavox_gf_views')
            ->where($qb->expr()->eq('gf_id', $qb->createNamedParameter($gfId, IQueryBuilder::PARAM_INT)))
-           ->orderBy('id', 'ASC');
+           ->orderBy('position', 'ASC')
+           ->addOrderBy('id', 'ASC');
 
         $result = $qb->executeQuery();
         $views = [];
@@ -79,6 +80,15 @@ class ViewService {
             $this->clearDefaultForGroupfolder($gfId);
         }
 
+        // New views get position = max(position) + 1
+        $maxQb = $this->db->getQueryBuilder();
+        $maxQb->select($maxQb->func()->max('position'))
+              ->from('metavox_gf_views')
+              ->where($maxQb->expr()->eq('gf_id', $maxQb->createNamedParameter($gfId, IQueryBuilder::PARAM_INT)));
+        $maxResult = $maxQb->executeQuery();
+        $maxPos = (int)$maxResult->fetchOne();
+        $maxResult->closeCursor();
+
         $now = new \DateTime();
         $qb = $this->db->getQueryBuilder();
         $qb->insert('metavox_gf_views')
@@ -90,6 +100,7 @@ class ViewService {
                'filters'    => $qb->createNamedParameter(json_encode($filters)),
                'sort_field' => $qb->createNamedParameter($sortField),
                'sort_order' => $qb->createNamedParameter($sortOrder),
+               'position'   => $qb->createNamedParameter($maxPos + 1, IQueryBuilder::PARAM_INT),
                'created_at' => $qb->createNamedParameter($now, IQueryBuilder::PARAM_DATE),
                'updated_at' => $qb->createNamedParameter($now, IQueryBuilder::PARAM_DATE),
            ]);
@@ -109,7 +120,8 @@ class ViewService {
         array $columns,
         array $filters,
         ?string $sortField,
-        ?string $sortOrder
+        ?string $sortOrder,
+        ?int $position = null
     ): array {
         if ($isDefault) {
             $this->clearDefaultForGroupfolder($gfId, $viewId);
@@ -124,8 +136,13 @@ class ViewService {
            ->set('filters', $qb->createNamedParameter(json_encode($filters)))
            ->set('sort_field', $qb->createNamedParameter($sortField))
            ->set('sort_order', $qb->createNamedParameter($sortOrder))
-           ->set('updated_at', $qb->createNamedParameter($now, IQueryBuilder::PARAM_DATE))
-           ->where($qb->expr()->eq('id', $qb->createNamedParameter($viewId, IQueryBuilder::PARAM_INT)))
+           ->set('updated_at', $qb->createNamedParameter($now, IQueryBuilder::PARAM_DATE));
+
+        if ($position !== null) {
+            $qb->set('position', $qb->createNamedParameter($position, IQueryBuilder::PARAM_INT));
+        }
+
+        $qb->where($qb->expr()->eq('id', $qb->createNamedParameter($viewId, IQueryBuilder::PARAM_INT)))
            ->andWhere($qb->expr()->eq('gf_id', $qb->createNamedParameter($gfId, IQueryBuilder::PARAM_INT)));
 
         $qb->executeStatement();
@@ -194,6 +211,24 @@ class ViewService {
             }
         }
 
+        $this->cache->remove("gf_{$gfId}_views");
+    }
+
+    /**
+     * Reorder views for a groupfolder by setting position values.
+     *
+     * @param int   $gfId    The groupfolder ID
+     * @param int[] $viewIds Ordered array of view IDs (position 0, 1, 2, ...)
+     */
+    public function reorderViews(int $gfId, array $viewIds): void {
+        foreach ($viewIds as $position => $viewId) {
+            $qb = $this->db->getQueryBuilder();
+            $qb->update('metavox_gf_views')
+               ->set('position', $qb->createNamedParameter($position, IQueryBuilder::PARAM_INT))
+               ->where($qb->expr()->eq('id', $qb->createNamedParameter($viewId, IQueryBuilder::PARAM_INT)))
+               ->andWhere($qb->expr()->eq('gf_id', $qb->createNamedParameter($gfId, IQueryBuilder::PARAM_INT)));
+            $qb->executeStatement();
+        }
         $this->cache->remove("gf_{$gfId}_views");
     }
 
@@ -285,6 +320,7 @@ class ViewService {
             'filters'    => $row['filters'] ? json_decode($row['filters'], true) : [],
             'sort_field' => $row['sort_field'] ?? null,
             'sort_order' => $row['sort_order'] ?? null,
+            'position'   => (int)($row['position'] ?? 0),
             'created_at' => $row['created_at'],
             'updated_at' => $row['updated_at'],
         ];

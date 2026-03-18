@@ -6,6 +6,7 @@
  */
 
 import axios from '@nextcloud/axios'
+import { showUndo } from '@nextcloud/dialogs'
 import { translate } from '@nextcloud/l10n'
 import { generateOcsUrl, generateUrl } from '@nextcloud/router'
 import { createApp, h } from 'vue'
@@ -56,6 +57,49 @@ let availableFields = []
 
 /** @type {Object|null} Prefetched filter values: { field_name: [val1, val2, ...] } */
 let prefetchedFilterValues = null
+
+/** @type {{ entries: Array<{fileId: number, fieldName: string, oldValue: any}>, toast: object|null } | null} */
+let pendingUndo = null
+
+// ========================================
+// Undo Support
+// ========================================
+
+function pushUndo(entries) {
+	if (pendingUndo?.toast) pendingUndo.toast.hideToast()
+
+	const t = translate
+	const text = entries.length === 1
+		? t('metavox', 'Metadata updated')
+		: t('metavox', '{count} cells updated', { count: entries.length })
+
+	const toast = showUndo(text, () => {
+		for (const { fileId, fieldName, oldValue } of entries) {
+			revertField(fileId, fieldName, oldValue)
+		}
+		pendingUndo = null
+	})
+	pendingUndo = { entries, toast }
+}
+
+async function revertField(fileId, fieldName, oldValue) {
+	const meta = metadataCache.get(fileId) || {}
+	meta[fieldName] = oldValue
+	metadataCache.set(fileId, meta)
+	updateAllRowCells()
+
+	try {
+		await axios.post(
+			generateUrl(`/apps/metavox/api/groupfolders/${activeGroupfolderId}/files/${fileId}/metadata`),
+			{ metadata: { [fieldName]: oldValue } },
+		)
+		window.dispatchEvent(new CustomEvent('metavox:metadata:saved', {
+			detail: { fileId, metadata: { ...meta } },
+		}))
+	} catch (e) {
+		console.error('MetaVox: Failed to undo', e)
+	}
+}
 
 // ========================================
 // Value Formatting
@@ -392,62 +436,110 @@ function injectColumnStyles() {
 			padding: 4px 8px;
 			height: 32px;
 		}
-		.metavox-inline-select {
-			padding: 4px 6px;
-			height: 32px;
-			cursor: pointer;
-		}
+		/* Shared dropdown base (NcSelect-style) */
+		.metavox-inline-select,
 		.metavox-inline-multiselect {
-			position: absolute;
-			z-index: 100;
-			padding: 8px;
-			min-width: 180px;
-			max-height: 250px;
+			padding: 4px 0;
 			overflow-y: auto;
-			box-shadow: 0 2px 8px rgba(0,0,0,.15);
-			display: flex;
-			flex-direction: column;
-			gap: 4px;
+			border: none;
+			border-radius: var(--border-radius-large, 10px);
+			box-shadow: 0 2px 6px var(--color-box-shadow, rgba(0,0,0,.15));
+			background: var(--color-main-background);
+			cursor: default;
 		}
+		/* Shared option base */
+		.metavox-select-option,
 		.metavox-ms-option {
 			display: flex;
 			align-items: center;
-			gap: 6px;
-			padding: 4px 2px;
-			font-size: 13px;
+			padding: 0 8px;
+			min-height: 40px;
 			cursor: pointer;
 			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			font-size: var(--default-font-size, 15px);
+			line-height: 20px;
+			color: var(--color-main-text);
+			border-radius: 0;
 		}
+		.metavox-select-option:hover,
 		.metavox-ms-option:hover {
 			background: var(--color-background-hover);
-			border-radius: var(--border-radius);
 		}
+		/* Select: selected state */
+		.metavox-select-option--selected {
+			background: var(--color-primary-element-light, rgba(0,130,201,.1));
+			font-weight: 600;
+		}
+		/* Multiselect: checkbox + gap */
+		.metavox-inline-multiselect {
+			display: flex;
+			flex-direction: column;
+		}
+		.metavox-ms-option {
+			gap: 8px;
+		}
+		.metavox-ms-option input[type="checkbox"] {
+			width: 18px;
+			height: 18px;
+			min-width: 18px;
+			margin: 0;
+			accent-color: var(--color-primary-element);
+			cursor: pointer;
+			border-radius: var(--border-radius, 3px);
+		}
+		/* Multiselect: action buttons */
 		.metavox-ms-actions {
 			display: flex;
 			gap: 4px;
-			margin-top: 6px;
-			padding-top: 6px;
+			padding: 4px 8px;
 			border-top: 1px solid var(--color-border);
+			margin-top: 2px;
 		}
 		.metavox-ms-save,
 		.metavox-ms-cancel {
 			flex: 1;
-			padding: 4px;
+			min-height: 34px;
 			border: none;
-			border-radius: var(--border-radius);
+			border-radius: var(--border-radius-pill, 20px);
 			cursor: pointer;
-			font-size: 14px;
+			font-size: var(--default-font-size, 15px);
+			font-weight: 600;
 		}
 		.metavox-ms-save {
 			background: var(--color-primary-element);
 			color: var(--color-primary-element-text, #fff);
 		}
+		.metavox-ms-save:hover {
+			background: var(--color-primary-element-hover);
+		}
 		.metavox-ms-cancel {
 			background: var(--color-background-hover);
 			color: var(--color-main-text);
 		}
+		.metavox-ms-cancel:hover {
+			background: var(--color-background-dark);
+		}
 		.${MARKER_CLASS}:hover {
 			background: var(--color-background-hover);
+		}
+		/* Fill handle (Excel-style drag to copy) */
+		.metavox-fill-handle {
+			position: absolute;
+			right: -1px;
+			bottom: -1px;
+			width: 8px;
+			height: 8px;
+			background: var(--color-primary-element);
+			cursor: crosshair;
+			z-index: 10;
+			border: 1px solid var(--color-main-background);
+		}
+		.metavox-fill-highlight {
+			outline: 2px solid var(--color-primary-element);
+			outline-offset: -2px;
+			background: color-mix(in srgb, var(--color-primary-element) 8%, transparent) !important;
 		}
 	`
 	document.head.appendChild(style)
@@ -744,28 +836,41 @@ function openInlineEditor(td, config) {
 
 		case 'select':
 		case 'dropdown': {
-			editor = document.createElement('select')
-			editor.className = 'metavox-inline-editor metavox-inline-select'
+			// Custom dropdown styled like NcSelect
+			const container = document.createElement('div')
+			container.className = 'metavox-inline-editor metavox-inline-select'
 			const opts = parseFieldOptions(config.field_options)
-			// Empty option
-			const emptyOpt = document.createElement('option')
-			emptyOpt.value = ''
-			emptyOpt.textContent = '—'
-			editor.appendChild(emptyOpt)
-			for (const opt of opts) {
-				const o = document.createElement('option')
-				o.value = opt
-				o.textContent = opt
-				if (opt === currentValue) o.selected = true
-				editor.appendChild(o)
-			}
-			editor.addEventListener('change', () => {
-				saveSingleField(fileId, fieldName, editor.value)
+
+			// Clear option
+			const clearOpt = document.createElement('div')
+			clearOpt.className = 'metavox-select-option'
+			clearOpt.dataset.value = ''
+			clearOpt.textContent = '—'
+			if (!currentValue) clearOpt.classList.add('metavox-select-option--selected')
+			clearOpt.addEventListener('click', () => {
+				saveSingleField(fileId, fieldName, '')
 				closeInlineEditor(false)
 			})
-			editor.addEventListener('keydown', (e) => {
+			container.appendChild(clearOpt)
+
+			for (const opt of opts) {
+				const item = document.createElement('div')
+				item.className = 'metavox-select-option'
+				item.dataset.value = opt
+				item.textContent = opt
+				if (opt === currentValue) item.classList.add('metavox-select-option--selected')
+				item.addEventListener('click', () => {
+					saveSingleField(fileId, fieldName, opt)
+					closeInlineEditor(false)
+				})
+				container.appendChild(item)
+			}
+
+			container.addEventListener('keydown', (e) => {
 				if (e.key === 'Escape') closeInlineEditor(true)
 			})
+			container.tabIndex = 0
+			editor = container
 			break
 		}
 
@@ -875,8 +980,62 @@ function openInlineEditor(td, config) {
 
 	// Replace cell content with editor
 	td.textContent = ''
-	td.appendChild(editor)
+	td.style.position = 'relative'
+
+	// Dropdowns need to be portaled to body to escape table overflow
+	const isDropdown = config.field_type === 'multiselect' || config.field_type === 'select' || config.field_type === 'dropdown'
+	if (isDropdown) {
+		const rect = td.getBoundingClientRect()
+		editor.style.position = 'fixed'
+		editor.style.zIndex = '10000'
+		editor.style.minWidth = '180px'
+		editor.style.maxWidth = '300px'
+		editor.style.width = 'max-content'
+		// Temporarily add to measure dimensions
+		editor.style.visibility = 'hidden'
+		document.body.appendChild(editor)
+		const editorHeight = editor.offsetHeight
+		const editorWidth = editor.offsetWidth
+		editor.style.visibility = ''
+
+		// Horizontal: keep within viewport
+		const spaceRight = window.innerWidth - rect.left
+		if (spaceRight < editorWidth) {
+			// Align right edge to viewport edge (with margin)
+			editor.style.right = '8px'
+			editor.style.left = 'auto'
+		} else {
+			editor.style.left = rect.left + 'px'
+		}
+
+		// Vertical: open upward if not enough space below
+		const spaceBelow = window.innerHeight - rect.bottom
+		const spaceAbove = rect.top
+		if (spaceBelow < editorHeight && spaceAbove > spaceBelow) {
+			const maxH = Math.min(editorHeight, spaceAbove - 8)
+			editor.style.bottom = (window.innerHeight - rect.top) + 'px'
+			editor.style.top = 'auto'
+			editor.style.maxHeight = maxH + 'px'
+		} else {
+			editor.style.top = rect.bottom + 'px'
+			editor.style.maxHeight = (spaceBelow - 8) + 'px'
+		}
+		td._portalEditor = editor
+		// Show a placeholder in the cell (use span so opacity doesn't affect fill handle)
+		const placeholder = document.createElement('span')
+		placeholder.textContent = '…'
+		placeholder.style.opacity = '0.5'
+		td.appendChild(placeholder)
+	} else {
+		td.appendChild(editor)
+	}
 	activeEditor = td
+
+	// Add fill handle (Excel-style drag-down to copy value)
+	const handle = document.createElement('div')
+	handle.className = 'metavox-fill-handle'
+	td.appendChild(handle)
+	setupFillHandle(handle, td, config)
 
 	// Focus the editor
 	if (editor.tagName === 'INPUT' || editor.tagName === 'SELECT') {
@@ -884,10 +1043,20 @@ function openInlineEditor(td, config) {
 		if (editor.type === 'text') editor.select()
 	}
 
-	// Close on click outside (for multiselect dropdown)
+	// Close on click outside
 	setTimeout(() => {
 		document.addEventListener('mousedown', handleEditorClickOutside)
 	}, 0)
+
+	// Close portaled dropdowns on scroll (they don't follow the page)
+	if (isDropdown) {
+		const scrollHandler = () => {
+			closeInlineEditor(true)
+		}
+		// Listen on capture phase to catch scroll on any container
+		document.addEventListener('scroll', scrollHandler, { capture: true, once: true })
+		td._scrollHandler = scrollHandler
+	}
 }
 
 function handleEditorClickOutside(e) {
@@ -895,7 +1064,10 @@ function handleEditorClickOutside(e) {
 		document.removeEventListener('mousedown', handleEditorClickOutside)
 		return
 	}
-	if (!activeEditor.contains(e.target)) {
+	// Check both the cell and portaled dropdown (multiselect)
+	const inCell = activeEditor.contains(e.target)
+	const inPortal = activeEditor._portalEditor && activeEditor._portalEditor.contains(e.target)
+	if (!inCell && !inPortal) {
 		closeInlineEditor(true)
 		document.removeEventListener('mousedown', handleEditorClickOutside)
 	}
@@ -907,6 +1079,18 @@ function closeInlineEditor(cancel) {
 	activeEditor = null
 
 	document.removeEventListener('mousedown', handleEditorClickOutside)
+
+	// Remove portaled dropdown from body
+	if (td._portalEditor) {
+		td._portalEditor.remove()
+		delete td._portalEditor
+	}
+
+	// Clean up scroll handler
+	if (td._scrollHandler) {
+		document.removeEventListener('scroll', td._scrollHandler, { capture: true })
+		delete td._scrollHandler
+	}
 
 	if (cancel && td._originalContent !== undefined) {
 		td.textContent = td._originalContent
@@ -921,9 +1105,98 @@ function closeInlineEditor(cancel) {
 
 	delete td._originalContent
 	delete td._originalValue
+	td.style.position = ''
 }
 
-async function saveSingleField(fileId, fieldName, newValue) {
+/**
+ * Fill handle: drag down from active editor cell to copy value to cells below.
+ * Works like Excel's fill handle — drag the blue square at the bottom-right corner.
+ */
+function setupFillHandle(handle, sourceTd, config) {
+	const fieldName = sourceTd.dataset.metavoxField
+	let highlightedCells = []
+
+	function getCellsBelow(sourceTd, fieldName) {
+		const sourceRow = sourceTd.closest('tr')
+		if (!sourceRow) return []
+		const cells = []
+		let row = sourceRow.nextElementSibling
+		while (row) {
+			const cell = row.querySelector(`[data-metavox-field="${fieldName}"]`)
+			if (cell) {
+				const cellFileId = Number(cell.dataset.fileId)
+				if (canEditFile(cellFileId)) {
+					cells.push(cell)
+				}
+			}
+			row = row.nextElementSibling
+		}
+		return cells
+	}
+
+	function highlightTo(targetY) {
+		// Clear previous highlights
+		for (const c of highlightedCells) c.classList.remove('metavox-fill-highlight')
+		highlightedCells = []
+
+		const cellsBelow = getCellsBelow(sourceTd, fieldName)
+		for (const cell of cellsBelow) {
+			const rect = cell.getBoundingClientRect()
+			if (rect.top < targetY) {
+				cell.classList.add('metavox-fill-highlight')
+				highlightedCells.push(cell)
+			} else {
+				break
+			}
+		}
+	}
+
+	function onMouseMove(e) {
+		e.preventDefault()
+		highlightTo(e.clientY)
+	}
+
+	function onMouseUp(e) {
+		document.removeEventListener('mousemove', onMouseMove)
+		document.removeEventListener('mouseup', onMouseUp)
+
+		if (highlightedCells.length === 0) return
+
+		// Get value from editor
+		const editorEl = sourceTd.querySelector('input, select')
+		const value = editorEl ? editorEl.value : sourceTd._originalValue || ''
+
+		// Collect old values for batch undo, then save
+		const undoEntries = []
+		for (const cell of highlightedCells) {
+			cell.classList.remove('metavox-fill-highlight')
+			const fileId = Number(cell.dataset.fileId)
+			const meta = metadataCache.get(fileId) || {}
+			undoEntries.push({ fileId, fieldName, oldValue: meta[fieldName] })
+			saveSingleField(fileId, fieldName, value, { skipUndo: true })
+			const cellConfig = activeColumnConfigs.find(c => c.field_name === fieldName)
+			if (cellConfig) setCellValue(cell, value, cellConfig)
+		}
+		highlightedCells = []
+
+		// Single undo toast for the entire fill operation
+		if (undoEntries.length > 0) {
+			pushUndo(undoEntries)
+		}
+
+		// Close the editor after fill
+		closeInlineEditor(false)
+	}
+
+	handle.addEventListener('mousedown', (e) => {
+		e.preventDefault()
+		e.stopPropagation()
+		document.addEventListener('mousemove', onMouseMove)
+		document.addEventListener('mouseup', onMouseUp)
+	})
+}
+
+async function saveSingleField(fileId, fieldName, newValue, options = {}) {
 	// Update cache immediately
 	const meta = metadataCache.get(fileId) || {}
 	const oldValue = meta[fieldName]
@@ -951,6 +1224,11 @@ async function saveSingleField(fileId, fieldName, newValue) {
 		window.dispatchEvent(new CustomEvent('metavox:metadata:saved', {
 			detail: { fileId, metadata: { ...meta } },
 		}))
+
+		// Show undo toast (unless suppressed by fill-handle)
+		if (!options.skipUndo) {
+			pushUndo([{ fileId, fieldName, oldValue }])
+		}
 	} catch (e) {
 		console.error('MetaVox: Failed to save inline edit', e)
 		// Revert on error
@@ -1007,6 +1285,7 @@ function updateTableMinWidth() {
 const VIEW_TABS_ID = 'metavox-view-tabs'
 const VIEW_EDITOR_ID = 'metavox-view-editor'
 const VIEW_STYLE_ID = 'metavox-view-styles'
+let draggedViewId = null
 
 // Need FILTER_ID from MetadataFilter — re-declare locally for DOM lookup
 const FILTER_ID = 'metavox-metadata'
@@ -1054,10 +1333,9 @@ function injectViewStyles() {
 			flex: 1;
 			min-width: 0;
 			padding-right: calc(var(--default-grid-baseline, 4px) * 2);
-			scrollbar-width: none;   /* Firefox */
-			-ms-overflow-style: none; /* IE/Edge */
+			scrollbar-width: thin;
+			scrollbar-color: var(--color-border-dark, #ccc) transparent;
 		}
-		.mv-tabs-scroll::-webkit-scrollbar { display: none; }
 		/* Fade indicators for scroll overflow */
 		.mv-tabs-scroll-wrap {
 			position: relative;
@@ -1168,6 +1446,13 @@ function injectViewStyles() {
 			color: var(--color-text-maxcontrast);
 		}
 		.mv-tab-action-icon:hover { opacity: 1; }
+
+		/* ── Tab drag-and-drop ── */
+		.mv-tab[draggable="true"] { cursor: grab; }
+		.mv-tab[draggable="true"]:active { cursor: grabbing; }
+		.mv-tab.mv-tab-dragging { opacity: 0.4; }
+		.mv-tab.mv-tab-drop-left { box-shadow: -2px 0 0 0 var(--color-primary-element); }
+		.mv-tab.mv-tab-drop-right { box-shadow: 2px 0 0 0 var(--color-primary-element); }
 
 		/* ── Responsive (NC33 breakpoints) ── */
 		@media only screen and (max-width: 1024px) {
@@ -1328,12 +1613,84 @@ function _makeViewTab(view) {
 		if (fi) applyView(view, fi)
 	})
 
+	// Drag-and-drop for reordering (non-default tabs only, when user can manage)
+	if (canManageViews && !view.is_default) {
+		tab.draggable = true
+		tab.addEventListener('dragstart', (e) => {
+			draggedViewId = view.id
+			tab.classList.add('mv-tab-dragging')
+			e.dataTransfer.effectAllowed = 'move'
+		})
+		tab.addEventListener('dragend', () => {
+			draggedViewId = null
+			tab.classList.remove('mv-tab-dragging')
+			// Clear all drop indicators
+			document.querySelectorAll('.mv-tab-drop-left, .mv-tab-drop-right').forEach(el => {
+				el.classList.remove('mv-tab-drop-left', 'mv-tab-drop-right')
+			})
+		})
+		tab.addEventListener('dragover', (e) => {
+			if (!draggedViewId || draggedViewId === view.id) return
+			e.preventDefault()
+			e.dataTransfer.dropEffect = 'move'
+			// Show drop indicator based on mouse position
+			const rect = tab.getBoundingClientRect()
+			const mid = rect.left + rect.width / 2
+			document.querySelectorAll('.mv-tab-drop-left, .mv-tab-drop-right').forEach(el => {
+				el.classList.remove('mv-tab-drop-left', 'mv-tab-drop-right')
+			})
+			tab.classList.add(e.clientX < mid ? 'mv-tab-drop-left' : 'mv-tab-drop-right')
+		})
+		tab.addEventListener('dragleave', () => {
+			tab.classList.remove('mv-tab-drop-left', 'mv-tab-drop-right')
+		})
+		tab.addEventListener('drop', (e) => {
+			e.preventDefault()
+			tab.classList.remove('mv-tab-drop-left', 'mv-tab-drop-right')
+			if (!draggedViewId || draggedViewId === view.id) return
+			const rect = tab.getBoundingClientRect()
+			const mid = rect.left + rect.width / 2
+			const dropAfter = e.clientX >= mid
+			_handleTabDrop(draggedViewId, view.id, dropAfter)
+		})
+	} else {
+		tab.draggable = false
+	}
+
 	return tab
 }
 
 function removeViewTabs() {
 	viewTabsEl?.remove()
 	viewTabsEl = null
+}
+
+async function _handleTabDrop(dragId, targetId, dropAfter) {
+	// Build new order from current non-default views
+	const ids = activeViews.filter(v => !v.is_default).map(v => v.id)
+	const fromIdx = ids.indexOf(dragId)
+	if (fromIdx === -1) return
+
+	ids.splice(fromIdx, 1)
+	let toIdx = ids.indexOf(targetId)
+	if (toIdx === -1) return
+	if (dropAfter) toIdx++
+	ids.splice(toIdx, 0, dragId)
+
+	// Prepend default view id if exists
+	const defaultView = activeViews.find(v => v.is_default)
+	const allIds = defaultView ? [defaultView.id, ...ids] : ids
+
+	try {
+		const reorderUrl = generateUrl('/apps/metavox/api/groupfolders/{gfId}/views/reorder', { gfId: activeGroupfolderId })
+		await axios.put(reorderUrl, { view_ids: allIds })
+		// Refresh views and re-render tabs
+		const result = await fetchViews(activeGroupfolderId)
+		activeViews = result.views
+		injectViewTabs(activeViews)
+	} catch (err) {
+		console.error('MetaVox: Failed to reorder views', err)
+	}
 }
 
 function updateActiveTabs() {
@@ -1424,6 +1781,7 @@ function openViewEditor(view, readonly = false) {
 			view,
 			readonly,
 			availableFields,
+			totalViews: activeViews.length,
 			fetchFilterValuesFn: (fieldName) => {
 				// Use prefetched filter values (already loaded in parallel on directory init)
 				const allValues = prefetchedFilterValues || {}
@@ -1470,6 +1828,30 @@ async function _handleEditorSave(view, payload) {
 		}
 
 		closeViewEditor()
+
+		// If position was changed, reorder all views
+		const desiredPos = payload.position
+		if (desiredPos !== undefined && desiredPos !== null) {
+			// Fetch current view list to compute new order
+			const currentResult = await fetchViews(activeGroupfolderId)
+			const currentViews = currentResult.views || []
+			const savedId = savedView?.id
+			if (savedId && currentViews.length > 1) {
+				// Build ordered ID list, then move savedId to desiredPos
+				const ids = currentViews.map(v => v.id)
+				const fromIdx = ids.indexOf(savedId)
+				if (fromIdx !== -1 && fromIdx !== desiredPos) {
+					ids.splice(fromIdx, 1)
+					ids.splice(desiredPos, 0, savedId)
+					try {
+						const reorderUrl = generateUrl('/apps/metavox/api/groupfolders/{gfId}/views/reorder', { gfId: activeGroupfolderId })
+						await axios.put(reorderUrl, { view_ids: ids })
+					} catch (reorderErr) {
+						console.error('MetaVox: Failed to reorder views', reorderErr)
+					}
+				}
+			}
+		}
 
 		const result = await fetchViews(activeGroupfolderId)
 		activeViews = result.views
