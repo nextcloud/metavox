@@ -222,7 +222,14 @@ async function flushLoadQueue() {
 	const data = await fetchDirectoryMetadata(activeGroupfolderId, ids)
 
 	for (const [fileId, fields] of Object.entries(data)) {
-		metadataCache.set(Number(fileId), fields)
+		const id = Number(fileId)
+		// Extract and cache permissions separately
+		if (fields._permissions !== undefined) {
+			const NC_PERMISSION_UPDATE = 2
+			permissionCache.set(id, (fields._permissions & NC_PERMISSION_UPDATE) !== 0)
+			delete fields._permissions
+		}
+		metadataCache.set(id, fields)
 	}
 
 	// Mark files without metadata as empty
@@ -358,6 +365,80 @@ function injectColumnStyles() {
 		}
 		.${MARKER_CLASS}--empty {
 			color: var(--color-text-maxcontrast, #767676) !important;
+		}
+		/* Inline editor styles */
+		.metavox-inline-editor {
+			width: 100%;
+			box-sizing: border-box;
+			font: inherit;
+			font-size: 13px;
+			color: var(--color-main-text);
+			background: var(--color-main-background);
+			border: 2px solid var(--color-primary-element);
+			border-radius: var(--border-radius);
+			outline: none;
+		}
+		.metavox-inline-input,
+		.metavox-inline-date {
+			padding: 4px 8px;
+			height: 32px;
+		}
+		.metavox-inline-select {
+			padding: 4px 6px;
+			height: 32px;
+			cursor: pointer;
+		}
+		.metavox-inline-multiselect {
+			position: absolute;
+			z-index: 100;
+			padding: 8px;
+			min-width: 180px;
+			max-height: 250px;
+			overflow-y: auto;
+			box-shadow: 0 2px 8px rgba(0,0,0,.15);
+			display: flex;
+			flex-direction: column;
+			gap: 4px;
+		}
+		.metavox-ms-option {
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			padding: 4px 2px;
+			font-size: 13px;
+			cursor: pointer;
+			white-space: nowrap;
+		}
+		.metavox-ms-option:hover {
+			background: var(--color-background-hover);
+			border-radius: var(--border-radius);
+		}
+		.metavox-ms-actions {
+			display: flex;
+			gap: 4px;
+			margin-top: 6px;
+			padding-top: 6px;
+			border-top: 1px solid var(--color-border);
+		}
+		.metavox-ms-save,
+		.metavox-ms-cancel {
+			flex: 1;
+			padding: 4px;
+			border: none;
+			border-radius: var(--border-radius);
+			cursor: pointer;
+			font-size: 14px;
+		}
+		.metavox-ms-save {
+			background: var(--color-primary-element);
+			color: var(--color-primary-element-text, #fff);
+		}
+		.metavox-ms-cancel {
+			background: var(--color-background-hover);
+			color: var(--color-main-text);
+		}
+		.${MARKER_CLASS}:hover {
+			background: var(--color-background-hover);
 		}
 	`
 	document.head.appendChild(style)
@@ -554,6 +635,9 @@ function injectRowColumns(row) {
 			if (fileId) queueMetadataLoad(fileId)
 		}
 
+		// Enable inline editing on double-click
+		setupCellEditing(td, config)
+
 		rowFrag.appendChild(td)
 	}
 	row.appendChild(rowFrag)
@@ -589,6 +673,292 @@ function updateAllRowCells() {
 			setCellValue(cell, meta[fieldName], config)
 		}
 	}
+}
+
+// ========================================
+// Inline Cell Editing (SharePoint-style)
+// ========================================
+
+/** @type {HTMLElement|null} Currently active inline editor */
+let activeEditor = null
+
+/** @type {Map<number, boolean>} Cache of file write permissions: fileId -> canEdit */
+const permissionCache = new Map()
+
+function canEditFile(fileId) {
+	const canEdit = permissionCache.get(fileId)
+	// If permissions were loaded from the API, use them; otherwise deny
+	return canEdit === true
+}
+
+function setupCellEditing(td, config) {
+	td.style.cursor = 'pointer'
+	td.addEventListener('dblclick', (e) => {
+		e.preventDefault()
+		e.stopPropagation()
+
+		// Check write permission (loaded from API response)
+		const fileId = Number(td.dataset.fileId)
+
+		if (!canEditFile(fileId)) {
+			td.style.cursor = 'default'
+			return
+		}
+
+		openInlineEditor(td, config)
+	})
+}
+
+function openInlineEditor(td, config) {
+	// Don't open if already editing
+	if (activeEditor) {
+		closeInlineEditor(false)
+	}
+
+	const fileId = Number(td.dataset.fileId)
+	const fieldName = td.dataset.metavoxField
+	const meta = metadataCache.get(fileId) || {}
+	const currentValue = meta[fieldName] || ''
+
+	// Store original content for cancel
+	td._originalContent = td.textContent
+	td._originalValue = currentValue
+
+	let editor
+
+	switch (config.field_type) {
+		case 'checkbox':
+			// Toggle immediately, no editor needed
+			const newVal = currentValue === '1' ? '0' : '1'
+			saveSingleField(fileId, fieldName, newVal)
+			return
+
+		case 'select':
+		case 'dropdown': {
+			editor = document.createElement('select')
+			editor.className = 'metavox-inline-editor metavox-inline-select'
+			const opts = parseFieldOptions(config.field_options)
+			// Empty option
+			const emptyOpt = document.createElement('option')
+			emptyOpt.value = ''
+			emptyOpt.textContent = '—'
+			editor.appendChild(emptyOpt)
+			for (const opt of opts) {
+				const o = document.createElement('option')
+				o.value = opt
+				o.textContent = opt
+				if (opt === currentValue) o.selected = true
+				editor.appendChild(o)
+			}
+			editor.addEventListener('change', () => {
+				saveSingleField(fileId, fieldName, editor.value)
+				closeInlineEditor(false)
+			})
+			editor.addEventListener('keydown', (e) => {
+				if (e.key === 'Escape') closeInlineEditor(true)
+			})
+			break
+		}
+
+		case 'multiselect': {
+			// Create a dropdown with checkboxes
+			const container = document.createElement('div')
+			container.className = 'metavox-inline-editor metavox-inline-multiselect'
+			const opts = parseFieldOptions(config.field_options)
+			const selectedValues = currentValue ? currentValue.split(';#').filter(v => v.trim()) : []
+
+			for (const opt of opts) {
+				const label = document.createElement('label')
+				label.className = 'metavox-ms-option'
+				const cb = document.createElement('input')
+				cb.type = 'checkbox'
+				cb.value = opt
+				cb.checked = selectedValues.includes(opt)
+				label.appendChild(cb)
+				label.appendChild(document.createTextNode(' ' + opt))
+				container.appendChild(label)
+			}
+
+			const btnRow = document.createElement('div')
+			btnRow.className = 'metavox-ms-actions'
+			const saveBtn = document.createElement('button')
+			saveBtn.textContent = '✓'
+			saveBtn.className = 'metavox-ms-save'
+			saveBtn.addEventListener('click', () => {
+				const checked = Array.from(container.querySelectorAll('input:checked')).map(c => c.value)
+				saveSingleField(fileId, fieldName, checked.join(';#'))
+				closeInlineEditor(false)
+			})
+			const cancelBtn = document.createElement('button')
+			cancelBtn.textContent = '✕'
+			cancelBtn.className = 'metavox-ms-cancel'
+			cancelBtn.addEventListener('click', () => closeInlineEditor(true))
+			btnRow.appendChild(saveBtn)
+			btnRow.appendChild(cancelBtn)
+			container.appendChild(btnRow)
+
+			editor = container
+			break
+		}
+
+		case 'date': {
+			editor = document.createElement('input')
+			editor.type = 'date'
+			editor.className = 'metavox-inline-editor metavox-inline-date'
+			editor.value = currentValue || ''
+			editor.addEventListener('change', () => {
+				saveSingleField(fileId, fieldName, editor.value)
+				closeInlineEditor(false)
+			})
+			editor.addEventListener('keydown', (e) => {
+				if (e.key === 'Escape') closeInlineEditor(true)
+				if (e.key === 'Enter') {
+					saveSingleField(fileId, fieldName, editor.value)
+					closeInlineEditor(false)
+				}
+			})
+			break
+		}
+
+		case 'number': {
+			editor = document.createElement('input')
+			editor.type = 'number'
+			editor.className = 'metavox-inline-editor metavox-inline-input'
+			editor.value = currentValue || ''
+			editor.addEventListener('keydown', (e) => {
+				if (e.key === 'Escape') closeInlineEditor(true)
+				if (e.key === 'Enter') {
+					saveSingleField(fileId, fieldName, editor.value)
+					closeInlineEditor(false)
+				}
+			})
+			editor.addEventListener('blur', () => {
+				if (activeEditor === td) {
+					saveSingleField(fileId, fieldName, editor.value)
+					closeInlineEditor(false)
+				}
+			})
+			break
+		}
+
+		default: {
+			// text, textarea, url — use text input
+			editor = document.createElement('input')
+			editor.type = 'text'
+			editor.className = 'metavox-inline-editor metavox-inline-input'
+			editor.value = currentValue || ''
+			editor.addEventListener('keydown', (e) => {
+				if (e.key === 'Escape') closeInlineEditor(true)
+				if (e.key === 'Enter') {
+					saveSingleField(fileId, fieldName, editor.value)
+					closeInlineEditor(false)
+				}
+			})
+			editor.addEventListener('blur', () => {
+				if (activeEditor === td) {
+					saveSingleField(fileId, fieldName, editor.value)
+					closeInlineEditor(false)
+				}
+			})
+			break
+		}
+	}
+
+	// Replace cell content with editor
+	td.textContent = ''
+	td.appendChild(editor)
+	activeEditor = td
+
+	// Focus the editor
+	if (editor.tagName === 'INPUT' || editor.tagName === 'SELECT') {
+		editor.focus()
+		if (editor.type === 'text') editor.select()
+	}
+
+	// Close on click outside (for multiselect dropdown)
+	setTimeout(() => {
+		document.addEventListener('mousedown', handleEditorClickOutside)
+	}, 0)
+}
+
+function handleEditorClickOutside(e) {
+	if (!activeEditor) {
+		document.removeEventListener('mousedown', handleEditorClickOutside)
+		return
+	}
+	if (!activeEditor.contains(e.target)) {
+		closeInlineEditor(true)
+		document.removeEventListener('mousedown', handleEditorClickOutside)
+	}
+}
+
+function closeInlineEditor(cancel) {
+	if (!activeEditor) return
+	const td = activeEditor
+	activeEditor = null
+
+	document.removeEventListener('mousedown', handleEditorClickOutside)
+
+	if (cancel && td._originalContent !== undefined) {
+		td.textContent = td._originalContent
+	} else {
+		// Re-render from cache
+		const fileId = Number(td.dataset.fileId)
+		const fieldName = td.dataset.metavoxField
+		const config = activeColumnConfigs.find(c => c.field_name === fieldName)
+		const meta = metadataCache.get(fileId) || {}
+		if (config) setCellValue(td, meta[fieldName], config)
+	}
+
+	delete td._originalContent
+	delete td._originalValue
+}
+
+async function saveSingleField(fileId, fieldName, newValue) {
+	// Update cache immediately
+	const meta = metadataCache.get(fileId) || {}
+	const oldValue = meta[fieldName]
+
+	// Skip if value didn't change
+	if (oldValue === newValue) return
+
+	meta[fieldName] = newValue
+	metadataCache.set(fileId, meta)
+
+	// Update the cell display
+	updateAllRowCells()
+
+	// Save via API
+	try {
+		await axios.post(
+			generateUrl('/apps/metavox/api/groupfolders/{groupfolderId}/files/{fileId}/metadata', {
+				groupfolderId: activeGroupfolderId,
+				fileId,
+			}),
+			{ metadata: { [fieldName]: newValue } },
+		)
+
+		// Dispatch event so sidebar stays in sync
+		window.dispatchEvent(new CustomEvent('metavox:metadata:saved', {
+			detail: { fileId, metadata: { ...meta } },
+		}))
+	} catch (e) {
+		console.error('MetaVox: Failed to save inline edit', e)
+		// Revert on error
+		meta[fieldName] = oldValue
+		metadataCache.set(fileId, meta)
+		updateAllRowCells()
+	}
+}
+
+function parseFieldOptions(options) {
+	if (!options) return []
+	if (Array.isArray(options)) return options
+	try {
+		const parsed = JSON.parse(options)
+		if (Array.isArray(parsed)) return parsed
+	} catch (e) { /* not JSON */ }
+	return options.split('\n').filter(v => v.trim() !== '')
 }
 
 function injectAllExistingRows() {
