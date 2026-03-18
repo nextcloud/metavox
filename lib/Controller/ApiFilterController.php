@@ -82,6 +82,19 @@ class ApiFilterController extends OCSController {
             }
 
             $metadata = $this->filterService->getDirectoryMetadata($accessibleFileIds, $groupfolderId);
+
+            // Add per-file permissions for inline editing
+            $userFolder = $this->rootFolder->getUserFolder($user->getUID());
+            foreach ($metadata as $fileId => &$fileMeta) {
+                $nodes = $userFolder->getById((int)$fileId);
+                if (!empty($nodes)) {
+                    $fileMeta['_permissions'] = $nodes[0]->getPermissions();
+                } else {
+                    $fileMeta['_permissions'] = 1; // read-only
+                }
+            }
+            unset($fileMeta);
+
             return new DataResponse($metadata, Http::STATUS_OK);
         } catch (\Exception $e) {
             return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
