@@ -35,7 +35,13 @@ class FilterService {
         // Check cache for individual files, only query missing ones
         $metadataByFile = [];
         $uncachedIds = [];
-        $fieldKey = !empty($fieldNames) ? implode(',', $fieldNames) : '_all';
+        if (!empty($fieldNames)) {
+            $sorted = $fieldNames;
+            sort($sorted);
+            $fieldKey = implode(',', $sorted);
+        } else {
+            $fieldKey = '_all';
+        }
 
         foreach ($fileIds as $fileId) {
             $cacheKey = "gf_{$groupfolderId}_f_{$fileId}_{$fieldKey}";

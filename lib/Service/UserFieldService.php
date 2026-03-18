@@ -60,55 +60,40 @@ public function getAccessibleGroupfolders(string $userId): array {
             // FolderManager not available, fall back to direct DB query
         }
 
-        // Fallback: direct DB query (does not support circles/teams)
+        // Fallback: single JOIN query (does not support circles/teams)
         $userGroups = $this->groupManager->getUserGroupIds($user);
 
+        if (empty($userGroups)) {
+            return [];
+        }
+
         $qb = $this->db->getQueryBuilder();
-        $qb->select('f.*')
-           ->from('group_folders', 'f');
+        $qb->select('f.*', 'g.group_id')
+           ->from('group_folders', 'f')
+           ->innerJoin('f', 'group_folders_groups', 'g',
+               $qb->expr()->eq('f.folder_id', 'g.folder_id'))
+           ->where($qb->expr()->in('g.group_id', $qb->createNamedParameter($userGroups, IQueryBuilder::PARAM_STR_ARRAY)));
 
         $result = $qb->executeQuery();
-        $folders = [];
+        $foldersMap = [];
 
         while ($row = $result->fetch()) {
             $folderId = (int)($row['folder_id'] ?? $row['id'] ?? 0);
-            $mountPoint = $row['mount_point'] ?? 'Unknown';
-
-            $qb2 = $this->db->getQueryBuilder();
-            $qb2->select('group_id', 'permissions')
-                ->from('group_folders_groups')
-                ->where($qb2->expr()->eq('folder_id', $qb2->createNamedParameter($folderId, IQueryBuilder::PARAM_INT)));
-
-            $result2 = $qb2->executeQuery();
-            $folderGroups = [];
-
-            while ($groupRow = $result2->fetch()) {
-                $folderGroups[] = $groupRow['group_id'];
-            }
-            $result2->closeCursor();
-
-            $hasAccess = false;
-            foreach ($userGroups as $userGroup) {
-                if (in_array($userGroup, $folderGroups)) {
-                    $hasAccess = true;
-                    break;
-                }
-            }
-
-            if ($hasAccess) {
-                $folders[] = [
+            if (!isset($foldersMap[$folderId])) {
+                $foldersMap[$folderId] = [
                     'id' => $folderId,
-                    'mount_point' => $mountPoint,
-                    'groups' => $folderGroups,
+                    'mount_point' => $row['mount_point'] ?? 'Unknown',
+                    'groups' => [],
                     'quota' => (int)($row['quota'] ?? -3),
                     'size' => (int)($row['size'] ?? 0),
                     'acl' => (bool)($row['acl'] ?? false),
                 ];
             }
+            $foldersMap[$folderId]['groups'][] = $row['group_id'];
         }
         $result->closeCursor();
 
-        return $folders;
+        return array_values($foldersMap);
 
     } catch (\Exception $e) {
         error_log('MetaVox getAccessibleGroupfolders error: ' . $e->getMessage());
@@ -212,43 +197,39 @@ public function hasAccessToGroupfolder(string $userId, int $groupfolderId): bool
             }
             $result->closeCursor();
 
+            $platform = $this->db->getDatabasePlatform();
+            $now = date('Y-m-d H:i:s');
+
             foreach ($metadata as $fieldName => $value) {
                 if (!isset($fieldMap[$fieldName])) {
                     continue;
                 }
 
-                // Check if record exists
-                $qb = $this->db->getQueryBuilder();
-                $qb->select('id')
-                   ->from('metavox_gf_metadata')
-                   ->where($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)))
-                   ->andWhere($qb->expr()->eq('field_name', $qb->createNamedParameter($fieldName)));
-
-                $result = $qb->executeQuery();
-                $existingId = $result->fetchOne();
-                $result->closeCursor();
-
-                if ($existingId) {
-                    // Update
-                    $qb = $this->db->getQueryBuilder();
-                    $qb->update('metavox_gf_metadata')
-                       ->set('field_value', $qb->createNamedParameter((string)$value))
-                       ->set('updated_at', $qb->createNamedParameter(date('Y-m-d H:i:s')))
-                       ->where($qb->expr()->eq('id', $qb->createNamedParameter($existingId, IQueryBuilder::PARAM_INT)));
-                    $qb->executeStatement();
+                // UPSERT: single query instead of SELECT + INSERT/UPDATE
+                if ($platform instanceof \Doctrine\DBAL\Platforms\MySqlPlatform) {
+                    $sql = "INSERT INTO *PREFIX*metavox_gf_metadata
+                            (groupfolder_id, field_name, field_value, created_at, updated_at)
+                            VALUES (?, ?, ?, ?, ?)
+                            ON DUPLICATE KEY UPDATE
+                            field_value = VALUES(field_value),
+                            updated_at = VALUES(updated_at)";
                 } else {
-                    // Insert
-                    $qb = $this->db->getQueryBuilder();
-                    $qb->insert('metavox_gf_metadata')
-                       ->values([
-                           'groupfolder_id' => $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT),
-                           'field_name' => $qb->createNamedParameter($fieldName),
-                           'field_value' => $qb->createNamedParameter((string)$value),
-                           'created_at' => $qb->createNamedParameter(date('Y-m-d H:i:s')),
-                           'updated_at' => $qb->createNamedParameter(date('Y-m-d H:i:s')),
-                       ]);
-                    $qb->executeStatement();
+                    $sql = "INSERT INTO *PREFIX*metavox_gf_metadata
+                            (groupfolder_id, field_name, field_value, created_at, updated_at)
+                            VALUES (?, ?, ?, ?, ?)
+                            ON CONFLICT (groupfolder_id, field_name)
+                            DO UPDATE SET
+                            field_value = EXCLUDED.field_value,
+                            updated_at = EXCLUDED.updated_at";
                 }
+
+                $this->db->executeStatement($sql, [
+                    $groupfolderId,
+                    $fieldName,
+                    (string)$value,
+                    $now,
+                    $now,
+                ]);
             }
 
             return true;
