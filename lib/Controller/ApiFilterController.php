@@ -81,7 +81,14 @@ class ApiFilterController extends OCSController {
                 }
             }
 
-            $metadata = $this->filterService->getDirectoryMetadata($accessibleFileIds, $groupfolderId);
+            // Optional: only fetch specific fields (reduces query size for large datasets)
+            $fieldNamesParam = $this->request->getParam('field_names');
+            $fieldNames = [];
+            if (is_string($fieldNamesParam) && !empty($fieldNamesParam)) {
+                $fieldNames = array_filter(array_map('trim', explode(',', $fieldNamesParam)));
+            }
+
+            $metadata = $this->filterService->getDirectoryMetadata($accessibleFileIds, $groupfolderId, $fieldNames);
 
             // Add per-file permissions for inline editing
             $userFolder = $this->rootFolder->getUserFolder($user->getUID());
@@ -124,7 +131,40 @@ class ApiFilterController extends OCSController {
                 $fieldNamesArray = array_filter(array_map('trim', explode(',', $fieldNames)));
             }
 
-            $values = $this->filterService->getAllDistinctFieldValues($groupfolderId, $fieldNamesArray);
+            // For select/multiselect fields, use field_options from config instead of DB GROUP BY
+            $fields = $this->fieldService->getAssignedFieldsWithDataForGroupfolder($groupfolderId);
+            $optionFields = []; // field_name => [option values] for select/multiselect
+            $dbFieldNames = []; // field names that need DB lookup
+
+            foreach ($fields as $field) {
+                $name = $field['field_name'] ?? '';
+                if (empty($name)) continue;
+                if (!empty($fieldNamesArray) && !in_array($name, $fieldNamesArray)) continue;
+
+                $type = $field['field_type'] ?? '';
+                if (in_array($type, ['select', 'multiselect', 'multi_select', 'dropdown', 'checkbox'])) {
+                    if ($type === 'checkbox') {
+                        $optionFields[$name] = ['1', '0'];
+                    } else {
+                        $options = $field['field_options'] ?? [];
+                        if (is_array($options) && !empty($options)) {
+                            $optionFields[$name] = array_values($options);
+                        } else {
+                            $dbFieldNames[] = $name;
+                        }
+                    }
+                } else {
+                    $dbFieldNames[] = $name;
+                }
+            }
+
+            // Only query DB for fields that don't have predefined options
+            $dbValues = [];
+            if (!empty($dbFieldNames)) {
+                $dbValues = $this->filterService->getAllDistinctFieldValues($groupfolderId, $dbFieldNames);
+            }
+
+            $values = array_merge($optionFields, $dbValues);
             $response = new DataResponse($values, Http::STATUS_OK);
             $response->addHeader('Cache-Control', 'private, max-age=300');
             return $response;

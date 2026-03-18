@@ -27,30 +27,56 @@ class FilterService {
      * @param int $groupfolderId
      * @return array<int, array<string, string>> fileId => [fieldName => value]
      */
-    public function getDirectoryMetadata(array $fileIds, int $groupfolderId): array {
+    public function getDirectoryMetadata(array $fileIds, int $groupfolderId, array $fieldNames = []): array {
         if (empty($fileIds)) {
             return [];
+        }
+
+        // Check cache for individual files, only query missing ones
+        $metadataByFile = [];
+        $uncachedIds = [];
+        $fieldKey = !empty($fieldNames) ? implode(',', $fieldNames) : '_all';
+
+        foreach ($fileIds as $fileId) {
+            $cacheKey = "gf_{$groupfolderId}_f_{$fileId}_{$fieldKey}";
+            $cached = $this->cache->get($cacheKey);
+            if ($cached !== null) {
+                $metadataByFile[$fileId] = $cached;
+            } else {
+                $uncachedIds[] = $fileId;
+                $metadataByFile[$fileId] = [];
+            }
+        }
+
+        if (empty($uncachedIds)) {
+            return $metadataByFile;
         }
 
         try {
             $qb = $this->db->getQueryBuilder();
             $qb->select('file_id', 'field_name', 'field_value')
                ->from('metavox_file_gf_meta')
-               ->where($qb->expr()->in('file_id', $qb->createNamedParameter($fileIds, IQueryBuilder::PARAM_INT_ARRAY)))
+               ->where($qb->expr()->in('file_id', $qb->createNamedParameter($uncachedIds, IQueryBuilder::PARAM_INT_ARRAY)))
                ->andWhere($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)));
 
-            $result = $qb->executeQuery();
-            $metadataByFile = [];
-
-            foreach ($fileIds as $fileId) {
-                $metadataByFile[$fileId] = [];
+            // Only fetch requested fields (reduces rows returned significantly)
+            if (!empty($fieldNames)) {
+                $qb->andWhere($qb->expr()->in('field_name', $qb->createNamedParameter($fieldNames, IQueryBuilder::PARAM_STR_ARRAY)));
             }
+
+            $result = $qb->executeQuery();
 
             while ($row = $result->fetch()) {
                 $fileId = (int)$row['file_id'];
                 $metadataByFile[$fileId][$row['field_name']] = $row['field_value'];
             }
             $result->closeCursor();
+
+            // Cache results per file (30s TTL)
+            foreach ($uncachedIds as $fileId) {
+                $cacheKey = "gf_{$groupfolderId}_f_{$fileId}_{$fieldKey}";
+                $this->cache->set($cacheKey, $metadataByFile[$fileId] ?? [], 30);
+            }
 
             return $metadataByFile;
         } catch (\Exception $e) {
