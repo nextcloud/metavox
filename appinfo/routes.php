@@ -164,6 +164,9 @@ return [
         // Filter values (distinct values for filter dropdowns — batch)
         ['name' => 'apiFilter#getAllFilterValues', 'url' => '/api/v1/groupfolders/{groupfolderId}/all-filter-values', 'verb' => 'GET'],
 
+        // Server-side sorted & filtered file IDs
+        ['name' => 'apiFilter#getSortedFileIds', 'url' => '/api/v1/groupfolders/{groupfolderId}/sorted-file-ids', 'verb' => 'GET'],
+
         // Field update and delete (OCS)
         ['name' => 'apiField#updateGroupfolderField', 'url' => '/api/v1/groupfolder-fields/{id}', 'verb' => 'PUT'],
         ['name' => 'apiField#deleteGroupfolderField', 'url' => '/api/v1/groupfolder-fields/{id}', 'verb' => 'DELETE'],

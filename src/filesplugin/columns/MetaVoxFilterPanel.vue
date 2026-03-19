@@ -89,6 +89,10 @@ function syncActiveState() {
 			for (const v of values) {
 				state[config.field_name][v] = true
 			}
+			// Auto-open sections that have active filters
+			if (openSections.value[config.field_name] === undefined) {
+				openSections.value[config.field_name] = true
+			}
 		}
 	}
 	activeState.value = state
@@ -104,7 +108,6 @@ function isActive(fieldName, value) {
 }
 
 function isSectionOpen(fieldName) {
-	if (activeState.value[fieldName]) return true
 	return !!openSections.value[fieldName]
 }
 
