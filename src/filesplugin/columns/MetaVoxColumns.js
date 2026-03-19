@@ -2167,6 +2167,38 @@ function _applyViewColumns(view) {
 	injectHeaderColumns()
 	injectFooterColumns()
 
+	// Check if cached metadata has all fields needed by the new view.
+	// If not, clear cache so metadata is re-fetched with the correct field_names.
+	const newFieldNames = activeColumnConfigs.map(c => c.field_name).filter(Boolean)
+	if (newFieldNames.length > 0 && metadataCache.size > 0) {
+		const sample = metadataCache.values().next().value
+		if (sample && newFieldNames.some(f => !(f in sample))) {
+			metadataCache.clear()
+			// Re-fetch metadata for all files with the new field set
+			if (activeGroupfolderId) {
+				const fl = _findFilesList()
+				let ids = fl?.dirContents?.map(n => n.fileid).filter(Boolean) || []
+				if (ids.length === 0) {
+					ids = [...document.querySelectorAll('tr[data-cy-files-list-row]')]
+						.map(r => Number(r.getAttribute('data-cy-files-list-row-fileid'))).filter(Boolean)
+				}
+				if (ids.length > 0) {
+					fetchDirectoryMetadata(activeGroupfolderId, ids).then(data => {
+						for (const [fileId, fields] of Object.entries(data)) {
+							const id = Number(fileId)
+							if (fields._permissions !== undefined) {
+								permissionCache.set(id, (fields._permissions & 2) !== 0)
+								delete fields._permissions
+							}
+							metadataCache.set(id, fields)
+						}
+						updateAllRowCells()
+					})
+				}
+			}
+		}
+	}
+
 	// Batch remove all existing data cells in one query, then re-inject per row
 	document.querySelectorAll('tr[data-cy-files-list-row] .' + MARKER_CLASS).forEach(el => el.remove())
 	document.querySelectorAll('tr[data-cy-files-list-row]').forEach(row => {
