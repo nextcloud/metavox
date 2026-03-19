@@ -94,6 +94,9 @@ return [
         ['name' => 'view#updateView',   'url' => '/api/groupfolders/{gfId}/views/{viewId}',  'verb' => 'PUT'],
         ['name' => 'view#deleteView',   'url' => '/api/groupfolders/{gfId}/views/{viewId}',  'verb' => 'DELETE'],
 
+        // Files plugin init (single call for all startup data)
+        ['name' => 'view#init', 'url' => '/api/init', 'verb' => 'GET'],
+
         // ========================================
         // 🤖 AI AUTOFILL ROUTES
         // ========================================
