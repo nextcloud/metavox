@@ -109,6 +109,66 @@ class ApiFilterController extends OCSController {
     }
 
     /**
+     * Get sorted and filtered file IDs for a groupfolder.
+     * Returns an ordered array of file IDs based on server-side SQL sort/filter.
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     * @CORS
+     */
+    public function getSortedFileIds(int $groupfolderId): DataResponse {
+        try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new DataResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
+            }
+            if (!$this->fieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
+                return new DataResponse(['error' => 'Access denied'], Http::STATUS_FORBIDDEN);
+            }
+
+            $sortField = $this->request->getParam('sort_field');
+            $sortOrder = $this->request->getParam('sort_order', 'asc');
+            $sortFieldType = $this->request->getParam('sort_field_type', 'text');
+            $filtersJson = $this->request->getParam('filters');
+
+            $filters = [];
+            if (!empty($filtersJson)) {
+                $decoded = json_decode($filtersJson, true);
+                if (is_array($decoded)) {
+                    $filters = $decoded;
+                }
+            }
+
+            if (empty($sortField) && empty($filters)) {
+                return new DataResponse(['error' => 'No sort_field or filters provided'], Http::STATUS_BAD_REQUEST);
+            }
+
+            // Determine which fields are multiselect for ;# matching
+            $fields = $this->fieldService->getAssignedFieldsWithDataForGroupfolder($groupfolderId);
+            $multiselectFields = [];
+            foreach ($fields as $field) {
+                $type = $field['field_type'] ?? '';
+                if (in_array($type, ['multiselect', 'multi_select'])) {
+                    $multiselectFields[] = $field['field_name'];
+                }
+            }
+
+            $result = $this->filterService->getSortedFilteredFileIds(
+                $groupfolderId,
+                $sortField ?: null,
+                $sortOrder,
+                $filters,
+                $sortFieldType,
+                $multiselectFields
+            );
+
+            return new DataResponse($result, Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
      * Get distinct filter values for all fields in one request.
      *
      * @NoAdminRequired
