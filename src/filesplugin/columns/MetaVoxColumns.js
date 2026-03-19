@@ -330,6 +330,7 @@ function injectColumnStyles() {
 		}
 		.files-list {
 			overflow-x: visible !important;
+			overflow-y: auto !important;
 		}
 		.files-list__table {
 			table-layout: auto !important;
@@ -339,6 +340,7 @@ function injectColumnStyles() {
 		}
 		/* Data cells */
 		.${MARKER_CLASS} {
+			flex: 0 0 auto !important;
 			padding: 0 8px !important;
 			white-space: nowrap;
 			overflow: hidden;
@@ -347,6 +349,7 @@ function injectColumnStyles() {
 		}
 		/* Header cells */
 		.${HEADER_MARKER} {
+			flex: 0 0 auto !important;
 			padding: 0 !important;
 			box-sizing: border-box;
 			position: relative;
@@ -1269,17 +1272,9 @@ function updateTableMinWidth() {
 	const headerRow = table.querySelector('.files-list__row-head')
 	if (!headerRow) return
 
-	// Calculate total width from individual header cells (not scrollWidth, which includes flex-grow expansion)
-	let totalWidth = 0
-	for (const cell of headerRow.children) {
-		const style = cell.style
-		const explicit = parseInt(style.width || style.minWidth, 10)
-		if (explicit > 0) {
-			totalWidth += explicit
-		} else {
-			totalWidth += cell.getBoundingClientRect().width
-		}
-	}
+	// Calculate total width including flex gaps by measuring the last child's extent
+	const lastChild = headerRow.lastElementChild
+	const totalWidth = lastChild ? lastChild.offsetLeft + lastChild.offsetWidth : 0
 
 	if (totalWidth > 0) {
 		table.style.minWidth = totalWidth + 'px'
