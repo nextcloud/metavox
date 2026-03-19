@@ -2375,18 +2375,19 @@ export async function updateColumnsForCurrentFolder(prefetched = null) {
 	}
 }
 
+let _initialStateConsumed = false
+
 function scheduleInjection() {
-	// Start prefetching data immediately — don't wait for the table.
-	// This fires API calls in parallel with Nextcloud's Vue rendering,
-	// so views/fields/filters are ready the moment the table appears.
-	// Try to use inline initial state (zero latency), fall back to API call
 	const prefetchPromise = (async () => {
 		let data = null
 
-		// Check for server-inlined init data (no API call needed)
-		try {
-			data = loadState('metavox', 'init', null)
-		} catch (e) { /* not available */ }
+		// Use server-inlined init data on first load only (wrong dir for navigation)
+		if (!_initialStateConsumed) {
+			_initialStateConsumed = true
+			try {
+				data = loadState('metavox', 'init', null)
+			} catch (e) { /* not available */ }
+		}
 
 		// Fallback: single init API call
 		if (!data) {
