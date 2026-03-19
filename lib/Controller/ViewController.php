@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Controller;
 
+use OCA\MetaVox\Service\FieldService;
+use OCA\MetaVox\Service\FilterService;
 use OCA\MetaVox\Service\PermissionService;
+use OCA\MetaVox\Service\UserFieldService;
 use OCA\MetaVox\Service\ViewService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\JSONResponse;
@@ -13,6 +16,9 @@ use OCP\IUserSession;
 
 class ViewController extends Controller {
 
+    private FieldService $fieldService;
+    private FilterService $filterService;
+    private UserFieldService $userFieldService;
     private ViewService $viewService;
     private IUserSession $userSession;
     private PermissionService $permissionService;
@@ -20,11 +26,17 @@ class ViewController extends Controller {
     public function __construct(
         string $appName,
         IRequest $request,
+        FieldService $fieldService,
+        FilterService $filterService,
+        UserFieldService $userFieldService,
         ViewService $viewService,
         IUserSession $userSession,
         PermissionService $permissionService
     ) {
         parent::__construct($appName, $request);
+        $this->fieldService = $fieldService;
+        $this->filterService = $filterService;
+        $this->userFieldService = $userFieldService;
         $this->viewService = $viewService;
         $this->userSession = $userSession;
         $this->permissionService = $permissionService;
@@ -173,6 +185,60 @@ class ViewController extends Controller {
 
             $this->viewService->deleteView($viewId, $gfId);
             return new JSONResponse(['success' => true]);
+        } catch (\Exception $e) {
+            return new JSONResponse(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Single-call initialization for the files plugin.
+     * Returns groupfolders + fields + views + filter values in one response.
+     * @NoAdminRequired
+     */
+    public function init(): JSONResponse {
+        try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new JSONResponse(['error' => 'Not authenticated'], 401);
+            }
+
+            $userId = $user->getUID();
+            $dir = $this->request->getParam('dir', '');
+
+            $groupfolders = $this->userFieldService->getAccessibleGroupfolders($userId);
+
+            // Detect groupfolder from dir path
+            $groupfolderId = null;
+            $path = ltrim($dir, '/');
+            foreach ($groupfolders as $gf) {
+                $mp = $gf['mount_point'] ?? '';
+                if ($mp !== '' && ($path === $mp || str_starts_with($path, $mp . '/'))) {
+                    $groupfolderId = (int)$gf['id'];
+                    break;
+                }
+            }
+
+            $result = [
+                'groupfolders' => $groupfolders,
+                'groupfolder_id' => $groupfolderId,
+                'fields' => [],
+                'views' => [],
+                'can_manage' => false,
+                'filter_values' => [],
+            ];
+
+            if ($groupfolderId !== null) {
+                $result['fields'] = $this->fieldService->getAssignedFileFieldsForGroupfolder($groupfolderId);
+                $result['views'] = $this->viewService->getViewsForGroupfolder($groupfolderId);
+                $result['can_manage'] = $this->permissionService->hasPermission(
+                    $userId, PermissionService::PERM_MANAGE_FIELDS, $groupfolderId
+                );
+                $result['filter_values'] = $this->filterService->getAllDistinctFieldValues($groupfolderId);
+            }
+
+            $response = new JSONResponse($result);
+            $response->addHeader('Cache-Control', 'private, max-age=30');
+            return $response;
         } catch (\Exception $e) {
             return new JSONResponse(['error' => $e->getMessage()], 500);
         }

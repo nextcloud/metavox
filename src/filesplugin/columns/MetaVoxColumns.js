@@ -222,13 +222,27 @@ async function fetchAllFilterValues(groupfolderId) {
 
 async function loadGroupfolders() {
 	if (window._metavoxGroupfolders) return
+
+	// Use localStorage cache for instant startup, refresh in background
+	const LS_KEY = 'metavox-groupfolders'
+	try {
+		const cached = localStorage.getItem(LS_KEY)
+		if (cached) {
+			window._metavoxGroupfolders = JSON.parse(cached)
+		}
+	} catch (e) { /* ignore */ }
+
 	try {
 		const url = generateOcsUrl('/apps/metavox/api/v1/groupfolders')
 		const resp = await axios.get(url)
-		window._metavoxGroupfolders = resp.data?.ocs?.data || resp.data || []
+		const data = resp.data?.ocs?.data || resp.data || []
+		window._metavoxGroupfolders = data
+		try { localStorage.setItem(LS_KEY, JSON.stringify(data)) } catch (e) { /* ignore */ }
 	} catch (e) {
 		console.error('MetaVox: Failed to load groupfolders', e)
-		window._metavoxGroupfolders = []
+		if (!window._metavoxGroupfolders) {
+			window._metavoxGroupfolders = []
+		}
 	}
 }
 
@@ -2244,10 +2258,10 @@ function stopRowObserver() {
 // Main Flow
 // ========================================
 
-export async function updateColumnsForCurrentFolder() {
+export async function updateColumnsForCurrentFolder(prefetched = null) {
 	await loadGroupfolders()
 
-	const groupfolderId = detectCurrentGroupfolder()
+	const groupfolderId = prefetched?.gfId ?? detectCurrentGroupfolder()
 
 	if (groupfolderId === activeGroupfolderId && columnsActive) {
 		return
@@ -2280,12 +2294,19 @@ export async function updateColumnsForCurrentFolder() {
 
 	activeGroupfolderId = groupfolderId
 
-	// Fetch available fields, views, and filter values in parallel
-	const [fields, viewsResult, filterValues] = await Promise.all([
-		fetchAvailableFields(groupfolderId),
-		fetchViews(groupfolderId),
-		fetchAllFilterValues(groupfolderId),
-	])
+	// Use prefetched data if available, otherwise fetch in parallel
+	let fields, viewsResult, filterValues
+	if (prefetched && prefetched.gfId === groupfolderId) {
+		fields = prefetched.fields
+		viewsResult = prefetched.viewsResult
+		filterValues = prefetched.filterValues
+	} else {
+		[fields, viewsResult, filterValues] = await Promise.all([
+			fetchAvailableFields(groupfolderId),
+			fetchViews(groupfolderId),
+			fetchAllFilterValues(groupfolderId),
+		])
+	}
 
 	prefetchedFilterValues = filterValues
 
@@ -2354,13 +2375,38 @@ export async function updateColumnsForCurrentFolder() {
 }
 
 function scheduleInjection() {
-	// Use MutationObserver to reliably detect when the file list table is populated.
-	// NC33's Vue app renders the table asynchronously — a simple polling loop with
-	// a fixed number of attempts is too fragile.
+	// Start prefetching data immediately — don't wait for the table.
+	// This fires API calls in parallel with Nextcloud's Vue rendering,
+	// so views/fields/filters are ready the moment the table appears.
+	// Fire a single init API call immediately — runs in parallel with NC rendering.
+	// This replaces 4 sequential calls (groupfolders + fields + views + filters).
+	const dir = new URLSearchParams(window.location.search).get('dir') || ''
+	const prefetchPromise = (async () => {
+		try {
+			const url = generateUrl('/apps/metavox/api/init')
+			const resp = await axios.get(url, { params: { dir } })
+			const data = resp.data || {}
+			// Populate groupfolders cache so detectCurrentGroupfolder works for navigation
+			window._metavoxGroupfolders = data.groupfolders || []
+			if (!data.groupfolder_id) return null
+			return {
+				gfId: data.groupfolder_id,
+				fields: data.fields || [],
+				viewsResult: { views: data.views || [], canManage: data.can_manage === true },
+				filterValues: data.filter_values || {},
+			}
+		} catch (e) {
+			console.error('MetaVox: init call failed', e)
+			return null
+		}
+	})()
+
 	const check = () => {
 		const table = document.querySelector('.files-list__table tbody')
 		if (table && table.children.length > 0) {
-			updateColumnsForCurrentFolder()
+			prefetchPromise.then((prefetched) => {
+				updateColumnsForCurrentFolder(prefetched)
+			})
 			return true
 		}
 		return false
