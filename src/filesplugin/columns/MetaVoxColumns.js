@@ -1269,7 +1269,18 @@ function updateTableMinWidth() {
 	const headerRow = table.querySelector('.files-list__row-head')
 	if (!headerRow) return
 
-	const totalWidth = headerRow.scrollWidth
+	// Calculate total width from individual header cells (not scrollWidth, which includes flex-grow expansion)
+	let totalWidth = 0
+	for (const cell of headerRow.children) {
+		const style = cell.style
+		const explicit = parseInt(style.width || style.minWidth, 10)
+		if (explicit > 0) {
+			totalWidth += explicit
+		} else {
+			totalWidth += cell.getBoundingClientRect().width
+		}
+	}
+
 	if (totalWidth > 0) {
 		table.style.minWidth = totalWidth + 'px'
 		// Set min-width on files-list so #app-content-vue scrollWidth expands
@@ -2049,6 +2060,12 @@ function _applyViewColumns(view) {
 		activeColumnConfigs = ordered
 	}
 
+	// Reset table width before re-injecting so it shrinks when fewer columns are shown
+	const table = document.querySelector('.files-list__table')
+	if (table) table.style.minWidth = ''
+	const filesList = document.querySelector('.files-list')
+	if (filesList) filesList.style.minWidth = ''
+
 	// Re-inject header/footer/row columns with updated config
 	injectHeaderColumns()
 	injectFooterColumns()
@@ -2058,6 +2075,9 @@ function _applyViewColumns(view) {
 	document.querySelectorAll('tr[data-cy-files-list-row]').forEach(row => {
 		injectRowColumns(row)
 	})
+
+	// Recalculate table min-width based on new column layout
+	requestAnimationFrame(() => updateTableMinWidth())
 }
 
 /**
