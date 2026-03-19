@@ -486,10 +486,11 @@ function getSelectOptions(col) {
 // Autocomplete
 // ========================================
 
-function onAutocompleteFocus(col, e) {
+async function onAutocompleteFocus(col, e) {
 	autocompleteField.value = col.field_id
 	if (!autocompleteCache.value[col.field_name]) {
-		autocompleteCache.value[col.field_name] = props.fetchFilterValuesFn(col.field_name)
+		const result = await props.fetchFilterValuesFn(col.field_name)
+		autocompleteCache.value[col.field_name] = result
 	}
 	renderAutocomplete(col, e.target.value)
 }

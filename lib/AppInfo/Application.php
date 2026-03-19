@@ -9,7 +9,6 @@ use OCA\MetaVox\Listener\FileCopyListener;
 use OCA\MetaVox\Listener\RegisterFlowChecksListener;
 use OCA\MetaVox\Search\MetadataSearchProvider;
 use OCA\MetaVox\Service\FieldService;
-use OCA\MetaVox\Service\FilterService;
 use OCA\MetaVox\Service\PermissionService;
 use OCA\MetaVox\Service\UserFieldService;
 use OCA\MetaVox\Service\ViewService;
@@ -76,7 +75,7 @@ class Application extends App implements IBootstrap {
             \OCP\Util::addScript('metavox', 'filesplugin');
             \OCP\Util::addStyle('metavox', 'files');
 
-            // Inline init data so the JS doesn't need an API call at startup
+            // Inline init data for the current groupfolder so the JS has everything at startup
             try {
                 $user = \OC::$server->getUserSession()->getUser();
                 if ($user) {
@@ -99,24 +98,22 @@ class Application extends App implements IBootstrap {
                     $initData = [
                         'groupfolders' => $groupfolders,
                         'groupfolder_id' => $groupfolderId,
-                        'fields' => [],
-                        'views' => [],
-                        'can_manage' => false,
-                        'filter_values' => [],
                     ];
 
                     if ($groupfolderId !== null) {
                         $fieldService = \OC::$server->get(FieldService::class);
                         $viewService = \OC::$server->get(ViewService::class);
                         $permissionService = \OC::$server->get(PermissionService::class);
-                        $filterService = \OC::$server->get(FilterService::class);
 
-                        $initData['fields'] = $fieldService->getAssignedFileFieldsForGroupfolder($groupfolderId);
-                        $initData['views'] = $viewService->getViewsForGroupfolder($groupfolderId);
-                        $initData['can_manage'] = $permissionService->hasPermission(
-                            $userId, PermissionService::PERM_MANAGE_FIELDS, $groupfolderId
-                        );
-                        $initData['filter_values'] = $filterService->getAllDistinctFieldValues($groupfolderId);
+                        $initData['all_gf_data'] = [
+                            $groupfolderId => [
+                                'fields' => $fieldService->getAssignedFileFieldsForGroupfolder($groupfolderId),
+                                'views' => $viewService->getViewsForGroupfolder($groupfolderId),
+                                'can_manage' => $permissionService->hasPermission(
+                                    $userId, PermissionService::PERM_MANAGE_FIELDS, $groupfolderId
+                                ),
+                            ],
+                        ];
                     }
 
                     $initialState = $this->getContainer()->get(\OCP\AppFramework\Services\IInitialState::class);

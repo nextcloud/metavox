@@ -224,23 +224,17 @@ async function fetchAllFilterValues(groupfolderId) {
 async function loadGroupfolders() {
 	if (window._metavoxGroupfolders) return
 
-	// Use localStorage cache for instant startup, refresh in background
-	const LS_KEY = 'metavox-groupfolders'
-	try {
-		const cached = localStorage.getItem(LS_KEY)
-		if (cached) {
-			window._metavoxGroupfolders = JSON.parse(cached)
-		}
-	} catch (e) { /* ignore */ }
+	// Skip if not logged in
+	if (!document.querySelector('head[data-user]')?.dataset?.user) {
+		window._metavoxGroupfolders = []
+		return
+	}
 
 	try {
 		const url = generateOcsUrl('/apps/metavox/api/v1/groupfolders')
 		const resp = await axios.get(url)
-		const data = resp.data?.ocs?.data || resp.data || []
-		window._metavoxGroupfolders = data
-		try { localStorage.setItem(LS_KEY, JSON.stringify(data)) } catch (e) { /* ignore */ }
+		window._metavoxGroupfolders = resp.data?.ocs?.data || resp.data || []
 	} catch (e) {
-		console.error('MetaVox: Failed to load groupfolders', e)
 		if (!window._metavoxGroupfolders) {
 			window._metavoxGroupfolders = []
 		}
@@ -272,12 +266,18 @@ function detectCurrentGroupfolder() {
 // Metadata Loading (Bulk, Debounced)
 // ========================================
 
+let _flushDeadline = 0
+
 function queueMetadataLoad(fileId) {
 	if (metadataCache.has(fileId)) return
 	loadQueue.add(fileId)
 
+	// Debounce: wait 100ms after last add, but never longer than 500ms total
 	if (loadTimer) clearTimeout(loadTimer)
-	loadTimer = setTimeout(flushLoadQueue, 100)
+	const now = Date.now()
+	if (!_flushDeadline) _flushDeadline = now + 500
+	const remaining = Math.max(0, _flushDeadline - now)
+	loadTimer = setTimeout(flushLoadQueue, Math.min(100, remaining))
 }
 
 async function flushLoadQueue() {
@@ -286,6 +286,7 @@ async function flushLoadQueue() {
 	const ids = [...loadQueue]
 	loadQueue.clear()
 	loadTimer = null
+	_flushDeadline = 0
 
 	const data = await fetchDirectoryMetadata(activeGroupfolderId, ids)
 
@@ -727,6 +728,32 @@ function injectFooterColumns() {
 		footerFrag.appendChild(td)
 	}
 	tfootTr.appendChild(footerFrag)
+}
+
+function _refreshRowCells(row) {
+	const fileId = Number(row.getAttribute('data-cy-files-list-row-fileid'))
+	const meta = metadataCache.get(fileId)
+	const cells = row.querySelectorAll('.' + MARKER_CLASS)
+
+	if (cells.length === 0) {
+		injectRowColumns(row)
+		return
+	}
+
+	for (const cell of cells) {
+		const fieldName = cell.dataset.metavoxField
+		const config = activeColumnConfigs.find(c => c.field_name === fieldName)
+		if (!config) continue
+		cell.dataset.fileId = fileId
+		if (meta) {
+			setCellValue(cell, meta[fieldName], config)
+		} else {
+			cell.textContent = '\u2026'
+			cell.classList.add(MARKER_CLASS + '--empty')
+			cell.style.backgroundColor = ''
+			if (fileId) queueMetadataLoad(fileId)
+		}
+	}
 }
 
 function injectRowColumns(row) {
@@ -1803,10 +1830,12 @@ function openViewEditor(view, readonly = false) {
 			readonly,
 			availableFields,
 			totalViews: activeViews.length,
-			fetchFilterValuesFn: (fieldName) => {
-				// Use prefetched filter values (already loaded in parallel on directory init)
-				const allValues = prefetchedFilterValues || {}
-				const values = allValues[fieldName]
+			fetchFilterValuesFn: async (fieldName) => {
+				// Lazy load: fetch filter values on demand when user opens filter dropdown
+				if (!prefetchedFilterValues && activeGroupfolderId) {
+					prefetchedFilterValues = await fetchAllFilterValues(activeGroupfolderId)
+				}
+				const values = (prefetchedFilterValues || {})[fieldName]
 				return Array.isArray(values) ? values : []
 			},
 			onClose: () => closeViewEditor(),
@@ -1879,6 +1908,12 @@ async function _handleEditorSave(view, payload) {
 		canManageViews = result.canManage
 		injectViewTabs(activeViews)
 
+		// Invalidate prefetch cache so navigation sees the updated views
+		if (window._metavoxAllGfData?.[activeGroupfolderId]) {
+			window._metavoxAllGfData[activeGroupfolderId].views = activeViews
+			window._metavoxAllGfData[activeGroupfolderId].can_manage = canManageViews
+		}
+
 		if (savedView) {
 			const fi = getFilterInstance()
 			if (fi) applyView(savedView, fi)
@@ -1916,6 +1951,12 @@ async function _confirmDeleteView(view) {
 		activeViews = result.views
 		canManageViews = result.canManage
 		injectViewTabs(activeViews)
+
+		// Update prefetch cache
+		if (window._metavoxAllGfData?.[activeGroupfolderId]) {
+			window._metavoxAllGfData[activeGroupfolderId].views = activeViews
+			window._metavoxAllGfData[activeGroupfolderId].can_manage = canManageViews
+		}
 	} catch (e) {
 		console.error('MetaVox: Failed to delete view', e)
 		alert(translate('metavox', 'Delete failed: ') + (e.response?.data?.error || e.message))
@@ -2237,15 +2278,25 @@ function startRowObserver() {
 		if (!columnsActive) return
 
 		for (const mutation of mutations) {
-			for (const node of mutation.addedNodes) {
-				if (node.nodeType === 1 && node.matches?.('tr[data-cy-files-list-row]')) {
-					injectRowColumns(node)
+			// New rows added to tbody
+			if (mutation.type === 'childList') {
+				for (const node of mutation.addedNodes) {
+					if (node.nodeType === 1 && node.matches?.('tr[data-cy-files-list-row]')) {
+						injectRowColumns(node)
+					}
+				}
+			}
+			// Virtual scroll: NC33 recycles rows by changing the fileid attribute
+			if (mutation.type === 'attributes' && mutation.attributeName === 'data-cy-files-list-row-fileid') {
+				const row = mutation.target
+				if (row.matches?.('tr[data-cy-files-list-row]')) {
+					_refreshRowCells(row)
 				}
 			}
 		}
 	})
 
-	rowObserver.observe(tbody, { childList: true })
+	rowObserver.observe(tbody, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-cy-files-list-row-fileid'] })
 }
 
 function stopRowObserver() {
@@ -2295,21 +2346,20 @@ export async function updateColumnsForCurrentFolder(prefetched = null) {
 
 	activeGroupfolderId = groupfolderId
 
-	// Use prefetched data if available, otherwise fetch in parallel
-	let fields, viewsResult, filterValues
+	// Use prefetched data if available, otherwise fetch fields + views
+	let fields, viewsResult
 	if (prefetched && prefetched.gfId === groupfolderId) {
 		fields = prefetched.fields
 		viewsResult = prefetched.viewsResult
-		filterValues = prefetched.filterValues
+		const fv = prefetched.filterValues
+		prefetchedFilterValues = (fv && Object.keys(fv).length > 0) ? fv : null
 	} else {
-		[fields, viewsResult, filterValues] = await Promise.all([
+		[fields, viewsResult] = await Promise.all([
 			fetchAvailableFields(groupfolderId),
 			fetchViews(groupfolderId),
-			fetchAllFilterValues(groupfolderId),
 		])
+		prefetchedFilterValues = null // Will be lazy-loaded when needed
 	}
-
-	prefetchedFilterValues = filterValues
 
 	availableFields = fields
 	activeViews = viewsResult.views
@@ -2373,42 +2423,85 @@ export async function updateColumnsForCurrentFolder(prefetched = null) {
 			updateFilterCache(metadataCache)
 		})
 	}
+
+	// Background: prefetch filter values so dropdown is instant when opened
+	if (!prefetchedFilterValues && groupfolderId) {
+		fetchAllFilterValues(groupfolderId).then(values => {
+			if (values && Object.keys(values).length > 0) {
+				prefetchedFilterValues = values
+			}
+		}).catch(() => {})
+	}
 }
 
 let _initialStateConsumed = false
 
 function scheduleInjection() {
-	const prefetchPromise = (async () => {
-		let data = null
+	// Skip entirely if not logged in
+	if (!document.querySelector('head[data-user]')?.dataset?.user) return
 
-		// Use server-inlined init data on first load only (wrong dir for navigation)
+	const prefetchPromise = (async () => {
+		// First load: use server-inlined init data (instant)
 		if (!_initialStateConsumed) {
 			_initialStateConsumed = true
 			try {
-				data = loadState('metavox', 'init', null)
+				const data = loadState('metavox', 'init', null)
+				if (data) {
+					window._metavoxGroupfolders = data.groupfolders || []
+					window._metavoxAllGfData = data.all_gf_data || {}
+				}
 			} catch (e) { /* not available */ }
 		}
 
-		// Fallback: single init API call
-		if (!data) {
-			try {
-				const dir = new URLSearchParams(window.location.search).get('dir') || ''
-				const url = generateUrl('/apps/metavox/api/init')
-				const resp = await axios.get(url, { params: { dir } })
-				data = resp.data || {}
-			} catch (e) {
-				console.error('MetaVox: init failed', e)
-				return null
+		// Ensure groupfolders are loaded
+		if (!window._metavoxGroupfolders) {
+			await loadGroupfolders()
+		}
+
+		// Detect groupfolder from URL
+		const gfId = detectCurrentGroupfolder()
+		if (!gfId) return null
+
+		// Use cached data if available (inline or background prefetch)
+		const cached = window._metavoxAllGfData?.[gfId]
+		if (cached) {
+			return {
+				gfId,
+				fields: cached.fields || [],
+				viewsResult: { views: cached.views || [], canManage: cached.can_manage === true },
+				filterValues: cached.filter_values || {},
 			}
 		}
 
-		window._metavoxGroupfolders = data.groupfolders || []
-		if (!data.groupfolder_id) return null
-		return {
-			gfId: data.groupfolder_id,
-			fields: data.fields || [],
-			viewsResult: { views: data.views || [], canManage: data.can_manage === true },
-			filterValues: data.filter_values || {},
+		// Fallback: fetch via /api/init
+		try {
+			const url = generateUrl('/apps/metavox/api/init')
+			const dir = new URLSearchParams(window.location.search).get('dir') || ''
+			const params = { dir }
+			if (gfId) params.gf_id = gfId
+			const resp = await axios.get(url, { params })
+			const data = resp.data || {}
+
+			// Cache for future navigation
+			if (!window._metavoxAllGfData) window._metavoxAllGfData = {}
+			window._metavoxAllGfData[gfId] = {
+				fields: data.fields || [],
+				views: data.views || [],
+				can_manage: data.can_manage === true,
+				filter_values: data.filter_values || {},
+			}
+
+
+
+			return {
+				gfId,
+				fields: data.fields || [],
+				viewsResult: { views: data.views || [], canManage: data.can_manage === true },
+				filterValues: data.filter_values || {},
+			}
+		} catch (e) {
+			console.error('MetaVox: init failed', e)
+			return null
 		}
 	})()
 
@@ -2448,6 +2541,13 @@ export function getActiveGroupfolderId() {
 }
 
 export function getPrefetchedFilterValues() {
+	return prefetchedFilterValues
+}
+
+export async function ensureFilterValues() {
+	if (!prefetchedFilterValues && activeGroupfolderId) {
+		prefetchedFilterValues = await fetchAllFilterValues(activeGroupfolderId)
+	}
 	return prefetchedFilterValues
 }
 

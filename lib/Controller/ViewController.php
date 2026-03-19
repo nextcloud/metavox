@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace OCA\MetaVox\Controller;
 
 use OCA\MetaVox\Service\FieldService;
-use OCA\MetaVox\Service\FilterService;
 use OCA\MetaVox\Service\PermissionService;
 use OCA\MetaVox\Service\UserFieldService;
 use OCA\MetaVox\Service\ViewService;
@@ -17,7 +16,6 @@ use OCP\IUserSession;
 class ViewController extends Controller {
 
     private FieldService $fieldService;
-    private FilterService $filterService;
     private UserFieldService $userFieldService;
     private ViewService $viewService;
     private IUserSession $userSession;
@@ -27,7 +25,6 @@ class ViewController extends Controller {
         string $appName,
         IRequest $request,
         FieldService $fieldService,
-        FilterService $filterService,
         UserFieldService $userFieldService,
         ViewService $viewService,
         IUserSession $userSession,
@@ -35,7 +32,6 @@ class ViewController extends Controller {
     ) {
         parent::__construct($appName, $request);
         $this->fieldService = $fieldService;
-        $this->filterService = $filterService;
         $this->userFieldService = $userFieldService;
         $this->viewService = $viewService;
         $this->userSession = $userSession;
@@ -224,7 +220,6 @@ class ViewController extends Controller {
                 'fields' => [],
                 'views' => [],
                 'can_manage' => false,
-                'filter_values' => [],
             ];
 
             if ($groupfolderId !== null) {
@@ -233,7 +228,6 @@ class ViewController extends Controller {
                 $result['can_manage'] = $this->permissionService->hasPermission(
                     $userId, PermissionService::PERM_MANAGE_FIELDS, $groupfolderId
                 );
-                $result['filter_values'] = $this->filterService->getAllDistinctFieldValues($groupfolderId);
             }
 
             $response = new JSONResponse($result);

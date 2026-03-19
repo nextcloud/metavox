@@ -36,7 +36,7 @@ import { ref, computed, watch } from 'vue'
 import { NcCheckboxRadioSwitch } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
 import ChevronRight from 'vue-material-design-icons/ChevronRight.vue'
-import { getPrefetchedFilterValues } from './MetaVoxColumns.js'
+import { ensureFilterValues } from './MetaVoxColumns.js'
 
 const props = defineProps({
 	filter: {
@@ -62,8 +62,8 @@ function formatOptionLabel(value, fieldType) {
 	return value
 }
 
-function loadAllOptions() {
-	const allValues = getPrefetchedFilterValues() || {}
+async function loadAllOptions() {
+	const allValues = await ensureFilterValues() || {}
 	const map = {}
 	for (const config of configs.value) {
 		let values = allValues[config.field_name] || []
