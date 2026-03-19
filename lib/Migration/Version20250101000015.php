@@ -65,6 +65,12 @@ class Version20250101000015 extends SimpleMigrationStep {
                 'comment' => 'Sort direction: asc or desc',
             ]);
 
+            $table->addColumn('position', 'integer', [
+                'notnull' => true,
+                'default' => 0,
+                'comment' => 'Display order of the view',
+            ]);
+
             $table->addColumn('created_at', 'datetime', [
                 'notnull' => true,
             ]);
