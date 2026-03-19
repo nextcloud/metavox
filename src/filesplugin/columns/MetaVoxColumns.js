@@ -35,9 +35,6 @@ const loadQueue = new Set()
 /** @type {number|null} Debounce timer for batch loading */
 let loadTimer = null
 
-/** @type {Object|null} Current sort state: { fieldName, direction } */
-let currentSort = null
-
 /** @type {Map<string, number>} Persisted column widths */
 const columnWidths = new Map()
 
@@ -126,26 +123,6 @@ function formatValue(value, fieldType) {
 	}
 }
 
-function compareValues(a, b, fieldType) {
-	const aVal = a ?? ''
-	const bVal = b ?? ''
-	if (aVal === bVal) return 0
-	if (aVal === '') return 1
-	if (bVal === '') return -1
-
-	switch (fieldType) {
-	case 'number':
-		return parseFloat(aVal) - parseFloat(bVal)
-	case 'date':
-		return new Date(aVal).getTime() - new Date(bVal).getTime()
-	case 'checkbox':
-	case 'boolean':
-		return (aVal === '1' ? 0 : 1) - (bVal === '1' ? 0 : 1)
-	default:
-		return String(aVal).localeCompare(String(bVal))
-	}
-}
-
 // ========================================
 // API
 // ========================================
@@ -167,24 +144,32 @@ async function fetchAvailableFields(groupfolderId) {
 async function fetchDirectoryMetadata(groupfolderId, fileIds) {
 	if (fileIds.length === 0) return {}
 
-	// Send only visible field names to reduce query size
 	const visibleFields = activeColumnConfigs.map(c => c.field_name).filter(Boolean)
-	const params = { file_ids: fileIds.join(',') }
-	if (visibleFields.length > 0) {
-		params.field_names = visibleFields.join(',')
+	const url = generateOcsUrl(
+		'/apps/metavox/api/v1/groupfolders/{groupfolderId}/directory-metadata',
+		{ groupfolderId },
+	)
+
+	// Chunk to avoid 414 URI Too Long (max ~200 IDs per GET request)
+	const CHUNK_SIZE = 200
+	const allData = {}
+
+	for (let i = 0; i < fileIds.length; i += CHUNK_SIZE) {
+		const chunk = fileIds.slice(i, i + CHUNK_SIZE)
+		const params = { file_ids: chunk.join(',') }
+		if (visibleFields.length > 0) {
+			params.field_names = visibleFields.join(',')
+		}
+		try {
+			const resp = await axios.get(url, { params })
+			const data = resp.data?.ocs?.data || resp.data || {}
+			Object.assign(allData, data)
+		} catch (e) {
+			console.error('MetaVox: Failed to fetch directory metadata chunk', e)
+		}
 	}
 
-	try {
-		const url = generateOcsUrl(
-			'/apps/metavox/api/v1/groupfolders/{groupfolderId}/directory-metadata',
-			{ groupfolderId },
-		)
-		const resp = await axios.get(url, { params })
-		return resp.data?.ocs?.data || resp.data || {}
-	} catch (e) {
-		console.error('MetaVox: Failed to fetch directory metadata', e)
-		return {}
-	}
+	return allData
 }
 
 
@@ -309,7 +294,8 @@ async function flushLoadQueue() {
 
 	updateAllRowCells()
 
-	// Re-apply filters after new metadata loaded
+	// Re-apply filters and sort after new metadata loaded
+	ensureSortBypass()
 	updateFilterCache(metadataCache)
 }
 
@@ -352,6 +338,15 @@ function injectColumnStyles() {
 		}
 		.files-list__row-name {
 			min-width: 200px !important;
+		}
+		/* Loading state — fade the file list while server sort/filter is in progress */
+		.files-list.metavox-loading .files-list__table tbody {
+			opacity: 0.4;
+			pointer-events: none;
+			transition: opacity 0.15s ease;
+		}
+		.files-list__table tbody {
+			transition: opacity 0.15s ease;
 		}
 		/* Data cells */
 		.${MARKER_CLASS} {
@@ -666,8 +661,9 @@ function injectHeaderColumns() {
 		iconInner.className = 'material-design-icon menu-up-icon files-list__column-sort-button-icon'
 		iconInner.setAttribute('aria-hidden', 'true')
 		iconInner.setAttribute('role', 'img')
-		if (currentSort?.fieldName === config.field_name) {
-			iconInner.innerHTML = currentSort.direction === 'asc' ? SORT_ICON_ASC : SORT_ICON_DESC
+		const _sortState = getFilterInstance()?.getSortState()
+		if (_sortState?.fieldName === config.field_name) {
+			iconInner.innerHTML = _sortState.direction === 'asc' ? SORT_ICON_ASC : SORT_ICON_DESC
 		} else {
 			iconInner.innerHTML = SORT_ICON_ASC
 			iconInner.style.opacity = '0'
@@ -1316,7 +1312,7 @@ function injectViewStyles() {
 	const style = document.createElement('style')
 	style.id = VIEW_STYLE_ID
 	style.textContent = `
-		/* ── Tab bar container (sticky All + scrollable tabs) ── */
+		/* ── Tab bar container (sticky horizontally + vertically) ── */
 		#${VIEW_TABS_ID} {
 			display: flex;
 			align-items: center;
@@ -1324,7 +1320,27 @@ function injectViewStyles() {
 			padding: var(--default-grid-baseline, 4px) 0;
 			border-bottom: 1px solid var(--color-border);
 			background: var(--color-main-background);
-			position: relative;
+			position: sticky;
+			top: 0;
+			left: 44px;
+			z-index: 62;
+		}
+		/* Sticky stacking: tabs (top:0) → filters (top:tabs) → thead (top:tabs+filters).
+		   All offsets via CSS custom properties, computed by JS ResizeObserver. */
+		#${VIEW_TABS_ID} ~ .files-list__filters {
+			position: sticky !important;
+			top: var(--mv-filters-top, 0px) !important;
+			z-index: 61 !important;
+			background: var(--color-main-background);
+		}
+		#${VIEW_TABS_ID} ~ .files-list__table thead {
+			top: var(--mv-thead-top, 0px) !important;
+			z-index: 60 !important;
+		}
+		/* Selection overlay ("X selected") must sit above the sticky tabs */
+		#${VIEW_TABS_ID} ~ .files-list__thead-overlay {
+			top: var(--mv-filters-top, 0px) !important;
+			z-index: 63 !important;
 		}
 		/* Sticky "All" tab */
 		#${VIEW_TABS_ID} > .mv-tab-all {
@@ -1930,6 +1946,16 @@ async function _confirmDeleteView(view) {
 function applyView(view, filterInstance) {
 	activeView = view
 
+	// Reset horizontal scroll to show leftmost column
+	const scrollContainer = document.querySelector('#app-content-vue')
+	if (scrollContainer) scrollContainer.scrollLeft = 0
+
+	// Deselect all files — the file set changes with the new view
+	const headerCheckbox = document.querySelector('.files-list__row-head .files-list__row-checkbox input[type="checkbox"]')
+	if (headerCheckbox && (headerCheckbox.checked || headerCheckbox.indeterminate)) {
+		headerCheckbox.click()
+	}
+
 	// Close NC Details sidebar — the displayed file may not exist in the new view
 	if (window.OCA?.Files?.Sidebar?.close) {
 		window.OCA.Files.Sidebar.close()
@@ -1963,17 +1989,23 @@ function applyView(view, filterInstance) {
 	_applyViewColumns(view)
 	registerMetaVoxFilter(activeColumnConfigs, activeGroupfolderId, metadataCache)
 
-	// Apply sort if specified
-	if (view.sort_field) {
+	// Apply sort if specified (data-level via filter)
+	const fi = getFilterInstance()
+	if (view.sort_field && fi) {
 		const col = (view.columns || []).find(c => c.field_name === view.sort_field)
 			?? availableFields.find(c => c.field_name === view.sort_field)
-		currentSort = {
+		fi.setSortState({
 			fieldName: view.sort_field,
 			fieldType: col?.field_type || 'text',
 			direction: view.sort_order || 'asc',
-		}
-		applySort()
+		})
+		ensureSortBypass()
 		updateSortIndicators()
+		fi.fetchServerSortedIds()
+	} else if (fi) {
+		fi.setSortState(null)
+		fi.clearServerState()
+		fi.triggerResort()
 	}
 
 	// Update URL: set mvview, clear mvfilter
@@ -2006,6 +2038,16 @@ function buildDefaultFilterConfigs() {
 function clearView() {
 	activeView = null
 
+	// Reset horizontal scroll to show leftmost column
+	const scrollContainer = document.querySelector('#app-content-vue')
+	if (scrollContainer) scrollContainer.scrollLeft = 0
+
+	// Deselect all files — the file set changes with the new view
+	const headerCheckbox = document.querySelector('.files-list__row-head .files-list__row-checkbox input[type="checkbox"]')
+	if (headerCheckbox && (headerCheckbox.checked || headerCheckbox.indeterminate)) {
+		headerCheckbox.click()
+	}
+
 	// Close NC Details sidebar — view context is changing
 	if (window.OCA?.Files?.Sidebar?.close) {
 		window.OCA.Files.Sidebar.close()
@@ -2019,8 +2061,12 @@ function clearView() {
 	_applyViewColumns(null)
 	registerMetaVoxFilter(buildDefaultFilterConfigs(), activeGroupfolderId, metadataCache)
 
-	// Clear sort
-	currentSort = null
+	// Clear sort and server state
+	if (fi) {
+		fi.setSortState(null)
+		fi.clearServerState()
+		fi.triggerResort()
+	}
 	updateSortIndicators()
 
 	// Update URL: remove mvview and mvfilter
@@ -2165,59 +2211,112 @@ function loadPersistedWidths() {
 // ========================================
 
 function handleSort(fieldName, fieldType) {
-	if (currentSort?.fieldName === fieldName) {
-		currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc'
+	const fi = getFilterInstance()
+	if (!fi) return
+
+	const current = fi.getSortState()
+	if (current?.fieldName === fieldName) {
+		fi.setSortState({ fieldName, fieldType, direction: current.direction === 'asc' ? 'desc' : 'asc' })
 	} else {
-		currentSort = { fieldName, fieldType, direction: 'asc' }
+		fi.setSortState({ fieldName, fieldType, direction: 'asc' })
 	}
 
-	applySort()
+	ensureSortBypass()
 	updateSortIndicators()
-}
-
-function applySort() {
-	if (!currentSort) return
-
-	const tbody = document.querySelector('.files-list__table tbody')
-	if (!tbody) return
-
-	const rows = [...tbody.querySelectorAll('tr[data-cy-files-list-row]')]
-	if (rows.length === 0) return
-
-	const { fieldName, fieldType, direction } = currentSort
-	const multiplier = direction === 'asc' ? 1 : -1
-
-	rows.sort((rowA, rowB) => {
-		const idA = Number(rowA.getAttribute('data-cy-files-list-row-fileid'))
-		const idB = Number(rowB.getAttribute('data-cy-files-list-row-fileid'))
-		const metaA = metadataCache.get(idA) || {}
-		const metaB = metadataCache.get(idB) || {}
-
-		return multiplier * compareValues(metaA[fieldName], metaB[fieldName], fieldType)
-	})
-
-	// Re-append in sorted order via DocumentFragment (single reflow)
-	const sortFrag = document.createDocumentFragment()
-	for (const row of rows) {
-		sortFrag.appendChild(row)
-	}
-	tbody.appendChild(sortFrag)
+	fi.fetchServerSortedIds()
 }
 
 function updateSortIndicators() {
+	const sortState = getFilterInstance()?.getSortState()
 	document.querySelectorAll('.' + HEADER_MARKER).forEach(th => {
 		const fieldName = th.dataset.metavoxField
 		const iconEl = th.querySelector('.files-list__column-sort-button-icon')
 		if (!iconEl) return
 
-		if (currentSort?.fieldName === fieldName) {
-			iconEl.innerHTML = currentSort.direction === 'asc' ? SORT_ICON_ASC : SORT_ICON_DESC
+		if (sortState?.fieldName === fieldName) {
+			iconEl.innerHTML = sortState.direction === 'asc' ? SORT_ICON_ASC : SORT_ICON_DESC
 			iconEl.style.opacity = '1'
 		} else {
 			iconEl.innerHTML = SORT_ICON_ASC
 			iconEl.style.opacity = '0'
 		}
 	})
+}
+
+// ========================================
+// NC33 Sort Bypass
+// ========================================
+
+/**
+ * Override NC33's internal dirContentsSorted computed so that when MetaVox sort
+ * is active, NC33 skips its own re-sort and uses the already-sorted filter output.
+ *
+ * NC33 pipeline: filter(nodes) → dirContentsFiltered → dirContentsSorted (re-sort) → render
+ * With override:  filter(nodes) → dirContentsFiltered (already sorted) → passthrough → render
+ */
+let _origSortGetter = null
+let _bypassedFilesList = null // track which instance we patched
+
+function _findFilesList() {
+	const filesListEl = document.querySelector('.files-list')
+	if (!filesListEl) return null
+	const vm = filesListEl['__vue__']
+	if (!vm) return null
+
+	let current = vm
+	for (let i = 0; i < 8 && current; i++) {
+		if (current.$options && current.$options.name === 'FilesList') return current
+		current = current.$parent
+	}
+	return null
+}
+
+function ensureSortBypass(retries) {
+	const filesList = _findFilesList()
+	if (!filesList) {
+		// FilesList may not be mounted yet — retry with backoff
+		const attempt = retries || 0
+		if (attempt < 10) {
+			setTimeout(() => ensureSortBypass(attempt + 1), 200 * (attempt + 1))
+		}
+		return
+	}
+
+	const watcher = filesList._computedWatchers?.dirContentsSorted
+	if (!watcher?.getter) return
+
+	// Install the bypass if not yet patched on this instance
+	if (_bypassedFilesList !== filesList) {
+		_origSortGetter = watcher.getter
+		_bypassedFilesList = filesList
+
+		watcher.getter = function () {
+			const fi = getFilterInstance()
+			if (fi?.getSortState()) {
+				return filesList.dirContentsFiltered
+			}
+			return _origSortGetter.call(filesList)
+		}
+	}
+
+	// Force the computed to re-evaluate with the (potentially new) sort state
+	watcher.dirty = true
+	watcher.evaluate()
+	filesList.$forceUpdate()
+}
+
+function uninstallSortBypass() {
+	if (!_bypassedFilesList || !_origSortGetter) return
+
+	const watcher = _bypassedFilesList._computedWatchers?.dirContentsSorted
+	if (watcher) {
+		watcher.getter = _origSortGetter
+		watcher.dirty = true
+		watcher.evaluate()
+		_bypassedFilesList.$forceUpdate()
+	}
+	_bypassedFilesList = null
+	_origSortGetter = null
 }
 
 // ========================================
@@ -2233,6 +2332,9 @@ function startRowObserver() {
 		return
 	}
 
+	// FilesList is now guaranteed to be mounted — install sort bypass
+	ensureSortBypass()
+
 	rowObserver = new MutationObserver((mutations) => {
 		if (!columnsActive) return
 
@@ -2246,6 +2348,60 @@ function startRowObserver() {
 	})
 
 	rowObserver.observe(tbody, { childList: true })
+
+	// Watch for file ID attribute changes on rows — the virtual scroller reuses
+	// DOM rows and updates their data-cy-files-list-row-fileid when reordering.
+	// We need to re-inject MetaVox cell values when this happens.
+	const attrObserver = new MutationObserver((mutations) => {
+		if (!columnsActive) return
+		for (const mutation of mutations) {
+			if (mutation.type === 'attributes' && mutation.attributeName === 'data-cy-files-list-row-fileid') {
+				const row = mutation.target
+				if (!row.matches?.('tr[data-cy-files-list-row]')) continue
+				const fileId = Number(row.getAttribute('data-cy-files-list-row-fileid'))
+				if (!fileId) continue
+				const meta = metadataCache.get(fileId)
+				if (meta && Object.keys(meta).length > 0) {
+					const cells = row.querySelectorAll('.' + MARKER_CLASS)
+					for (const cell of cells) {
+						const fieldName = cell.dataset.metavoxField
+						const config = activeColumnConfigs.find(c => c.field_name === fieldName)
+						if (config) setCellValue(cell, meta[fieldName], config)
+					}
+				} else {
+					if (fileId) queueMetadataLoad(fileId)
+					row.querySelectorAll('.' + MARKER_CLASS).forEach(cell => {
+						cell.textContent = '\u2026'
+					})
+				}
+			}
+		}
+	})
+	attrObserver.observe(tbody, { subtree: true, attributes: true, attributeFilter: ['data-cy-files-list-row-fileid'] })
+
+	// Dynamically compute sticky offsets for the stacked headers:
+	// tabs (top:0) → filters (top: tabs height) → thead (top: tabs + filters height)
+	function updateStickyOffsets() {
+		const tabs = document.querySelector('#' + VIEW_TABS_ID)
+		const filters = document.querySelector('.files-list__filters')
+		const filesList = document.querySelector('.files-list')
+		if (!filesList) return
+		const tabsH = tabs ? Math.round(tabs.getBoundingClientRect().height) : 0
+		const filtersH = filters ? Math.round(filters.getBoundingClientRect().height) : 0
+		filesList.style.setProperty('--mv-filters-top', tabsH + 'px')
+		filesList.style.setProperty('--mv-thead-top', (tabsH + filtersH) + 'px')
+	}
+	updateStickyOffsets()
+	// Re-compute when filter chips appear/disappear/resize
+	const filtersEl = document.querySelector('.files-list__filters')
+	if (filtersEl) {
+		new ResizeObserver(updateStickyOffsets).observe(filtersEl)
+	}
+	// Also re-compute when view tabs resize (e.g. view added/removed)
+	const tabsEl = document.querySelector('#' + VIEW_TABS_ID)
+	if (tabsEl) {
+		new ResizeObserver(updateStickyOffsets).observe(tabsEl)
+	}
 }
 
 function stopRowObserver() {
@@ -2270,6 +2426,7 @@ export async function updateColumnsForCurrentFolder(prefetched = null) {
 
 	// Clean up
 	if (columnsActive) {
+		uninstallSortBypass()
 		removeAllInjectedColumns()
 		removeColumnStyles()
 		removeFilters()
@@ -2288,7 +2445,8 @@ export async function updateColumnsForCurrentFolder(prefetched = null) {
 		activeView = null
 		metadataCache.clear()
 		prefetchedFilterValues = null
-		currentSort = null
+		const _fi = getFilterInstance()
+		if (_fi) _fi.setSortState(null)
 		_cachedActionsWidth = null
 		return
 	}
@@ -2462,6 +2620,7 @@ export function startColumnWatcher() {
 		if (currentDir !== lastDir) {
 			lastDir = currentDir
 			if (columnsActive) {
+				uninstallSortBypass()
 				removeAllInjectedColumns()
 				removeColumnStyles()
 				removeFilters()
@@ -2472,7 +2631,8 @@ export function startColumnWatcher() {
 				activeGroupfolderId = null
 			}
 			metadataCache.clear()
-			currentSort = null
+			const _fi2 = getFilterInstance()
+			if (_fi2) _fi2.setSortState(null)
 			activeViews = []
 			activeView = null
 			availableFields = []
