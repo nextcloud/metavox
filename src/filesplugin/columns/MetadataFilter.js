@@ -335,7 +335,7 @@ class MetaVoxMetadataFilter extends EventTarget {
 			}
 
 			// Trigger NC33 to re-run filter() with server data
-			filesList?.classList.remove('metavox-loading')
+			// Note: loading class stays until visible row metadata is loaded (handled by MetaVoxColumns)
 			this._emitFilterUpdate()
 		} catch (e) {
 			filesList?.classList.remove('metavox-loading')

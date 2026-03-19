@@ -297,6 +297,9 @@ async function flushLoadQueue() {
 	// Re-apply filters and sort after new metadata loaded
 	ensureSortBypass()
 	updateFilterCache(metadataCache)
+
+	// Clear loading indicator — visible row metadata is now loaded
+	document.querySelector('.files-list')?.classList.remove('metavox-loading')
 }
 
 // ========================================
@@ -1316,7 +1319,7 @@ function injectViewStyles() {
 		#${VIEW_TABS_ID} {
 			display: flex;
 			align-items: center;
-			gap: 0;
+			gap: calc(var(--default-grid-baseline, 4px) / 2);
 			padding: var(--default-grid-baseline, 4px) 0;
 			border-bottom: 1px solid var(--color-border);
 			background: var(--color-main-background);
@@ -1346,13 +1349,11 @@ function injectViewStyles() {
 		#${VIEW_TABS_ID} > .mv-tab-all {
 			flex-shrink: 0;
 			margin-left: calc(var(--default-grid-baseline, 4px) * 2);
-			margin-right: calc(var(--default-grid-baseline, 4px) / 2);
 			z-index: 1;
 		}
 		/* Sticky default view tab */
 		#${VIEW_TABS_ID} > .mv-tab-default {
 			flex-shrink: 0;
-			margin-right: calc(var(--default-grid-baseline, 4px) / 2);
 			z-index: 1;
 		}
 		.mv-tab-default-icon {
