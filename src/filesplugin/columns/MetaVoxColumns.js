@@ -7,6 +7,7 @@
 
 import axios from '@nextcloud/axios'
 import { showUndo } from '@nextcloud/dialogs'
+import { loadState } from '@nextcloud/initial-state'
 import { translate } from '@nextcloud/l10n'
 import { generateOcsUrl, generateUrl } from '@nextcloud/router'
 import { createApp, h } from 'vue'
@@ -2378,26 +2379,35 @@ function scheduleInjection() {
 	// Start prefetching data immediately — don't wait for the table.
 	// This fires API calls in parallel with Nextcloud's Vue rendering,
 	// so views/fields/filters are ready the moment the table appears.
-	// Fire a single init API call immediately — runs in parallel with NC rendering.
-	// This replaces 4 sequential calls (groupfolders + fields + views + filters).
-	const dir = new URLSearchParams(window.location.search).get('dir') || ''
+	// Try to use inline initial state (zero latency), fall back to API call
 	const prefetchPromise = (async () => {
+		let data = null
+
+		// Check for server-inlined init data (no API call needed)
 		try {
-			const url = generateUrl('/apps/metavox/api/init')
-			const resp = await axios.get(url, { params: { dir } })
-			const data = resp.data || {}
-			// Populate groupfolders cache so detectCurrentGroupfolder works for navigation
-			window._metavoxGroupfolders = data.groupfolders || []
-			if (!data.groupfolder_id) return null
-			return {
-				gfId: data.groupfolder_id,
-				fields: data.fields || [],
-				viewsResult: { views: data.views || [], canManage: data.can_manage === true },
-				filterValues: data.filter_values || {},
+			data = loadState('metavox', 'init', null)
+		} catch (e) { /* not available */ }
+
+		// Fallback: single init API call
+		if (!data) {
+			try {
+				const dir = new URLSearchParams(window.location.search).get('dir') || ''
+				const url = generateUrl('/apps/metavox/api/init')
+				const resp = await axios.get(url, { params: { dir } })
+				data = resp.data || {}
+			} catch (e) {
+				console.error('MetaVox: init failed', e)
+				return null
 			}
-		} catch (e) {
-			console.error('MetaVox: init call failed', e)
-			return null
+		}
+
+		window._metavoxGroupfolders = data.groupfolders || []
+		if (!data.groupfolder_id) return null
+		return {
+			gfId: data.groupfolder_id,
+			fields: data.fields || [],
+			viewsResult: { views: data.views || [], canManage: data.can_manage === true },
+			filterValues: data.filter_values || {},
 		}
 	})()
 
