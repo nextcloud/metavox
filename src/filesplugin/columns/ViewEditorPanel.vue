@@ -237,12 +237,19 @@
 				</NcButton>
 			</template>
 		</div>
+
+		<!-- Delete confirmation dialog -->
+		<NcDialog v-if="showDeleteDialog"
+			:name="t('metavox', 'Delete view')"
+			:message="deleteMessage"
+			:buttons="deleteButtons"
+			@closing="showDeleteDialog = false" />
 	</div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
-import { NcButton, NcCheckboxRadioSwitch, NcTextField, NcSelect } from '@nextcloud/vue'
+import { NcButton, NcCheckboxRadioSwitch, NcTextField, NcSelect, NcDialog } from '@nextcloud/vue'
 import { translate as t, translate } from '@nextcloud/l10n'
 import CloseIcon from 'vue-material-design-icons/Close.vue'
 import ChevronRightIcon from 'vue-material-design-icons/ChevronRight.vue'
@@ -586,8 +593,23 @@ async function onSave() {
 	})
 }
 
+const showDeleteDialog = ref(false)
+
+const deleteMessage = computed(() =>
+	t('metavox', 'Are you sure you want to delete the view "{name}"?', { name: props.view?.name || '' }),
+)
+
+const deleteButtons = computed(() => [
+	{ label: t('metavox', 'Cancel'), callback: () => { showDeleteDialog.value = false } },
+	{ label: t('metavox', 'Delete'), type: 'error', callback: confirmDelete },
+])
+
 function onDelete() {
-	if (!confirm(translate('metavox', 'Delete view "{name}"?', { name: props.view.name }))) return
+	showDeleteDialog.value = true
+}
+
+function confirmDelete() {
+	showDeleteDialog.value = false
 	emit('delete', props.view)
 }
 </script>
