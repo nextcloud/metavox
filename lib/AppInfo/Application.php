@@ -8,6 +8,11 @@ use OCA\MetaVox\Listener\CacheCleanupListener;
 use OCA\MetaVox\Listener\FileCopyListener;
 use OCA\MetaVox\Listener\RegisterFlowChecksListener;
 use OCA\MetaVox\Search\MetadataSearchProvider;
+use OCA\MetaVox\Service\FieldService;
+use OCA\MetaVox\Service\FilterService;
+use OCA\MetaVox\Service\PermissionService;
+use OCA\MetaVox\Service\UserFieldService;
+use OCA\MetaVox\Service\ViewService;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
@@ -70,6 +75,56 @@ class Application extends App implements IBootstrap {
         if ($isFilesApp) {
             \OCP\Util::addScript('metavox', 'filesplugin');
             \OCP\Util::addStyle('metavox', 'files');
+
+            // Inline init data so the JS doesn't need an API call at startup
+            try {
+                $user = \OC::$server->getUserSession()->getUser();
+                if ($user) {
+                    $dir = $_GET['dir'] ?? '';
+                    $userId = $user->getUID();
+
+                    $userFieldService = \OC::$server->get(UserFieldService::class);
+                    $groupfolders = $userFieldService->getAccessibleGroupfolders($userId);
+
+                    $groupfolderId = null;
+                    $path = ltrim($dir, '/');
+                    foreach ($groupfolders as $gf) {
+                        $mp = $gf['mount_point'] ?? '';
+                        if ($mp !== '' && ($path === $mp || str_starts_with($path, $mp . '/'))) {
+                            $groupfolderId = (int)$gf['id'];
+                            break;
+                        }
+                    }
+
+                    $initData = [
+                        'groupfolders' => $groupfolders,
+                        'groupfolder_id' => $groupfolderId,
+                        'fields' => [],
+                        'views' => [],
+                        'can_manage' => false,
+                        'filter_values' => [],
+                    ];
+
+                    if ($groupfolderId !== null) {
+                        $fieldService = \OC::$server->get(FieldService::class);
+                        $viewService = \OC::$server->get(ViewService::class);
+                        $permissionService = \OC::$server->get(PermissionService::class);
+                        $filterService = \OC::$server->get(FilterService::class);
+
+                        $initData['fields'] = $fieldService->getAssignedFileFieldsForGroupfolder($groupfolderId);
+                        $initData['views'] = $viewService->getViewsForGroupfolder($groupfolderId);
+                        $initData['can_manage'] = $permissionService->hasPermission(
+                            $userId, PermissionService::PERM_MANAGE_FIELDS, $groupfolderId
+                        );
+                        $initData['filter_values'] = $filterService->getAllDistinctFieldValues($groupfolderId);
+                    }
+
+                    $initialState = $this->getContainer()->get(\OCP\AppFramework\Services\IInitialState::class);
+                    $initialState->provideInitialState('init', $initData);
+                }
+            } catch (\Exception $e) {
+                // Silently fail — JS will fall back to API call
+            }
         }
     }
 }
