@@ -19,6 +19,7 @@ class FieldService {
     private SearchIndexService $searchIndexService;
     private ViewService $viewService;
     private ICache $cache;
+    private $notifyQueue = null;
 
     // Request-scope cache for fields
     private ?array $fieldsCache = null;
@@ -35,6 +36,56 @@ class FieldService {
         $this->searchIndexService = $searchIndexService;
         $this->viewService = $viewService;
         $this->cache = $cacheFactory->createDistributed('metavox');
+
+        // Optional: notify_push for real-time metadata sync
+        try {
+            $this->notifyQueue = \OC::$server->get(\OCA\NotifyPush\Queue\IQueue::class);
+        } catch (\Exception $e) {
+            // notify_push not installed — real-time sync disabled
+        }
+    }
+
+    /**
+     * Send a push notification to all groupfolder members that metadata changed.
+     * Each user gets their own event so notify_push routes it correctly.
+     */
+    private function pushMetadataChanged(int $groupfolderId, int $fileId = 0): void {
+        if (!$this->notifyQueue) return;
+        try {
+            // Get all groups assigned to this groupfolder
+            $qb = $this->db->getQueryBuilder();
+            $qb->select('group_id')
+               ->from('group_folders_groups')
+               ->where($qb->expr()->eq('folder_id', $qb->createNamedParameter($groupfolderId, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)));
+            $result = $qb->executeQuery();
+            $groupIds = [];
+            while ($row = $result->fetch()) {
+                $groupIds[] = $row['group_id'];
+            }
+            $result->closeCursor();
+
+            // Collect unique user IDs from all groups
+            $userIds = [];
+            foreach ($groupIds as $groupId) {
+                $group = $this->groupManager->get($groupId);
+                if ($group) {
+                    foreach ($group->getUsers() as $user) {
+                        $userIds[$user->getUID()] = true;
+                    }
+                }
+            }
+
+            // Push to each user
+            $message = 'metavox_metadata_changed';
+            foreach (array_keys($userIds) as $userId) {
+                $this->notifyQueue->push('notify_custom', [
+                    'user' => $userId,
+                    'message' => $message,
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Silently fail — push is best-effort
+        }
     }
 
 private function parseFieldOptions(?string $raw): array {
@@ -965,6 +1016,7 @@ public function saveGroupfolderFileFieldValue(int $groupfolderId, int $fileId, i
 
         $this->cache->remove("gf_{$groupfolderId}_fv_{$fieldName}");
         $this->queueSearchIndexUpdate($fileId);
+        $this->pushMetadataChanged($groupfolderId, $fileId);
         return true;
 
     } catch (\Exception $e) {
