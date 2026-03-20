@@ -37,17 +37,16 @@ MetaVox does not enforce a hard item-per-view threshold. Instead, performance de
 
 ### Bottleneck 1: HTTP Batch Loading
 
-MetaVox loads file metadata in batches of **200 file IDs per API request** (`MetadataCache.js`). Requests are debounced (50ms) and only triggered for files visible in the viewport.
+MetaVox loads file metadata in bulk at folder open. All file IDs are extracted from Nextcloud's `dirContents` Vue property and fetched in **chunks of 200 per API request** (`MetaVoxColumns.js`). Since `dirContents` may populate asynchronously, MetaVox polls for new entries for up to 10 seconds and fetches any uncached files in additional batches.
 
-| Files in view | API calls required | Estimated load time |
-|---------------|-------------------|---------------------|
-| 200 | 1 | ~200ms |
-| 1,000 | 5 | ~1s |
-| 5,000 | 25 | ~5s |
-| 10,000 | 50 | ~10s |
-| 50,000 | 250 | ~50s |
+| Files in folder | API calls at open | Estimated load time | Scroll behavior |
+|-----------------|------------------|---------------------|-----------------|
+| 200 | 1 | ~300ms | Instant (cached) |
+| 1,000 | 5 | ~1.5s | Instant (cached) |
+| 5,000 | 25 | ~8s | Instant (cached) |
+| 10,000 | 50 | ~15s | Instant (cached) |
 
-> **Note:** In practice, not all API calls fire at once. Virtual scrolling in Nextcloud 33+ means only visible files trigger metadata loading. The numbers above represent a worst-case full-folder load scenario.
+> **Note:** All metadata is loaded in the background after folder open. Once the initial bulk load completes, scrolling through the file list does **not** trigger additional API calls — all data is served from the in-memory cache. The MutationObserver detects virtual scroll row recycling (via `data-cy-files-list-row-fileid` attribute changes) and fills cells from the cache instantly.
 
 ### Bottleneck 2: Nextcloud File List
 
@@ -76,7 +75,7 @@ MetaVox uses an Entity-Attribute-Value (EAV) model with self-JOINs for filtering
 
 ### Bottleneck 4: DOM Rendering
 
-Nextcloud 33+ uses virtual scrolling for the file list. MetaVox detects row recycling via MutationObserver and only renders metadata cells for visible rows (~15–50 rows). **This is not a bottleneck** regardless of folder size.
+Nextcloud 33+ uses virtual scrolling for the file list. MetaVox uses a MutationObserver that listens for both new rows (`childList`) and row recycling (`attributes` on `data-cy-files-list-row-fileid`). When a row is recycled during scrolling, the metadata cells are instantly updated from the in-memory cache without any API call. Only ~15–50 rows exist in the DOM at any time. **This is not a bottleneck** regardless of folder size.
 
 ### Combined Practical Limits
 
@@ -145,14 +144,17 @@ Each **active filter** in a view adds one SQL JOIN operation to the query. This 
 
 ### Per-User Server Load
 
+MetaVox injects initialization data (groupfolders, fields, views) inline into the HTML via Nextcloud's `IInitialState` mechanism. This eliminates separate API calls for the initial page load. When navigating to a different folder within the same session, a single `/api/init` call retrieves all needed data.
+
 Each user opening a folder with metadata columns generates:
 
 | Operation | API calls | Database queries |
 |-----------|-----------|-----------------|
-| Folder open (PROPFIND) | 1 | 1 (heavy) |
-| Metadata batch load (200 files) | 1 | 1 + up to 200 permission checks |
-| Filter/sort | 1 | 1–2 JOIN queries |
-| **Total per folder open** | **~3** | **~204** |
+| Folder open (first load) | 0 (inline via IInitialState) | Executed during PHP page render |
+| Folder open (navigation) | 1 (`/api/init`) | ~4 (groupfolders, fields, views, permissions) |
+| Metadata bulk load (all files) | 1–3 (chunks of 200) | 1 per chunk |
+| Filter values (lazy, on dropdown open) | 0–1 | 0–1 (cached 300s server-side) |
+| **Total per folder open** | **1–4** | **~5–8** |
 
 ### Data Consistency
 
