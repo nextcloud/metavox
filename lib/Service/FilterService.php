@@ -307,10 +307,14 @@ class FilterService {
      * @param array $fieldNames Optional list of field names to filter on
      * @return array<string, array<string>>
      */
-    public function getAllDistinctFieldValues(int $groupfolderId, array $fieldNames = []): array {
+    public function getAllDistinctFieldValues(int $groupfolderId, array $fieldNames = [], array $fileIds = []): array {
         $cacheKey = "gf_{$groupfolderId}_fv_all";
         if (!empty($fieldNames)) {
             $cacheKey .= '_' . md5(implode(',', $fieldNames));
+        }
+        if (!empty($fileIds)) {
+            sort($fileIds);
+            $cacheKey .= '_f' . md5(implode(',', $fileIds));
         }
         $cached = $this->cache->get($cacheKey);
         if ($cached !== null) {
@@ -331,6 +335,10 @@ class FilterService {
 
             if (!empty($fieldNames)) {
                 $qb->andWhere($qb->expr()->in('field_name', $qb->createNamedParameter($fieldNames, IQueryBuilder::PARAM_STR_ARRAY)));
+            }
+
+            if (!empty($fileIds)) {
+                $qb->andWhere($qb->expr()->in('file_id', $qb->createNamedParameter($fileIds, IQueryBuilder::PARAM_INT_ARRAY)));
             }
 
             $result = $qb->executeQuery();

@@ -110,9 +110,18 @@ class FilterController extends Controller {
                 $fieldNamesArray = array_filter(array_map('trim', explode(',', $fieldNames)));
             }
 
-            $values = $this->filterService->getAllDistinctFieldValues($groupfolderId, $fieldNamesArray);
+            // Scope to specific file IDs (current directory) if provided
+            $fileIdsParam = $this->request->getParam('file_ids');
+            $fileIds = [];
+            if (is_array($fileIdsParam) && !empty($fileIdsParam)) {
+                $fileIds = array_map('intval', array_filter($fileIdsParam, fn($id) => is_numeric($id) && intval($id) > 0));
+            } elseif (is_string($fileIdsParam) && !empty($fileIdsParam)) {
+                $fileIds = array_map('intval', array_filter(explode(',', $fileIdsParam), fn($id) => is_numeric($id) && intval($id) > 0));
+            }
+
+            $values = $this->filterService->getAllDistinctFieldValues($groupfolderId, $fieldNamesArray, $fileIds);
             $response = new JSONResponse($values, Http::STATUS_OK);
-            $response->addHeader('Cache-Control', 'private, max-age=300');
+            $response->addHeader('Cache-Control', 'private, max-age=60');
             return $response;
         } catch (\Exception $e) {
             return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
