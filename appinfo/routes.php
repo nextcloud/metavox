@@ -97,6 +97,9 @@ return [
         // Files plugin init (single call for all startup data)
         ['name' => 'view#init', 'url' => '/api/init', 'verb' => 'GET'],
 
+        // Filter values scoped to current directory
+        ['name' => 'filter#getAllFilterValues', 'url' => '/api/groupfolders/{groupfolderId}/filter-values', 'verb' => 'POST'],
+
         // ========================================
         // 🤖 AI AUTOFILL ROUTES
         // ========================================

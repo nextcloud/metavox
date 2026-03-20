@@ -193,14 +193,18 @@ async function fetchViews(groupfolderId) {
 	}
 }
 
-async function fetchAllFilterValues(groupfolderId) {
+async function fetchAllFilterValues(groupfolderId, fileIds = null) {
 	try {
-		const url = generateOcsUrl(
-			'/apps/metavox/api/v1/groupfolders/{gfId}/all-filter-values',
+		const url = generateUrl(
+			'/apps/metavox/api/groupfolders/{gfId}/filter-values',
 			{ gfId: groupfolderId },
 		)
-		const resp = await axios.get(url)
-		return resp.data?.ocs?.data || resp.data || {}
+		const body = {}
+		if (fileIds && fileIds.length > 0) {
+			body.file_ids = fileIds
+		}
+		const resp = await axios.post(url, body)
+		return resp.data || {}
 	} catch (e) {
 		console.error('MetaVox: Failed to fetch filter values', e)
 		return {}
@@ -2647,13 +2651,18 @@ export async function updateColumnsForCurrentFolder(prefetched = null) {
 		setTimeout(() => clearInterval(unwatchTimer), 10000)
 	}
 
-	// Background: prefetch filter values so dropdown is instant when opened
+	// Background: prefetch filter values scoped to current directory
 	if (!prefetchedFilterValues && groupfolderId) {
-		fetchAllFilterValues(groupfolderId).then(values => {
-			if (values && Object.keys(values).length > 0) {
-				prefetchedFilterValues = values
-			}
-		}).catch(() => {})
+		// Delay slightly so dirContents is populated
+		setTimeout(() => {
+			const fl = _findFilesList()
+			const ids = fl?.dirContents?.map(n => n.fileid).filter(Boolean) || [...metadataCache.keys()]
+			fetchAllFilterValues(groupfolderId, ids).then(values => {
+				if (values && Object.keys(values).length > 0) {
+					prefetchedFilterValues = values
+				}
+			}).catch(() => {})
+		}, 2000)
 	}
 }
 
@@ -2769,7 +2778,10 @@ export function getPrefetchedFilterValues() {
 
 export async function ensureFilterValues() {
 	if (!prefetchedFilterValues && activeGroupfolderId) {
-		prefetchedFilterValues = await fetchAllFilterValues(activeGroupfolderId)
+		// Scope filter values to current directory's files
+		const fl = _findFilesList()
+		const fileIds = fl?.dirContents?.map(n => n.fileid).filter(Boolean) || [...metadataCache.keys()]
+		prefetchedFilterValues = await fetchAllFilterValues(activeGroupfolderId, fileIds)
 	}
 	return prefetchedFilterValues
 }
