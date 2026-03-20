@@ -335,11 +335,19 @@ class MetaVoxMetadataFilter extends EventTarget {
 			}
 
 			// Trigger NC33 to re-run filter() with server data
-			// Note: loading class stays until visible row metadata is loaded (handled by MetaVoxColumns)
 			this._emitFilterUpdate()
+
+			// Safety net: if flushLoadQueue doesn't run (all metadata already cached),
+			// clear loading after a short delay to avoid the greyed-out state hanging
+			setTimeout(() => {
+				filesList?.classList.remove('metavox-loading')
+			}, 500)
 		} catch (e) {
+			if (e.name === 'AbortError' || e.name === 'CanceledError') {
+				// Don't clear loading — a new request likely replaced this one
+				return
+			}
 			filesList?.classList.remove('metavox-loading')
-			if (e.name === 'AbortError' || e.name === 'CanceledError') return
 			console.error('MetaVox: Failed to fetch sorted file IDs', e)
 			// Fallback: clear server data, client-side logic will be used
 			this._serverFileIds = null
