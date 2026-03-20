@@ -2,6 +2,19 @@
 
 This document outlines the practical performance limits of MetaVox when managing metadata across Nextcloud Team Folders. It covers files per view, column limits, concurrent user capacity, and hardware scaling considerations. Where applicable, limits are compared to SharePoint Online as a reference point.
 
+## Summary
+
+| Dimension | MetaVox Recommended Limit | MetaVox Hard Limit | SharePoint Online |
+|-----------|--------------------------|--------------------|--------------------|
+| **Files per view** | 5,000 | None (gradual degradation) | 5,000 (blocked above) |
+| **Fields per Team Folder** | Unlimited | Unlimited (EAV model) | Limited by 8,000-byte row size |
+| **Active filters per view** | 10 | ~15 before noticeable slowdown | 12 join operations (blocked above) |
+| **Displayed columns** | 10–20 | No hard limit | Limited by row size |
+| **Concurrent users (small folder)** | 10–100 (hardware dependent) | N/A | N/A |
+| **Concurrent users (large folder)** | 2–20 (hardware dependent) | N/A | N/A |
+
+**Key takeaway:** SharePoint enforces hard thresholds — queries above 5,000 items are refused. MetaVox has no hard limits; performance degrades gradually. The primary bottleneck above 5,000 files is the Nextcloud browser-side file list, not MetaVox itself. Use filtered Views to keep per-view file counts under 5,000 for the best experience.
+
 ## SharePoint Online Reference Limits
 
 SharePoint Online enforces the following hard limits ([Microsoft documentation](https://learn.microsoft.com/en-us/office365/servicedescriptions/sharepoint-online-service-description/sharepoint-online-limits)):
