@@ -2499,6 +2499,7 @@ export async function updateColumnsForCurrentFolder(prefetched = null) {
 		const _fi = getFilterInstance()
 		if (_fi) _fi.setSortState(null)
 		_cachedActionsWidth = null
+		document.querySelector('.files-list')?.classList.remove('metavox-loading')
 		return
 	}
 
@@ -2756,6 +2757,8 @@ export function startColumnWatcher() {
 		const currentDir = getDirParam()
 		if (currentDir !== lastDir) {
 			lastDir = currentDir
+			// Show loading state while new folder loads
+			document.querySelector('.files-list')?.classList.add('metavox-loading')
 			if (columnsActive) {
 				uninstallSortBypass()
 				removeAllInjectedColumns()
