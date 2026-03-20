@@ -167,6 +167,9 @@ return [
         // Filter values (distinct values for filter dropdowns — batch)
         ['name' => 'apiFilter#getAllFilterValues', 'url' => '/api/v1/groupfolders/{groupfolderId}/all-filter-values', 'verb' => 'GET'],
 
+        // Filter values scoped to current directory (POST to support large file_ids arrays)
+        ['name' => 'apiFilter#getScopedFilterValues', 'url' => '/api/v1/groupfolders/{groupfolderId}/filter-values', 'verb' => 'POST'],
+
         // Server-side sorted & filtered file IDs
         ['name' => 'apiFilter#getSortedFileIds', 'url' => '/api/v1/groupfolders/{groupfolderId}/sorted-file-ids', 'verb' => 'GET'],
 

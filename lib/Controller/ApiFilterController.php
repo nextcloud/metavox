@@ -233,6 +233,37 @@ class ApiFilterController extends OCSController {
         }
     }
 
+    /**
+     * Get distinct filter values scoped to specific file IDs (current directory).
+     * POST to support large file_ids arrays that would exceed GET URI length limits.
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     * @CORS
+     */
+    public function getScopedFilterValues(int $groupfolderId): DataResponse {
+        try {
+            $user = $this->userSession->getUser();
+            if (!$user) {
+                return new DataResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
+            }
+            if (!$this->fieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
+                return new DataResponse(['error' => 'Access denied'], Http::STATUS_FORBIDDEN);
+            }
+
+            $fileIdsParam = $this->request->getParam('file_ids');
+            $fileIds = [];
+            if (is_array($fileIdsParam) && !empty($fileIdsParam)) {
+                $fileIds = array_map('intval', array_filter($fileIdsParam, fn($id) => is_numeric($id) && intval($id) > 0));
+            }
+
+            $values = $this->filterService->getAllDistinctFieldValues($groupfolderId, [], $fileIds);
+            return new DataResponse($values, Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
     private function filterAccessibleFileIds(array $fileIds): array {
         $user = $this->userSession->getUser();
         if (!$user) {
