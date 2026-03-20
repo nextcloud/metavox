@@ -32,40 +32,17 @@ class FilterService {
             return [];
         }
 
-        // Check cache for individual files, only query missing ones
-        $metadataByFile = [];
-        $uncachedIds = [];
-        if (!empty($fieldNames)) {
-            $sorted = $fieldNames;
-            sort($sorted);
-            $fieldKey = implode(',', $sorted);
-        } else {
-            $fieldKey = '_all';
-        }
-
-        foreach ($fileIds as $fileId) {
-            $cacheKey = "gf_{$groupfolderId}_f_{$fileId}_{$fieldKey}";
-            $cached = $this->cache->get($cacheKey);
-            if ($cached !== null) {
-                $metadataByFile[$fileId] = $cached;
-            } else {
-                $uncachedIds[] = $fileId;
-                $metadataByFile[$fileId] = [];
-            }
-        }
-
-        if (empty($uncachedIds)) {
-            return $metadataByFile;
-        }
-
+        // Always query DB directly — no per-file cache.
+        // The DB query is fast with indexes, and caching causes staleness
+        // issues with real-time push notifications.
         try {
+            $metadataByFile = [];
             $qb = $this->db->getQueryBuilder();
             $qb->select('file_id', 'field_name', 'field_value')
                ->from('metavox_file_gf_meta')
-               ->where($qb->expr()->in('file_id', $qb->createNamedParameter($uncachedIds, IQueryBuilder::PARAM_INT_ARRAY)))
+               ->where($qb->expr()->in('file_id', $qb->createNamedParameter($fileIds, IQueryBuilder::PARAM_INT_ARRAY)))
                ->andWhere($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)));
 
-            // Only fetch requested fields (reduces rows returned significantly)
             if (!empty($fieldNames)) {
                 $qb->andWhere($qb->expr()->in('field_name', $qb->createNamedParameter($fieldNames, IQueryBuilder::PARAM_STR_ARRAY)));
             }
@@ -78,17 +55,19 @@ class FilterService {
             }
             $result->closeCursor();
 
-            // Cache results per file (30s TTL)
-            foreach ($uncachedIds as $fileId) {
-                $cacheKey = "gf_{$groupfolderId}_f_{$fileId}_{$fieldKey}";
-                $this->cache->set($cacheKey, $metadataByFile[$fileId] ?? [], 30);
-            }
-
             return $metadataByFile;
         } catch (\Exception $e) {
             error_log('MetaVox FilterService getDirectoryMetadata error: ' . $e->getMessage());
             return [];
         }
+    }
+
+    /**
+     * Invalidate the server-side metadata cache for a specific file.
+     * Called after metadata is saved to ensure fresh data on next fetch.
+     */
+    public function invalidateFileCache(int $groupfolderId, int $fileId): void {
+        $this->cache->remove("gf_{$groupfolderId}_f_{$fileId}__all");
     }
 
     /**

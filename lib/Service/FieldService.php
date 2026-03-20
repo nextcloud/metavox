@@ -18,6 +18,7 @@ class FieldService {
     private IUserManager $userManager;
     private SearchIndexService $searchIndexService;
     private ViewService $viewService;
+    private FilterService $filterService;
     private ICache $cache;
     private $notifyQueue = null;
 
@@ -29,12 +30,13 @@ class FieldService {
     private array $groupfoldersCache = [];
     private array $folderAccessCache = [];
 
-    public function __construct(IDBConnection $db, IGroupManager $groupManager, IUserManager $userManager, SearchIndexService $searchIndexService, ViewService $viewService, ICacheFactory $cacheFactory) {
+    public function __construct(IDBConnection $db, IGroupManager $groupManager, IUserManager $userManager, SearchIndexService $searchIndexService, ViewService $viewService, FilterService $filterService, ICacheFactory $cacheFactory) {
         $this->db = $db;
         $this->groupManager = $groupManager;
         $this->userManager = $userManager;
         $this->searchIndexService = $searchIndexService;
         $this->viewService = $viewService;
+        $this->filterService = $filterService;
         $this->cache = $cacheFactory->createDistributed('metavox');
 
         // Optional: notify_push for real-time metadata sync
@@ -75,12 +77,15 @@ class FieldService {
                 }
             }
 
-            // Push to each user
-            $message = 'metavox_metadata_changed';
+            // Push to each user with file-level detail
             foreach (array_keys($userIds) as $userId) {
                 $this->notifyQueue->push('notify_custom', [
                     'user' => $userId,
-                    'message' => $message,
+                    'message' => 'metavox_metadata_changed',
+                    'body' => [
+                        'gfId' => $groupfolderId,
+                        'fileId' => $fileId,
+                    ],
                 ]);
             }
         } catch (\Exception $e) {
@@ -1015,6 +1020,7 @@ public function saveGroupfolderFileFieldValue(int $groupfolderId, int $fileId, i
         ]);
 
         $this->cache->remove("gf_{$groupfolderId}_fv_{$fieldName}");
+        $this->filterService->invalidateFileCache($groupfolderId, $fileId);
         $this->queueSearchIndexUpdate($fileId);
         $this->pushMetadataChanged($groupfolderId, $fileId);
         return true;

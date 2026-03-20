@@ -46,6 +46,7 @@ import {
 	loadGroupfolders,
 	detectCurrentGroupfolder,
 	fetchAvailableFields,
+	fetchDirectoryMetadata,
 	fetchViews,
 	fetchAllFilterValues,
 	setUpdateAllRowCells as setApiUpdateAllRowCells,
@@ -542,23 +543,44 @@ export function startColumnWatcher() {
  * Polls for availability since notify_push may load after MetaVox.
  */
 function _startPushListener() {
-	const eventName = 'metavox_metadata_changed'
-
 	const register = () => {
 		if (!window._notify_push_listeners) return false
+		if (window._notify_push_listeners._metavoxPatched) return true
+		window._notify_push_listeners._metavoxPatched = true
 
+		// notify_push dispatches by exact message match.
+		// We use a simple message name and clear the cache for the active groupfolder.
+		const eventName = 'metavox_metadata_changed'
 		if (!window._notify_push_listeners[eventName]) {
 			window._notify_push_listeners[eventName] = []
 		}
+		window._notify_push_listeners[eventName].push((bodyStr) => {
+			let body = {}
+			try {
+				if (bodyStr && typeof bodyStr === 'string') {
+					body = JSON.parse(bodyStr)
+				} else if (bodyStr && typeof bodyStr === 'object') {
+					body = bodyStr
+				}
+			} catch (e) { /* no body */ }
 
-		// Don't register twice
-		if (window._notify_push_listeners[eventName]._metavoxRegistered) return true
-		window._notify_push_listeners[eventName]._metavoxRegistered = true
+			const gfId = body.gfId || 0
+			const fileId = body.fileId || 0
 
-		window._notify_push_listeners[eventName].push(() => {
-			// Event received — another user changed metadata in a groupfolder we have access to.
-			// Clear the cache and reload all cells so fresh data is shown.
-			if (getActiveGroupfolderId()) {
+			// Only react if we're looking at the same groupfolder
+			if (gfId && gfId !== getActiveGroupfolderId()) return
+
+			// Re-fetch the changed file's metadata from server (not just delete from cache)
+			if (fileId && getActiveGroupfolderId()) {
+				fetchDirectoryMetadata(getActiveGroupfolderId(), [fileId]).then(data => {
+					for (const [fid, fields] of Object.entries(data)) {
+						const id = Number(fid)
+						if (fields._permissions !== undefined) delete fields._permissions
+						metadataCache.set(id, fields)
+					}
+					updateAllRowCells()
+				})
+			} else {
 				metadataCache.clear()
 				loadAllMetadata(getActiveGroupfolderId())
 			}
