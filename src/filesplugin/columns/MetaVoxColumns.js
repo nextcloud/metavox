@@ -109,7 +109,8 @@ function formatValue(value, fieldType) {
 	switch (fieldType) {
 	case 'checkbox':
 	case 'boolean':
-		return value === '1' || value === 'true' || value === true ? '\u2713' : ''
+		if (value === '1' || value === 'true' || value === true) return '\u2713'
+		return ''
 	case 'date':
 		try {
 			const d = new Date(value)
@@ -567,7 +568,7 @@ function removeColumnStyles() {
 
 function getDefaultColWidth(fieldType) {
 	switch (fieldType) {
-	case 'checkbox': return 80
+	case 'checkbox': return 90
 	case 'number': return 100
 	case 'date': return 120
 	case 'select': return 120
@@ -872,10 +873,36 @@ function openInlineEditor(td, config) {
 
 	switch (config.field_type) {
 		case 'checkbox':
-			// Toggle immediately, no editor needed
-			const newVal = currentValue === '1' ? '0' : '1'
-			saveSingleField(fileId, fieldName, newVal)
-			return
+		case 'boolean': {
+			// Yes/No dropdown, same pattern as select
+			const container = document.createElement('div')
+			container.className = 'metavox-inline-editor metavox-inline-select'
+
+			const boolOpts = [
+				{ value: '1', label: translate('metavox', 'Yes') },
+				{ value: '0', label: translate('metavox', 'No') },
+			]
+
+			for (const opt of boolOpts) {
+				const item = document.createElement('div')
+				item.className = 'metavox-select-option'
+				item.dataset.value = opt.value
+				item.textContent = opt.label
+				if (opt.value === currentValue) item.classList.add('metavox-select-option--selected')
+				item.addEventListener('click', () => {
+					saveSingleField(fileId, fieldName, opt.value)
+					closeInlineEditor(false)
+				})
+				container.appendChild(item)
+			}
+
+			container.addEventListener('keydown', (e) => {
+				if (e.key === 'Escape') closeInlineEditor(true)
+			})
+			container.tabIndex = 0
+			editor = container
+			break
+		}
 
 		case 'select':
 		case 'dropdown': {
@@ -1026,7 +1053,7 @@ function openInlineEditor(td, config) {
 	td.style.position = 'relative'
 
 	// Dropdowns need to be portaled to body to escape table overflow
-	const isDropdown = config.field_type === 'multiselect' || config.field_type === 'select' || config.field_type === 'dropdown'
+	const isDropdown = config.field_type === 'multiselect' || config.field_type === 'select' || config.field_type === 'dropdown' || config.field_type === 'checkbox' || config.field_type === 'boolean'
 	if (isDropdown) {
 		const rect = td.getBoundingClientRect()
 		editor.style.position = 'fixed'
