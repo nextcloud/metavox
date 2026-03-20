@@ -254,6 +254,7 @@ import { translate as t, translate } from '@nextcloud/l10n'
 import CloseIcon from 'vue-material-design-icons/Close.vue'
 import ChevronRightIcon from 'vue-material-design-icons/ChevronRight.vue'
 import DragVerticalIcon from 'vue-material-design-icons/DragVertical.vue'
+import { getNcVersion } from './MetaVoxColumns.js'
 
 const props = defineProps({
 	view: {
@@ -296,6 +297,11 @@ const colList = ref(null)
 // ========================================
 
 const isNew = computed(() => !props.view)
+
+const supportsFilters = computed(() => {
+	const v = getNcVersion()
+	return v === 0 || v >= 33
+})
 
 const filterableColumns = computed(() =>
 	editorState.value.columns.filter(c => c.visible && c.filterable),

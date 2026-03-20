@@ -14,6 +14,16 @@ import { createApp, h } from 'vue'
 import { registerMetaVoxFilter, removeFilters, updateFilterCache, getFilterInstance } from './MetadataFilter.js'
 import ViewEditorPanel from './ViewEditorPanel.vue'
 
+/** @type {number} Nextcloud major version (0 if unknown) */
+const ncVersion = (() => {
+	try {
+		// OC.config.version is "32.0.5.0" format
+		const v = window.OC?.config?.version
+		if (v) return parseInt(v.split('.')[0], 10)
+	} catch (e) { /* ignore */ }
+	return 0
+})()
+
 /** @type {Array<Object>} Column configs from API */
 let activeColumnConfigs = []
 
@@ -321,6 +331,8 @@ function injectColumnStyles() {
 
 	const style = document.createElement('style')
 	style.id = STYLE_ID
+	const nc32Styles = ''
+
 	style.textContent = `
 		/* Horizontal scroll: only #app-content-vue scrolls, nav stays fixed */
 		#content-vue {
@@ -562,6 +574,7 @@ function injectColumnStyles() {
 			outline-offset: -2px;
 			background: color-mix(in srgb, var(--color-primary-element) 8%, transparent) !important;
 		}
+		${nc32Styles}
 	`
 	document.head.appendChild(style)
 }
@@ -1704,8 +1717,7 @@ function _makeViewTab(view) {
 	}
 
 	tab.addEventListener('click', () => {
-		const fi = getFilterInstance()
-		if (fi) applyView(view, fi)
+		applyView(view, getFilterInstance())
 	})
 
 	// Drag-and-drop for reordering (non-default tabs only, when user can manage)
@@ -1962,8 +1974,7 @@ async function _handleEditorSave(view, payload) {
 		}
 
 		if (savedView) {
-			const fi = getFilterInstance()
-			if (fi) applyView(savedView, fi)
+			applyView(savedView, getFilterInstance())
 		}
 	} catch (e) {
 		console.error('MetaVox: Failed to save view', e)
@@ -2034,28 +2045,31 @@ function applyView(view, filterInstance) {
 	}
 
 	// Reset existing filters (suppresses URL update; we'll set URL after)
-	filterInstance._activeFilters.clear()
-	filterInstance._emitChips()
-
-	// Apply view filters — stored as { field_id: "val1, val2" } dict
-	const filtersDict = view.filters || {}
-	for (const [fieldId, valuesStr] of Object.entries(filtersDict)) {
-		if (!valuesStr) continue
-		// Resolve field_id -> field_name from the view's own columns (enriched by server)
-		const col = (view.columns || []).find(c => String(c.field_id) === String(fieldId))
-		const fieldName = col?.field_name
-			?? availableFields.find(c => String(c.id) === String(fieldId))?.field_name
-		if (!fieldName) continue
-		const values = String(valuesStr).split(',').map(v => v.trim()).filter(Boolean)
-		if (values.length > 0) {
-			filterInstance._activeFilters.set(fieldName, new Set(values))
-		}
+	if (filterInstance) {
+		filterInstance._activeFilters.clear()
+		filterInstance._emitChips()
 	}
 
-	// Emit filter update (will also call _syncToUrl but we overwrite below)
-	filterInstance._emitChips()
-	filterInstance.dispatchEvent(new CustomEvent('update:filter'))
-	window._nc_event_bus?.emit('files:filters:changed')
+	// Apply view filters — stored as { field_id: "val1, val2" } dict
+	if (filterInstance) {
+		const filtersDict = view.filters || {}
+		for (const [fieldId, valuesStr] of Object.entries(filtersDict)) {
+			if (!valuesStr) continue
+			const col = (view.columns || []).find(c => String(c.field_id) === String(fieldId))
+			const fieldName = col?.field_name
+				?? availableFields.find(c => String(c.id) === String(fieldId))?.field_name
+			if (!fieldName) continue
+			const values = String(valuesStr).split(',').map(v => v.trim()).filter(Boolean)
+			if (values.length > 0) {
+				filterInstance._activeFilters.set(fieldName, new Set(values))
+			}
+		}
+
+		// Emit filter update
+		filterInstance._emitChips()
+		filterInstance.dispatchEvent(new CustomEvent('update:filter'))
+		window._nc_event_bus?.emit('files:filters:changed')
+	}
 
 	// Apply column visibility and update filter registration
 	_applyViewColumns(view)
@@ -2576,15 +2590,13 @@ export async function updateColumnsForCurrentFolder(prefetched = null) {
 	const filterInstance = getFilterInstance()
 	if (activeViews.length > 0 || canManageViews) {
 		injectViewTabs(activeViews)
-		if (filterInstance) {
-			const params = new URLSearchParams(window.location.search)
-			if (params.has('mvview')) {
-				restoreViewFromUrl(activeViews, filterInstance)
-			} else {
-				const defaultView = activeViews.find(v => v.is_default)
-				if (defaultView) {
-					applyView(defaultView, filterInstance)
-				}
+		const params = new URLSearchParams(window.location.search)
+		if (params.has('mvview')) {
+			restoreViewFromUrl(activeViews, filterInstance)
+		} else {
+			const defaultView = activeViews.find(v => v.is_default)
+			if (defaultView) {
+				applyView(defaultView, filterInstance)
 			}
 		}
 	}
@@ -2594,15 +2606,20 @@ export async function updateColumnsForCurrentFolder(prefetched = null) {
 	const _loadAllMetadata = async (gfId) => {
 		const filesList = _findFilesList()
 		let fileIds = []
+		let source = 'none'
 		if (filesList?.dirContents) {
 			fileIds = filesList.dirContents.map(n => n.fileid).filter(Boolean)
+			source = 'dirContents'
 		}
 		if (fileIds.length === 0) {
 			const rows = document.querySelectorAll('tr[data-cy-files-list-row]')
 			fileIds = [...rows].map(r => Number(r.getAttribute('data-cy-files-list-row-fileid'))).filter(Boolean)
+			source = 'DOM rows'
 		}
 		// Filter out already cached
+		const totalFound = fileIds.length
 		fileIds = fileIds.filter(id => !metadataCache.has(id))
+		console.log(`[MetaVox load] source=${source} found=${totalFound} uncached=${fileIds.length} NC=${ncVersion}`)
 		if (fileIds.length === 0) return
 
 		const CHUNK = 200
@@ -2664,6 +2681,9 @@ export async function updateColumnsForCurrentFolder(prefetched = null) {
 			}).catch(() => {})
 		}, 2000)
 	}
+
+	// Clear loading state — everything is injected, metadata loads in background
+	document.querySelector('.files-list')?.classList.remove('metavox-loading')
 }
 
 let _initialStateConsumed = false
@@ -2764,6 +2784,10 @@ function scheduleInjection() {
 	setTimeout(() => observer.disconnect(), 30000)
 }
 
+export function getNcVersion() {
+	return ncVersion
+}
+
 export function getActiveColumnConfigs() {
 	return activeColumnConfigs
 }
@@ -2778,7 +2802,6 @@ export function getPrefetchedFilterValues() {
 
 export async function ensureFilterValues() {
 	if (!prefetchedFilterValues && activeGroupfolderId) {
-		// Scope filter values to current directory's files
 		const fl = _findFilesList()
 		const fileIds = fl?.dirContents?.map(n => n.fileid).filter(Boolean) || [...metadataCache.keys()]
 		prefetchedFilterValues = await fetchAllFilterValues(activeGroupfolderId, fileIds)

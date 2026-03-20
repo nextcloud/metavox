@@ -183,6 +183,11 @@ async function registerLegacySidebarTab() {
 		return false
 	}
 
+	// Prevent duplicate registration
+	if (window._metavoxTabRegistered) {
+		return true
+	}
+
 	try {
 		const { createApp, h } = await import('vue')
 		const FilesSidebarTab = (await import('./FilesSidebarTab.vue')).default
