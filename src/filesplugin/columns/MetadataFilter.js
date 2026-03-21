@@ -53,7 +53,7 @@ class MetaVoxMetadataFilter extends EventTarget {
 	constructor() {
 		super()
 		this.id = FILTER_ID
-		this.order = 50
+		this.order = 100
 		this.displayName = 'MetaVox'
 		this.iconSvgInline = METAVOX_ICON_SVG
 		this.tagName = 'metavox-metadata-filter'
@@ -90,11 +90,15 @@ class MetaVoxMetadataFilter extends EventTarget {
 		if (this._serverFileIds && this._serverFileIds.length > 0) {
 			const idSet = this._serverFileIdSet
 			const orderMap = this._serverFileIdMap
+			const hasActiveFilters = this._activeFilters.size > 0
 
-			// Filter: keep only nodes in the server result (+ non-file nodes)
-			let result = nodes.filter(node => !node.fileid || idSet.has(node.fileid))
+			// Filter: if filters are active, remove non-matching nodes.
+			// If only sorting (no filters), keep ALL nodes.
+			let result = hasActiveFilters
+				? nodes.filter(node => !node.fileid || idSet.has(node.fileid))
+				: [...nodes]
 
-			// Sort by server-provided order
+			// Sort by server-provided order (unmatched nodes go to bottom)
 			if (this._sortState) {
 				result.sort((a, b) => {
 					const posA = orderMap.get(a.fileid) ?? Number.MAX_SAFE_INTEGER
