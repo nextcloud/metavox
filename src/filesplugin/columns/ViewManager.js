@@ -700,8 +700,7 @@ export function closeViewEditor() {
 }
 
 async function _confirmDeleteView(view) {
-	if (!confirm(translate('metavox', 'Delete view "{name}"?', { name: view.name }))) return
-
+	// Confirmation already handled by NcDialog in ViewEditorPanel.vue
 	const activeGroupfolderId = getActiveGroupfolderId()
 
 	try {

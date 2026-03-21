@@ -239,17 +239,26 @@
 		</div>
 
 		<!-- Delete confirmation dialog -->
-		<NcDialog v-if="showDeleteDialog"
-			:name="t('metavox', 'Delete view')"
-			:message="deleteMessage"
-			:buttons="deleteButtons"
-			@closing="showDeleteDialog = false" />
+		<div v-if="showDeleteDialog" class="mv-delete-overlay" @click.self="showDeleteDialog = false">
+			<div class="mv-delete-dialog">
+				<h3>{{ t('metavox', 'Delete view') }}</h3>
+				<p>{{ deleteMessage }}</p>
+				<div class="mv-delete-actions">
+					<NcButton type="secondary" @click="showDeleteDialog = false">
+						{{ t('metavox', 'Cancel') }}
+					</NcButton>
+					<NcButton type="error" @click="confirmDelete">
+						{{ t('metavox', 'Delete') }}
+					</NcButton>
+				</div>
+			</div>
+		</div>
 	</div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
-import { NcButton, NcCheckboxRadioSwitch, NcTextField, NcSelect, NcDialog } from '@nextcloud/vue'
+import { NcButton, NcCheckboxRadioSwitch, NcTextField, NcSelect } from '@nextcloud/vue'
 import { translate as t, translate } from '@nextcloud/l10n'
 import CloseIcon from 'vue-material-design-icons/Close.vue'
 import ChevronRightIcon from 'vue-material-design-icons/ChevronRight.vue'
@@ -606,10 +615,6 @@ const deleteMessage = computed(() =>
 	t('metavox', 'Are you sure you want to delete the view "{name}"?', { name: props.view?.name || '' }),
 )
 
-const deleteButtons = computed(() => [
-	{ label: t('metavox', 'Cancel'), callback: () => { showDeleteDialog.value = false } },
-	{ label: t('metavox', 'Delete'), type: 'error', callback: confirmDelete },
-])
 
 function onDelete() {
 	showDeleteDialog.value = true
@@ -960,5 +965,47 @@ details.mv-filter-row[open] .mv-filter-chevron {
 
 .mv-footer-spacer {
 	flex: 1;
+}
+
+/* Delete confirmation dialog */
+.mv-delete-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.4);
+	z-index: 10000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.mv-delete-dialog {
+	background: var(--color-main-background);
+	border-radius: var(--border-radius-large, 12px);
+	padding: 24px;
+	min-width: 320px;
+	max-width: 400px;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.mv-delete-dialog h3 {
+	margin: 0 0 12px;
+	font-size: 18px;
+	font-weight: 600;
+}
+
+.mv-delete-dialog p {
+	margin: 0 0 20px;
+	color: var(--color-text-maxcontrast);
+	font-size: 14px;
+	line-height: 1.5;
+}
+
+.mv-delete-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
 }
 </style>
