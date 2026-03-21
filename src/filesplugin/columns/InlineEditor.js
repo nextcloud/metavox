@@ -6,10 +6,12 @@
  * fill-handle drag-to-copy.
  */
 
+import axios from '@nextcloud/axios'
+import { generateUrl } from '@nextcloud/router'
 import { MARKER_CLASS } from './ColumnStyles.js'
 import { saveSingleField } from './MetaVoxAPI.js'
 import { parseFieldOptions, formatValue } from './ColumnUtils.js'
-import { permissionCache, metadataCache } from './MetaVoxState.js'
+import { permissionCache, metadataCache, getActiveGroupfolderId } from './MetaVoxState.js'
 import { translate } from '@nextcloud/l10n'
 import { pushUndo } from './UndoSupport.js'
 
@@ -65,8 +67,8 @@ export function setSetCellValue(fn) { _setCellValue = fn }
  */
 export function canEditFile(fileId) {
 	const canEdit = permissionCache.get(fileId)
-	// If permissions were loaded from the API, use them; otherwise deny
-	return canEdit === true
+	// If permissions were loaded, use them; if unknown, allow (new files)
+	return canEdit !== false
 }
 
 /**
@@ -80,6 +82,9 @@ export function setupCellEditing(td, config) {
 	td.addEventListener('dblclick', (e) => {
 		e.preventDefault()
 		e.stopPropagation()
+
+		// Check if cell is locked by another user
+		if (td._metavoxLocked) return
 
 		// Check write permission (loaded from API response)
 		const fileId = Number(td.dataset.fileId)
@@ -102,7 +107,7 @@ export function setupCellEditing(td, config) {
  * @param {HTMLElement} td     The <td> element
  * @param {Object}      config Column configuration object
  */
-export function openInlineEditor(td, config) {
+export async function openInlineEditor(td, config) {
 	// Don't open if already editing
 	if (activeEditor) {
 		closeInlineEditor(false)
@@ -110,6 +115,31 @@ export function openInlineEditor(td, config) {
 
 	const fileId = Number(td.dataset.fileId)
 	const fieldName = td.dataset.metavoxField
+	const gfId = getActiveGroupfolderId()
+
+	// Try to acquire lock
+	if (gfId && fileId && fieldName) {
+		try {
+			const url = generateUrl('/apps/metavox/api/groupfolders/{gfId}/files/{fileId}/lock', { gfId, fileId })
+			const resp = await axios.post(url, { field_name: fieldName })
+			if (resp.data?.locked) {
+				td.title = translate('metavox', 'Being edited by {user}', { user: resp.data.lockedBy || '?' })
+				td.style.cursor = 'not-allowed'
+				setTimeout(() => { td.style.cursor = ''; td.title = '' }, 3000)
+				return
+			}
+		} catch (e) {
+			if (e.response?.status === 409) {
+				const lockedBy = e.response?.data?.lockedBy || '?'
+				td.title = translate('metavox', 'Being edited by {user}', { user: lockedBy })
+				td.style.cursor = 'not-allowed'
+				setTimeout(() => { td.style.cursor = ''; td.title = '' }, 3000)
+				return
+			}
+			// Lock API unavailable — proceed without locking
+		}
+	}
+
 	const meta = metadataCache.get(fileId) || {}
 	const currentValue = meta[fieldName] || ''
 
@@ -408,6 +438,15 @@ export function closeInlineEditor(cancel) {
 	activeEditor = null
 
 	document.removeEventListener('mousedown', handleEditorClickOutside)
+
+	// Release lock
+	const fileId = Number(td.dataset?.fileId)
+	const fieldName = td.dataset?.metavoxField
+	const gfId = getActiveGroupfolderId()
+	if (gfId && fileId && fieldName) {
+		const url = generateUrl('/apps/metavox/api/groupfolders/{gfId}/files/{fileId}/unlock', { gfId, fileId })
+		axios.post(url, { field_name: fieldName }).catch(() => {})
+	}
 
 	// Remove portaled dropdown from body
 	if (td._portalEditor) {

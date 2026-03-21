@@ -48,49 +48,101 @@ class FieldService {
     }
 
     /**
-     * Send a push notification to all groupfolder members that metadata changed.
-     * Each user gets their own event so notify_push routes it correctly.
+     * Get all user IDs that have access to a groupfolder.
      */
-    private function pushMetadataChanged(int $groupfolderId, int $fileId = 0): void {
-        if (!$this->notifyQueue) return;
-        try {
-            // Get all groups assigned to this groupfolder
-            $qb = $this->db->getQueryBuilder();
-            $qb->select('group_id')
-               ->from('group_folders_groups')
-               ->where($qb->expr()->eq('folder_id', $qb->createNamedParameter($groupfolderId, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)));
-            $result = $qb->executeQuery();
-            $groupIds = [];
-            while ($row = $result->fetch()) {
-                $groupIds[] = $row['group_id'];
-            }
-            $result->closeCursor();
+    private function getGroupfolderUserIds(int $groupfolderId): array {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('group_id')
+           ->from('group_folders_groups')
+           ->where($qb->expr()->eq('folder_id', $qb->createNamedParameter($groupfolderId, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)));
+        $result = $qb->executeQuery();
+        $groupIds = [];
+        while ($row = $result->fetch()) {
+            $groupIds[] = $row['group_id'];
+        }
+        $result->closeCursor();
 
-            // Collect unique user IDs from all groups
-            $userIds = [];
-            foreach ($groupIds as $groupId) {
-                $group = $this->groupManager->get($groupId);
-                if ($group) {
-                    foreach ($group->getUsers() as $user) {
-                        $userIds[$user->getUID()] = true;
-                    }
+        $userIds = [];
+        foreach ($groupIds as $groupId) {
+            $group = $this->groupManager->get($groupId);
+            if ($group) {
+                foreach ($group->getUsers() as $user) {
+                    $userIds[$user->getUID()] = true;
                 }
             }
+        }
+        return array_keys($userIds);
+    }
 
-            // Push to each user with file-level detail
-            foreach (array_keys($userIds) as $userId) {
+    /**
+     * Broadcast a push event to all groupfolder members.
+     */
+    private function pushToGroupfolder(int $groupfolderId, string $message, array $body = []): void {
+        if (!$this->notifyQueue) return;
+        try {
+            $userIds = $this->getGroupfolderUserIds($groupfolderId);
+            foreach ($userIds as $userId) {
                 $this->notifyQueue->push('notify_custom', [
                     'user' => $userId,
-                    'message' => 'metavox_metadata_changed',
-                    'body' => [
-                        'gfId' => $groupfolderId,
-                        'fileId' => $fileId,
-                    ],
+                    'message' => $message,
+                    'body' => $body ?: null,
                 ]);
             }
         } catch (\Exception $e) {
             // Silently fail — push is best-effort
         }
+    }
+
+    private function pushMetadataChanged(int $groupfolderId, int $fileId = 0): void {
+        $this->pushToGroupfolder($groupfolderId, 'metavox_metadata_changed', [
+            'gfId' => $groupfolderId,
+            'fileId' => $fileId,
+        ]);
+    }
+
+    /**
+     * Lock a cell for editing. Returns true if lock acquired, false if already locked.
+     */
+    public function lockCell(int $groupfolderId, int $fileId, string $fieldName, string $userId): bool {
+        $lockKey = "metavox_lock:{$groupfolderId}:{$fileId}:{$fieldName}";
+        $existing = $this->cache->get($lockKey);
+        if ($existing && $existing !== $userId) {
+            return false; // Already locked by another user
+        }
+        $this->cache->set($lockKey, $userId, 30); // 30s TTL
+        $this->pushToGroupfolder($groupfolderId, 'metavox_cell_locked', [
+            'gfId' => $groupfolderId,
+            'fileId' => $fileId,
+            'fieldName' => $fieldName,
+            'userId' => $userId,
+        ]);
+        return true;
+    }
+
+    /**
+     * Unlock a cell after editing.
+     */
+    public function unlockCell(int $groupfolderId, int $fileId, string $fieldName, string $userId): void {
+        $lockKey = "metavox_lock:{$groupfolderId}:{$fileId}:{$fieldName}";
+        $existing = $this->cache->get($lockKey);
+        if ($existing === $userId) {
+            $this->cache->remove($lockKey);
+        }
+        $this->pushToGroupfolder($groupfolderId, 'metavox_cell_unlocked', [
+            'gfId' => $groupfolderId,
+            'fileId' => $fileId,
+            'fieldName' => $fieldName,
+        ]);
+    }
+
+    /**
+     * Check if a cell is locked.
+     * @return string|null The userId holding the lock, or null if unlocked.
+     */
+    public function getCellLock(int $groupfolderId, int $fileId, string $fieldName): ?string {
+        $lockKey = "metavox_lock:{$groupfolderId}:{$fileId}:{$fieldName}";
+        $value = $this->cache->get($lockKey);
+        return $value ?: null;
     }
 
 private function parseFieldOptions(?string $raw): array {
