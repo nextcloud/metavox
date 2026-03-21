@@ -542,49 +542,107 @@ export function startColumnWatcher() {
  * Uses Nextcloud's global _notify_push_listeners to register a callback.
  * Polls for availability since notify_push may load after MetaVox.
  */
-function _startPushListener() {
-	const register = () => {
-		if (!window._notify_push_listeners) return false
-		if (window._notify_push_listeners._metavoxPatched) return true
-		window._notify_push_listeners._metavoxPatched = true
+function _handlePushEvent(eventName, body) {
+	const gfId = body.gfId || 0
+	const fileId = body.fileId || 0
 
-		// notify_push dispatches by exact message match.
-		// We use a simple message name and clear the cache for the active groupfolder.
-		const eventName = 'metavox_metadata_changed'
-		if (!window._notify_push_listeners[eventName]) {
-			window._notify_push_listeners[eventName] = []
-		}
-		window._notify_push_listeners[eventName].push((bodyStr) => {
-			let body = {}
-			try {
-				if (bodyStr && typeof bodyStr === 'string') {
-					body = JSON.parse(bodyStr)
-				} else if (bodyStr && typeof bodyStr === 'object') {
-					body = bodyStr
+	if (eventName === 'metavox_metadata_changed') {
+		if (gfId && gfId !== getActiveGroupfolderId()) return
+		if (fileId && getActiveGroupfolderId()) {
+			fetchDirectoryMetadata(getActiveGroupfolderId(), [fileId]).then(data => {
+				for (const [fid, fields] of Object.entries(data)) {
+					const id = Number(fid)
+					if (fields._permissions !== undefined) delete fields._permissions
+					metadataCache.set(id, fields)
 				}
-			} catch (e) { /* no body */ }
+				updateAllRowCells()
+			})
+		} else {
+			metadataCache.clear()
+			loadAllMetadata(getActiveGroupfolderId())
+		}
+	} else if (eventName === 'metavox_cell_locked' || eventName === 'metavox_cell_unlocked') {
+		if (gfId && gfId !== getActiveGroupfolderId()) return
+		const fieldName = body.fieldName || ''
+		const userId = body.userId || ''
+		const cell = document.querySelector(`.metavox-col[data-file-id="${fileId}"][data-metavox-field="${fieldName}"]`)
+		if (!cell) return
 
-			const gfId = body.gfId || 0
-			const fileId = body.fileId || 0
+		// Don't show lock indicator for own edits
+		const currentUser = document.querySelector('head[data-user]')?.dataset?.user
+		if (eventName === 'metavox_cell_locked' && userId === currentUser) return
 
-			// Only react if we're looking at the same groupfolder
-			if (gfId && gfId !== getActiveGroupfolderId()) return
+		if (eventName === 'metavox_cell_locked') {
+			cell.style.backgroundColor = 'rgba(233, 163, 28, 0.15)'
+			cell.style.boxShadow = 'inset 0 0 0 2px #e9a31c'
+			cell.style.cursor = 'not-allowed'
+			cell.dataset.lockedBy = userId
+			cell._metavoxLocked = true
 
-			// Re-fetch the changed file's metadata from server (not just delete from cache)
-			if (fileId && getActiveGroupfolderId()) {
-				fetchDirectoryMetadata(getActiveGroupfolderId(), [fileId]).then(data => {
-					for (const [fid, fields] of Object.entries(data)) {
-						const id = Number(fid)
-						if (fields._permissions !== undefined) delete fields._permissions
-						metadataCache.set(id, fields)
-					}
-					updateAllRowCells()
-				})
-			} else {
-				metadataCache.clear()
-				loadAllMetadata(getActiveGroupfolderId())
+			// Show persistent tooltip on hover
+			let tooltip = cell.querySelector('.metavox-lock-tooltip')
+			if (!tooltip) {
+				tooltip = document.createElement('div')
+				tooltip.className = 'metavox-lock-tooltip'
+				tooltip.style.cssText = 'display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;white-space:nowrap;z-index:9999;pointer-events:none;margin-bottom:4px;'
+				cell.style.position = 'relative'
+				cell.style.overflow = 'visible'
+				cell.appendChild(tooltip)
+				cell.addEventListener('mouseenter', () => { if (cell._metavoxLocked && tooltip) tooltip.style.display = 'block' })
+				cell.addEventListener('mouseleave', () => { if (tooltip) tooltip.style.display = 'none' })
 			}
-		})
+			tooltip.textContent = `🔒 ${userId}`
+		} else {
+			cell.style.backgroundColor = ''
+			cell.style.boxShadow = ''
+			cell.style.cursor = ''
+			cell.style.position = ''
+			cell.style.overflow = ''
+			delete cell.dataset.lockedBy
+			delete cell._metavoxLocked
+			const tooltip = cell.querySelector('.metavox-lock-tooltip')
+			if (tooltip) tooltip.remove()
+		}
+	}
+}
+
+function _startPushListener() {
+	const patchWs = (ws) => {
+		if (!ws || ws._metavoxPatched) return
+		ws._metavoxPatched = true
+		const origOnMessage = ws.onmessage
+		ws.onmessage = (event) => {
+			const raw = event.data || ''
+			if (typeof raw === 'string' && raw.startsWith('metavox_')) {
+				const spaceIdx = raw.indexOf(' ')
+				const evtName = spaceIdx > 0 ? raw.substring(0, spaceIdx) : raw
+				let body = {}
+				if (spaceIdx > 0) {
+					try { body = JSON.parse(raw.substring(spaceIdx + 1)) } catch (e) { /* */ }
+				}
+				_handlePushEvent(evtName, body)
+			}
+			if (origOnMessage) origOnMessage.call(ws, event)
+		}
+	}
+
+	const register = () => {
+		const ws = window._notify_push_ws
+		if (!ws) return false
+		patchWs(ws)
+
+		// Also watch for WebSocket replacements (reconnects)
+		if (!window._metavoxWsWatcher) {
+			window._metavoxWsWatcher = true
+			let currentWs = ws
+			setInterval(() => {
+				if (window._notify_push_ws && window._notify_push_ws !== currentWs) {
+					currentWs = window._notify_push_ws
+					patchWs(currentWs)
+				}
+			}, 2000)
+		}
+
 		return true
 	}
 

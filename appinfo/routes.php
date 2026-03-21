@@ -100,6 +100,10 @@ return [
         // Filter values scoped to current directory
         ['name' => 'filter#getAllFilterValues', 'url' => '/api/groupfolders/{groupfolderId}/filter-values', 'verb' => 'POST'],
 
+        // Cell locking for concurrent editing
+        ['name' => 'field#lockCell', 'url' => '/api/groupfolders/{groupfolderId}/files/{fileId}/lock', 'verb' => 'POST'],
+        ['name' => 'field#unlockCell', 'url' => '/api/groupfolders/{groupfolderId}/files/{fileId}/unlock', 'verb' => 'POST'],
+
         // ========================================
         // 🤖 AI AUTOFILL ROUTES
         // ========================================

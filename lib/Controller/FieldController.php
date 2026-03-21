@@ -617,4 +617,42 @@ public function createGroupfolderField(): JSONResponse {
             return null;
         }
     }
+
+    /**
+     * Lock a cell for editing.
+     * @NoAdminRequired
+     */
+    public function lockCell(int $groupfolderId, int $fileId): JSONResponse {
+        $user = $this->userSession->getUser();
+        if (!$user) {
+            return new JSONResponse(['error' => 'Not authenticated'], 401);
+        }
+        $fieldName = $this->request->getParam('field_name');
+        if (empty($fieldName)) {
+            return new JSONResponse(['error' => 'field_name required'], 400);
+        }
+        $acquired = $this->fieldService->lockCell($groupfolderId, $fileId, $fieldName, $user->getUID());
+        if (!$acquired) {
+            $lockedBy = $this->fieldService->getCellLock($groupfolderId, $fileId, $fieldName);
+            return new JSONResponse(['locked' => true, 'lockedBy' => $lockedBy], 409);
+        }
+        return new JSONResponse(['locked' => false]);
+    }
+
+    /**
+     * Unlock a cell after editing.
+     * @NoAdminRequired
+     */
+    public function unlockCell(int $groupfolderId, int $fileId): JSONResponse {
+        $user = $this->userSession->getUser();
+        if (!$user) {
+            return new JSONResponse(['error' => 'Not authenticated'], 401);
+        }
+        $fieldName = $this->request->getParam('field_name');
+        if (empty($fieldName)) {
+            return new JSONResponse(['error' => 'field_name required'], 400);
+        }
+        $this->fieldService->unlockCell($groupfolderId, $fileId, $fieldName, $user->getUID());
+        return new JSONResponse(['success' => true]);
+    }
 }
