@@ -6,6 +6,7 @@
 
 import { HEADER_MARKER } from './ColumnStyles.js'
 import { getFilterInstance } from './MetadataFilter.js'
+import { metadataCache } from './MetaVoxState.js'
 
 // ── Sort icon SVGs ──────────────────────────────────────────────
 const SORT_ICON_ASC = '<svg fill="currentColor" width="24" height="24" viewBox="0 0 24 24"><path d="M7,15L12,10L17,15H7Z"></path></svg>'
@@ -37,9 +38,45 @@ export function handleSort(fieldName, fieldType) {
 		fi.setSortState({ fieldName, fieldType, direction: 'asc' })
 	}
 
+	// Client-side sort using metadataCache — no server call needed.
+	// Build sorted file IDs from the cache.
+	const sortState = fi.getSortState()
+	const ids = [...metadataCache.keys()]
+	ids.sort((a, b) => {
+		const metaA = metadataCache.get(a) || {}
+		const metaB = metadataCache.get(b) || {}
+		const valA = metaA[fieldName] ?? ''
+		const valB = metaB[fieldName] ?? ''
+
+		// Push empty values to bottom
+		if (!valA && valB) return 1
+		if (valA && !valB) return -1
+		if (!valA && !valB) return 0
+
+		let cmp = 0
+		if (fieldType === 'number' || fieldType === 'integer' || fieldType === 'float') {
+			cmp = parseFloat(valA) - parseFloat(valB)
+		} else if (fieldType === 'date') {
+			cmp = new Date(valA).getTime() - new Date(valB).getTime()
+		} else if (fieldType === 'checkbox' || fieldType === 'boolean') {
+			cmp = (valA === '1' ? 0 : 1) - (valB === '1' ? 0 : 1)
+		} else {
+			cmp = String(valA).localeCompare(String(valB))
+		}
+		return sortState.direction === 'desc' ? -cmp : cmp
+	})
+
+	// Set the sorted IDs on the filter instance so NC uses our order
+	fi._serverFileIds = ids
+	fi._serverFileIdSet = new Set(ids)
+	fi._serverFileIdMap = new Map()
+	for (let i = 0; i < ids.length; i++) {
+		fi._serverFileIdMap.set(ids[i], i)
+	}
+
 	ensureSortBypass()
 	updateSortIndicators()
-	fi.fetchServerSortedIds()
+	fi._emitFilterUpdate()
 }
 
 export function updateSortIndicators() {

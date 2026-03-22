@@ -5,8 +5,6 @@
  * (alongside Type, Modified, People) using the registerFileListFilter() API.
  */
 
-import axios from '@nextcloud/axios'
-import { generateOcsUrl } from '@nextcloud/router'
 import './MetaVoxFilterElement.js'
 import { createApp, h } from 'vue'
 import { translate, translatePlural } from '@nextcloud/l10n'
@@ -68,7 +66,6 @@ class MetaVoxMetadataFilter extends EventTarget {
 		this._serverFileIds = null // ordered file IDs from server
 		this._serverFileIdSet = null // Set for O(1) membership check
 		this._serverFileIdMap = null // Map<fileId, index> for O(1) sort position
-		this._pendingAbort = null // AbortController for in-flight requests
 	}
 
 	// ========================================
@@ -221,7 +218,7 @@ class MetaVoxMetadataFilter extends EventTarget {
 			set.add(value)
 		}
 		this._emitChips()
-		this.fetchServerSortedIds()
+		this.applyClientSideFilterSort()
 	}
 
 	/**
@@ -231,7 +228,7 @@ class MetaVoxMetadataFilter extends EventTarget {
 	clearFieldFilter(fieldName) {
 		this._activeFilters.delete(fieldName)
 		this._emitChips()
-		this.fetchServerSortedIds()
+		this.applyClientSideFilterSort()
 	}
 
 	/**
@@ -286,11 +283,11 @@ class MetaVoxMetadataFilter extends EventTarget {
 	// ========================================
 
 	/**
-	 * Fetch sorted/filtered file IDs from the server and trigger re-filter.
-	 * Cancels any in-flight request.
+	 * Apply filters and sort client-side using the metadataCache.
+	 * Zero server calls — instant filtering and sorting.
 	 */
-	async fetchServerSortedIds() {
-		if (!this._groupfolderId) return
+	applyClientSideFilterSort() {
+		if (!this._metadataCache) return
 
 		// Deselect all files — the visible set is about to change
 		const headerCheckbox = document.querySelector('.files-list__row-head .files-list__row-checkbox input[type="checkbox"]')
@@ -298,7 +295,7 @@ class MetaVoxMetadataFilter extends EventTarget {
 			headerCheckbox.click()
 		}
 
-		// Nothing to do server-side
+		// Nothing to do — clear server IDs so NC shows all files
 		if (!this._sortState && this._activeFilters.size === 0) {
 			this._serverFileIds = null
 			this._serverFileIdSet = null
@@ -307,71 +304,76 @@ class MetaVoxMetadataFilter extends EventTarget {
 			return
 		}
 
-		// Cancel previous in-flight request
-		if (this._pendingAbort) {
-			this._pendingAbort.abort()
-		}
-		this._pendingAbort = new AbortController()
+		// Start with all cached file IDs
+		let ids = [...this._metadataCache.keys()]
 
-		// Show loading state
-		const filesList = document.querySelector('.files-list')
-		filesList?.classList.add('metavox-loading')
-
-		const params = {}
-		if (this._sortState) {
-			params.sort_field = this._sortState.fieldName
-			params.sort_order = this._sortState.direction
-			params.sort_field_type = this._sortState.fieldType || 'text'
-		}
+		// Apply filters (AND between fields, OR within a field)
 		if (this._activeFilters.size > 0) {
-			const filtersObj = {}
-			for (const [fieldName, valueSet] of this._activeFilters) {
-				filtersObj[fieldName] = [...valueSet]
-			}
-			params.filters = JSON.stringify(filtersObj)
-		}
+			ids = ids.filter(fileId => {
+				const meta = this._metadataCache.get(fileId) || {}
+				for (const [fieldName, valueSet] of this._activeFilters) {
+					const cellValue = meta[fieldName]
+					const cellEmpty = !cellValue || cellValue === '0' || cellValue === 'false'
 
-		try {
-			const url = generateOcsUrl(
-				'/apps/metavox/api/v1/groupfolders/{groupfolderId}/sorted-file-ids',
-				{ groupfolderId: this._groupfolderId },
-			)
-			const resp = await axios.get(url, {
-				params,
-				signal: this._pendingAbort.signal,
-				timeout: 10000,
+					const hasEmptyFilter = valueSet.has('0')
+					const realValues = new Set([...valueSet].filter(v => v !== '0'))
+
+					if (cellEmpty) {
+						if (hasEmptyFilter) continue
+						return false
+					}
+
+					if (realValues.size === 0 && hasEmptyFilter) return false
+
+					if (realValues.size > 0) {
+						const cellStr = String(cellValue)
+						if (!cellStr.includes(';#')) {
+							if (!realValues.has(cellStr)) return false
+						} else {
+							const parts = cellStr.split(';#').map(p => p.trim())
+							if (!parts.some(p => realValues.has(p))) return false
+						}
+					}
+				}
+				return true
 			})
-			const data = resp.data?.ocs?.data || resp.data || {}
-			const fileIds = data.file_ids || []
-
-			this._serverFileIds = fileIds
-			this._serverFileIdSet = new Set(fileIds)
-			this._serverFileIdMap = new Map()
-			for (let i = 0; i < fileIds.length; i++) {
-				this._serverFileIdMap.set(fileIds[i], i)
-			}
-
-			// Trigger NC33 to re-run filter() with server data
-			this._emitFilterUpdate()
-
-			// Safety net: if flushLoadQueue doesn't run (all metadata already cached),
-			// clear loading after a short delay to avoid the greyed-out state hanging
-			setTimeout(() => {
-				filesList?.classList.remove('metavox-loading')
-			}, 500)
-		} catch (e) {
-			if (e.name === 'AbortError' || e.name === 'CanceledError') {
-				// Don't clear loading — a new request likely replaced this one
-				return
-			}
-			filesList?.classList.remove('metavox-loading')
-			console.error('MetaVox: Failed to fetch sorted file IDs', e)
-			// Fallback: clear server data, client-side logic will be used
-			this._serverFileIds = null
-			this._serverFileIdSet = null
-			this._serverFileIdMap = null
-			this._emitFilterUpdate()
 		}
+
+		// Apply sort
+		if (this._sortState) {
+			const { fieldName, fieldType, direction } = this._sortState
+			ids.sort((a, b) => {
+				const metaA = this._metadataCache.get(a) || {}
+				const metaB = this._metadataCache.get(b) || {}
+				const valA = metaA[fieldName] ?? ''
+				const valB = metaB[fieldName] ?? ''
+
+				if (!valA && valB) return 1
+				if (valA && !valB) return -1
+				if (!valA && !valB) return 0
+
+				let cmp = 0
+				if (fieldType === 'number' || fieldType === 'integer' || fieldType === 'float') {
+					cmp = parseFloat(valA) - parseFloat(valB)
+				} else if (fieldType === 'date') {
+					cmp = new Date(valA).getTime() - new Date(valB).getTime()
+				} else if (fieldType === 'checkbox' || fieldType === 'boolean') {
+					cmp = (valA === '1' ? 0 : 1) - (valB === '1' ? 0 : 1)
+				} else {
+					cmp = String(valA).localeCompare(String(valB))
+				}
+				return direction === 'desc' ? -cmp : cmp
+			})
+		}
+
+		this._serverFileIds = ids
+		this._serverFileIdSet = new Set(ids)
+		this._serverFileIdMap = new Map()
+		for (let i = 0; i < ids.length; i++) {
+			this._serverFileIdMap.set(ids[i], i)
+		}
+
+		this._emitFilterUpdate()
 	}
 
 	/**
@@ -381,10 +383,6 @@ class MetaVoxMetadataFilter extends EventTarget {
 		this._serverFileIds = null
 		this._serverFileIdSet = null
 		this._serverFileIdMap = null
-		if (this._pendingAbort) {
-			this._pendingAbort.abort()
-			this._pendingAbort = null
-		}
 	}
 
 	// ========================================
@@ -474,7 +472,7 @@ class MetaVoxMetadataFilter extends EventTarget {
 				onclick: () => {
 					this._activeFilters.delete(fieldName)
 					this._emitChips()
-					this.fetchServerSortedIds()
+					this.applyClientSideFilterSort()
 				},
 			})
 		}
