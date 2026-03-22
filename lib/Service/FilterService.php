@@ -8,17 +8,20 @@ use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 use OCP\ICacheFactory;
 use OCP\ICache;
+use Psr\Log\LoggerInterface;
 
 class FilterService {
 
     private IDBConnection $db;
     private ICache $cache;
     private MetaVoxCacheService $cacheService;
+    private LoggerInterface $logger;
 
-    public function __construct(IDBConnection $db, ICacheFactory $cacheFactory, MetaVoxCacheService $cacheService) {
+    public function __construct(IDBConnection $db, ICacheFactory $cacheFactory, MetaVoxCacheService $cacheService, LoggerInterface $logger) {
         $this->db = $db;
         $this->cache = $cacheFactory->createDistributed('metavox_filter');
         $this->cacheService = $cacheService;
+        $this->logger = $logger;
     }
 
     /**
@@ -79,7 +82,7 @@ class FilterService {
 
             return $metadataByFile;
         } catch (\Exception $e) {
-            error_log('MetaVox FilterService getDirectoryMetadata error: ' . $e->getMessage());
+            $this->logger->error('MetaVox: getDirectoryMetadata failed', ['exception' => $e, 'groupfolderId' => $groupfolderId]);
             return [];
         }
     }
@@ -287,7 +290,7 @@ class FilterService {
             $this->cache->set($cacheKey, $result, 30);
             return $result;
         } catch (\Exception $e) {
-            error_log('MetaVox FilterService getSortedFilteredFileIds error: ' . $e->getMessage());
+            $this->logger->error('MetaVox: getSortedFilteredFileIds failed', ['exception' => $e, 'groupfolderId' => $groupfolderId]);
             return ['file_ids' => [], 'total' => 0];
         }
     }
@@ -344,7 +347,7 @@ class FilterService {
             $this->cache->set($cacheKey, $values, 300);
             return $values;
         } catch (\Exception $e) {
-            error_log('MetaVox FilterService getAllDistinctFieldValues error: ' . $e->getMessage());
+            $this->logger->error('MetaVox: getAllDistinctFieldValues failed', ['exception' => $e, 'groupfolderId' => $groupfolderId]);
             return [];
         }
     }

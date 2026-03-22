@@ -10,6 +10,7 @@ use OCP\IGroupManager;
 use OCP\IUserManager;
 use OCP\ICacheFactory;
 use OCP\ICache;
+use Psr\Log\LoggerInterface;
 
 class FieldService {
 
@@ -20,6 +21,7 @@ class FieldService {
     private ViewService $viewService;
     private MetaVoxCacheService $cacheService;
     private PushService $pushService;
+    private LoggerInterface $logger;
     private ICache $cache;
 
     // Request-scope cache for fields
@@ -30,7 +32,7 @@ class FieldService {
     private array $groupfoldersCache = [];
     private array $folderAccessCache = [];
 
-    public function __construct(IDBConnection $db, IGroupManager $groupManager, IUserManager $userManager, SearchIndexService $searchIndexService, ViewService $viewService, MetaVoxCacheService $cacheService, PushService $pushService, ICacheFactory $cacheFactory) {
+    public function __construct(IDBConnection $db, IGroupManager $groupManager, IUserManager $userManager, SearchIndexService $searchIndexService, ViewService $viewService, MetaVoxCacheService $cacheService, PushService $pushService, ICacheFactory $cacheFactory, LoggerInterface $logger) {
         $this->db = $db;
         $this->groupManager = $groupManager;
         $this->userManager = $userManager;
@@ -38,6 +40,7 @@ class FieldService {
         $this->viewService = $viewService;
         $this->cacheService = $cacheService;
         $this->pushService = $pushService;
+        $this->logger = $logger;
         // Prefer distributed cache (Redis) for cross-process presence & locking.
         // Falls back to local cache (APCu) if distributed is not configured.
         $this->cache = $cacheFactory->createDistributed('metavox')
@@ -258,7 +261,7 @@ public function createField(array $fieldData): int {
      */
 private function createGroupfolderField(array $fieldData): int {
     try {
-        error_log('Metavox createGroupfolderField called with: ' . json_encode($fieldData));
+        $this->logger->debug('MetaVox: createGroupfolderField called', ['fieldData' => $fieldData]);
         
         // CHECK FOR DUPLICATE FIELD NAME
         $qb = $this->db->getQueryBuilder();
@@ -283,7 +286,7 @@ private function createGroupfolderField(array $fieldData): int {
                ->setMaxResults(1);
             $qb->executeQuery()->closeCursor();
         } catch (\Exception $e) {
-            error_log('Metavox: applies_to_groupfolder column does not exist yet, skipping...');
+            $this->logger->debug('MetaVox: applies_to_groupfolder column does not exist yet, skipping');
             $useAppliesToGroupfolder = false;
         }
         
@@ -314,12 +317,11 @@ private function createGroupfolderField(array $fieldData): int {
         // Clear cache after successful create
         $this->clearFieldCache();
 
-        error_log('Metavox createGroupfolderField success: ' . $insertId);
+        $this->logger->debug('MetaVox: createGroupfolderField success', ['insertId' => $insertId]);
         return $insertId;
         
     } catch (\Exception $e) {
-        error_log('Metavox createGroupfolderField error: ' . $e->getMessage());
-        error_log('Metavox createGroupfolderField error trace: ' . $e->getTraceAsString());
+        $this->logger->error('MetaVox: createGroupfolderField failed', ['exception' => $e]);
         throw $e;
     }
 }
@@ -568,7 +570,7 @@ public function getGroupfolders(string $userId, bool $adminMode = false): array 
         return $folders;
 
     } catch (\Exception $e) {
-        error_log('MetaVox getGroupfolders error: ' . $e->getMessage());
+        $this->logger->error('MetaVox: getGroupfolders failed', ['exception' => $e]);
         return [];
     }
 }
@@ -625,12 +627,11 @@ public function getGroupfolderMetadata(int $groupfolderId): array {
             }
             $result->closeCursor();
 
-            error_log('Metavox getGroupfolderMetadata: Found ' . count($metadata) . ' fields for groupfolder ' . $groupfolderId);
+            $this->logger->debug('MetaVox: getGroupfolderMetadata found fields', ['count' => count($metadata), 'groupfolderId' => $groupfolderId]);
             return $metadata;
             
         } catch (\Exception $e) {
-            error_log('Metavox getGroupfolderMetadata error: ' . $e->getMessage());
-            error_log('Metavox getGroupfolderMetadata error trace: ' . $e->getTraceAsString());
+            $this->logger->error('MetaVox: getGroupfolderMetadata failed', ['exception' => $e, 'groupfolderId' => $groupfolderId]);
             return [];
         }
     }
@@ -701,7 +702,7 @@ public function getAssignedFieldsWithDataForGroupfolder(int $groupfolderId): arr
         return $fields;
         
     } catch (\Exception $e) {
-        error_log('FieldService getAssignedFieldsWithDataForGroupfolder error: ' . $e->getMessage());
+        $this->logger->error('MetaVox: getAssignedFieldsWithDataForGroupfolder failed', ['exception' => $e, 'groupfolderId' => $groupfolderId]);
         return [];
     }
 }
@@ -761,7 +762,7 @@ public function setGroupfolderFields(int $groupfolderId, array $fieldIds): bool 
         return true;
     } catch (\Exception $e) {
         $this->db->rollBack();
-        error_log('MetaVox setGroupfolderFields error: ' . $e->getMessage());
+        $this->logger->error('MetaVox: setGroupfolderFields failed', ['exception' => $e, 'groupfolderId' => $groupfolderId]);
         return false;
     }
 }
@@ -792,12 +793,11 @@ public function getGroupfolderFileMetadata(int $groupfolderId, int $fileId): arr
             }
             $result->closeCursor();
 
-            error_log('Metavox getGroupfolderFileMetadata: Found ' . count($metadata) . ' fields for file ' . $fileId . ' in groupfolder ' . $groupfolderId);
+            $this->logger->debug('MetaVox: getGroupfolderFileMetadata found fields', ['count' => count($metadata), 'fileId' => $fileId, 'groupfolderId' => $groupfolderId]);
             return $metadata;
             
         } catch (\Exception $e) {
-            error_log('Metavox getGroupfolderFileMetadata error: ' . $e->getMessage());
-            error_log('Metavox getGroupfolderFileMetadata error trace: ' . $e->getTraceAsString());
+            $this->logger->error('MetaVox: getGroupfolderFileMetadata failed', ['exception' => $e, 'fileId' => $fileId, 'groupfolderId' => $groupfolderId]);
             return [];
         }
     }
@@ -849,7 +849,7 @@ public function saveGroupfolderFieldValue(int $groupfolderId, int $fieldId, stri
         return true;
         
     } catch (\Exception $e) {
-        error_log('MetaVox saveGroupfolderFieldValue error: ' . $e->getMessage());
+        $this->logger->error('MetaVox: saveGroupfolderFieldValue failed', ['exception' => $e, 'groupfolderId' => $groupfolderId]);
         return false;
     }
 }
@@ -982,7 +982,7 @@ public function saveGroupfolderFileFieldValue(int $groupfolderId, int $fileId, i
         return true;
 
     } catch (\Exception $e) {
-        error_log('MetaVox saveGroupfolderFileFieldValue error: ' . $e->getMessage());
+        $this->logger->error('MetaVox: saveGroupfolderFileFieldValue failed', ['exception' => $e, 'fileId' => $fileId, 'groupfolderId' => $groupfolderId]);
         return false;
     }
 }
@@ -991,7 +991,7 @@ private function queueSearchIndexUpdate(int $fileId): void {
     try {
         $this->searchIndexService->updateFileIndex($fileId);
     } catch (\Exception $e) {
-        error_log('MetaVox: Failed to update search index: ' . $e->getMessage());
+        $this->logger->error('MetaVox: failed to update search index', ['exception' => $e, 'fileId' => $fileId]);
     }
 }
 
@@ -1012,7 +1012,7 @@ public function clearGroupfolderFileMetadata(int $groupfolderId, int $fileId): b
 
         return true;
     } catch (\Exception $e) {
-        error_log('MetaVox clearGroupfolderFileMetadata error: ' . $e->getMessage());
+        $this->logger->error('MetaVox: clearGroupfolderFileMetadata failed', ['exception' => $e, 'fileId' => $fileId, 'groupfolderId' => $groupfolderId]);
         return false;
     }
 }
@@ -1028,7 +1028,7 @@ private function clearSearchIndex(int $fileId): void {
 
         $qb->executeStatement();
     } catch (\Exception $e) {
-        error_log('MetaVox clearSearchIndex error: ' . $e->getMessage());
+        $this->logger->error('MetaVox: clearSearchIndex failed', ['exception' => $e, 'fileId' => $fileId]);
     }
 }
 

@@ -8,12 +8,14 @@ use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 use OCP\IUserManager;
 use OCP\IGroupManager;
+use Psr\Log\LoggerInterface;
 
 class PermissionService {
 
     private IDBConnection $db;
     private IUserManager $userManager;
     private IGroupManager $groupManager;
+    private LoggerInterface $logger;
 
     // Permission types
     const PERM_VIEW_METADATA = 'view_metadata';
@@ -23,11 +25,13 @@ class PermissionService {
     public function __construct(
         IDBConnection $db,
         IUserManager $userManager,
-        IGroupManager $groupManager
+        IGroupManager $groupManager,
+        LoggerInterface $logger
     ) {
         $this->db = $db;
         $this->userManager = $userManager;
         $this->groupManager = $groupManager;
+        $this->logger = $logger;
     }
 
     /**
@@ -190,7 +194,7 @@ class PermissionService {
 
             return $qb->executeStatement() > 0;
         } catch (\Exception $e) {
-            error_log('MetaVox grantUserPermission error: ' . $e->getMessage());
+            $this->logger->error('MetaVox: grantUserPermission failed', ['exception' => $e, 'userId' => $userId, 'permissionType' => $permissionType]);
             return false;
         }
     }
@@ -227,7 +231,7 @@ class PermissionService {
 
             return $qb->executeStatement() > 0;
         } catch (\Exception $e) {
-            error_log('MetaVox grantGroupPermission error: ' . $e->getMessage());
+            $this->logger->error('MetaVox: grantGroupPermission failed', ['exception' => $e, 'groupId' => $groupId, 'permissionType' => $permissionType]);
             return false;
         }
     }
@@ -261,7 +265,7 @@ class PermissionService {
 
             return $qb->executeStatement() > 0;
         } catch (\Exception $e) {
-            error_log('MetaVox revokeUserPermission error: ' . $e->getMessage());
+            $this->logger->error('MetaVox: revokeUserPermission failed', ['exception' => $e, 'userId' => $userId, 'permissionType' => $permissionType]);
             return false;
         }
     }
@@ -295,7 +299,7 @@ class PermissionService {
 
             return $qb->executeStatement() > 0;
         } catch (\Exception $e) {
-            error_log('MetaVox revokeGroupPermission error: ' . $e->getMessage());
+            $this->logger->error('MetaVox: revokeGroupPermission failed', ['exception' => $e, 'groupId' => $groupId, 'permissionType' => $permissionType]);
             return false;
         }
     }
