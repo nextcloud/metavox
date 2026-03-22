@@ -101,11 +101,11 @@ return [
         ['name' => 'filter#getAllFilterValues', 'url' => '/api/groupfolders/{groupfolderId}/filter-values', 'verb' => 'POST'],
 
         // Cell locking for concurrent editing
-        ['name' => 'field#lockCell', 'url' => '/api/groupfolders/{groupfolderId}/files/{fileId}/lock', 'verb' => 'POST'],
-        ['name' => 'field#unlockCell', 'url' => '/api/groupfolders/{groupfolderId}/files/{fileId}/unlock', 'verb' => 'POST'],
+        ['name' => 'lock#lockCell', 'url' => '/api/groupfolders/{groupfolderId}/files/{fileId}/lock', 'verb' => 'POST'],
+        ['name' => 'lock#unlockCell', 'url' => '/api/groupfolders/{groupfolderId}/files/{fileId}/unlock', 'verb' => 'POST'],
 
         // Presence cleanup (called via sendBeacon on tab close)
-        ['name' => 'field#leavePresence', 'url' => '/api/presence/leave', 'verb' => 'POST'],
+        ['name' => 'presence#leave', 'url' => '/api/presence/leave', 'verb' => 'POST'],
 
         // ========================================
         // 🤖 AI AUTOFILL ROUTES

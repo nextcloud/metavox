@@ -6,6 +6,7 @@ namespace OCA\MetaVox\Controller;
 
 use OCA\MetaVox\Service\FieldService;
 use OCA\MetaVox\Service\PermissionService;
+use OCA\MetaVox\Service\PresenceService;
 use OCA\MetaVox\Service\UserFieldService;
 use OCA\MetaVox\Service\ViewService;
 use OCP\AppFramework\Controller;
@@ -16,6 +17,7 @@ use OCP\IUserSession;
 class ViewController extends Controller {
 
     private FieldService $fieldService;
+    private PresenceService $presenceService;
     private UserFieldService $userFieldService;
     private ViewService $viewService;
     private IUserSession $userSession;
@@ -25,6 +27,7 @@ class ViewController extends Controller {
         string $appName,
         IRequest $request,
         FieldService $fieldService,
+        PresenceService $presenceService,
         UserFieldService $userFieldService,
         ViewService $viewService,
         IUserSession $userSession,
@@ -32,6 +35,7 @@ class ViewController extends Controller {
     ) {
         parent::__construct($appName, $request);
         $this->fieldService = $fieldService;
+        $this->presenceService = $presenceService;
         $this->userFieldService = $userFieldService;
         $this->viewService = $viewService;
         $this->userSession = $userSession;
@@ -216,7 +220,7 @@ class ViewController extends Controller {
 
             // Register presence for the detected groupfolder
             if ($groupfolderId !== null) {
-                $this->fieldService->registerPresence($groupfolderId, $userId);
+                $this->presenceService->register($groupfolderId, $userId);
             }
 
             $result = [
