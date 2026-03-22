@@ -8,6 +8,7 @@ use OCA\MetaVox\Service\FieldService;
 use OCA\MetaVox\Service\FilterService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
+use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 use OCP\IUserSession;
@@ -38,9 +39,8 @@ class FilterController extends Controller {
     /**
      * Get metadata for a batch of files in a groupfolder.
      * Optimized for file list column rendering.
-     *
-     * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function getDirectoryMetadata(int $groupfolderId): JSONResponse {
         try {
             $user = $this->userSession->getUser();
@@ -91,9 +91,8 @@ class FilterController extends Controller {
     /**
      * Get distinct filter values for all fields in one request.
      * Returns { field_name: [value1, value2, ...], ... }
-     *
-     * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function getAllFilterValues(int $groupfolderId): JSONResponse {
         try {
             $user = $this->userSession->getUser();

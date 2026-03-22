@@ -10,6 +10,7 @@ use OCA\MetaVox\Service\PresenceService;
 use OCA\MetaVox\Service\UserFieldService;
 use OCA\MetaVox\Service\ViewService;
 use OCP\AppFramework\Controller;
+use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 use OCP\IUserSession;
@@ -44,9 +45,8 @@ class ViewController extends Controller {
 
     /**
      * List all views for a groupfolder
-     * @NoAdminRequired
-
      */
+    #[NoAdminRequired]
     public function listViews(int $gfId): JSONResponse {
         try {
             $user = $this->userSession->getUser();
@@ -193,8 +193,8 @@ class ViewController extends Controller {
     /**
      * Single-call initialization for the files plugin.
      * Returns groupfolders + fields + views + filter values in one response.
-     * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function init(): JSONResponse {
         try {
             $user = $this->userSession->getUser();

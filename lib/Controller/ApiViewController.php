@@ -9,6 +9,9 @@ use OCA\MetaVox\Service\PermissionService;
 use OCA\MetaVox\Service\ViewService;
 use OCP\AppFramework\OCSController;
 use OCP\AppFramework\Http;
+use OCP\AppFramework\Http\Attribute\CORS;
+use OCP\AppFramework\Http\Attribute\NoAdminRequired;
+use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\IRequest;
 use OCP\IUserSession;
@@ -37,11 +40,10 @@ class ApiViewController extends OCSController {
 
     /**
      * List views for a groupfolder.
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function listViews(int $groupfolderId): DataResponse {
         try {
             $user = $this->userSession->getUser();
@@ -82,11 +84,10 @@ class ApiViewController extends OCSController {
 
     /**
      * Create a view for a groupfolder.
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function createView(int $groupfolderId): DataResponse {
         try {
             $user = $this->userSession->getUser();
@@ -119,11 +120,10 @@ class ApiViewController extends OCSController {
 
     /**
      * Update a view.
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function updateView(int $groupfolderId, int $viewId): DataResponse {
         try {
             $user = $this->userSession->getUser();
@@ -166,11 +166,10 @@ class ApiViewController extends OCSController {
 
     /**
      * Reorder views for a groupfolder.
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function reorderViews(int $groupfolderId): DataResponse {
         try {
             $user = $this->userSession->getUser();
@@ -195,11 +194,10 @@ class ApiViewController extends OCSController {
 
     /**
      * Delete a view.
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function deleteView(int $groupfolderId, int $viewId): DataResponse {
         try {
             $user = $this->userSession->getUser();

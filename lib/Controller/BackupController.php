@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\MetaVox\Controller;
 
 use OCP\AppFramework\Controller;
+use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\AppFramework\Http\StreamResponse;
 use OCP\Files\IAppData;
@@ -91,9 +92,8 @@ class BackupController extends Controller {
 
     /**
      * Download a backup file directly from disk.
-     *
-     * @NoCSRFRequired
      */
+    #[NoCSRFRequired]
     public function download() {
         $filename = $this->request->getParam('filename');
         if (!$filename || !preg_match('/^metavox_backup_[\w-]+\.json$/', $filename)) {

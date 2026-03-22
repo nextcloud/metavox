@@ -10,6 +10,9 @@ use OCP\AppFramework\OCSController;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\IRequest;
+use OCP\AppFramework\Http\Attribute\CORS;
+use OCP\AppFramework\Http\Attribute\NoAdminRequired;
+use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\IUserSession;
 use OCP\Files\IRootFolder;
 
@@ -38,11 +41,10 @@ class ApiFilterController extends OCSController {
     /**
      * Get metadata for a batch of files in a groupfolder.
      * Optimized for file list column rendering.
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function getDirectoryMetadata(int $groupfolderId): DataResponse {
         try {
             $user = $this->userSession->getUser();
@@ -111,11 +113,10 @@ class ApiFilterController extends OCSController {
     /**
      * Get sorted and filtered file IDs for a groupfolder.
      * Returns an ordered array of file IDs based on server-side SQL sort/filter.
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function getSortedFileIds(int $groupfolderId): DataResponse {
         try {
             $user = $this->userSession->getUser();
@@ -170,11 +171,10 @@ class ApiFilterController extends OCSController {
 
     /**
      * Get distinct filter values for all fields in one request.
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function getAllFilterValues(int $groupfolderId): DataResponse {
         try {
             $user = $this->userSession->getUser();
@@ -236,11 +236,10 @@ class ApiFilterController extends OCSController {
     /**
      * Get distinct filter values scoped to specific file IDs (current directory).
      * POST to support large file_ids arrays that would exceed GET URI length limits.
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function getScopedFilterValues(int $groupfolderId): DataResponse {
         try {
             $user = $this->userSession->getUser();

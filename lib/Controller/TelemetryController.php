@@ -51,10 +51,9 @@ class TelemetryController extends Controller {
      *
      * Admin only - no @NoAdminRequired annotation.
      *
-     * @NoCSRFRequired
-     *
      * @return DataResponse
      */
+    #[NoCSRFRequired]
     public function getStatus(): DataResponse {
         if (!$this->isAdmin()) {
             return new DataResponse([
@@ -86,10 +85,9 @@ class TelemetryController extends Controller {
      *
      * Admin only - no @NoAdminRequired annotation.
      *
-     * @NoCSRFRequired
-     *
      * @return DataResponse
      */
+    #[NoCSRFRequired]
     public function getStats(): DataResponse {
         if (!$this->isAdmin()) {
             return new DataResponse([

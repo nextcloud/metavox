@@ -10,6 +10,9 @@ use OCP\AppFramework\OCSController;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\IRequest;
+use OCP\AppFramework\Http\Attribute\CORS;
+use OCP\AppFramework\Http\Attribute\NoAdminRequired;
+use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\IUserSession;
 use OCP\Files\IRootFolder;
 use OCP\Files\NotFoundException;
@@ -86,10 +89,9 @@ class ApiFieldController extends OCSController {
 
     /**
      * Update existing field (Admin only)
-     *
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoCSRFRequired]
     public function updateField(int $id): DataResponse {
         try {
             $fieldName = $this->request->getParam('field_name');
@@ -134,10 +136,9 @@ class ApiFieldController extends OCSController {
 
     /**
      * Delete field (Admin only)
-     *
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoCSRFRequired]
     public function deleteField(int $id): DataResponse {
         try {
             $success = $this->fieldService->deleteField($id);
@@ -148,11 +149,10 @@ class ApiFieldController extends OCSController {
     }
 /**
  * Get file metadata for multiple files
- *
- * @NoAdminRequired
- * @NoCSRFRequired
- * @CORS
  */
+#[CORS]
+#[NoAdminRequired]
+#[NoCSRFRequired]
 public function getBulkFileMetadata(): DataResponse {
     try {
         $fileIds = [];
@@ -211,11 +211,10 @@ public function getBulkFileMetadata(): DataResponse {
 }
     /**
      * Get file metadata
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function getFileMetadata(int $fileId): DataResponse {
         try {
             // Check if user has access to the file
@@ -232,11 +231,10 @@ public function getBulkFileMetadata(): DataResponse {
 
     /**
      * Save file metadata
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function saveFileMetadata(int $fileId): DataResponse {
         try {
             // Check if user has access to the file
@@ -269,11 +267,10 @@ public function getBulkFileMetadata(): DataResponse {
 
     /**
      * Get all groupfolders
-     * 
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function getGroupfolders(): DataResponse {
         try {
             $user = $this->userSession->getUser();
@@ -289,11 +286,10 @@ public function getBulkFileMetadata(): DataResponse {
 
     /**
      * Get groupfolder metadata
-     * 
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function getGroupfolderMetadata(int $groupfolderId): DataResponse {
         try {
             $metadata = $this->fieldService->getGroupfolderMetadata($groupfolderId);
@@ -305,11 +301,10 @@ public function getBulkFileMetadata(): DataResponse {
 
     /**
      * Save groupfolder metadata
-     * 
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function saveGroupfolderMetadata(int $groupfolderId): DataResponse {
         try {
             $metadata = $this->request->getParam('metadata', []);
@@ -337,11 +332,10 @@ public function getBulkFileMetadata(): DataResponse {
 
     /**
      * Get groupfolder fields
-     * 
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
 public function getGroupfolderFields(): DataResponse {
     try {
         $fields = $this->fieldService->getFieldsByScope('groupfolder');
@@ -357,10 +351,9 @@ public function getGroupfolderFields(): DataResponse {
 
     /**
      * Create groupfolder field (Admin only)
-     *
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoCSRFRequired]
     public function createGroupfolderField(): DataResponse {
         try {
             $fieldData = [
@@ -388,11 +381,10 @@ public function getGroupfolderFields(): DataResponse {
 
     /**
      * Get groupfolder file metadata
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function getGroupfolderFileMetadata(int $groupfolderId, int $fileId): DataResponse {
         try {
             // Check if user has access to the file
@@ -409,11 +401,10 @@ public function getGroupfolderFields(): DataResponse {
 
     /**
      * Save groupfolder file metadata
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function saveGroupfolderFileMetadata(int $groupfolderId, int $fileId): DataResponse {
         try {
             // Check if user has access to the file
@@ -447,18 +438,10 @@ public function getGroupfolderFields(): DataResponse {
 
     /**
      * Get assigned fields for groupfolder
-     * 
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
      */
-/**
- * Get assigned fields for groupfolder
- * 
- * @NoAdminRequired
- * @NoCSRFRequired
- * @CORS
- */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
 public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
     try {
         // Use the new method that returns full field data
@@ -473,10 +456,9 @@ public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
 
     /**
      * Set groupfolder fields (Admin only)
-     *
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoCSRFRequired]
     public function setGroupfolderFields(int $groupfolderId): DataResponse {
         try {
             $fieldIds = $this->request->getParam('field_ids', []);
@@ -489,10 +471,9 @@ public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
 
     /**
      * Save field override for specific groupfolder (Admin only)
-     *
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoCSRFRequired]
     public function saveFieldOverride(int $groupfolderId): DataResponse {
         try {
             $fieldName = $this->request->getParam('field_name');
@@ -517,11 +498,10 @@ public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
 
     /**
      * Get field overrides for specific groupfolder
-     * 
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function getFieldOverrides(int $groupfolderId): DataResponse {
         try {
             $overrides = $this->fieldService->getGroupfolderFieldOverrides($groupfolderId);
@@ -533,11 +513,10 @@ public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
 
     /**
      * Batch update file metadata for multiple files
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function batchUpdateFileMetadata(): DataResponse {
         try {
             $updates = $this->request->getParam('updates', []);
@@ -582,11 +561,10 @@ public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
 
     /**
      * Batch delete file metadata
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function batchDeleteFileMetadata(): DataResponse {
         try {
             $deletes = $this->request->getParam('deletes', []);
@@ -631,11 +609,10 @@ public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
 
     /**
      * Batch copy metadata from one file to multiple files
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function batchCopyFileMetadata(): DataResponse {
         try {
             $sourceFileId = (int)$this->request->getParam('source_file_id');
@@ -686,10 +663,9 @@ public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
 
     /**
      * Get metadata statistics (Admin only)
-     *
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoCSRFRequired]
     public function getMetadataStatistics(): DataResponse {
         try {
             $stats = $this->apiFieldService->getMetadataStatistics();
@@ -708,11 +684,10 @@ public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
     /**
      * Get all file-level fields assigned to a groupfolder.
      * Used by the view editor to populate the available columns list.
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function getGroupfolderFileFields(int $groupfolderId): DataResponse {
         try {
             $user = $this->userSession->getUser();
@@ -738,10 +713,9 @@ public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
 
     /**
      * Update a groupfolder field definition. Requires Nextcloud admin.
-     *
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoCSRFRequired]
     public function updateGroupfolderField(int $id): DataResponse {
         try {
             $fieldData = [
@@ -771,10 +745,9 @@ public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
 
     /**
      * Delete a groupfolder field definition. Requires Nextcloud admin.
-     *
-     * @NoCSRFRequired
-     * @CORS
      */
+    #[CORS]
+    #[NoCSRFRequired]
     public function deleteGroupfolderField(int $id): DataResponse {
         try {
             $success = $this->fieldService->deleteField($id);

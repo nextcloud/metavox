@@ -35,9 +35,8 @@ class SettingsController extends Controller {
 
     /**
      * Get app settings
-     *
-     * @NoCSRFRequired
      */
+    #[NoCSRFRequired]
     public function get(): DataResponse {
         if (!$this->isAdmin()) {
             return new DataResponse(['success' => false, 'message' => 'Admin privileges required'], Http::STATUS_FORBIDDEN);
