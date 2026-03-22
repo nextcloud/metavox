@@ -516,6 +516,32 @@ export function startColumnWatcher() {
 		updateAllRowCells()
 	})
 
+	// When user returns to tab after being away, check if WebSocket disconnected
+	// and refresh metadata if events may have been missed
+	document.addEventListener('visibilitychange', () => {
+		if (document.visibilityState === 'visible' && getActiveGroupfolderId()) {
+			const ws = window._notify_push_ws
+			if (!ws || ws.readyState !== 1) {
+				// WebSocket was disconnected — we may have missed push events
+				metadataCache.clear()
+				loadAllMetadata(getActiveGroupfolderId())
+			}
+		}
+	})
+
+	// Explicit presence cleanup when tab/window is closed
+	window.addEventListener('pagehide', () => {
+		const gfId = getActiveGroupfolderId()
+		if (gfId) {
+			const url = generateUrl('/apps/metavox/api/presence/leave')
+			const token = document.querySelector('head[data-requesttoken]')?.dataset?.requesttoken || ''
+			const formData = new FormData()
+			formData.append('gf_id', gfId)
+			formData.append('requesttoken', token)
+			navigator.sendBeacon(url, formData)
+		}
+	})
+
 	const origPush = history.pushState.bind(history)
 	const origReplace = history.replaceState.bind(history)
 

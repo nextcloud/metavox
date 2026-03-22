@@ -655,4 +655,20 @@ public function createGroupfolderField(): JSONResponse {
         $this->fieldService->unlockCell($groupfolderId, $fileId, $fieldName, $user->getUID());
         return new JSONResponse(['success' => true]);
     }
+
+    /**
+     * Remove presence when user leaves (tab close via sendBeacon).
+     * @NoAdminRequired
+     */
+    public function leavePresence(): JSONResponse {
+        $user = $this->userSession->getUser();
+        if (!$user) {
+            return new JSONResponse(['error' => 'Not authenticated'], 401);
+        }
+        $gfId = $this->request->getParam('gf_id');
+        if ($gfId) {
+            $this->fieldService->removePresence((int)$gfId, $user->getUID());
+        }
+        return new JSONResponse(['success' => true]);
+    }
 }
