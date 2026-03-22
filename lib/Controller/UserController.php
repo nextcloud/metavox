@@ -6,6 +6,8 @@ namespace OCA\MetaVox\Controller;
 
 use OCA\MetaVox\Service\PermissionService;
 use OCP\AppFramework\Controller;
+use OCP\AppFramework\Http\Attribute\NoAdminRequired;
+use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\IRequest;
 use OCP\IUserSession;
@@ -26,10 +28,8 @@ class UserController extends Controller {
         $this->userSession = $userSession;
     }
 
-    /**
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     */
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function index(): TemplateResponse {
         $user = $this->userSession->getUser();
         

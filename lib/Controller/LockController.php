@@ -7,6 +7,7 @@ namespace OCA\MetaVox\Controller;
 use OCA\MetaVox\Service\LockService;
 use OCA\MetaVox\Service\PushService;
 use OCP\AppFramework\Controller;
+use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 use OCP\IUserSession;
@@ -32,8 +33,8 @@ class LockController extends Controller {
 
     /**
      * Lock a cell for editing.
-     * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function lockCell(int $groupfolderId, int $fileId): JSONResponse {
         $user = $this->userSession->getUser();
         if (!$user) {
@@ -55,8 +56,8 @@ class LockController extends Controller {
 
     /**
      * Unlock a cell after editing.
-     * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function unlockCell(int $groupfolderId, int $fileId): JSONResponse {
         $user = $this->userSession->getUser();
         if (!$user) {

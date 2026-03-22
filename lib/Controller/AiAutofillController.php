@@ -6,6 +6,7 @@ namespace OCA\MetaVox\Controller;
 
 use OCA\MetaVox\Service\AiAutofillService;
 use OCP\AppFramework\Controller;
+use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 use OCP\IUserSession;
@@ -32,8 +33,8 @@ class AiAutofillController extends Controller {
 
     /**
      * Check if AI is available
-     * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function status(): JSONResponse {
         return new JSONResponse([
             'available' => $this->aiService->isAvailable(),
@@ -42,8 +43,8 @@ class AiAutofillController extends Controller {
 
     /**
      * Generate metadata suggestions for a file
-     * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function generate(): JSONResponse {
         try {
             $user = $this->userSession->getUser();

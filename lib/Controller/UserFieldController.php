@@ -7,6 +7,7 @@ namespace OCA\MetaVox\Controller;
 use OCA\MetaVox\Service\UserFieldService;
 use OCA\MetaVox\Service\FieldService;
 use OCP\AppFramework\Controller;
+use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 use OCP\IUserSession;
@@ -36,9 +37,8 @@ class UserFieldController extends Controller {
 
     /**
      * Get groupfolders accessible by current user
-     * 
-     * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function getAccessibleGroupfolders(): JSONResponse {
         try {
             $user = $this->userSession->getUser();
@@ -58,9 +58,8 @@ class UserFieldController extends Controller {
 
     /**
      * Get assigned fields for a groupfolder
-     *
-     * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function getGroupfolderFields(int $groupfolderId): JSONResponse {
         try {
             $user = $this->userSession->getUser();
@@ -80,9 +79,8 @@ class UserFieldController extends Controller {
 
     /**
      * Get all available groupfolder fields (for configuration)
-     * 
-     * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function getAllGroupfolderFields(): JSONResponse {
         try {
             $fields = $this->userFieldService->getAllGroupfolderFields();
@@ -94,9 +92,8 @@ class UserFieldController extends Controller {
 
     /**
      * Get metadata for a groupfolder
-     *
-     * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function getGroupfolderMetadata(int $groupfolderId): JSONResponse {
         try {
             $user = $this->userSession->getUser();
@@ -116,9 +113,8 @@ class UserFieldController extends Controller {
 
     /**
      * Save metadata for a groupfolder
-     *
-     * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function saveGroupfolderMetadata(int $groupfolderId): JSONResponse {
         try {
             $user = $this->userSession->getUser();
@@ -140,9 +136,8 @@ class UserFieldController extends Controller {
 
     /**
      * Set which fields are assigned to a groupfolder
-     *
-     * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function setGroupfolderFields(int $groupfolderId): JSONResponse {
         try {
             $user = $this->userSession->getUser();

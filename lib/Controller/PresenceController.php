@@ -6,6 +6,7 @@ namespace OCA\MetaVox\Controller;
 
 use OCA\MetaVox\Service\PresenceService;
 use OCP\AppFramework\Controller;
+use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 use OCP\IUserSession;
@@ -28,8 +29,8 @@ class PresenceController extends Controller {
 
     /**
      * Remove presence when user leaves (tab close via sendBeacon).
-     * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function leave(): JSONResponse {
         $user = $this->userSession->getUser();
         if (!$user) {

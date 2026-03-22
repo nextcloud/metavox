@@ -6,6 +6,8 @@ namespace OCA\MetaVox\Controller;
 
 use OCA\MetaVox\Service\PermissionService;
 use OCP\AppFramework\Controller;
+use OCP\AppFramework\Http\Attribute\NoAdminRequired;
+use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 use OCP\IUserSession;
@@ -43,8 +45,8 @@ class PermissionController extends Controller {
 
     /**
      * Get all groups (admin only)
-     * @NoCSRFRequired
      */
+    #[NoCSRFRequired]
     public function getGroups(): JSONResponse {
         if (!$this->isAdmin()) {
             return new JSONResponse(['error' => 'Unauthorized'], 403);
@@ -69,8 +71,8 @@ class PermissionController extends Controller {
 
     /**
      * Get all permissions (admin only)
-     * @NoCSRFRequired
      */
+    #[NoCSRFRequired]
     public function getAllPermissions(): JSONResponse {
         if (!$this->isAdmin()) {
             return new JSONResponse(['error' => 'Unauthorized'], 403);
@@ -86,9 +88,9 @@ class PermissionController extends Controller {
 
     /**
      * Get current user's permissions
-     * @NoAdminRequired
-     * @NoCSRFRequired
      */
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function getMyPermissions(): JSONResponse {
         $user = $this->userSession->getUser();
         if (!$user) {
@@ -105,9 +107,9 @@ class PermissionController extends Controller {
 
     /**
      * Check if current user has specific permission
-     * @NoAdminRequired
-     * @NoCSRFRequired
      */
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function checkPermission(
         string $permissionType,
         ?int $groupfolderId = null,

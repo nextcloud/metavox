@@ -6,6 +6,8 @@ namespace OCA\MetaVox\Controller;
 
 use OCA\MetaVox\Service\FieldService;
 use OCP\AppFramework\Controller;
+use OCP\AppFramework\Http\Attribute\NoAdminRequired;
+use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IGroupManager;
 use OCP\IRequest;
@@ -44,9 +46,9 @@ class FieldController extends Controller {
 
     /**
      * Get all users for user/group picker field
-     * @NoAdminRequired
-     * @NoCSRFRequired
      */
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
     public function getUsers(): JSONResponse {
         try {
             $users = $this->userManager->search('');
@@ -67,8 +69,8 @@ class FieldController extends Controller {
 
     /**
      * updateField method for edit functionality
-     * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function updateField(int $id): JSONResponse {
     try {
         $this->logger->debug('MetaVox: FieldController::updateField called', ['id' => $id]);
@@ -123,9 +125,7 @@ class FieldController extends Controller {
     }
 }
 
-    /**
-     * @NoAdminRequired
-     */
+    #[NoAdminRequired]
     public function deleteField(int $id): JSONResponse {
         try {
             $success = $this->fieldService->deleteField($id);
@@ -135,9 +135,7 @@ class FieldController extends Controller {
         }
     }
 
-    /**
-     * @NoAdminRequired
-     */
+    #[NoAdminRequired]
     public function getGroupfolders(): JSONResponse {
         try {
             $user = $this->userSession->getUser();
@@ -154,9 +152,7 @@ class FieldController extends Controller {
         }
     }
 
-    /**
-     * @NoAdminRequired
-     */
+    #[NoAdminRequired]
     public function getGroupfolderMetadata(int $groupfolderId): JSONResponse {
         try {
             $user = $this->userSession->getUser();
@@ -174,9 +170,7 @@ class FieldController extends Controller {
         }
     }
 
-    /**
-     * @NoAdminRequired
-     */
+    #[NoAdminRequired]
     public function saveGroupfolderMetadata(int $groupfolderId): JSONResponse {
         try {
             $user = $this->userSession->getUser();
@@ -207,9 +201,7 @@ class FieldController extends Controller {
         }
     }
 
-    /**
-     * @NoAdminRequired
-     */
+    #[NoAdminRequired]
     public function getGroupfolderFields(): JSONResponse {
         try {
             $fields = $this->fieldService->getFieldsByScope('groupfolder');
@@ -219,9 +211,7 @@ class FieldController extends Controller {
         }
     }
 
-    /**
-     * @NoAdminRequired
-     */
+    #[NoAdminRequired]
 public function createGroupfolderField(): JSONResponse {
     try {
         $fieldData = [
@@ -246,23 +236,21 @@ public function createGroupfolderField(): JSONResponse {
 
     /**
      * Update groupfolder field (alias for updateField for backward compatibility)
-     * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function updateGroupfolderField(int $id): JSONResponse {
         return $this->updateField($id);
     }
 
     /**
      * Delete groupfolder field
-     * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function deleteGroupfolderField(int $id): JSONResponse {
         return $this->deleteField($id);
     }
 
-    /**
-     * @NoAdminRequired
-     */
+    #[NoAdminRequired]
     public function getGroupfolderAssignedFields(int $groupfolderId): JSONResponse {
         try {
             $user = $this->userSession->getUser();
@@ -280,9 +268,7 @@ public function createGroupfolderField(): JSONResponse {
         }
     }
 
-    /**
-     * @NoAdminRequired
-     */
+    #[NoAdminRequired]
     public function setGroupfolderFields(int $groupfolderId): JSONResponse {
         try {
             $user = $this->userSession->getUser();
@@ -301,9 +287,7 @@ public function createGroupfolderField(): JSONResponse {
         }
     }
 
-    /**
-     * @NoAdminRequired
-     */
+    #[NoAdminRequired]
     public function getGroupfolderFileMetadata(int $groupfolderId, int $fileId): JSONResponse {
         try {
             $user = $this->userSession->getUser();
@@ -321,9 +305,7 @@ public function createGroupfolderField(): JSONResponse {
         }
     }
 
-    /**
-     * @NoAdminRequired
-     */
+    #[NoAdminRequired]
     public function saveGroupfolderFileMetadata(int $groupfolderId, int $fileId): JSONResponse {
         try {
             $user = $this->userSession->getUser();
@@ -356,8 +338,8 @@ public function createGroupfolderField(): JSONResponse {
 
     /**
      * Bulk update metadata for multiple files
-     * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function saveBulkFileMetadata(): JSONResponse {
         try {
             $user = $this->userSession->getUser();
@@ -464,8 +446,8 @@ public function createGroupfolderField(): JSONResponse {
 
     /**
      * Clear all metadata for multiple files
-     * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function clearFileMetadata(): JSONResponse {
         try {
             $user = $this->userSession->getUser();
@@ -523,8 +505,8 @@ public function createGroupfolderField(): JSONResponse {
 
     /**
      * Export metadata for multiple files
-     * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function exportFileMetadata(): JSONResponse {
         try {
             $user = $this->userSession->getUser();
