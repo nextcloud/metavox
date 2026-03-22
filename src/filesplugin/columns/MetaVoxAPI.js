@@ -145,7 +145,7 @@ export async function fetchAllFilterValues(groupfolderId, fileIds = null) {
  * Ensure the list of groupfolders is loaded into window._metavoxGroupfolders.
  */
 export async function loadGroupfolders() {
-	if (getMetavoxGroupfolders()) return
+	if (getMetavoxGroupfolders()?.length >= 0) return
 
 	// Skip if not logged in
 	if (!document.querySelector('head[data-user]')?.dataset?.user) {
@@ -158,9 +158,7 @@ export async function loadGroupfolders() {
 		const resp = await axios.get(url)
 		setMetavoxGroupfolders(resp.data?.ocs?.data || resp.data || [])
 	} catch (e) {
-		if (!getMetavoxGroupfolders()) {
-			setMetavoxGroupfolders([])
-		}
+		setMetavoxGroupfolders([])
 	}
 }
 
