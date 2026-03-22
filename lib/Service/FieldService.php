@@ -18,9 +18,9 @@ class FieldService {
     private IUserManager $userManager;
     private SearchIndexService $searchIndexService;
     private ViewService $viewService;
-    private FilterService $filterService;
+    private MetaVoxCacheService $cacheService;
+    private PushService $pushService;
     private ICache $cache;
-    private $notifyQueue = null;
 
     // Request-scope cache for fields
     private ?array $fieldsCache = null;
@@ -30,186 +30,18 @@ class FieldService {
     private array $groupfoldersCache = [];
     private array $folderAccessCache = [];
 
-    public function __construct(IDBConnection $db, IGroupManager $groupManager, IUserManager $userManager, SearchIndexService $searchIndexService, ViewService $viewService, FilterService $filterService, ICacheFactory $cacheFactory) {
+    public function __construct(IDBConnection $db, IGroupManager $groupManager, IUserManager $userManager, SearchIndexService $searchIndexService, ViewService $viewService, MetaVoxCacheService $cacheService, PushService $pushService, ICacheFactory $cacheFactory) {
         $this->db = $db;
         $this->groupManager = $groupManager;
         $this->userManager = $userManager;
         $this->searchIndexService = $searchIndexService;
         $this->viewService = $viewService;
-        $this->filterService = $filterService;
+        $this->cacheService = $cacheService;
+        $this->pushService = $pushService;
         // Prefer distributed cache (Redis) for cross-process presence & locking.
         // Falls back to local cache (APCu) if distributed is not configured.
         $this->cache = $cacheFactory->createDistributed('metavox')
             ?? $cacheFactory->createLocal('metavox');
-
-        // Optional: notify_push for real-time metadata sync
-        try {
-            $this->notifyQueue = \OC::$server->get(\OCA\NotifyPush\Queue\IQueue::class);
-        } catch (\Exception $e) {
-            // notify_push not installed — real-time sync disabled
-        }
-    }
-
-    /**
-     * Get all user IDs that have access to a groupfolder.
-     */
-    private function getGroupfolderUserIds(int $groupfolderId): array {
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('group_id')
-           ->from('group_folders_groups')
-           ->where($qb->expr()->eq('folder_id', $qb->createNamedParameter($groupfolderId, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)));
-        $result = $qb->executeQuery();
-        $groupIds = [];
-        while ($row = $result->fetch()) {
-            $groupIds[] = $row['group_id'];
-        }
-        $result->closeCursor();
-
-        $userIds = [];
-        foreach ($groupIds as $groupId) {
-            $group = $this->groupManager->get($groupId);
-            if ($group) {
-                foreach ($group->getUsers() as $user) {
-                    $userIds[$user->getUID()] = true;
-                }
-            }
-        }
-        return array_keys($userIds);
-    }
-
-    /**
-     * Register a user's presence in a groupfolder.
-     * Stored as a JSON map of userId => timestamp in a single cache key per groupfolder.
-     * Entries older than 5 minutes are pruned on each update.
-     */
-    private const PRESENCE_TTL = 1800; // 30 minutes
-
-    /**
-     * Register a user's presence in a groupfolder.
-     * Stored as a JSON map of userId => timestamp in a single cache key per groupfolder.
-     * Entries older than 30 minutes are pruned on each update.
-     */
-    public function registerPresence(int $groupfolderId, string $userId): void {
-        try {
-            $key = "metavox_presence_gf_{$groupfolderId}";
-            $raw = $this->cache->get($key);
-            $presence = $raw ? json_decode($raw, true) : [];
-            if (!is_array($presence)) $presence = [];
-
-            $now = time();
-            $presence = array_filter($presence, fn($ts) => ($now - $ts) < self::PRESENCE_TTL);
-            $presence[$userId] = $now;
-
-            $this->cache->set($key, json_encode($presence), self::PRESENCE_TTL * 2);
-        } catch (\Exception $e) { /* ignore */ }
-    }
-
-    /**
-     * Remove a user's presence from a groupfolder (explicit leave).
-     */
-    public function removePresence(int $groupfolderId, string $userId): void {
-        try {
-            $key = "metavox_presence_gf_{$groupfolderId}";
-            $raw = $this->cache->get($key);
-            $presence = $raw ? json_decode($raw, true) : [];
-            if (!is_array($presence)) return;
-
-            unset($presence[$userId]);
-            $this->cache->set($key, json_encode($presence), self::PRESENCE_TTL * 2);
-        } catch (\Exception $e) { /* ignore */ }
-    }
-
-    /**
-     * Get user IDs with active presence in a groupfolder.
-     */
-    private function getActiveViewers(int $groupfolderId): array {
-        try {
-            $key = "metavox_presence_gf_{$groupfolderId}";
-            $raw = $this->cache->get($key);
-            $presence = $raw ? json_decode($raw, true) : [];
-            if (!is_array($presence)) return [];
-
-            $now = time();
-            return array_keys(array_filter($presence, fn($ts) => ($now - $ts) < self::PRESENCE_TTL));
-        } catch (\Exception $e) {
-            return [];
-        }
-    }
-
-    /**
-     * Broadcast a push event to active viewers of a groupfolder.
-     * Falls back to all groupfolder members if no presence data exists.
-     */
-    private function pushToGroupfolder(int $groupfolderId, string $message, array $body = []): void {
-        if (!$this->notifyQueue) return;
-        try {
-            $activeViewers = $this->getActiveViewers($groupfolderId);
-
-            // Fallback: if no presence data, push to all members
-            $userIds = !empty($activeViewers) ? $activeViewers : $this->getGroupfolderUserIds($groupfolderId);
-
-            foreach ($userIds as $userId) {
-                $this->notifyQueue->push('notify_custom', [
-                    'user' => $userId,
-                    'message' => $message,
-                    'body' => $body ?: null,
-                ]);
-            }
-        } catch (\Exception $e) {
-            // Silently fail — push is best-effort
-        }
-    }
-
-    private function pushMetadataChanged(int $groupfolderId, int $fileId = 0): void {
-        $this->pushToGroupfolder($groupfolderId, 'metavox_metadata_changed', [
-            'gfId' => $groupfolderId,
-            'fileId' => $fileId,
-        ]);
-    }
-
-    /**
-     * Lock a cell for editing. Returns true if lock acquired, false if already locked.
-     */
-    public function lockCell(int $groupfolderId, int $fileId, string $fieldName, string $userId): bool {
-        $lockKey = "metavox_lock:{$groupfolderId}:{$fileId}:{$fieldName}";
-        $existing = $this->cache->get($lockKey);
-        if ($existing && $existing !== $userId) {
-            return false; // Already locked by another user
-        }
-        $this->cache->set($lockKey, $userId, 30); // 30s TTL
-        $this->pushToGroupfolder($groupfolderId, 'metavox_cell_locked', [
-            'gfId' => $groupfolderId,
-            'fileId' => $fileId,
-            'fieldName' => $fieldName,
-            'userId' => $userId,
-        ]);
-        return true;
-    }
-
-    /**
-     * Unlock a cell after editing.
-     */
-    public function unlockCell(int $groupfolderId, int $fileId, string $fieldName, string $userId): void {
-        $lockKey = "metavox_lock:{$groupfolderId}:{$fileId}:{$fieldName}";
-        $existing = $this->cache->get($lockKey);
-        if ($existing === $userId) {
-            $this->cache->remove($lockKey);
-        }
-        $this->pushToGroupfolder($groupfolderId, 'metavox_cell_unlocked', [
-            'gfId' => $groupfolderId,
-            'fileId' => $fileId,
-            'fieldName' => $fieldName,
-        ]);
-    }
-
-    /**
-     * Check if a cell is locked.
-     * @return string|null The userId holding the lock, or null if unlocked.
-     */
-    public function getCellLock(int $groupfolderId, int $fileId, string $fieldName): ?string {
-        $lockKey = "metavox_lock:{$groupfolderId}:{$fileId}:{$fieldName}";
-        $value = $this->cache->get($lockKey);
-        return $value ?: null;
     }
 
 private function parseFieldOptions(?string $raw): array {
@@ -1139,9 +971,14 @@ public function saveGroupfolderFileFieldValue(int $groupfolderId, int $fileId, i
         ]);
 
         $this->cache->remove("gf_{$groupfolderId}_fv_{$fieldName}");
-        $this->filterService->invalidateFileCache($groupfolderId, $fileId);
+
+        // Write-through cache: update the cached metadata directly instead of
+        // invalidating. This prevents a DB read on the next fetch and avoids
+        // race conditions with concurrent edits.
+        $this->cacheService->updateFileField($groupfolderId, $fileId, $fieldName, $value);
+
         $this->queueSearchIndexUpdate($fileId);
-        $this->pushMetadataChanged($groupfolderId, $fileId);
+        $this->pushService->metadataChanged($groupfolderId, $fileId);
         return true;
 
     } catch (\Exception $e) {

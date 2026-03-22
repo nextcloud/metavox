@@ -10,6 +10,7 @@ use OCA\MetaVox\Listener\RegisterFlowChecksListener;
 use OCA\MetaVox\Search\MetadataSearchProvider;
 use OCA\MetaVox\Service\FieldService;
 use OCA\MetaVox\Service\PermissionService;
+use OCA\MetaVox\Service\PresenceService;
 use OCA\MetaVox\Service\UserFieldService;
 use OCA\MetaVox\Service\ViewService;
 use OCP\AppFramework\App;
@@ -103,8 +104,9 @@ class Application extends App implements IBootstrap {
                     if ($groupfolderId !== null) {
                         $fieldService = \OC::$server->get(FieldService::class);
 
-                        // Register presence (5 min TTL)
-                        $fieldService->registerPresence($groupfolderId, $userId);
+                        // Register presence (30 min TTL)
+                        $presenceService = \OC::$server->get(PresenceService::class);
+                        $presenceService->register($groupfolderId, $userId);
                         $viewService = \OC::$server->get(ViewService::class);
                         $permissionService = \OC::$server->get(PermissionService::class);
 
