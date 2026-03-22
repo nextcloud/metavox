@@ -390,10 +390,8 @@ function scheduleInjection() {
 			} catch (e) { /* not available */ }
 		}
 
-		// Ensure groupfolders are loaded
-		if (!getMetavoxGroupfolders()) {
-			await loadGroupfolders()
-		}
+		// Ensure groupfolders are loaded (always call — handles undefined and null)
+		await loadGroupfolders()
 
 		// Detect groupfolder from URL
 		const gfId = detectCurrentGroupfolder()
