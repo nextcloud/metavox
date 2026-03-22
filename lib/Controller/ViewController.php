@@ -214,6 +214,11 @@ class ViewController extends Controller {
                 }
             }
 
+            // Register presence for the detected groupfolder
+            if ($groupfolderId !== null) {
+                $this->fieldService->registerPresence($groupfolderId, $userId);
+            }
+
             $result = [
                 'groupfolders' => $groupfolders,
                 'groupfolder_id' => $groupfolderId,

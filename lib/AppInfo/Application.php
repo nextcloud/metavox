@@ -102,6 +102,9 @@ class Application extends App implements IBootstrap {
 
                     if ($groupfolderId !== null) {
                         $fieldService = \OC::$server->get(FieldService::class);
+
+                        // Register presence (5 min TTL)
+                        $fieldService->registerPresence($groupfolderId, $userId);
                         $viewService = \OC::$server->get(ViewService::class);
                         $permissionService = \OC::$server->get(PermissionService::class);
 

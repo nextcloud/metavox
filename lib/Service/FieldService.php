@@ -37,7 +37,10 @@ class FieldService {
         $this->searchIndexService = $searchIndexService;
         $this->viewService = $viewService;
         $this->filterService = $filterService;
-        $this->cache = $cacheFactory->createDistributed('metavox');
+        // Prefer distributed cache (Redis) for cross-process presence & locking.
+        // Falls back to local cache (APCu) if distributed is not configured.
+        $this->cache = $cacheFactory->createDistributed('metavox')
+            ?? $cacheFactory->createLocal('metavox');
 
         // Optional: notify_push for real-time metadata sync
         try {
@@ -75,12 +78,76 @@ class FieldService {
     }
 
     /**
-     * Broadcast a push event to all groupfolder members.
+     * Register a user's presence in a groupfolder.
+     * Stored as a JSON map of userId => timestamp in a single cache key per groupfolder.
+     * Entries older than 5 minutes are pruned on each update.
+     */
+    private const PRESENCE_TTL = 1800; // 30 minutes
+
+    /**
+     * Register a user's presence in a groupfolder.
+     * Stored as a JSON map of userId => timestamp in a single cache key per groupfolder.
+     * Entries older than 30 minutes are pruned on each update.
+     */
+    public function registerPresence(int $groupfolderId, string $userId): void {
+        try {
+            $key = "metavox_presence_gf_{$groupfolderId}";
+            $raw = $this->cache->get($key);
+            $presence = $raw ? json_decode($raw, true) : [];
+            if (!is_array($presence)) $presence = [];
+
+            $now = time();
+            $presence = array_filter($presence, fn($ts) => ($now - $ts) < self::PRESENCE_TTL);
+            $presence[$userId] = $now;
+
+            $this->cache->set($key, json_encode($presence), self::PRESENCE_TTL * 2);
+        } catch (\Exception $e) { /* ignore */ }
+    }
+
+    /**
+     * Remove a user's presence from a groupfolder (explicit leave).
+     */
+    public function removePresence(int $groupfolderId, string $userId): void {
+        try {
+            $key = "metavox_presence_gf_{$groupfolderId}";
+            $raw = $this->cache->get($key);
+            $presence = $raw ? json_decode($raw, true) : [];
+            if (!is_array($presence)) return;
+
+            unset($presence[$userId]);
+            $this->cache->set($key, json_encode($presence), self::PRESENCE_TTL * 2);
+        } catch (\Exception $e) { /* ignore */ }
+    }
+
+    /**
+     * Get user IDs with active presence in a groupfolder.
+     */
+    private function getActiveViewers(int $groupfolderId): array {
+        try {
+            $key = "metavox_presence_gf_{$groupfolderId}";
+            $raw = $this->cache->get($key);
+            $presence = $raw ? json_decode($raw, true) : [];
+            if (!is_array($presence)) return [];
+
+            $now = time();
+            return array_keys(array_filter($presence, fn($ts) => ($now - $ts) < self::PRESENCE_TTL));
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Broadcast a push event to active viewers of a groupfolder.
+     * Falls back to all groupfolder members if no presence data exists.
      */
     private function pushToGroupfolder(int $groupfolderId, string $message, array $body = []): void {
         if (!$this->notifyQueue) return;
         try {
-            $userIds = $this->getGroupfolderUserIds($groupfolderId);
+            $activeViewers = $this->getActiveViewers($groupfolderId);
+
+            // Fallback: if no presence data, push to all members
+            $userIds = !empty($activeViewers) ? $activeViewers : $this->getGroupfolderUserIds($groupfolderId);
+
             foreach ($userIds as $userId) {
                 $this->notifyQueue->push('notify_custom', [
                     'user' => $userId,
