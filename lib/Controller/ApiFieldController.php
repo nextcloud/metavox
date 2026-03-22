@@ -13,6 +13,7 @@ use OCP\IRequest;
 use OCP\IUserSession;
 use OCP\Files\IRootFolder;
 use OCP\Files\NotFoundException;
+use Psr\Log\LoggerInterface;
 
 class ApiFieldController extends OCSController {
 
@@ -20,6 +21,7 @@ class ApiFieldController extends OCSController {
     private ApiFieldService $apiFieldService;
     private IUserSession $userSession;
     private IRootFolder $rootFolder;
+    private LoggerInterface $logger;
 
     public function __construct(
         string $appName,
@@ -27,13 +29,15 @@ class ApiFieldController extends OCSController {
         FieldService $fieldService,
         ApiFieldService $apiFieldService,
         IUserSession $userSession,
-        IRootFolder $rootFolder
+        IRootFolder $rootFolder,
+        LoggerInterface $logger
     ) {
         parent::__construct($appName, $request);
         $this->fieldService = $fieldService;
         $this->apiFieldService = $apiFieldService;
         $this->userSession = $userSession;
         $this->rootFolder = $rootFolder;
+        $this->logger = $logger;
     }
 
     /**
@@ -199,7 +203,7 @@ public function getBulkFileMetadata(): DataResponse {
         return new DataResponse($metadata, Http::STATUS_OK);
 
     } catch (\Exception $e) {
-        error_log('ApiFieldController getBulkFileMetadata error: ' . $e->getMessage());
+        $this->logger->error('MetaVox: getBulkFileMetadata error', ['exception' => $e]);
         return new DataResponse([
             'error' => $e->getMessage()
         ], Http::STATUS_INTERNAL_SERVER_ERROR);
@@ -462,7 +466,7 @@ public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
         
         return new DataResponse($fields, Http::STATUS_OK);
     } catch (\Exception $e) {
-        error_log('ApiFieldController ERROR: ' . $e->getMessage());
+        $this->logger->error('MetaVox: getGroupfolderAssignedFields error', ['exception' => $e]);
         return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
     }
 }

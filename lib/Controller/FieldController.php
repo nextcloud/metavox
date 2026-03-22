@@ -12,6 +12,7 @@ use OCP\IRequest;
 use OCP\IUserSession;
 use OCP\IUserManager;
 use OCP\Files\IRootFolder;
+use Psr\Log\LoggerInterface;
 
 class FieldController extends Controller {
 
@@ -20,6 +21,7 @@ class FieldController extends Controller {
     private IUserManager $userManager;
     private IGroupManager $groupManager;
     private IRootFolder $rootFolder;
+    private LoggerInterface $logger;
 
     public function __construct(
         string $appName,
@@ -28,7 +30,8 @@ class FieldController extends Controller {
         IUserSession $userSession,
         IUserManager $userManager,
         IGroupManager $groupManager,
-        IRootFolder $rootFolder
+        IRootFolder $rootFolder,
+        LoggerInterface $logger
     ) {
         parent::__construct($appName, $request);
         $this->fieldService = $fieldService;
@@ -36,6 +39,7 @@ class FieldController extends Controller {
         $this->userManager = $userManager;
         $this->groupManager = $groupManager;
         $this->rootFolder = $rootFolder;
+        $this->logger = $logger;
     }
 
     /**
@@ -67,7 +71,7 @@ class FieldController extends Controller {
      */
     public function updateField(int $id): JSONResponse {
     try {
-        error_log('MetaVox FieldController::updateField called with ID: ' . $id);
+        $this->logger->debug('MetaVox: FieldController::updateField called', ['id' => $id]);
         
         // Get all input parameters
         $fieldName = $this->request->getParam('field_name');
@@ -100,22 +104,21 @@ class FieldController extends Controller {
             $fieldData['applies_to_groupfolder'] = (int)$appliesToGroupfolder;
         }
         
-        error_log('MetaVox FieldController::updateField data: ' . json_encode($fieldData));
+        $this->logger->debug('MetaVox: FieldController::updateField data', ['fieldData' => $fieldData]);
         
         // Update the field
         $success = $this->fieldService->updateField($id, $fieldData);
         
         if ($success) {
-            error_log('MetaVox FieldController::updateField success');
+            $this->logger->debug('MetaVox: FieldController::updateField success', ['id' => $id]);
             return new JSONResponse(['success' => true, 'message' => 'Field updated successfully']);
         } else {
-            error_log('MetaVox FieldController::updateField failed');
+            $this->logger->error('MetaVox: FieldController::updateField failed', ['id' => $id]);
             return new JSONResponse(['error' => 'Failed to update field'], 500);
         }
         
     } catch (\Exception $e) {
-        error_log('MetaVox FieldController::updateField error: ' . $e->getMessage());
-        error_log('MetaVox FieldController::updateField error trace: ' . $e->getTraceAsString());
+        $this->logger->error('MetaVox: FieldController::updateField error', ['exception' => $e]);
         return new JSONResponse(['error' => 'Internal server error: ' . $e->getMessage()], 500);
     }
 }
@@ -236,7 +239,7 @@ public function createGroupfolderField(): JSONResponse {
         $id = $this->fieldService->createField($fieldData);
         return new JSONResponse(['id' => $id, 'success' => true]);
     } catch (\Exception $e) {
-        error_log('TesterMeta createGroupfolderField error: ' . $e->getMessage());
+        $this->logger->error('MetaVox: createGroupfolderField error', ['exception' => $e]);
         return new JSONResponse(['error' => $e->getMessage(), 'success' => false], 500);
     }
 }
@@ -454,7 +457,7 @@ public function createGroupfolderField(): JSONResponse {
                 'errors' => $errors,
             ]);
         } catch (\Exception $e) {
-            error_log('MetaVox saveBulkFileMetadata error: ' . $e->getMessage());
+            $this->logger->error('MetaVox: saveBulkFileMetadata error', ['exception' => $e]);
             return new JSONResponse(['error' => $e->getMessage()], 500);
         }
     }
@@ -502,7 +505,7 @@ public function createGroupfolderField(): JSONResponse {
                     $this->fieldService->clearGroupfolderFileMetadata($groupfolderId, (int)$fileId);
                     $successCount++;
                 } catch (\Exception $e) {
-                    error_log('MetaVox clearFileMetadata error for file ' . $fileId . ': ' . $e->getMessage());
+                    $this->logger->error('MetaVox: clearFileMetadata error for file', ['fileId' => $fileId, 'exception' => $e]);
                     $errorCount++;
                 }
             }
@@ -513,7 +516,7 @@ public function createGroupfolderField(): JSONResponse {
                 'errorCount' => $errorCount,
             ]);
         } catch (\Exception $e) {
-            error_log('MetaVox clearFileMetadata error: ' . $e->getMessage());
+            $this->logger->error('MetaVox: clearFileMetadata error', ['exception' => $e]);
             return new JSONResponse(['error' => $e->getMessage()], 500);
         }
     }
@@ -582,13 +585,13 @@ public function createGroupfolderField(): JSONResponse {
                         'metadata' => $metadataMap,
                     ];
                 } catch (\Exception $e) {
-                    error_log('MetaVox exportFileMetadata error for file ' . $fileId . ': ' . $e->getMessage());
+                    $this->logger->error('MetaVox: exportFileMetadata error for file', ['fileId' => $fileId, 'exception' => $e]);
                 }
             }
 
             return new JSONResponse($result);
         } catch (\Exception $e) {
-            error_log('MetaVox exportFileMetadata error: ' . $e->getMessage());
+            $this->logger->error('MetaVox: exportFileMetadata error', ['exception' => $e]);
             return new JSONResponse(['error' => $e->getMessage()], 500);
         }
     }

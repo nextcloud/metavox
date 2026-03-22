@@ -6,15 +6,18 @@ namespace OCA\MetaVox\Service;
 use OCP\IDBConnection;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\ICacheFactory;
+use Psr\Log\LoggerInterface;
 
 class SearchIndexService {
 
     private IDBConnection $db;
     private ICacheFactory $cacheFactory;
+    private LoggerInterface $logger;
 
-    public function __construct(IDBConnection $db, ICacheFactory $cacheFactory) {
+    public function __construct(IDBConnection $db, ICacheFactory $cacheFactory, LoggerInterface $logger) {
         $this->db = $db;
         $this->cacheFactory = $cacheFactory;
+        $this->logger = $logger;
     }
 
     public function searchFilesByMetadata(string $searchTerm, string $userId): array {
@@ -36,7 +39,7 @@ class SearchIndexService {
             return $results;
             
         } catch (\Exception $e) {
-            error_log('MetaVox search error: ' . $e->getMessage());
+            $this->logger->error('MetaVox: search failed', ['exception' => $e, 'searchTerm' => $searchTerm]);
             return [];
         }
     }
@@ -72,7 +75,7 @@ class SearchIndexService {
             return $files;
             
         } catch (\Exception $e) {
-            error_log('MetaVox field search error: ' . $e->getMessage());
+            $this->logger->error('MetaVox: field search failed', ['exception' => $e, 'fieldName' => $fieldName]);
             return [];
         }
     }
@@ -106,7 +109,7 @@ private function searchFromIndex(string $searchTerm, string $userId): array {
             $useFulltext = true;
         } catch (\Exception $e) {
             // FULLTEXT index not available, fall back to LIKE
-            error_log('MetaVox: FULLTEXT not available, using LIKE search: ' . $e->getMessage());
+            $this->logger->debug('MetaVox: FULLTEXT not available, using LIKE search', ['exception' => $e]);
         }
     }
     
@@ -240,7 +243,7 @@ private function searchFromIndex(string $searchTerm, string $userId): array {
                                    implode(' ', $searchContent), json_encode($fieldData));
 
         } catch (\Exception $e) {
-            error_log('MetaVox index update error: ' . $e->getMessage());
+            $this->logger->error('MetaVox: index update failed', ['exception' => $e, 'fileId' => $fileId]);
         }
     }
 

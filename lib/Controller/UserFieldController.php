@@ -10,24 +10,28 @@ use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 use OCP\IUserSession;
+use Psr\Log\LoggerInterface;
 
 class UserFieldController extends Controller {
 
     private UserFieldService $userFieldService;
     private FieldService $fieldService;
     private IUserSession $userSession;
+    private LoggerInterface $logger;
 
     public function __construct(
         string $appName,
         IRequest $request,
         UserFieldService $userFieldService,
         FieldService $fieldService,
-        IUserSession $userSession
+        IUserSession $userSession,
+        LoggerInterface $logger
     ) {
         parent::__construct($appName, $request);
         $this->userFieldService = $userFieldService;
         $this->fieldService = $fieldService;
         $this->userSession = $userSession;
+        $this->logger = $logger;
     }
 
     /**
@@ -47,7 +51,7 @@ class UserFieldController extends Controller {
             
             return new JSONResponse($groupfolders);
         } catch (\Exception $e) {
-            error_log('MetaVox getAccessibleGroupfolders error: ' . $e->getMessage());
+            $this->logger->error('MetaVox: getAccessibleGroupfolders error', ['exception' => $e]);
             return new JSONResponse(['error' => $e->getMessage()], 500);
         }
     }

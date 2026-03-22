@@ -120,7 +120,7 @@ class AiAutofillService {
 
         // Schedule TaskProcessing task (async — background workers pick it up)
         $taskType = $this->getTaskType();
-        error_log('MetaVox AI: using task type ' . $taskType);
+        $this->logger->info('MetaVox: AI using task type', ['taskType' => $taskType]);
 
         $task = new Task(
             $taskType,
@@ -131,7 +131,7 @@ class AiAutofillService {
 
         $this->taskManager->scheduleTask($task);
         $taskId = $task->getId();
-        error_log('MetaVox AI: scheduled task ' . $taskId);
+        $this->logger->info('MetaVox: AI scheduled task', ['taskId' => $taskId]);
 
         // Poll for completion (background workers process almost instantly)
         $maxWait = 120; // seconds
@@ -150,7 +150,7 @@ class AiAutofillService {
             }
             if ($status === Task::STATUS_FAILED || $status === Task::STATUS_CANCELLED) {
                 $errorMsg = $task->getErrorMessage() ?? 'Unknown error';
-                error_log('MetaVox AI task ' . $taskId . ' failed: ' . $errorMsg);
+                $this->logger->error('MetaVox: AI task failed', ['taskId' => $taskId, 'error' => $errorMsg]);
                 throw new \RuntimeException('AI task failed: ' . $errorMsg);
             }
 
@@ -161,7 +161,7 @@ class AiAutofillService {
         }
 
         if ($task->getStatus() !== Task::STATUS_SUCCESSFUL) {
-            error_log('MetaVox AI task ' . $taskId . ' timed out after ' . $waited . 's');
+            $this->logger->error('MetaVox: AI task timed out', ['taskId' => $taskId, 'waitedSeconds' => $waited]);
             throw new \RuntimeException('AI task timed out');
         }
 
@@ -169,13 +169,13 @@ class AiAutofillService {
         $aiResponse = $output['output'] ?? '';
 
         if (empty($aiResponse)) {
-            error_log('MetaVox AI: empty response from task ' . $taskId);
+            $this->logger->warning('MetaVox: AI returned empty response', ['taskId' => $taskId]);
             return [];
         }
 
         // Parse JSON from AI response
         $suggestions = $this->parseAiResponse($aiResponse, $aiFields);
-        error_log('MetaVox AI: parsed ' . \count($suggestions) . ' suggestions from task ' . $taskId);
+        $this->logger->info('MetaVox: AI parsed suggestions', ['count' => \count($suggestions), 'taskId' => $taskId]);
         return $suggestions;
     }
 
@@ -537,7 +537,7 @@ PROMPT;
                                 }
                             }
                             if (!$matched) {
-                                error_log('MetaVox AI: dropped invalid dropdown value "' . $stringValue . '" for field ' . $fieldName . ' (allowed: ' . implode(', ', $fieldOptions[$fieldName]) . ')');
+                                $this->logger->warning('MetaVox: AI dropped invalid dropdown value', ['value' => $stringValue, 'fieldName' => $fieldName, 'allowedValues' => $fieldOptions[$fieldName]]);
                                 continue 2; // Skip invalid value
                             }
                         }

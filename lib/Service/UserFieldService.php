@@ -7,6 +7,7 @@ namespace OCA\MetaVox\Service;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 use OCP\IGroupManager;
+use Psr\Log\LoggerInterface;
 use OCP\IUserManager;
 
 class UserFieldService {
@@ -14,15 +15,18 @@ class UserFieldService {
     private IDBConnection $db;
     private IUserManager $userManager;
     private IGroupManager $groupManager;
+    private LoggerInterface $logger;
 
     public function __construct(
         IDBConnection $db,
         IUserManager $userManager,
-        IGroupManager $groupManager
+        IGroupManager $groupManager,
+        LoggerInterface $logger
     ) {
         $this->db = $db;
         $this->userManager = $userManager;
         $this->groupManager = $groupManager;
+        $this->logger = $logger;
     }
 
     /**
@@ -96,7 +100,7 @@ public function getAccessibleGroupfolders(string $userId): array {
         return array_values($foldersMap);
 
     } catch (\Exception $e) {
-        error_log('MetaVox getAccessibleGroupfolders error: ' . $e->getMessage());
+        $this->logger->error('MetaVox: getAccessibleGroupfolders failed', ['exception' => $e, 'userId' => $userId]);
         return [];
     }
 }
@@ -137,7 +141,7 @@ public function hasAccessToGroupfolder(string $userId, int $groupfolderId): bool
 
             return $fieldIds;
         } catch (\Exception $e) {
-            error_log('MetaVox getGroupfolderFields error: ' . $e->getMessage());
+            $this->logger->error('MetaVox: getGroupfolderFields failed', ['exception' => $e, 'groupfolderId' => $groupfolderId]);
             return [];
         }
     }
@@ -175,7 +179,7 @@ public function hasAccessToGroupfolder(string $userId, int $groupfolderId): bool
             return $metadata;
             
         } catch (\Exception $e) {
-            error_log('MetaVox getGroupfolderMetadata error: ' . $e->getMessage());
+            $this->logger->error('MetaVox: getGroupfolderMetadata failed', ['exception' => $e, 'groupfolderId' => $groupfolderId]);
             return [];
         }
     }
@@ -234,7 +238,7 @@ public function hasAccessToGroupfolder(string $userId, int $groupfolderId): bool
 
             return true;
         } catch (\Exception $e) {
-            error_log('MetaVox saveGroupfolderMetadata error: ' . $e->getMessage());
+            $this->logger->error('MetaVox: saveGroupfolderMetadata failed', ['exception' => $e, 'groupfolderId' => $groupfolderId]);
             return false;
         }
     }
@@ -264,7 +268,7 @@ public function hasAccessToGroupfolder(string $userId, int $groupfolderId): bool
 
             return true;
         } catch (\Exception $e) {
-            error_log('MetaVox setGroupfolderFields error: ' . $e->getMessage());
+            $this->logger->error('MetaVox: setGroupfolderFields failed', ['exception' => $e, 'groupfolderId' => $groupfolderId]);
             return false;
         }
     }
@@ -299,7 +303,7 @@ public function hasAccessToGroupfolder(string $userId, int $groupfolderId): bool
 
             return $fields;
         } catch (\Exception $e) {
-            error_log('MetaVox getAllGroupfolderFields error: ' . $e->getMessage());
+            $this->logger->error('MetaVox: getAllGroupfolderFields failed', ['exception' => $e]);
             return [];
         }
     }

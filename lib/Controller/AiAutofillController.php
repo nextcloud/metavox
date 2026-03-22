@@ -9,21 +9,25 @@ use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 use OCP\IUserSession;
+use Psr\Log\LoggerInterface;
 
 class AiAutofillController extends Controller {
 
     private AiAutofillService $aiService;
     private IUserSession $userSession;
+    private LoggerInterface $logger;
 
     public function __construct(
         string $appName,
         IRequest $request,
         AiAutofillService $aiService,
-        IUserSession $userSession
+        IUserSession $userSession,
+        LoggerInterface $logger
     ) {
         parent::__construct($appName, $request);
         $this->aiService = $aiService;
         $this->userSession = $userSession;
+        $this->logger = $logger;
     }
 
     /**
@@ -56,15 +60,15 @@ class AiAutofillController extends Controller {
 
             $rejectedSuggestions = $this->request->getParam('rejectedSuggestions', []);
 
-            error_log('MetaVox AI: generating metadata for file ' . $fileId . ' in gf ' . $groupfolderId);
+            $this->logger->debug('MetaVox: AI generating metadata', ['fileId' => $fileId, 'groupfolderId' => $groupfolderId]);
             $suggestions = $this->aiService->generateMetadata($fileId, $groupfolderId, $user->getUID(), $rejectedSuggestions);
-            error_log('MetaVox AI: got ' . count($suggestions) . ' suggestions');
+            $this->logger->debug('MetaVox: AI generation complete', ['suggestionCount' => count($suggestions)]);
 
             return new JSONResponse([
                 'suggestions' => $suggestions,
             ]);
         } catch (\Exception $e) {
-            error_log('MetaVox AI autofill error: ' . $e->getMessage() . ' | trace: ' . $e->getTraceAsString());
+            $this->logger->error('MetaVox: AI autofill error', ['exception' => $e]);
             return new JSONResponse([
                 'error' => 'AI generation failed: ' . $e->getMessage(),
             ], 500);
