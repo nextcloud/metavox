@@ -555,8 +555,8 @@ export function startColumnWatcher() {
 
 	setInterval(checkNavigation, 2000)
 
-	// Real-time metadata sync via notify_push
-	_startPushListener()
+	// Real-time metadata sync via notify_push (never crash the app)
+	try { _startPushListener() } catch (e) { /* push not available */ }
 
 	scheduleInjection()
 }
@@ -632,7 +632,7 @@ function _handlePushEvent(eventName, body) {
 
 function _startPushListener() {
 	const patchWs = (ws) => {
-		if (!ws || ws._metavoxPatched) return
+		if (!ws || typeof ws !== 'object' || ws._metavoxPatched) return
 		ws._metavoxPatched = true
 		const origOnMessage = ws.onmessage
 		ws.onmessage = (event) => {
@@ -652,7 +652,7 @@ function _startPushListener() {
 
 	const register = () => {
 		const ws = window._notify_push_ws
-		if (!ws) return false
+		if (!ws || typeof ws !== 'object') return false
 		patchWs(ws)
 
 		// Also watch for WebSocket replacements (reconnects)

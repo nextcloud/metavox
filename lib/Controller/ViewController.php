@@ -207,6 +207,11 @@ class ViewController extends Controller {
 
             $groupfolders = $this->userFieldService->getAccessibleGroupfolders($userId);
 
+            // Debug: log when groupfolders are empty
+            if (empty($groupfolders)) {
+                error_log("MetaVox init: 0 groupfolders for user={$userId} dir={$dir}");
+            }
+
             // Detect groupfolder from dir path
             $groupfolderId = null;
             $path = ltrim($dir, '/');

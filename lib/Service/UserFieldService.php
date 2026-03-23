@@ -65,6 +65,27 @@ public function getAccessibleGroupfolders(string $userId): array {
         }
 
         // Fallback: single JOIN query (does not support circles/teams)
+        // Admins see all groupfolders regardless of group membership
+        if ($this->groupManager->isAdmin($userId)) {
+            $qb = $this->db->getQueryBuilder();
+            $qb->select('*')->from('group_folders');
+            $result = $qb->executeQuery();
+            $folders = [];
+            while ($row = $result->fetch()) {
+                $folderId = (int)($row['folder_id'] ?? $row['id'] ?? 0);
+                $folders[] = [
+                    'id' => $folderId,
+                    'mount_point' => $row['mount_point'] ?? 'Unknown',
+                    'groups' => [],
+                    'quota' => (int)($row['quota'] ?? -3),
+                    'size' => (int)($row['size'] ?? 0),
+                    'acl' => (bool)($row['acl'] ?? false),
+                ];
+            }
+            $result->closeCursor();
+            return $folders;
+        }
+
         $userGroups = $this->groupManager->getUserGroupIds($user);
 
         if (empty($userGroups)) {
