@@ -77,6 +77,7 @@ import {
 	setGetActiveColumnConfigs,
 	setSetCellValue,
 	setupCellEditing,
+	closeInlineEditor,
 } from './InlineEditor.js'
 
 import {
@@ -513,6 +514,13 @@ export function startColumnWatcher() {
 		metadataCache.set(Number(fileId), metadata)
 		updateAllRowCells()
 	})
+
+	// Cancel active editor when user leaves — covers tab switch, window switch, and alt-tab
+	const cancelEditorOnLeave = () => closeInlineEditor(true)
+	document.addEventListener('visibilitychange', () => {
+		if (document.visibilityState === 'hidden') cancelEditorOnLeave()
+	})
+	window.addEventListener('blur', cancelEditorOnLeave)
 
 	// When user returns to tab after being away, check if WebSocket disconnected
 	// and refresh metadata if events may have been missed

@@ -296,8 +296,13 @@ export async function openInlineEditor(td, config) {
 			})
 			editor.addEventListener('blur', () => {
 				if (activeEditor === td) {
-					saveSingleField(fileId, fieldName, editor.value, { unlock: true })
-					closeInlineEditor(false)
+					if (!document.hasFocus()) {
+						// Window lost focus (alt-tab) — cancel with sendBeacon unlock
+						closeInlineEditor(true)
+					} else {
+						saveSingleField(fileId, fieldName, editor.value, { unlock: true })
+						closeInlineEditor(false)
+					}
 				}
 			})
 			break
@@ -318,8 +323,13 @@ export async function openInlineEditor(td, config) {
 			})
 			editor.addEventListener('blur', () => {
 				if (activeEditor === td) {
-					saveSingleField(fileId, fieldName, editor.value, { unlock: true })
-					closeInlineEditor(false)
+					if (!document.hasFocus()) {
+						// Window lost focus (alt-tab) — cancel with sendBeacon unlock
+						closeInlineEditor(true)
+					} else {
+						saveSingleField(fileId, fieldName, editor.value, { unlock: true })
+						closeInlineEditor(false)
+					}
 				}
 			})
 			break
@@ -440,13 +450,18 @@ export function closeInlineEditor(cancel) {
 	document.removeEventListener('mousedown', handleEditorClickOutside)
 
 	// Release lock only on cancel — on save, the lock is released via combined save+unlock
+	// Uses sendBeacon to ensure the unlock reaches the server even during window blur/close
 	if (cancel) {
 		const fileId = Number(td.dataset?.fileId)
 		const fieldName = td.dataset?.metavoxField
 		const gfId = getActiveGroupfolderId()
 		if (gfId && fileId && fieldName) {
 			const url = generateUrl('/apps/metavox/api/groupfolders/{gfId}/files/{fileId}/unlock', { gfId, fileId })
-			axios.post(url, { field_name: fieldName }).catch(() => {})
+			const token = document.querySelector('head[data-requesttoken]')?.dataset?.requesttoken || ''
+			const formData = new FormData()
+			formData.append('field_name', fieldName)
+			formData.append('requesttoken', token)
+			navigator.sendBeacon(url, formData)
 		}
 	}
 
