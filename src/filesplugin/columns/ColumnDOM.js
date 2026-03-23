@@ -4,6 +4,7 @@
  * Extracted from MetaVoxColumns.js
  */
 
+import { generateUrl } from '@nextcloud/router'
 import { MARKER_CLASS, HEADER_MARKER, RESIZE_HANDLE } from './ColumnStyles.js'
 import { getActiveColumnConfigs, metadataCache, getCachedActionsWidth, setCachedActionsWidth } from './MetaVoxState.js'
 import { formatValue, getColWidth } from './ColumnUtils.js'
@@ -232,18 +233,93 @@ export function injectRowColumns(row) {
 // ── Cell value rendering ───────────────────────────────────────
 
 export function setCellValue(td, value, config) {
-	if (value !== undefined && value !== null && value !== '') {
-		const formatted = formatValue(value, config.field_type)
-		if (formatted !== '') {
-			td.textContent = formatted
-			td.title = formatted
-			td.classList.remove(MARKER_CLASS + '--empty')
-			return
-		}
-	}
-	td.textContent = '\u2014'
+	// Clear previous rich content
+	td.innerHTML = ''
 	td.title = ''
-	td.classList.add(MARKER_CLASS + '--empty')
+
+	if (value === undefined || value === null || value === '') {
+		td.textContent = '\u2014'
+		td.classList.add(MARKER_CLASS + '--empty')
+		return
+	}
+
+	td.classList.remove(MARKER_CLASS + '--empty')
+
+	switch (config.field_type) {
+	case 'user': {
+		const wrapper = document.createElement('span')
+		wrapper.className = 'metavox-cell-user'
+
+		const avatar = document.createElement('img')
+		avatar.className = 'metavox-cell-avatar'
+		avatar.src = generateUrl('/avatar/{userId}/20', { userId: value })
+		avatar.width = 20
+		avatar.height = 20
+		avatar.onerror = () => { avatar.style.display = 'none' }
+		wrapper.appendChild(avatar)
+
+		const name = document.createElement('span')
+		name.textContent = value
+		wrapper.appendChild(name)
+
+		td.appendChild(wrapper)
+		td.title = value
+		break
+	}
+	case 'url': {
+		const wrapper = document.createElement('span')
+		wrapper.className = 'metavox-cell-url'
+
+		const text = document.createElement('span')
+		text.className = 'metavox-cell-url-text'
+		text.textContent = value
+		wrapper.appendChild(text)
+
+		const link = document.createElement('a')
+		link.className = 'metavox-cell-link-btn'
+		link.href = /^https?:\/\//i.test(value) ? value : 'https://' + value
+		link.target = '_blank'
+		link.rel = 'noopener noreferrer'
+		link.textContent = '↗'
+		link.title = value
+		link.addEventListener('click', (e) => e.stopPropagation())
+		wrapper.appendChild(link)
+
+		td.appendChild(wrapper)
+		td.title = value
+		break
+	}
+	case 'filelink': {
+		const wrapper = document.createElement('span')
+		wrapper.className = 'metavox-cell-filelink'
+
+		const text = document.createElement('span')
+		text.className = 'metavox-cell-filelink-text'
+		text.textContent = value.split('/').pop() || value
+		wrapper.appendChild(text)
+
+		const link = document.createElement('a')
+		link.className = 'metavox-cell-link-btn'
+		const dir = value.substring(0, value.lastIndexOf('/'))
+		link.href = generateUrl('/apps/files/?dir={dir}&openfile={file}', { dir, file: value })
+		link.target = '_blank'
+		link.rel = 'noopener noreferrer'
+		link.textContent = '↗'
+		link.title = value
+		link.addEventListener('click', (e) => e.stopPropagation())
+		wrapper.appendChild(link)
+
+		td.appendChild(wrapper)
+		td.title = value
+		break
+	}
+	default: {
+		const formatted = formatValue(value, config.field_type)
+		td.textContent = formatted || '\u2014'
+		td.title = formatted || ''
+		if (!formatted) td.classList.add(MARKER_CLASS + '--empty')
+	}
+	}
 }
 
 // ── Bulk row updates ───────────────────────────────────────────

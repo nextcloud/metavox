@@ -37,11 +37,12 @@
       :options="users"
       :disabled="disabled"
       :loading="loading"
-      :placeholder="placeholder || t('metavox', 'Select user...')"
+      :filterable="false"
+      :placeholder="placeholder || t('metavox', 'Type to search users...')"
       :multiple="multiple"
       :reduce="option => option.id"
       label="displayname"
-      @search-change="onSearch"
+      @search="onSearch"
       @update:model-value="onSelect">
       <template #option="{ option }">
         <div v-if="option" class="user-option">
@@ -54,8 +55,8 @@
           </div>
         </div>
       </template>
-      <template #noResult>
-        {{ t('metavox', 'No users found') }}
+      <template #no-options="{ search }">
+        {{ search.length < 2 ? t('metavox', 'Type at least 2 characters...') : t('metavox', 'No users found') }}
       </template>
     </NcSelect>
   </div>
@@ -113,15 +114,16 @@ export default {
     return {
       loading: false,
       users: [],
-      allUsers: [],
       internalValue: this.multiple ? [] : null,
-      isEditing: false
+      isEditing: false,
+      searchTimer: null,
+      currentUserLoaded: false
     }
   },
   computed: {
     selectedUser() {
       if (!this.modelValue || this.multiple) return null
-      return this.allUsers.find(u => u.id === this.modelValue) || {
+      return this.users.find(u => u.id === this.modelValue) || {
         id: this.modelValue,
         displayname: this.modelValue
       }
@@ -131,7 +133,6 @@ export default {
     modelValue: {
       immediate: true,
       handler(newVal) {
-        // Sync internal value when prop changes
         if (this.multiple) {
           if (!newVal) {
             this.internalValue = []
@@ -143,80 +144,75 @@ export default {
         } else {
           this.internalValue = newVal || null
         }
-      }
-    },
-    allUsers: {
-      handler() {
-        // When users are loaded, ensure options include current value
-        if (this.modelValue && !this.multiple) {
-          const exists = this.allUsers.find(u => u.id === this.modelValue)
-          if (!exists && this.modelValue) {
-            // Add a placeholder user so it displays
-            this.allUsers.push({
-              id: this.modelValue,
-              displayname: this.modelValue,
-              userId: this.modelValue
-            })
-            this.users = [...this.allUsers]
-          }
+        // Load current user's display name if not yet loaded
+        if (newVal && !this.multiple && !this.currentUserLoaded) {
+          this.loadCurrentUser(newVal)
         }
       }
     }
-  },
-  mounted() {
-    this.loadUsers()
   },
   methods: {
     t(app, text) {
       return window.t ? window.t(app, text) : text
     },
-    async loadUsers() {
-      this.loading = true
+    async loadCurrentUser(userId) {
       try {
-        const response = await axios.get(generateUrl('/apps/metavox/api/users'))
-
+        const response = await axios.get(generateUrl('/apps/metavox/api/users'), {
+          params: { search: userId }
+        })
         if (Array.isArray(response.data)) {
-          this.allUsers = response.data.map(user => ({
-            id: user.id,
-            userId: user.id,
-            displayname: user.displayname || user.id
-          }))
-          this.users = [...this.allUsers]
+          const found = response.data.find(u => u.id === userId)
+          if (found) {
+            const user = { id: found.id, userId: found.id, displayname: found.displayname || found.id }
+            // Add to users list if not already present
+            if (!this.users.find(u => u.id === userId)) {
+              this.users.push(user)
+            }
+            this.currentUserLoaded = true
+          }
         }
-      } catch (error) {
-        console.error('Failed to load users:', error)
-        this.users = []
-        this.allUsers = []
-      } finally {
-        this.loading = false
+      } catch (e) {
+        // Fallback: show user ID
       }
     },
-    onSearch(query) {
-      if (!query) {
-        this.users = [...this.allUsers]
+    onSearch(query, loading) {
+      clearTimeout(this.searchTimer)
+
+      if (!query || query.length < 2) {
+        this.users = this.modelValue && !this.multiple
+          ? this.users.filter(u => u.id === this.modelValue)
+          : []
         return
       }
 
-      const lowerQuery = query.toLowerCase()
-      this.users = this.allUsers.filter(user =>
-        user.displayname.toLowerCase().includes(lowerQuery) ||
-        user.id.toLowerCase().includes(lowerQuery)
-      )
+      this.searchTimer = setTimeout(async () => {
+        loading(true)
+        try {
+          const response = await axios.get(generateUrl('/apps/metavox/api/users'), {
+            params: { search: query }
+          })
+          if (Array.isArray(response.data)) {
+            this.users = response.data.map(user => ({
+              id: user.id,
+              userId: user.id,
+              displayname: user.displayname || user.id
+            }))
+          }
+        } catch (error) {
+          this.users = []
+        } finally {
+          loading(false)
+        }
+      }, 300)
     },
     onSelect(value) {
-      // With :reduce, value is already the id (string) or array of ids
-      console.log('UserGroupFieldInput onSelect called with:', value)
       if (this.multiple) {
         const joinedValue = Array.isArray(value) ? value.join(';#') : ''
-        console.log('UserGroupFieldInput emitting (multiple):', joinedValue)
         this.$emit('update:modelValue', joinedValue)
         this.$emit('input', joinedValue)
       } else {
-        // value is already the user id string
-        console.log('UserGroupFieldInput emitting (single):', value)
         this.$emit('update:modelValue', value || '')
         this.$emit('input', value || '')
-        // Stop editing after selection
         this.isEditing = false
       }
     },
