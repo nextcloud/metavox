@@ -6,36 +6,31 @@ namespace OCA\MetaVox\Controller;
 
 use OCA\MetaVox\Service\FieldService;
 use OCA\MetaVox\Service\FilterService;
-use OCP\AppFramework\OCSController;
+use OCA\MetaVox\Service\PermissionService;
 use OCP\AppFramework\Http;
-use OCP\AppFramework\Http\DataResponse;
-use OCP\IRequest;
 use OCP\AppFramework\Http\Attribute\CORS;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
-use OCP\IUserSession;
+use OCP\AppFramework\Http\DataResponse;
 use OCP\Files\IRootFolder;
+use OCP\IRequest;
+use OCP\IUserSession;
 
-class ApiFilterController extends OCSController {
+class ApiFilterController extends BaseOCSController {
 
-    private FieldService $fieldService;
     private FilterService $filterService;
-    private IUserSession $userSession;
-    private IRootFolder $rootFolder;
 
     public function __construct(
         string $appName,
         IRequest $request,
         FieldService $fieldService,
         FilterService $filterService,
+        PermissionService $permissionService,
         IUserSession $userSession,
         IRootFolder $rootFolder
     ) {
-        parent::__construct($appName, $request);
-        $this->fieldService = $fieldService;
+        parent::__construct($appName, $request, $userSession, $permissionService, $fieldService, $rootFolder);
         $this->filterService = $filterService;
-        $this->userSession = $userSession;
-        $this->rootFolder = $rootFolder;
     }
 
     /**
@@ -47,13 +42,9 @@ class ApiFilterController extends OCSController {
     #[NoCSRFRequired]
     public function getDirectoryMetadata(int $groupfolderId): DataResponse {
         try {
-            $user = $this->userSession->getUser();
-            if (!$user) {
-                return new DataResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
-            }
-            if (!$this->fieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
-                return new DataResponse(['error' => 'Access denied'], Http::STATUS_FORBIDDEN);
-            }
+            $user = $this->requireUser();
+            if ($user instanceof DataResponse) return $user;
+            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
 
             $fileIdsParam = $this->request->getParam('file_ids');
             $fileIds = [];
@@ -75,15 +66,16 @@ class ApiFilterController extends OCSController {
                 return new DataResponse(['error' => 'Maximum 200 file IDs per request'], Http::STATUS_BAD_REQUEST);
             }
 
-            $accessibleFileIds = $fileIds;
-            if (count($fileIds) <= 10) {
-                $accessibleFileIds = $this->filterAccessibleFileIds($fileIds);
-                if (empty($accessibleFileIds)) {
-                    return new DataResponse([], Http::STATUS_OK);
-                }
+            // Single pass: verify access + collect permissions (avoids double getById loop)
+            $result = $this->filterAccessibleFileIdsWithPermissions($fileIds, $user->getUID());
+            $accessibleFileIds = $result['accessible'];
+            $filePermissions = $result['permissions'];
+
+            if (empty($accessibleFileIds)) {
+                return new DataResponse([], Http::STATUS_OK);
             }
 
-            // Optional: only fetch specific fields (reduces query size for large datasets)
+            // Optional: only fetch specific fields
             $fieldNamesParam = $this->request->getParam('field_names');
             $fieldNames = [];
             if (is_string($fieldNamesParam) && !empty($fieldNamesParam)) {
@@ -92,15 +84,9 @@ class ApiFilterController extends OCSController {
 
             $metadata = $this->filterService->getDirectoryMetadata($accessibleFileIds, $groupfolderId, $fieldNames);
 
-            // Add per-file permissions for inline editing
-            $userFolder = $this->rootFolder->getUserFolder($user->getUID());
+            // Attach pre-collected permissions (no extra getById calls)
             foreach ($metadata as $fileId => &$fileMeta) {
-                $nodes = $userFolder->getById((int)$fileId);
-                if (!empty($nodes)) {
-                    $fileMeta['_permissions'] = $nodes[0]->getPermissions();
-                } else {
-                    $fileMeta['_permissions'] = 1; // read-only
-                }
+                $fileMeta['_permissions'] = $filePermissions[$fileId] ?? 1;
             }
             unset($fileMeta);
 
@@ -112,20 +98,15 @@ class ApiFilterController extends OCSController {
 
     /**
      * Get sorted and filtered file IDs for a groupfolder.
-     * Returns an ordered array of file IDs based on server-side SQL sort/filter.
      */
     #[CORS]
     #[NoAdminRequired]
     #[NoCSRFRequired]
     public function getSortedFileIds(int $groupfolderId): DataResponse {
         try {
-            $user = $this->userSession->getUser();
-            if (!$user) {
-                return new DataResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
-            }
-            if (!$this->fieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
-                return new DataResponse(['error' => 'Access denied'], Http::STATUS_FORBIDDEN);
-            }
+            $user = $this->requireUser();
+            if ($user instanceof DataResponse) return $user;
+            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
 
             $sortField = $this->request->getParam('sort_field');
             $sortOrder = $this->request->getParam('sort_order', 'asc');
@@ -144,7 +125,6 @@ class ApiFilterController extends OCSController {
                 return new DataResponse(['error' => 'No sort_field or filters provided'], Http::STATUS_BAD_REQUEST);
             }
 
-            // Determine which fields are multiselect for ;# matching
             $fields = $this->fieldService->getAssignedFieldsWithDataForGroupfolder($groupfolderId);
             $multiselectFields = [];
             foreach ($fields as $field) {
@@ -177,13 +157,9 @@ class ApiFilterController extends OCSController {
     #[NoCSRFRequired]
     public function getAllFilterValues(int $groupfolderId): DataResponse {
         try {
-            $user = $this->userSession->getUser();
-            if (!$user) {
-                return new DataResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
-            }
-            if (!$this->fieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
-                return new DataResponse(['error' => 'Access denied'], Http::STATUS_FORBIDDEN);
-            }
+            $user = $this->requireUser();
+            if ($user instanceof DataResponse) return $user;
+            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
 
             $fieldNames = $this->request->getParam('field_names');
             $fieldNamesArray = [];
@@ -193,8 +169,8 @@ class ApiFilterController extends OCSController {
 
             // For select/multiselect fields, use field_options from config instead of DB GROUP BY
             $fields = $this->fieldService->getAssignedFieldsWithDataForGroupfolder($groupfolderId);
-            $optionFields = []; // field_name => [option values] for select/multiselect
-            $dbFieldNames = []; // field names that need DB lookup
+            $optionFields = [];
+            $dbFieldNames = [];
 
             foreach ($fields as $field) {
                 $name = $field['field_name'] ?? '';
@@ -218,7 +194,6 @@ class ApiFilterController extends OCSController {
                 }
             }
 
-            // Only query DB for fields that don't have predefined options
             $dbValues = [];
             if (!empty($dbFieldNames)) {
                 $dbValues = $this->filterService->getAllDistinctFieldValues($groupfolderId, $dbFieldNames);
@@ -235,20 +210,15 @@ class ApiFilterController extends OCSController {
 
     /**
      * Get distinct filter values scoped to specific file IDs (current directory).
-     * POST to support large file_ids arrays that would exceed GET URI length limits.
      */
     #[CORS]
     #[NoAdminRequired]
     #[NoCSRFRequired]
     public function getScopedFilterValues(int $groupfolderId): DataResponse {
         try {
-            $user = $this->userSession->getUser();
-            if (!$user) {
-                return new DataResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
-            }
-            if (!$this->fieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
-                return new DataResponse(['error' => 'Access denied'], Http::STATUS_FORBIDDEN);
-            }
+            $user = $this->requireUser();
+            if ($user instanceof DataResponse) return $user;
+            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
 
             $fileIdsParam = $this->request->getParam('file_ids');
             $fileIds = [];
@@ -260,27 +230,6 @@ class ApiFilterController extends OCSController {
             return new DataResponse($values, Http::STATUS_OK);
         } catch (\Exception $e) {
             return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    private function filterAccessibleFileIds(array $fileIds): array {
-        $user = $this->userSession->getUser();
-        if (!$user) {
-            return [];
-        }
-
-        try {
-            $userFolder = $this->rootFolder->getUserFolder($user->getUID());
-            $accessibleIds = [];
-            foreach ($fileIds as $fileId) {
-                $nodes = $userFolder->getById($fileId);
-                if (!empty($nodes)) {
-                    $accessibleIds[] = $fileId;
-                }
-            }
-            return $accessibleIds;
-        } catch (\Exception $e) {
-            return [];
         }
     }
 }

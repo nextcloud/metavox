@@ -925,20 +925,22 @@ public function getBulkFileMetadata(array $fileIds): array {
     }
 }
 
-public function saveGroupfolderFileFieldValue(int $groupfolderId, int $fileId, int $fieldId, string $value): bool {
+public function saveGroupfolderFileFieldValue(int $groupfolderId, int $fileId, int $fieldId, string $value, ?string $fieldName = null): bool {
     try {
-        // Get field name
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('field_name')
-           ->from('metavox_gf_fields')
-           ->where($qb->expr()->eq('id', $qb->createNamedParameter($fieldId, IQueryBuilder::PARAM_INT)));
-        
-        $result = $qb->executeQuery();
-        $fieldName = $result->fetchOne();
-        $result->closeCursor();
-        
-        if (!$fieldName) {
-            return false;
+        // Resolve field name if not provided (avoids DB lookup when caller already has it)
+        if ($fieldName === null) {
+            $qb = $this->db->getQueryBuilder();
+            $qb->select('field_name')
+               ->from('metavox_gf_fields')
+               ->where($qb->expr()->eq('id', $qb->createNamedParameter($fieldId, IQueryBuilder::PARAM_INT)));
+
+            $result = $qb->executeQuery();
+            $fieldName = $result->fetchOne();
+            $result->closeCursor();
+
+            if (!$fieldName) {
+                return false;
+            }
         }
 
         $platform = $this->db->getDatabasePlatform();

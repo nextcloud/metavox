@@ -17,6 +17,9 @@ class PermissionService {
     private IGroupManager $groupManager;
     private LoggerInterface $logger;
 
+    /** @var array<string, bool> In-request permission cache */
+    private array $permissionCache = [];
+
     // Permission types
     const PERM_VIEW_METADATA = 'view_metadata';
     const PERM_EDIT_METADATA = 'edit_metadata';
@@ -38,18 +41,26 @@ class PermissionService {
      * Check if user has a specific permission
      */
     public function hasPermission(
-        string $userId, 
-        string $permissionType, 
+        string $userId,
+        string $permissionType,
         ?int $groupfolderId = null,
         ?string $fieldScope = null
     ): bool {
+        // In-request cache to avoid repeated DB queries for the same check
+        $cacheKey = $userId . ':' . $permissionType . ':' . ($groupfolderId ?? 'null') . ':' . ($fieldScope ?? 'null');
+        if (isset($this->permissionCache[$cacheKey])) {
+            return $this->permissionCache[$cacheKey];
+        }
+
         // Admin users always have all permissions
         if ($this->groupManager->isAdmin($userId)) {
+            $this->permissionCache[$cacheKey] = true;
             return true;
         }
 
         // Check user-specific permissions
         if ($this->checkUserPermission($userId, $permissionType, $groupfolderId, $fieldScope)) {
+            $this->permissionCache[$cacheKey] = true;
             return true;
         }
 
@@ -60,10 +71,12 @@ class PermissionService {
 
         if (!empty($userGroups)) {
             if ($this->checkGroupPermissions($userGroups, $permissionType, $groupfolderId, $fieldScope)) {
+                $this->permissionCache[$cacheKey] = true;
                 return true;
             }
         }
 
+        $this->permissionCache[$cacheKey] = false;
         return false;
     }
 

@@ -4,26 +4,22 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Controller;
 
-use OCA\MetaVox\Service\FieldService;
 use OCA\MetaVox\Service\ApiFieldService;
-use OCP\AppFramework\OCSController;
+use OCA\MetaVox\Service\FieldService;
+use OCA\MetaVox\Service\PermissionService;
 use OCP\AppFramework\Http;
-use OCP\AppFramework\Http\DataResponse;
-use OCP\IRequest;
 use OCP\AppFramework\Http\Attribute\CORS;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
-use OCP\IUserSession;
+use OCP\AppFramework\Http\DataResponse;
 use OCP\Files\IRootFolder;
-use OCP\Files\NotFoundException;
+use OCP\IRequest;
+use OCP\IUserSession;
 use Psr\Log\LoggerInterface;
 
-class ApiFieldController extends OCSController {
+class ApiFieldController extends BaseOCSController {
 
-    private FieldService $fieldService;
     private ApiFieldService $apiFieldService;
-    private IUserSession $userSession;
-    private IRootFolder $rootFolder;
     private LoggerInterface $logger;
 
     public function __construct(
@@ -31,61 +27,19 @@ class ApiFieldController extends OCSController {
         IRequest $request,
         FieldService $fieldService,
         ApiFieldService $apiFieldService,
+        PermissionService $permissionService,
         IUserSession $userSession,
         IRootFolder $rootFolder,
         LoggerInterface $logger
     ) {
-        parent::__construct($appName, $request);
-        $this->fieldService = $fieldService;
+        parent::__construct($appName, $request, $userSession, $permissionService, $fieldService, $rootFolder);
         $this->apiFieldService = $apiFieldService;
-        $this->userSession = $userSession;
-        $this->rootFolder = $rootFolder;
         $this->logger = $logger;
     }
 
-    /**
-     * Check if user has access to a file
-     */
-    private function canUserAccessFile(int $fileId): bool {
-        $user = $this->userSession->getUser();
-        if (!$user) {
-            return false;
-        }
-
-        try {
-            $userFolder = $this->rootFolder->getUserFolder($user->getUID());
-            $nodes = $userFolder->getById($fileId);
-            return !empty($nodes);
-        } catch (NotFoundException $e) {
-            return false;
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
-
-    /**
-     * Check if user has access to multiple files, returns array of accessible file IDs
-     */
-    private function filterAccessibleFileIds(array $fileIds): array {
-        $user = $this->userSession->getUser();
-        if (!$user) {
-            return [];
-        }
-
-        try {
-            $userFolder = $this->rootFolder->getUserFolder($user->getUID());
-            $accessibleIds = [];
-            foreach ($fileIds as $fileId) {
-                $nodes = $userFolder->getById($fileId);
-                if (!empty($nodes)) {
-                    $accessibleIds[] = $fileId;
-                }
-            }
-            return $accessibleIds;
-        } catch (\Exception $e) {
-            return [];
-        }
-    }
+    // ========================================
+    // Field Definition CRUD (Admin only via NC middleware)
+    // ========================================
 
     /**
      * Update existing field (Admin only)
@@ -102,11 +56,11 @@ class ApiFieldController extends OCSController {
             $isRequired = $this->request->getParam('is_required', false);
             $sortOrder = $this->request->getParam('sort_order', 0);
             $appliesToGroupfolder = $this->request->getParam('applies_to_groupfolder');
-            
+
             if (empty($fieldName) || empty($fieldLabel) || empty($fieldType)) {
                 return new DataResponse(['error' => 'Field name, label, and type are required'], Http::STATUS_BAD_REQUEST);
             }
-            
+
             $fieldData = [
                 'field_name' => trim($fieldName),
                 'field_label' => trim($fieldLabel),
@@ -116,19 +70,18 @@ class ApiFieldController extends OCSController {
                 'is_required' => (bool)$isRequired,
                 'sort_order' => (int)$sortOrder,
             ];
-            
+
             if ($appliesToGroupfolder !== null) {
                 $fieldData['applies_to_groupfolder'] = (int)$appliesToGroupfolder;
             }
-            
+
             $success = $this->fieldService->updateField($id, $fieldData);
-            
+
             if ($success) {
                 return new DataResponse(['success' => true, 'message' => 'Field updated successfully'], Http::STATUS_OK);
             } else {
                 return new DataResponse(['error' => 'Failed to update field', 'success' => false], Http::STATUS_INTERNAL_SERVER_ERROR);
             }
-            
         } catch (\Exception $e) {
             return new DataResponse(['error' => 'Internal server error: ' . $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
@@ -147,207 +100,6 @@ class ApiFieldController extends OCSController {
             return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
-/**
- * Get file metadata for multiple files
- */
-#[CORS]
-#[NoAdminRequired]
-#[NoCSRFRequired]
-public function getBulkFileMetadata(): DataResponse {
-    try {
-        $fileIds = [];
-
-        // Accept file_ids[] array notation: ?file_ids[]=123&file_ids[]=456
-        $fileIdsParam = $this->request->getParam('file_ids');
-
-        if (is_array($fileIdsParam) && !empty($fileIdsParam)) {
-            $fileIds = $fileIdsParam;
-        }
-        // Accept comma-separated string: ?file_ids=123,456,789
-        else if (is_string($fileIdsParam) && !empty($fileIdsParam)) {
-            $fileIds = explode(',', $fileIdsParam);
-        }
-
-        // Clean and validate file IDs
-        $fileIds = array_map('intval', array_filter($fileIds, function($id) {
-            return is_numeric($id) && intval($id) > 0;
-        }));
-
-        // Remove duplicates
-        $fileIds = array_unique($fileIds);
-
-        if (empty($fileIds)) {
-            return new DataResponse([
-                'error' => 'No valid file IDs provided. Use ?file_ids[]=123&file_ids[]=456 or ?file_ids=123,456,789'
-            ], Http::STATUS_BAD_REQUEST);
-        }
-
-        if (count($fileIds) > 100) {
-            return new DataResponse([
-                'error' => 'Maximum 100 file IDs per request allowed',
-                'provided' => count($fileIds),
-                'maximum' => 100
-            ], Http::STATUS_BAD_REQUEST);
-        }
-
-        // Filter to only files the user has access to
-        $accessibleFileIds = $this->filterAccessibleFileIds($fileIds);
-
-        if (empty($accessibleFileIds)) {
-            return new DataResponse([
-                'error' => 'No accessible files found'
-            ], Http::STATUS_FORBIDDEN);
-        }
-
-        $metadata = $this->fieldService->getBulkFileMetadata($accessibleFileIds);
-        return new DataResponse($metadata, Http::STATUS_OK);
-
-    } catch (\Exception $e) {
-        $this->logger->error('MetaVox: getBulkFileMetadata error', ['exception' => $e]);
-        return new DataResponse([
-            'error' => $e->getMessage()
-        ], Http::STATUS_INTERNAL_SERVER_ERROR);
-    }
-}
-    /**
-     * Get file metadata
-     */
-    #[CORS]
-    #[NoAdminRequired]
-    #[NoCSRFRequired]
-    public function getFileMetadata(int $fileId): DataResponse {
-        try {
-            // Check if user has access to the file
-            if (!$this->canUserAccessFile($fileId)) {
-                return new DataResponse(['error' => 'Access denied to file'], Http::STATUS_FORBIDDEN);
-            }
-
-            $metadata = $this->fieldService->getFieldMetadata($fileId);
-            return new DataResponse($metadata, Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
-     * Save file metadata
-     */
-    #[CORS]
-    #[NoAdminRequired]
-    #[NoCSRFRequired]
-    public function saveFileMetadata(int $fileId): DataResponse {
-        try {
-            // Check if user has access to the file
-            if (!$this->canUserAccessFile($fileId)) {
-                return new DataResponse(['error' => 'Access denied to file'], Http::STATUS_FORBIDDEN);
-            }
-
-            $metadata = $this->request->getParam('metadata', []);
-
-            $fields = $this->fieldService->getAllFields();
-            $fieldMap = [];
-            foreach ($fields as $field) {
-                $fieldMap[$field['field_name']] = $field['id'];
-            }
-
-            foreach ($metadata as $fieldName => $value) {
-                if (isset($fieldMap[$fieldName])) {
-                    if (is_array($value)) {
-                        $value = implode(';#', $value);
-                    }
-                    $this->fieldService->saveFieldValue($fileId, $fieldMap[$fieldName], (string)$value);
-                }
-            }
-
-            return new DataResponse(['success' => true], Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
-     * Get all groupfolders
-     */
-    #[CORS]
-    #[NoAdminRequired]
-    #[NoCSRFRequired]
-    public function getGroupfolders(): DataResponse {
-        try {
-            $user = $this->userSession->getUser();
-            if (!$user) {
-                return new DataResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
-            }
-            $groupfolders = $this->fieldService->getGroupfolders($user->getUID());
-            return new DataResponse($groupfolders, Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
-     * Get groupfolder metadata
-     */
-    #[CORS]
-    #[NoAdminRequired]
-    #[NoCSRFRequired]
-    public function getGroupfolderMetadata(int $groupfolderId): DataResponse {
-        try {
-            $metadata = $this->fieldService->getGroupfolderMetadata($groupfolderId);
-            return new DataResponse($metadata, Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
-     * Save groupfolder metadata
-     */
-    #[CORS]
-    #[NoAdminRequired]
-    #[NoCSRFRequired]
-    public function saveGroupfolderMetadata(int $groupfolderId): DataResponse {
-        try {
-            $metadata = $this->request->getParam('metadata', []);
-            
-            $fields = $this->fieldService->getFieldsByScope('groupfolder');
-            $fieldMap = [];
-            foreach ($fields as $field) {
-                $fieldMap[$field['field_name']] = $field['id'];
-            }
-            
-            foreach ($metadata as $fieldName => $value) {
-                if (isset($fieldMap[$fieldName])) {
-                    if (is_array($value)) {
-                        $value = implode(';#', $value);
-                    }
-                    $this->fieldService->saveGroupfolderFieldValue($groupfolderId, $fieldMap[$fieldName], (string)$value);
-                }
-            }
-
-            return new DataResponse(['success' => true], Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage(), 'success' => false], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
-     * Get groupfolder fields
-     */
-    #[CORS]
-    #[NoAdminRequired]
-    #[NoCSRFRequired]
-public function getGroupfolderFields(): DataResponse {
-    try {
-        $fields = $this->fieldService->getFieldsByScope('groupfolder');
-        
-        // Zorg ervoor dat het een proper indexed array is
-        $result = array_values($fields);
-        
-        return new DataResponse($result, Http::STATUS_OK);
-    } catch (\Exception $e) {
-        return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-    }
-}
 
     /**
      * Create groupfolder field (Admin only)
@@ -380,339 +132,7 @@ public function getGroupfolderFields(): DataResponse {
     }
 
     /**
-     * Get groupfolder file metadata
-     */
-    #[CORS]
-    #[NoAdminRequired]
-    #[NoCSRFRequired]
-    public function getGroupfolderFileMetadata(int $groupfolderId, int $fileId): DataResponse {
-        try {
-            // Check if user has access to the file
-            if (!$this->canUserAccessFile($fileId)) {
-                return new DataResponse(['error' => 'Access denied to file'], Http::STATUS_FORBIDDEN);
-            }
-
-            $metadata = $this->fieldService->getGroupfolderFileMetadata($groupfolderId, $fileId);
-            return new DataResponse($metadata, Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
-     * Save groupfolder file metadata
-     */
-    #[CORS]
-    #[NoAdminRequired]
-    #[NoCSRFRequired]
-    public function saveGroupfolderFileMetadata(int $groupfolderId, int $fileId): DataResponse {
-        try {
-            // Check if user has access to the file
-            if (!$this->canUserAccessFile($fileId)) {
-                return new DataResponse(['error' => 'Access denied to file'], Http::STATUS_FORBIDDEN);
-            }
-
-            $metadata = $this->request->getParam('metadata', []);
-
-            $fields = $this->fieldService->getFieldsByScope('groupfolder');
-            $fieldMap = [];
-            foreach ($fields as $field) {
-                $fieldMap[$field['field_name']] = $field['id'];
-            }
-
-            foreach ($metadata as $fieldName => $value) {
-                if (isset($fieldMap[$fieldName])) {
-                    // Arrays (multiselect) → join with ;# separator
-                    if (is_array($value)) {
-                        $value = implode(';#', $value);
-                    }
-                    $this->fieldService->saveGroupfolderFileFieldValue($groupfolderId, $fileId, $fieldMap[$fieldName], (string)$value);
-                }
-            }
-
-            return new DataResponse(['success' => true], Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
-     * Get assigned fields for groupfolder
-     */
-    #[CORS]
-    #[NoAdminRequired]
-    #[NoCSRFRequired]
-public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
-    try {
-        // Use the new method that returns full field data
-        $fields = $this->fieldService->getAssignedFieldsWithDataForGroupfolder($groupfolderId);
-        
-        return new DataResponse($fields, Http::STATUS_OK);
-    } catch (\Exception $e) {
-        $this->logger->error('MetaVox: getGroupfolderAssignedFields error', ['exception' => $e]);
-        return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-    }
-}
-
-    /**
-     * Set groupfolder fields (Admin only)
-     */
-    #[CORS]
-    #[NoCSRFRequired]
-    public function setGroupfolderFields(int $groupfolderId): DataResponse {
-        try {
-            $fieldIds = $this->request->getParam('field_ids', []);
-            $success = $this->fieldService->setGroupfolderFields($groupfolderId, $fieldIds);
-            return new DataResponse(['success' => $success], Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
-     * Save field override for specific groupfolder (Admin only)
-     */
-    #[CORS]
-    #[NoCSRFRequired]
-    public function saveFieldOverride(int $groupfolderId): DataResponse {
-        try {
-            $fieldName = $this->request->getParam('field_name');
-            $appliesToGroupfolder = (int) $this->request->getParam('applies_to_groupfolder', 0);
-            
-            if (empty($fieldName)) {
-                return new DataResponse(['success' => false, 'message' => 'Field name is required'], Http::STATUS_BAD_REQUEST);
-            }
-            
-            $success = $this->fieldService->saveGroupfolderFieldOverride($groupfolderId, $fieldName, $appliesToGroupfolder);
-            
-            if ($success) {
-                return new DataResponse(['success' => true], Http::STATUS_OK);
-            } else {
-                return new DataResponse(['success' => false, 'message' => 'Failed to save field override'], Http::STATUS_INTERNAL_SERVER_ERROR);
-            }
-            
-        } catch (\Exception $e) {
-            return new DataResponse(['success' => false, 'message' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
-     * Get field overrides for specific groupfolder
-     */
-    #[CORS]
-    #[NoAdminRequired]
-    #[NoCSRFRequired]
-    public function getFieldOverrides(int $groupfolderId): DataResponse {
-        try {
-            $overrides = $this->fieldService->getGroupfolderFieldOverrides($groupfolderId);
-            return new DataResponse($overrides, Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
-     * Batch update file metadata for multiple files
-     */
-    #[CORS]
-    #[NoAdminRequired]
-    #[NoCSRFRequired]
-    public function batchUpdateFileMetadata(): DataResponse {
-        try {
-            $updates = $this->request->getParam('updates', []);
-
-            if (empty($updates) || !is_array($updates)) {
-                return new DataResponse([
-                    'error' => 'updates array is required'
-                ], Http::STATUS_BAD_REQUEST);
-            }
-
-            // Filter updates to only include files user has access to
-            $filteredUpdates = [];
-            foreach ($updates as $update) {
-                if (isset($update['file_id']) && $this->canUserAccessFile((int)$update['file_id'])) {
-                    $filteredUpdates[] = $update;
-                }
-            }
-
-            if (empty($filteredUpdates)) {
-                return new DataResponse([
-                    'error' => 'No accessible files in update request'
-                ], Http::STATUS_FORBIDDEN);
-            }
-
-            $results = $this->apiFieldService->batchUpdateFileMetadata($filteredUpdates);
-
-            $successCount = count(array_filter($results, fn($r) => $r['success']));
-
-            return new DataResponse([
-                'success' => true,
-                'results' => $results,
-                'total' => count($results),
-                'successful' => $successCount,
-                'failed' => count($results) - $successCount
-            ], Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse([
-                'error' => $e->getMessage()
-            ], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
-     * Batch delete file metadata
-     */
-    #[CORS]
-    #[NoAdminRequired]
-    #[NoCSRFRequired]
-    public function batchDeleteFileMetadata(): DataResponse {
-        try {
-            $deletes = $this->request->getParam('deletes', []);
-
-            if (empty($deletes) || !is_array($deletes)) {
-                return new DataResponse([
-                    'error' => 'deletes array is required with format: [{"file_id": 123, "groupfolder_id": 1, "field_names": ["field1"] or null}]'
-                ], Http::STATUS_BAD_REQUEST);
-            }
-
-            // Filter deletes to only include files user has access to
-            $filteredDeletes = [];
-            foreach ($deletes as $delete) {
-                if (isset($delete['file_id']) && $this->canUserAccessFile((int)$delete['file_id'])) {
-                    $filteredDeletes[] = $delete;
-                }
-            }
-
-            if (empty($filteredDeletes)) {
-                return new DataResponse([
-                    'error' => 'No accessible files in delete request'
-                ], Http::STATUS_FORBIDDEN);
-            }
-
-            $results = $this->apiFieldService->batchDeleteFileMetadata($filteredDeletes);
-
-            $successCount = count(array_filter($results, fn($r) => $r['success']));
-
-            return new DataResponse([
-                'success' => true,
-                'results' => $results,
-                'total' => count($results),
-                'successful' => $successCount,
-                'failed' => count($results) - $successCount
-            ], Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse([
-                'error' => $e->getMessage()
-            ], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
-     * Batch copy metadata from one file to multiple files
-     */
-    #[CORS]
-    #[NoAdminRequired]
-    #[NoCSRFRequired]
-    public function batchCopyFileMetadata(): DataResponse {
-        try {
-            $sourceFileId = (int)$this->request->getParam('source_file_id');
-            $targetFileIds = $this->request->getParam('target_file_ids', []);
-            $fieldNames = $this->request->getParam('field_names', null);
-
-            if (!$sourceFileId) {
-                return new DataResponse([
-                    'error' => 'source_file_id is required'
-                ], Http::STATUS_BAD_REQUEST);
-            }
-
-            // Check access to source file
-            if (!$this->canUserAccessFile($sourceFileId)) {
-                return new DataResponse([
-                    'error' => 'Access denied to source file'
-                ], Http::STATUS_FORBIDDEN);
-            }
-
-            if (empty($targetFileIds) || !is_array($targetFileIds)) {
-                return new DataResponse([
-                    'error' => 'target_file_ids array is required'
-                ], Http::STATUS_BAD_REQUEST);
-            }
-
-            // Filter target files to only accessible ones
-            $accessibleTargetIds = $this->filterAccessibleFileIds(array_map('intval', $targetFileIds));
-
-            if (empty($accessibleTargetIds)) {
-                return new DataResponse([
-                    'error' => 'No accessible target files'
-                ], Http::STATUS_FORBIDDEN);
-            }
-
-            $result = $this->apiFieldService->batchCopyFileMetadata(
-                $sourceFileId,
-                $accessibleTargetIds,
-                $fieldNames
-            );
-
-            return new DataResponse($result, Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse([
-                'error' => $e->getMessage()
-            ], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
-     * Get metadata statistics (Admin only)
-     */
-    #[CORS]
-    #[NoCSRFRequired]
-    public function getMetadataStatistics(): DataResponse {
-        try {
-            $stats = $this->apiFieldService->getMetadataStatistics();
-            return new DataResponse($stats, Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse([
-                'error' => $e->getMessage()
-            ], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    // ========================================
-    // Column & Directory Metadata Endpoints (OCS)
-    // ========================================
-
-    /**
-     * Get all file-level fields assigned to a groupfolder.
-     * Used by the view editor to populate the available columns list.
-     */
-    #[CORS]
-    #[NoAdminRequired]
-    #[NoCSRFRequired]
-    public function getGroupfolderFileFields(int $groupfolderId): DataResponse {
-        try {
-            $user = $this->userSession->getUser();
-            if (!$user) {
-                return new DataResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
-            }
-            if (!$this->fieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
-                return new DataResponse(['error' => 'Access denied'], Http::STATUS_FORBIDDEN);
-            }
-
-            $fields = $this->fieldService->getAssignedFileFieldsForGroupfolder($groupfolderId);
-            $response = new DataResponse($fields, Http::STATUS_OK);
-            $response->addHeader('Cache-Control', 'private, max-age=600');
-            return $response;
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    // ========================================
-    // Field Update / Delete (OCS)
-    // ========================================
-
-    /**
-     * Update a groupfolder field definition. Requires Nextcloud admin.
+     * Update a groupfolder field definition (Admin only)
      */
     #[CORS]
     #[NoCSRFRequired]
@@ -744,7 +164,7 @@ public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
     }
 
     /**
-     * Delete a groupfolder field definition. Requires Nextcloud admin.
+     * Delete a groupfolder field definition (Admin only)
      */
     #[CORS]
     #[NoCSRFRequired]
@@ -760,4 +180,499 @@ public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
         }
     }
 
+    /**
+     * Set groupfolder fields (Admin only)
+     */
+    #[CORS]
+    #[NoCSRFRequired]
+    public function setGroupfolderFields(int $groupfolderId): DataResponse {
+        try {
+            $fieldIds = $this->request->getParam('field_ids', []);
+            $success = $this->fieldService->setGroupfolderFields($groupfolderId, $fieldIds);
+            return new DataResponse(['success' => $success], Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Save field override for specific groupfolder (Admin only)
+     */
+    #[CORS]
+    #[NoCSRFRequired]
+    public function saveFieldOverride(int $groupfolderId): DataResponse {
+        try {
+            $fieldName = $this->request->getParam('field_name');
+            $appliesToGroupfolder = (int)$this->request->getParam('applies_to_groupfolder', 0);
+
+            if (empty($fieldName)) {
+                return new DataResponse(['success' => false, 'message' => 'Field name is required'], Http::STATUS_BAD_REQUEST);
+            }
+
+            $success = $this->fieldService->saveGroupfolderFieldOverride($groupfolderId, $fieldName, $appliesToGroupfolder);
+
+            if ($success) {
+                return new DataResponse(['success' => true], Http::STATUS_OK);
+            } else {
+                return new DataResponse(['success' => false, 'message' => 'Failed to save field override'], Http::STATUS_INTERNAL_SERVER_ERROR);
+            }
+        } catch (\Exception $e) {
+            return new DataResponse(['success' => false, 'message' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Get metadata statistics (Admin only)
+     */
+    #[CORS]
+    #[NoCSRFRequired]
+    public function getMetadataStatistics(): DataResponse {
+        try {
+            $stats = $this->apiFieldService->getMetadataStatistics();
+            return new DataResponse($stats, Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // ========================================
+    // User-accessible endpoints (NoAdminRequired)
+    // ========================================
+
+    /**
+     * Get file metadata for multiple files
+     */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function getBulkFileMetadata(): DataResponse {
+        try {
+            $user = $this->requireUser();
+            if ($user instanceof DataResponse) return $user;
+
+            $fileIdsParam = $this->request->getParam('file_ids');
+            $fileIds = [];
+
+            if (is_array($fileIdsParam) && !empty($fileIdsParam)) {
+                $fileIds = $fileIdsParam;
+            } elseif (is_string($fileIdsParam) && !empty($fileIdsParam)) {
+                $fileIds = explode(',', $fileIdsParam);
+            }
+
+            $fileIds = array_map('intval', array_filter($fileIds, fn($id) => is_numeric($id) && intval($id) > 0));
+            $fileIds = array_unique($fileIds);
+
+            if (empty($fileIds)) {
+                return new DataResponse(['error' => 'No valid file IDs provided'], Http::STATUS_BAD_REQUEST);
+            }
+            if (count($fileIds) > 100) {
+                return new DataResponse(['error' => 'Maximum 100 file IDs per request'], Http::STATUS_BAD_REQUEST);
+            }
+
+            $accessibleFileIds = $this->filterAccessibleFileIds($fileIds, $user->getUID());
+            if (empty($accessibleFileIds)) {
+                return new DataResponse(['error' => 'No accessible files found'], Http::STATUS_FORBIDDEN);
+            }
+
+            $metadata = $this->fieldService->getBulkFileMetadata($accessibleFileIds);
+            return new DataResponse($metadata, Http::STATUS_OK);
+        } catch (\Exception $e) {
+            $this->logger->error('MetaVox: getBulkFileMetadata error', ['exception' => $e]);
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Get file metadata
+     */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function getFileMetadata(int $fileId): DataResponse {
+        try {
+            $user = $this->requireUser();
+            if ($user instanceof DataResponse) return $user;
+
+            if (!$this->canUserAccessFile($fileId, $user->getUID())) {
+                return new DataResponse(['error' => 'Access denied to file'], Http::STATUS_FORBIDDEN);
+            }
+
+            $metadata = $this->fieldService->getFieldMetadata($fileId);
+            return new DataResponse($metadata, Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Save file metadata
+     */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function saveFileMetadata(int $fileId): DataResponse {
+        try {
+            $user = $this->requireUser();
+            if ($user instanceof DataResponse) return $user;
+
+            if (!$this->canUserAccessFile($fileId, $user->getUID())) {
+                return new DataResponse(['error' => 'Access denied to file'], Http::STATUS_FORBIDDEN);
+            }
+
+            $metadata = $this->request->getParam('metadata', []);
+            $fields = $this->fieldService->getAllFields();
+            $fieldMap = [];
+            foreach ($fields as $field) {
+                $fieldMap[$field['field_name']] = $field['id'];
+            }
+
+            foreach ($metadata as $fieldName => $value) {
+                if (isset($fieldMap[$fieldName])) {
+                    if (is_array($value)) {
+                        $value = implode(';#', $value);
+                    }
+                    $this->fieldService->saveFieldValue($fileId, $fieldMap[$fieldName], (string)$value);
+                }
+            }
+
+            return new DataResponse(['success' => true], Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Get all groupfolders
+     */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function getGroupfolders(): DataResponse {
+        try {
+            $user = $this->requireUser();
+            if ($user instanceof DataResponse) return $user;
+
+            $groupfolders = $this->fieldService->getGroupfolders($user->getUID());
+            return new DataResponse($groupfolders, Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Get groupfolder metadata
+     */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function getGroupfolderMetadata(int $groupfolderId): DataResponse {
+        try {
+            $user = $this->requireUser();
+            if ($user instanceof DataResponse) return $user;
+            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
+
+            $metadata = $this->fieldService->getGroupfolderMetadata($groupfolderId);
+            return new DataResponse($metadata, Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Save groupfolder metadata
+     */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function saveGroupfolderMetadata(int $groupfolderId): DataResponse {
+        try {
+            $user = $this->requireUser();
+            if ($user instanceof DataResponse) return $user;
+            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
+
+            $metadata = $this->request->getParam('metadata', []);
+
+            $fields = $this->fieldService->getFieldsByScope('groupfolder');
+            $fieldMap = [];
+            foreach ($fields as $field) {
+                $fieldMap[$field['field_name']] = $field['id'];
+            }
+
+            foreach ($metadata as $fieldName => $value) {
+                if (isset($fieldMap[$fieldName])) {
+                    if (is_array($value)) {
+                        $value = implode(';#', $value);
+                    }
+                    $this->fieldService->saveGroupfolderFieldValue($groupfolderId, $fieldMap[$fieldName], (string)$value);
+                }
+            }
+
+            return new DataResponse(['success' => true], Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage(), 'success' => false], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Get groupfolder fields
+     */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function getGroupfolderFields(): DataResponse {
+        try {
+            $fields = $this->fieldService->getFieldsByScope('groupfolder');
+            return new DataResponse(array_values($fields), Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Get groupfolder file metadata
+     */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function getGroupfolderFileMetadata(int $groupfolderId, int $fileId): DataResponse {
+        try {
+            $user = $this->requireUser();
+            if ($user instanceof DataResponse) return $user;
+
+            if (!$this->canUserAccessFile($fileId, $user->getUID())) {
+                return new DataResponse(['error' => 'Access denied to file'], Http::STATUS_FORBIDDEN);
+            }
+
+            $metadata = $this->fieldService->getGroupfolderFileMetadata($groupfolderId, $fileId);
+            return new DataResponse($metadata, Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Save groupfolder file metadata
+     */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function saveGroupfolderFileMetadata(int $groupfolderId, int $fileId): DataResponse {
+        try {
+            $user = $this->requireUser();
+            if ($user instanceof DataResponse) return $user;
+
+            if (!$this->canUserAccessFile($fileId, $user->getUID())) {
+                return new DataResponse(['error' => 'Access denied to file'], Http::STATUS_FORBIDDEN);
+            }
+
+            $metadata = $this->request->getParam('metadata', []);
+
+            $fields = $this->fieldService->getFieldsByScope('groupfolder');
+            $fieldMap = [];
+            foreach ($fields as $field) {
+                $fieldMap[$field['field_name']] = $field['id'];
+            }
+
+            foreach ($metadata as $fieldName => $value) {
+                if (isset($fieldMap[$fieldName])) {
+                    if (is_array($value)) {
+                        $value = implode(';#', $value);
+                    }
+                    $this->fieldService->saveGroupfolderFileFieldValue($groupfolderId, $fileId, $fieldMap[$fieldName], (string)$value, $fieldName);
+                }
+            }
+
+            return new DataResponse(['success' => true], Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Get assigned fields for groupfolder
+     */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
+        try {
+            $user = $this->requireUser();
+            if ($user instanceof DataResponse) return $user;
+            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
+
+            $fields = $this->fieldService->getAssignedFieldsWithDataForGroupfolder($groupfolderId);
+            return new DataResponse($fields, Http::STATUS_OK);
+        } catch (\Exception $e) {
+            $this->logger->error('MetaVox: getGroupfolderAssignedFields error', ['exception' => $e]);
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Get field overrides for specific groupfolder
+     */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function getFieldOverrides(int $groupfolderId): DataResponse {
+        try {
+            $user = $this->requireUser();
+            if ($user instanceof DataResponse) return $user;
+            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
+
+            $overrides = $this->fieldService->getGroupfolderFieldOverrides($groupfolderId);
+            return new DataResponse($overrides, Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Get all file-level fields assigned to a groupfolder
+     */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function getGroupfolderFileFields(int $groupfolderId): DataResponse {
+        try {
+            $user = $this->requireUser();
+            if ($user instanceof DataResponse) return $user;
+            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
+
+            $fields = $this->fieldService->getAssignedFileFieldsForGroupfolder($groupfolderId);
+            $response = new DataResponse($fields, Http::STATUS_OK);
+            $response->addHeader('Cache-Control', 'private, max-age=600');
+            return $response;
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // ========================================
+    // Batch Operations (NoAdminRequired)
+    // ========================================
+
+    /**
+     * Batch update file metadata for multiple files
+     */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function batchUpdateFileMetadata(): DataResponse {
+        try {
+            $user = $this->requireUser();
+            if ($user instanceof DataResponse) return $user;
+
+            $updates = $this->request->getParam('updates', []);
+            if (empty($updates) || !is_array($updates)) {
+                return new DataResponse(['error' => 'updates array is required'], Http::STATUS_BAD_REQUEST);
+            }
+
+            $userId = $user->getUID();
+            $filteredUpdates = [];
+            foreach ($updates as $update) {
+                if (isset($update['file_id']) && $this->canUserAccessFile((int)$update['file_id'], $userId)) {
+                    $filteredUpdates[] = $update;
+                }
+            }
+
+            if (empty($filteredUpdates)) {
+                return new DataResponse(['error' => 'No accessible files in update request'], Http::STATUS_FORBIDDEN);
+            }
+
+            $results = $this->apiFieldService->batchUpdateFileMetadata($filteredUpdates);
+            $successCount = count(array_filter($results, fn($r) => $r['success']));
+
+            return new DataResponse([
+                'success' => true,
+                'results' => $results,
+                'total' => count($results),
+                'successful' => $successCount,
+                'failed' => count($results) - $successCount
+            ], Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Batch delete file metadata
+     */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function batchDeleteFileMetadata(): DataResponse {
+        try {
+            $user = $this->requireUser();
+            if ($user instanceof DataResponse) return $user;
+
+            $deletes = $this->request->getParam('deletes', []);
+            if (empty($deletes) || !is_array($deletes)) {
+                return new DataResponse(['error' => 'deletes array is required'], Http::STATUS_BAD_REQUEST);
+            }
+
+            $userId = $user->getUID();
+            $filteredDeletes = [];
+            foreach ($deletes as $delete) {
+                if (isset($delete['file_id']) && $this->canUserAccessFile((int)$delete['file_id'], $userId)) {
+                    $filteredDeletes[] = $delete;
+                }
+            }
+
+            if (empty($filteredDeletes)) {
+                return new DataResponse(['error' => 'No accessible files in delete request'], Http::STATUS_FORBIDDEN);
+            }
+
+            $results = $this->apiFieldService->batchDeleteFileMetadata($filteredDeletes);
+            $successCount = count(array_filter($results, fn($r) => $r['success']));
+
+            return new DataResponse([
+                'success' => true,
+                'results' => $results,
+                'total' => count($results),
+                'successful' => $successCount,
+                'failed' => count($results) - $successCount
+            ], Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Batch copy metadata from one file to multiple files
+     */
+    #[CORS]
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function batchCopyFileMetadata(): DataResponse {
+        try {
+            $user = $this->requireUser();
+            if ($user instanceof DataResponse) return $user;
+
+            $userId = $user->getUID();
+            $sourceFileId = (int)$this->request->getParam('source_file_id');
+            $targetFileIds = $this->request->getParam('target_file_ids', []);
+            $fieldNames = $this->request->getParam('field_names', null);
+
+            if (!$sourceFileId) {
+                return new DataResponse(['error' => 'source_file_id is required'], Http::STATUS_BAD_REQUEST);
+            }
+            if (!$this->canUserAccessFile($sourceFileId, $userId)) {
+                return new DataResponse(['error' => 'Access denied to source file'], Http::STATUS_FORBIDDEN);
+            }
+            if (empty($targetFileIds) || !is_array($targetFileIds)) {
+                return new DataResponse(['error' => 'target_file_ids array is required'], Http::STATUS_BAD_REQUEST);
+            }
+
+            $accessibleTargetIds = $this->filterAccessibleFileIds(array_map('intval', $targetFileIds), $userId);
+            if (empty($accessibleTargetIds)) {
+                return new DataResponse(['error' => 'No accessible target files'], Http::STATUS_FORBIDDEN);
+            }
+
+            $result = $this->apiFieldService->batchCopyFileMetadata($sourceFileId, $accessibleTargetIds, $fieldNames);
+            return new DataResponse($result, Http::STATUS_OK);
+        } catch (\Exception $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
 }

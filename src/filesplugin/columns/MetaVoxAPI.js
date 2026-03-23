@@ -209,6 +209,7 @@ export function setUpdateAllRowCells(fn) { _updateAllRowCells = fn }
  * @param {*}      newValue
  * @param {Object} [options]
  * @param {boolean} [options.skipUndo]
+ * @param {boolean} [options.unlock] - Release cell lock after save (combined save+unlock)
  */
 export async function saveSingleField(fileId, fieldName, newValue, options = {}) {
 	const activeGroupfolderId = getActiveGroupfolderId()
@@ -225,14 +226,20 @@ export async function saveSingleField(fileId, fieldName, newValue, options = {})
 	// Update the cell display
 	if (_updateAllRowCells) _updateAllRowCells()
 
-	// Save via API
+	// Save via API (with optional combined unlock)
+	const payload = { metadata: { [fieldName]: newValue } }
+	if (options.unlock) {
+		payload.unlock = true
+		payload.unlock_field = fieldName
+	}
+
 	try {
 		await axios.post(
 			generateUrl('/apps/metavox/api/groupfolders/{groupfolderId}/files/{fileId}/metadata', {
 				groupfolderId: activeGroupfolderId,
 				fileId,
 			}),
-			{ metadata: { [fieldName]: newValue } },
+			payload,
 		)
 
 		// Dispatch event so sidebar stays in sync
