@@ -9,38 +9,34 @@ use OCA\MetaVox\Service\PermissionService;
 use OCA\MetaVox\Service\PresenceService;
 use OCA\MetaVox\Service\UserFieldService;
 use OCA\MetaVox\Service\ViewService;
-use OCP\AppFramework\Controller;
+use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
+use OCP\Files\IRootFolder;
 use OCP\IRequest;
 use OCP\IUserSession;
 
-class ViewController extends Controller {
+class ViewController extends BaseController {
 
-    private FieldService $fieldService;
     private PresenceService $presenceService;
     private UserFieldService $userFieldService;
     private ViewService $viewService;
-    private IUserSession $userSession;
-    private PermissionService $permissionService;
 
     public function __construct(
         string $appName,
         IRequest $request,
         FieldService $fieldService,
+        PermissionService $permissionService,
         PresenceService $presenceService,
         UserFieldService $userFieldService,
         ViewService $viewService,
         IUserSession $userSession,
-        PermissionService $permissionService
+        IRootFolder $rootFolder
     ) {
-        parent::__construct($appName, $request);
-        $this->fieldService = $fieldService;
+        parent::__construct($appName, $request, $userSession, $permissionService, $fieldService, $rootFolder);
         $this->presenceService = $presenceService;
         $this->userFieldService = $userFieldService;
         $this->viewService = $viewService;
-        $this->userSession = $userSession;
-        $this->permissionService = $permissionService;
     }
 
     /**
@@ -59,28 +55,22 @@ class ViewController extends Controller {
             $response->addHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
             return $response;
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
+            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Create a new view for a groupfolder
-
      */
     public function createView(int $gfId): JSONResponse {
         try {
-            $user = $this->userSession->getUser();
-            if (!$user) {
-                return new JSONResponse(['error' => 'User not authenticated'], 401);
-            }
-
-            if (!$this->permissionService->hasPermission($user->getUID(), PermissionService::PERM_MANAGE_FIELDS, $gfId)) {
-                return new JSONResponse(['error' => 'Manage fields permission required'], 403);
-            }
+            $user = $this->requireUser();
+            if ($user instanceof JSONResponse) return $user;
+            if ($deny = $this->requireManagePermission($user->getUID(), $gfId)) return $deny;
 
             $name = $this->request->getParam('name');
             if (empty($name)) {
-                return new JSONResponse(['error' => 'View name is required'], 400);
+                return new JSONResponse(['error' => 'View name is required'], Http::STATUS_BAD_REQUEST);
             }
 
             $isDefault = (bool)$this->request->getParam('is_default', false);
@@ -90,35 +80,29 @@ class ViewController extends Controller {
             $sortOrder = $this->request->getParam('sort_order');
 
             $view = $this->viewService->createView($gfId, $name, $isDefault, $columns, $filters, $sortField, $sortOrder);
-            return new JSONResponse($view, 201);
+            return new JSONResponse($view, Http::STATUS_CREATED);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
+            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Update an existing view
-
      */
     public function updateView(int $gfId, int $viewId): JSONResponse {
         try {
-            $user = $this->userSession->getUser();
-            if (!$user) {
-                return new JSONResponse(['error' => 'User not authenticated'], 401);
-            }
-
-            if (!$this->permissionService->hasPermission($user->getUID(), PermissionService::PERM_MANAGE_FIELDS, $gfId)) {
-                return new JSONResponse(['error' => 'Manage fields permission required'], 403);
-            }
+            $user = $this->requireUser();
+            if ($user instanceof JSONResponse) return $user;
+            if ($deny = $this->requireManagePermission($user->getUID(), $gfId)) return $deny;
 
             $name = $this->request->getParam('name');
             if (empty($name)) {
-                return new JSONResponse(['error' => 'View name is required'], 400);
+                return new JSONResponse(['error' => 'View name is required'], Http::STATUS_BAD_REQUEST);
             }
 
             $existing = $this->viewService->getView($viewId, $gfId);
             if ($existing === null) {
-                return new JSONResponse(['error' => 'View not found'], 404);
+                return new JSONResponse(['error' => 'View not found'], Http::STATUS_NOT_FOUND);
             }
 
             $isDefault = (bool)$this->request->getParam('is_default', false);
@@ -132,61 +116,49 @@ class ViewController extends Controller {
             $view = $this->viewService->updateView($viewId, $gfId, $name, $isDefault, $columns, $filters, $sortField, $sortOrder, $position);
             return new JSONResponse($view);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
+            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Reorder views for a groupfolder
-     *
      */
     public function reorderViews(int $gfId): JSONResponse {
         try {
-            $user = $this->userSession->getUser();
-            if (!$user) {
-                return new JSONResponse(['error' => 'User not authenticated'], 401);
-            }
-
-            if (!$this->permissionService->hasPermission($user->getUID(), PermissionService::PERM_MANAGE_FIELDS, $gfId)) {
-                return new JSONResponse(['error' => 'Manage fields permission required'], 403);
-            }
+            $user = $this->requireUser();
+            if ($user instanceof JSONResponse) return $user;
+            if ($deny = $this->requireManagePermission($user->getUID(), $gfId)) return $deny;
 
             $viewIds = $this->request->getParam('view_ids', []);
             if (empty($viewIds) || !is_array($viewIds)) {
-                return new JSONResponse(['error' => 'view_ids array is required'], 400);
+                return new JSONResponse(['error' => 'view_ids array is required'], Http::STATUS_BAD_REQUEST);
             }
 
             $this->viewService->reorderViews($gfId, $viewIds);
             return new JSONResponse(['success' => true]);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
+            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Delete a view
-
      */
     public function deleteView(int $gfId, int $viewId): JSONResponse {
         try {
-            $user = $this->userSession->getUser();
-            if (!$user) {
-                return new JSONResponse(['error' => 'User not authenticated'], 401);
-            }
-
-            if (!$this->permissionService->hasPermission($user->getUID(), PermissionService::PERM_MANAGE_FIELDS, $gfId)) {
-                return new JSONResponse(['error' => 'Manage fields permission required'], 403);
-            }
+            $user = $this->requireUser();
+            if ($user instanceof JSONResponse) return $user;
+            if ($deny = $this->requireManagePermission($user->getUID(), $gfId)) return $deny;
 
             $existing = $this->viewService->getView($viewId, $gfId);
             if ($existing === null) {
-                return new JSONResponse(['error' => 'View not found'], 404);
+                return new JSONResponse(['error' => 'View not found'], Http::STATUS_NOT_FOUND);
             }
 
             $this->viewService->deleteView($viewId, $gfId);
             return new JSONResponse(['success' => true]);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
+            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -197,17 +169,14 @@ class ViewController extends Controller {
     #[NoAdminRequired]
     public function init(): JSONResponse {
         try {
-            $user = $this->userSession->getUser();
-            if (!$user) {
-                return new JSONResponse(['error' => 'Not authenticated'], 401);
-            }
+            $user = $this->requireUser();
+            if ($user instanceof JSONResponse) return $user;
 
             $userId = $user->getUID();
             $dir = $this->request->getParam('dir', '');
 
             $groupfolders = $this->userFieldService->getAccessibleGroupfolders($userId);
 
-            // Debug: log when groupfolders are empty
             if (empty($groupfolders)) {
                 error_log("MetaVox init: 0 groupfolders for user={$userId} dir={$dir}");
             }
@@ -248,7 +217,7 @@ class ViewController extends Controller {
             $response->addHeader('Cache-Control', 'private, max-age=30');
             return $response;
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
+            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
 }

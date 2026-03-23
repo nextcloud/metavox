@@ -4,20 +4,20 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Controller;
 
-use OCA\MetaVox\Service\UserFieldService;
 use OCA\MetaVox\Service\FieldService;
-use OCP\AppFramework\Controller;
+use OCA\MetaVox\Service\PermissionService;
+use OCA\MetaVox\Service\UserFieldService;
+use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
+use OCP\Files\IRootFolder;
 use OCP\IRequest;
 use OCP\IUserSession;
 use Psr\Log\LoggerInterface;
 
-class UserFieldController extends Controller {
+class UserFieldController extends BaseController {
 
     private UserFieldService $userFieldService;
-    private FieldService $fieldService;
-    private IUserSession $userSession;
     private LoggerInterface $logger;
 
     public function __construct(
@@ -25,13 +25,13 @@ class UserFieldController extends Controller {
         IRequest $request,
         UserFieldService $userFieldService,
         FieldService $fieldService,
+        PermissionService $permissionService,
         IUserSession $userSession,
+        IRootFolder $rootFolder,
         LoggerInterface $logger
     ) {
-        parent::__construct($appName, $request);
+        parent::__construct($appName, $request, $userSession, $permissionService, $fieldService, $rootFolder);
         $this->userFieldService = $userFieldService;
-        $this->fieldService = $fieldService;
-        $this->userSession = $userSession;
         $this->logger = $logger;
     }
 
@@ -41,18 +41,14 @@ class UserFieldController extends Controller {
     #[NoAdminRequired]
     public function getAccessibleGroupfolders(): JSONResponse {
         try {
-            $user = $this->userSession->getUser();
-            if (!$user) {
-                return new JSONResponse(['error' => 'User not authenticated'], 401);
-            }
+            $user = $this->requireUser();
+            if ($user instanceof JSONResponse) return $user;
 
-            $userId = $user->getUID();
-            $groupfolders = $this->userFieldService->getAccessibleGroupfolders($userId);
-            
+            $groupfolders = $this->userFieldService->getAccessibleGroupfolders($user->getUID());
             return new JSONResponse($groupfolders);
         } catch (\Exception $e) {
             $this->logger->error('MetaVox: getAccessibleGroupfolders error', ['exception' => $e]);
-            return new JSONResponse(['error' => $e->getMessage()], 500);
+            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -62,18 +58,14 @@ class UserFieldController extends Controller {
     #[NoAdminRequired]
     public function getGroupfolderFields(int $groupfolderId): JSONResponse {
         try {
-            $user = $this->userSession->getUser();
-            if (!$user) {
-                return new JSONResponse(['error' => 'User not authenticated'], 401);
-            }
-            if (!$this->userFieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
-                return new JSONResponse(['error' => 'Access denied'], 403);
-            }
+            $user = $this->requireUser();
+            if ($user instanceof JSONResponse) return $user;
+            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
 
             $fields = $this->userFieldService->getGroupfolderFields($groupfolderId);
             return new JSONResponse($fields);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
+            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -86,7 +78,7 @@ class UserFieldController extends Controller {
             $fields = $this->userFieldService->getAllGroupfolderFields();
             return new JSONResponse($fields);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
+            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -96,18 +88,14 @@ class UserFieldController extends Controller {
     #[NoAdminRequired]
     public function getGroupfolderMetadata(int $groupfolderId): JSONResponse {
         try {
-            $user = $this->userSession->getUser();
-            if (!$user) {
-                return new JSONResponse(['error' => 'User not authenticated'], 401);
-            }
-            if (!$this->userFieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
-                return new JSONResponse(['error' => 'Access denied'], 403);
-            }
+            $user = $this->requireUser();
+            if ($user instanceof JSONResponse) return $user;
+            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
 
             $metadata = $this->userFieldService->getGroupfolderMetadata($groupfolderId);
             return new JSONResponse($metadata);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
+            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -117,20 +105,16 @@ class UserFieldController extends Controller {
     #[NoAdminRequired]
     public function saveGroupfolderMetadata(int $groupfolderId): JSONResponse {
         try {
-            $user = $this->userSession->getUser();
-            if (!$user) {
-                return new JSONResponse(['error' => 'User not authenticated'], 401);
-            }
-            if (!$this->userFieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
-                return new JSONResponse(['error' => 'Access denied'], 403);
-            }
+            $user = $this->requireUser();
+            if ($user instanceof JSONResponse) return $user;
+            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
 
             $metadata = $this->request->getParam('metadata', []);
             $success = $this->userFieldService->saveGroupfolderMetadata($groupfolderId, $metadata);
 
             return new JSONResponse(['success' => $success]);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
+            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -140,21 +124,17 @@ class UserFieldController extends Controller {
     #[NoAdminRequired]
     public function setGroupfolderFields(int $groupfolderId): JSONResponse {
         try {
-            $user = $this->userSession->getUser();
-            if (!$user) {
-                return new JSONResponse(['error' => 'User not authenticated'], 401);
-            }
-            if (!$this->userFieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
-                return new JSONResponse(['error' => 'Access denied'], 403);
-            }
+            $user = $this->requireUser();
+            if ($user instanceof JSONResponse) return $user;
+            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
+            if ($deny = $this->requireManagePermission($user->getUID(), $groupfolderId)) return $deny;
 
             $fieldIds = $this->request->getParam('field_ids', []);
             $success = $this->userFieldService->setGroupfolderFields($groupfolderId, $fieldIds);
 
             return new JSONResponse(['success' => $success]);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
+            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
-
 }

@@ -168,7 +168,7 @@ export async function openInlineEditor(td, config) {
 				item.textContent = opt.label
 				if (opt.value === currentValue) item.classList.add('metavox-select-option--selected')
 				item.addEventListener('click', () => {
-					saveSingleField(fileId, fieldName, opt.value)
+					saveSingleField(fileId, fieldName, opt.value, { unlock: true })
 					closeInlineEditor(false)
 				})
 				container.appendChild(item)
@@ -196,7 +196,7 @@ export async function openInlineEditor(td, config) {
 			clearOpt.textContent = '—'
 			if (!currentValue) clearOpt.classList.add('metavox-select-option--selected')
 			clearOpt.addEventListener('click', () => {
-				saveSingleField(fileId, fieldName, '')
+				saveSingleField(fileId, fieldName, '', { unlock: true })
 				closeInlineEditor(false)
 			})
 			container.appendChild(clearOpt)
@@ -208,7 +208,7 @@ export async function openInlineEditor(td, config) {
 				item.textContent = opt
 				if (opt === currentValue) item.classList.add('metavox-select-option--selected')
 				item.addEventListener('click', () => {
-					saveSingleField(fileId, fieldName, opt)
+					saveSingleField(fileId, fieldName, opt, { unlock: true })
 					closeInlineEditor(false)
 				})
 				container.appendChild(item)
@@ -248,7 +248,7 @@ export async function openInlineEditor(td, config) {
 			saveBtn.className = 'metavox-ms-save'
 			saveBtn.addEventListener('click', () => {
 				const checked = Array.from(container.querySelectorAll('input:checked')).map(c => c.value)
-				saveSingleField(fileId, fieldName, checked.join(';#'))
+				saveSingleField(fileId, fieldName, checked.join(';#'), { unlock: true })
 				closeInlineEditor(false)
 			})
 			const cancelBtn = document.createElement('button')
@@ -269,13 +269,13 @@ export async function openInlineEditor(td, config) {
 			editor.className = 'metavox-inline-editor metavox-inline-date'
 			editor.value = currentValue || ''
 			editor.addEventListener('change', () => {
-				saveSingleField(fileId, fieldName, editor.value)
+				saveSingleField(fileId, fieldName, editor.value, { unlock: true })
 				closeInlineEditor(false)
 			})
 			editor.addEventListener('keydown', (e) => {
 				if (e.key === 'Escape') closeInlineEditor(true)
 				if (e.key === 'Enter') {
-					saveSingleField(fileId, fieldName, editor.value)
+					saveSingleField(fileId, fieldName, editor.value, { unlock: true })
 					closeInlineEditor(false)
 				}
 			})
@@ -290,13 +290,13 @@ export async function openInlineEditor(td, config) {
 			editor.addEventListener('keydown', (e) => {
 				if (e.key === 'Escape') closeInlineEditor(true)
 				if (e.key === 'Enter') {
-					saveSingleField(fileId, fieldName, editor.value)
+					saveSingleField(fileId, fieldName, editor.value, { unlock: true })
 					closeInlineEditor(false)
 				}
 			})
 			editor.addEventListener('blur', () => {
 				if (activeEditor === td) {
-					saveSingleField(fileId, fieldName, editor.value)
+					saveSingleField(fileId, fieldName, editor.value, { unlock: true })
 					closeInlineEditor(false)
 				}
 			})
@@ -312,13 +312,13 @@ export async function openInlineEditor(td, config) {
 			editor.addEventListener('keydown', (e) => {
 				if (e.key === 'Escape') closeInlineEditor(true)
 				if (e.key === 'Enter') {
-					saveSingleField(fileId, fieldName, editor.value)
+					saveSingleField(fileId, fieldName, editor.value, { unlock: true })
 					closeInlineEditor(false)
 				}
 			})
 			editor.addEventListener('blur', () => {
 				if (activeEditor === td) {
-					saveSingleField(fileId, fieldName, editor.value)
+					saveSingleField(fileId, fieldName, editor.value, { unlock: true })
 					closeInlineEditor(false)
 				}
 			})
@@ -439,13 +439,15 @@ export function closeInlineEditor(cancel) {
 
 	document.removeEventListener('mousedown', handleEditorClickOutside)
 
-	// Release lock
-	const fileId = Number(td.dataset?.fileId)
-	const fieldName = td.dataset?.metavoxField
-	const gfId = getActiveGroupfolderId()
-	if (gfId && fileId && fieldName) {
-		const url = generateUrl('/apps/metavox/api/groupfolders/{gfId}/files/{fileId}/unlock', { gfId, fileId })
-		axios.post(url, { field_name: fieldName }).catch(() => {})
+	// Release lock only on cancel — on save, the lock is released via combined save+unlock
+	if (cancel) {
+		const fileId = Number(td.dataset?.fileId)
+		const fieldName = td.dataset?.metavoxField
+		const gfId = getActiveGroupfolderId()
+		if (gfId && fileId && fieldName) {
+			const url = generateUrl('/apps/metavox/api/groupfolders/{gfId}/files/{fileId}/unlock', { gfId, fileId })
+			axios.post(url, { field_name: fieldName }).catch(() => {})
+		}
 	}
 
 	// Remove portaled dropdown from body

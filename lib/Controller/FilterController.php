@@ -6,34 +6,29 @@ namespace OCA\MetaVox\Controller;
 
 use OCA\MetaVox\Service\FieldService;
 use OCA\MetaVox\Service\FilterService;
-use OCP\AppFramework\Controller;
+use OCA\MetaVox\Service\PermissionService;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
+use OCP\Files\IRootFolder;
 use OCP\IRequest;
 use OCP\IUserSession;
-use OCP\Files\IRootFolder;
 
-class FilterController extends Controller {
+class FilterController extends BaseController {
 
-    private FieldService $fieldService;
     private FilterService $filterService;
-    private IUserSession $userSession;
-    private IRootFolder $rootFolder;
 
     public function __construct(
         string $appName,
         IRequest $request,
         FieldService $fieldService,
         FilterService $filterService,
+        PermissionService $permissionService,
         IUserSession $userSession,
         IRootFolder $rootFolder
     ) {
-        parent::__construct($appName, $request);
-        $this->fieldService = $fieldService;
+        parent::__construct($appName, $request, $userSession, $permissionService, $fieldService, $rootFolder);
         $this->filterService = $filterService;
-        $this->userSession = $userSession;
-        $this->rootFolder = $rootFolder;
     }
 
     /**
@@ -43,13 +38,9 @@ class FilterController extends Controller {
     #[NoAdminRequired]
     public function getDirectoryMetadata(int $groupfolderId): JSONResponse {
         try {
-            $user = $this->userSession->getUser();
-            if (!$user) {
-                return new JSONResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
-            }
-            if (!$this->fieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
-                return new JSONResponse(['error' => 'Access denied'], Http::STATUS_FORBIDDEN);
-            }
+            $user = $this->requireUser();
+            if ($user instanceof JSONResponse) return $user;
+            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
 
             $fileIdsParam = $this->request->getParam('file_ids');
             $fileIds = [];
@@ -71,14 +62,10 @@ class FilterController extends Controller {
                 return new JSONResponse(['error' => 'Maximum 200 file IDs per request'], Http::STATUS_BAD_REQUEST);
             }
 
-            // Groupfolder access is already verified above, so we trust file IDs
-            // belong to this groupfolder. For small sets, do per-file checks.
-            $accessibleFileIds = $fileIds;
-            if (count($fileIds) <= 10) {
-                $accessibleFileIds = $this->filterAccessibleFileIds($fileIds);
-                if (empty($accessibleFileIds)) {
-                    return new JSONResponse([], Http::STATUS_OK);
-                }
+            // Verify per-file access (respects ACL restrictions within groupfolder)
+            $accessibleFileIds = $this->filterAccessibleFileIds($fileIds, $user->getUID());
+            if (empty($accessibleFileIds)) {
+                return new JSONResponse([], Http::STATUS_OK);
             }
 
             $metadata = $this->filterService->getDirectoryMetadata($accessibleFileIds, $groupfolderId);
@@ -95,13 +82,9 @@ class FilterController extends Controller {
     #[NoAdminRequired]
     public function getAllFilterValues(int $groupfolderId): JSONResponse {
         try {
-            $user = $this->userSession->getUser();
-            if (!$user) {
-                return new JSONResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
-            }
-            if (!$this->fieldService->hasAccessToGroupfolder($user->getUID(), $groupfolderId)) {
-                return new JSONResponse(['error' => 'Access denied'], Http::STATUS_FORBIDDEN);
-            }
+            $user = $this->requireUser();
+            if ($user instanceof JSONResponse) return $user;
+            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
 
             $fieldNames = $this->request->getParam('field_names');
             $fieldNamesArray = [];
@@ -124,30 +107,6 @@ class FilterController extends Controller {
             return $response;
         } catch (\Exception $e) {
             return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
-     * Check if user has access to multiple files, returns array of accessible file IDs.
-     */
-    private function filterAccessibleFileIds(array $fileIds): array {
-        $user = $this->userSession->getUser();
-        if (!$user) {
-            return [];
-        }
-
-        try {
-            $userFolder = $this->rootFolder->getUserFolder($user->getUID());
-            $accessibleIds = [];
-            foreach ($fileIds as $fileId) {
-                $nodes = $userFolder->getById($fileId);
-                if (!empty($nodes)) {
-                    $accessibleIds[] = $fileId;
-                }
-            }
-            return $accessibleIds;
-        } catch (\Exception $e) {
-            return [];
         }
     }
 }
