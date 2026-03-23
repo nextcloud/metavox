@@ -252,6 +252,188 @@ export function injectColumnStyles() {
 		.metavox-ms-cancel:hover {
 			background: var(--color-background-dark);
 		}
+		/* User picker */
+		.metavox-user-picker {
+			display: flex;
+			flex-direction: column;
+			max-height: 280px;
+		}
+		.metavox-user-search {
+			margin: 6px 8px;
+			padding: 6px 10px;
+			border: 1px solid var(--color-border);
+			border-radius: var(--border-radius-large, 10px);
+			background: var(--color-main-background);
+			font-size: var(--default-font-size, 15px);
+			outline: none;
+		}
+		.metavox-user-search:focus {
+			border-color: var(--color-primary-element);
+		}
+		.metavox-user-list {
+			overflow-y: auto;
+			flex: 1;
+		}
+		.metavox-user-option {
+			gap: 8px;
+		}
+		.metavox-user-avatar {
+			border-radius: 50%;
+			flex-shrink: 0;
+		}
+		.metavox-user-empty {
+			color: var(--color-text-maxcontrast);
+			cursor: default;
+			font-style: italic;
+		}
+		/* URL inline editor */
+		.metavox-inline-url {
+			display: flex;
+			align-items: center;
+			gap: 4px;
+			background: var(--color-main-background);
+			border: none;
+			padding: 0;
+		}
+		.metavox-url-input {
+			flex: 1;
+			height: 32px;
+			padding: 0 8px;
+			border: 1px solid var(--color-border);
+			border-radius: var(--border-radius, 3px);
+			background: var(--color-main-background);
+			font-size: var(--default-font-size, 15px);
+			outline: none;
+			min-width: 120px;
+		}
+		.metavox-url-input:focus {
+			border-color: var(--color-primary-element);
+		}
+		.metavox-url-open {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 28px;
+			height: 28px;
+			border-radius: var(--border-radius, 3px);
+			background: var(--color-background-hover);
+			color: var(--color-primary-element);
+			text-decoration: none;
+			font-size: 16px;
+			flex-shrink: 0;
+		}
+		.metavox-url-open:hover {
+			background: var(--color-primary-element-light);
+		}
+		/* File link inline editor */
+		.metavox-inline-filelink {
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			padding: 4px 8px;
+			background: var(--color-main-background);
+			border: none;
+			border-radius: var(--border-radius-large, 10px);
+			box-shadow: 0 2px 6px var(--color-box-shadow, rgba(0,0,0,.15));
+		}
+		.metavox-filelink-path {
+			flex: 1;
+			font-size: var(--default-font-size, 15px);
+			color: var(--color-main-text);
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			min-width: 60px;
+		}
+		.metavox-filelink-browse {
+			padding: 4px 12px;
+			border: none;
+			border-radius: var(--border-radius-pill, 20px);
+			background: var(--color-primary-element);
+			color: var(--color-primary-element-text, #fff);
+			font-size: 13px;
+			cursor: pointer;
+			white-space: nowrap;
+		}
+		.metavox-filelink-browse:hover {
+			background: var(--color-primary-element-hover);
+		}
+		.metavox-filelink-open {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 28px;
+			height: 28px;
+			border-radius: var(--border-radius, 3px);
+			background: var(--color-background-hover);
+			color: var(--color-primary-element);
+			text-decoration: none;
+			font-size: 16px;
+			flex-shrink: 0;
+		}
+		.metavox-filelink-open:hover {
+			background: var(--color-primary-element-light);
+		}
+		.metavox-filelink-clear {
+			width: 28px;
+			height: 28px;
+			border: none;
+			border-radius: 50%;
+			background: var(--color-background-hover);
+			color: var(--color-main-text);
+			cursor: pointer;
+			font-size: 14px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+		.metavox-filelink-clear:hover {
+			background: var(--color-error);
+			color: #fff;
+		}
+		/* Rich cell rendering — user, url, filelink */
+		.metavox-cell-user,
+		.metavox-cell-url,
+		.metavox-cell-filelink {
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			overflow: hidden;
+			width: 100%;
+		}
+		.metavox-cell-avatar {
+			border-radius: 50%;
+			flex-shrink: 0;
+		}
+		.metavox-cell-url-text,
+		.metavox-cell-filelink-text {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+			flex: 1;
+			min-width: 0;
+		}
+		.metavox-cell-link-btn {
+			flex-shrink: 0;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 22px;
+			height: 22px;
+			border-radius: var(--border-radius, 3px);
+			background: var(--color-background-hover);
+			color: var(--color-primary-element);
+			text-decoration: none;
+			font-size: 14px;
+			opacity: 0;
+			transition: opacity 0.15s;
+		}
+		.${MARKER_CLASS}:hover .metavox-cell-link-btn {
+			opacity: 1;
+		}
+		.metavox-cell-link-btn:hover {
+			background: var(--color-primary-element-light);
+		}
 		.${MARKER_CLASS}:hover {
 			background: var(--color-background-hover);
 		}

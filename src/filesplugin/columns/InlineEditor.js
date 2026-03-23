@@ -308,8 +308,231 @@ export async function openInlineEditor(td, config) {
 			break
 		}
 
+		case 'user': {
+			// User picker with server-side search-as-you-type
+			const container = document.createElement('div')
+			container.className = 'metavox-inline-editor metavox-inline-select metavox-user-picker'
+
+			const searchInput = document.createElement('input')
+			searchInput.type = 'text'
+			searchInput.className = 'metavox-user-search'
+			searchInput.placeholder = translate('metavox', 'Type to search users...')
+			container.appendChild(searchInput)
+
+			const listEl = document.createElement('div')
+			listEl.className = 'metavox-user-list'
+			container.appendChild(listEl)
+
+			// Clear option (always visible)
+			const clearOpt = document.createElement('div')
+			clearOpt.className = 'metavox-select-option metavox-user-option'
+			clearOpt.textContent = '—'
+			if (!currentValue) clearOpt.classList.add('metavox-select-option--selected')
+			clearOpt.addEventListener('click', () => {
+				saveSingleField(fileId, fieldName, '', { unlock: true })
+				closeInlineEditor(false)
+			})
+			listEl.appendChild(clearOpt)
+
+			// Show current value if set
+			if (currentValue) {
+				const currentItem = document.createElement('div')
+				currentItem.className = 'metavox-select-option metavox-user-option metavox-select-option--selected'
+				const currentAvatar = document.createElement('img')
+				currentAvatar.className = 'metavox-user-avatar'
+				currentAvatar.src = generateUrl('/avatar/{userId}/24', { userId: currentValue })
+				currentAvatar.width = 24
+				currentAvatar.height = 24
+				currentAvatar.onerror = () => { currentAvatar.style.display = 'none' }
+				currentItem.appendChild(currentAvatar)
+				currentItem.appendChild(document.createTextNode(currentValue))
+				listEl.appendChild(currentItem)
+			}
+
+			let searchTimer = null
+
+			const doSearch = (query) => {
+				if (query.length < 2) {
+					// Clear results, keep clear option + current
+					while (listEl.children.length > (currentValue ? 2 : 1)) {
+						listEl.removeChild(listEl.lastChild)
+					}
+					return
+				}
+
+				axios.get(generateUrl('/apps/metavox/api/users'), { params: { search: query } }).then(resp => {
+					// Remove old results (keep clear option + current value)
+					while (listEl.children.length > (currentValue ? 2 : 1)) {
+						listEl.removeChild(listEl.lastChild)
+					}
+
+					const users = Array.isArray(resp.data) ? resp.data : []
+
+					if (users.length === 0) {
+						const empty = document.createElement('div')
+						empty.className = 'metavox-select-option metavox-user-empty'
+						empty.textContent = translate('metavox', 'No users found')
+						listEl.appendChild(empty)
+						return
+					}
+
+					for (const u of users) {
+						// Skip if already shown as current value
+						if (u.id === currentValue) continue
+
+						const item = document.createElement('div')
+						item.className = 'metavox-select-option metavox-user-option'
+
+						const avatar = document.createElement('img')
+						avatar.className = 'metavox-user-avatar'
+						avatar.src = generateUrl('/avatar/{userId}/24', { userId: u.id })
+						avatar.width = 24
+						avatar.height = 24
+						avatar.onerror = () => { avatar.style.display = 'none' }
+						item.appendChild(avatar)
+
+						const nameSpan = document.createElement('span')
+						nameSpan.textContent = u.displayname || u.id
+						item.appendChild(nameSpan)
+
+						item.addEventListener('click', () => {
+							saveSingleField(fileId, fieldName, u.id, { unlock: true })
+							closeInlineEditor(false)
+						})
+						listEl.appendChild(item)
+					}
+				}).catch(() => {})
+			}
+
+			searchInput.addEventListener('input', () => {
+				clearTimeout(searchTimer)
+				searchTimer = setTimeout(() => doSearch(searchInput.value.trim()), 300)
+			})
+
+			container.addEventListener('keydown', (e) => {
+				if (e.key === 'Escape') closeInlineEditor(true)
+			})
+
+			editor = container
+			setTimeout(() => searchInput.focus(), 0)
+			break
+		}
+
+		case 'url': {
+			// URL input with open-link button
+			const container = document.createElement('div')
+			container.className = 'metavox-inline-editor metavox-inline-url'
+
+			const input = document.createElement('input')
+			input.type = 'url'
+			input.className = 'metavox-url-input'
+			input.value = currentValue || ''
+			input.placeholder = translate('metavox', 'https://...')
+			container.appendChild(input)
+
+			const openBtn = document.createElement('a')
+			openBtn.className = 'metavox-url-open'
+			openBtn.textContent = '↗'
+			openBtn.title = translate('metavox', 'Open link')
+			openBtn.target = '_blank'
+			openBtn.rel = 'noopener noreferrer'
+			const updateLink = () => {
+				const val = input.value.trim()
+				openBtn.href = val && !/^https?:\/\//i.test(val) ? 'https://' + val : val
+				openBtn.style.visibility = val ? 'visible' : 'hidden'
+			}
+			updateLink()
+			input.addEventListener('input', updateLink)
+			container.appendChild(openBtn)
+
+			input.addEventListener('keydown', (e) => {
+				if (e.key === 'Escape') closeInlineEditor(true)
+				if (e.key === 'Enter') {
+					saveSingleField(fileId, fieldName, input.value.trim(), { unlock: true })
+					closeInlineEditor(false)
+				}
+			})
+			input.addEventListener('blur', () => {
+				if (activeEditor === td) {
+					if (!document.hasFocus()) {
+						closeInlineEditor(true)
+					} else {
+						saveSingleField(fileId, fieldName, input.value.trim(), { unlock: true })
+						closeInlineEditor(false)
+					}
+				}
+			})
+
+			editor = container
+			setTimeout(() => input.focus(), 0)
+			break
+		}
+
+		case 'filelink': {
+			// File picker — open NC file picker dialog, save selected path
+			const container = document.createElement('div')
+			container.className = 'metavox-inline-editor metavox-inline-filelink'
+
+			const pathDisplay = document.createElement('span')
+			pathDisplay.className = 'metavox-filelink-path'
+			pathDisplay.textContent = currentValue ? currentValue.split('/').pop() : translate('metavox', 'No file selected')
+			container.appendChild(pathDisplay)
+
+			const browseBtn = document.createElement('button')
+			browseBtn.className = 'metavox-filelink-browse'
+			browseBtn.textContent = translate('metavox', 'Browse')
+			browseBtn.addEventListener('click', () => {
+				if (typeof OC !== 'undefined' && OC.dialogs) {
+					OC.dialogs.filepicker(
+						translate('metavox', 'Select a file or folder'),
+						(path) => {
+							if (path) {
+								saveSingleField(fileId, fieldName, path, { unlock: true })
+								closeInlineEditor(false)
+							}
+						},
+						false, undefined, true,
+						OC.dialogs.FILEPICKER_TYPE_CHOOSE,
+						'/',
+						{ allowDirectoryChooser: true }
+					)
+				}
+			})
+			container.appendChild(browseBtn)
+
+			if (currentValue) {
+				const openBtn = document.createElement('a')
+				openBtn.className = 'metavox-filelink-open'
+				openBtn.textContent = '↗'
+				openBtn.title = translate('metavox', 'Open file')
+				openBtn.target = '_blank'
+				openBtn.rel = 'noopener noreferrer'
+				const dir = currentValue.substring(0, currentValue.lastIndexOf('/'))
+				openBtn.href = generateUrl('/apps/files/?dir={dir}&openfile={file}', { dir, file: currentValue })
+				container.appendChild(openBtn)
+
+				const clearBtn = document.createElement('button')
+				clearBtn.className = 'metavox-filelink-clear'
+				clearBtn.textContent = '✕'
+				clearBtn.title = translate('metavox', 'Clear')
+				clearBtn.addEventListener('click', () => {
+					saveSingleField(fileId, fieldName, '', { unlock: true })
+					closeInlineEditor(false)
+				})
+				container.appendChild(clearBtn)
+			}
+
+			container.addEventListener('keydown', (e) => {
+				if (e.key === 'Escape') closeInlineEditor(true)
+			})
+			container.tabIndex = 0
+
+			editor = container
+			break
+		}
+
 		default: {
-			// text, textarea, url — use text input
+			// text, textarea — use text input
 			editor = document.createElement('input')
 			editor.type = 'text'
 			editor.className = 'metavox-inline-editor metavox-inline-input'
@@ -341,7 +564,7 @@ export async function openInlineEditor(td, config) {
 	td.style.position = 'relative'
 
 	// Dropdowns need to be portaled to body to escape table overflow
-	const isDropdown = config.field_type === 'multiselect' || config.field_type === 'select' || config.field_type === 'dropdown' || config.field_type === 'checkbox' || config.field_type === 'boolean'
+	const isDropdown = config.field_type === 'multiselect' || config.field_type === 'select' || config.field_type === 'dropdown' || config.field_type === 'checkbox' || config.field_type === 'boolean' || config.field_type === 'user'
 	if (isDropdown) {
 		const rect = td.getBoundingClientRect()
 		editor.style.position = 'fixed'
@@ -477,16 +700,14 @@ export function closeInlineEditor(cancel) {
 		delete td._scrollHandler
 	}
 
-	if (cancel && td._originalContent !== undefined) {
-		td.textContent = td._originalContent
-	} else {
-		// Re-render from cache
-		const fileId = Number(td.dataset.fileId)
-		const fieldName = td.dataset.metavoxField
-		const activeColumnConfigs = _getActiveColumnConfigs ? _getActiveColumnConfigs() : []
-		const config = activeColumnConfigs.find(c => c.field_name === fieldName)
-		const meta = metadataCache.get(fileId) || {}
-		if (config && _setCellValue) _setCellValue(td, meta[fieldName], config)
+	// Always re-render from cache (restores rich content like avatars, link buttons)
+	const fileId2 = Number(td.dataset.fileId)
+	const fieldName2 = td.dataset.metavoxField
+	const activeColumnConfigs = _getActiveColumnConfigs ? _getActiveColumnConfigs() : []
+	const config2 = activeColumnConfigs.find(c => c.field_name === fieldName2)
+	const meta2 = metadataCache.get(fileId2) || {}
+	if (config2 && _setCellValue) {
+		_setCellValue(td, cancel ? td._originalValue : meta2[fieldName2], config2)
 	}
 
 	delete td._originalContent

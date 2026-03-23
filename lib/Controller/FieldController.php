@@ -49,13 +49,17 @@ class FieldController extends BaseController {
     }
 
     /**
-     * Get all users for user/group picker field
+     * Search users for user/group picker field.
+     * Accepts ?search= parameter, returns max 25 results.
      */
     #[NoAdminRequired]
     #[NoCSRFRequired]
     public function getUsers(): JSONResponse {
         try {
-            $users = $this->userManager->search('');
+            $search = $this->request->getParam('search', '');
+            $limit = 25;
+
+            $users = $this->userManager->search($search, $limit);
             $userList = [];
 
             foreach ($users as $user) {
