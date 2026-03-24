@@ -7,7 +7,6 @@ namespace OCA\MetaVox\Controller;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\JSONResponse;
-use OCP\AppFramework\Http\StreamResponse;
 use OCP\Files\IAppData;
 use OCP\Files\NotFoundException;
 use OCP\IDBConnection;
@@ -31,23 +30,33 @@ class BackupController extends Controller {
     }
 
     /**
-     * List available backups.
+     * List available backups (supports both .json and .json.gz).
      */
     public function list(): JSONResponse {
         try {
             $dir = $this->getBackupDir();
-            $files = glob($dir . '/metavox_backup_*.json');
+            $files = array_merge(
+                glob($dir . '/metavox_backup_*.json.gz') ?: [],
+                glob($dir . '/metavox_backup_*.json') ?: []
+            );
             rsort($files);
 
             $backups = [];
             foreach ($files as $filepath) {
                 $filename = basename($filepath);
-                $fh = fopen($filepath, 'r');
-                // Read first 500 bytes to get header (version, created_at, counts)
-                $header = fread($fh, 500);
-                fclose($fh);
+                $isGz = str_ends_with($filepath, '.gz');
 
-                // Extract counts from header JSON
+                // Read header
+                if ($isGz) {
+                    $gz = gzopen($filepath, 'r');
+                    $header = gzread($gz, 500);
+                    gzclose($gz);
+                } else {
+                    $fh = fopen($filepath, 'r');
+                    $header = fread($fh, 500);
+                    fclose($fh);
+                }
+
                 $meta = $this->parseHeader($header);
 
                 $backups[] = [
@@ -56,6 +65,7 @@ class BackupController extends Controller {
                     'version' => $meta['version'] ?? 'unknown',
                     'size' => filesize($filepath),
                     'counts' => $meta['counts'] ?? [],
+                    'compressed' => $isGz,
                 ];
             }
 
@@ -66,37 +76,41 @@ class BackupController extends Controller {
     }
 
     /**
-     * Trigger a manual backup (streams directly to disk).
+     * Trigger a manual backup (gzip compressed, streamed to disk).
      */
     public function trigger(): JSONResponse {
         try {
             $dir = $this->getBackupDir();
-            $filename = 'metavox_backup_' . date('Y-m-d_H-i-s') . '.json';
+            $filename = 'metavox_backup_' . date('Y-m-d_H-i-s') . '.json.gz';
             $path = $dir . '/' . $filename;
 
             $counts = $this->streamBackupToFile($path);
             $this->cleanupOldBackups($dir);
 
-            $this->logger->info('MetaVox manual backup created: {filename}', ['filename' => $filename]);
+            $this->logger->info('MetaVox backup created: {filename} ({size})', [
+                'filename' => $filename,
+                'size' => $this->formatBytes(filesize($path)),
+            ]);
 
             return new JSONResponse([
                 'success' => true,
                 'filename' => $filename,
                 'counts' => $counts,
+                'size' => filesize($path),
             ]);
         } catch (\Exception $e) {
-            $this->logger->error('MetaVox manual backup failed', ['exception' => $e]);
+            $this->logger->error('MetaVox backup failed', ['exception' => $e]);
             return new JSONResponse(['error' => $e->getMessage()], 500);
         }
     }
 
     /**
-     * Download a backup file directly from disk.
+     * Download a backup file.
      */
     #[NoCSRFRequired]
     public function download() {
         $filename = $this->request->getParam('filename');
-        if (!$filename || !preg_match('/^metavox_backup_[\w-]+\.json$/', $filename)) {
+        if (!$filename || !preg_match('/^metavox_backup_[\w-]+\.json(\.gz)?$/', $filename)) {
             return new JSONResponse(['error' => 'Invalid filename'], 400);
         }
 
@@ -106,10 +120,14 @@ class BackupController extends Controller {
                 return new JSONResponse(['error' => 'Backup not found'], 404);
             }
 
-            $response = new StreamResponse($path);
-            $response->addHeader('Content-Type', 'application/json');
-            $response->addHeader('Content-Disposition', 'attachment; filename="' . $filename . '"');
-            return $response;
+            $isGz = str_ends_with($filename, '.gz');
+            $contentType = $isGz ? 'application/gzip' : 'application/json';
+
+            header('Content-Type: ' . $contentType);
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Content-Length: ' . filesize($path));
+            readfile($path);
+            exit;
         } catch (\Exception $e) {
             return new JSONResponse(['error' => $e->getMessage()], 500);
         }
@@ -117,12 +135,11 @@ class BackupController extends Controller {
 
     /**
      * Restore metadata from a backup file.
-     * Reads the file line by line — each row is on its own line,
-     * so only one row is in memory at a time.
+     * Supports both .json and .json.gz formats.
      */
     public function restore(): JSONResponse {
         $filename = $this->request->getParam('filename');
-        if (!$filename || !preg_match('/^metavox_backup_[\w-]+\.json$/', $filename)) {
+        if (!$filename || !preg_match('/^metavox_backup_[\w-]+\.json(\.gz)?$/', $filename)) {
             return new JSONResponse(['error' => 'Invalid filename'], 400);
         }
 
@@ -132,6 +149,7 @@ class BackupController extends Controller {
                 return new JSONResponse(['error' => 'Backup not found'], 404);
             }
 
+            $isGz = str_ends_with($path, '.gz');
             $this->db->beginTransaction();
 
             try {
@@ -145,18 +163,28 @@ class BackupController extends Controller {
                     $restored[$table] = 0;
                 }
 
-                // Read file line by line and restore
-                $fh = fopen($path, 'r');
-                $currentTable = null;
+                // Open file (gz or plain)
+                if ($isGz) {
+                    $fh = gzopen($path, 'r');
+                } else {
+                    $fh = fopen($path, 'r');
+                }
 
-                while (($line = fgets($fh)) !== false) {
+                $currentTable = null;
+                $readLine = $isGz
+                    ? function() use ($fh) { return gzgets($fh); }
+                    : function() use ($fh) { return fgets($fh); };
+                $closeFh = $isGz
+                    ? function() use ($fh) { gzclose($fh); }
+                    : function() use ($fh) { fclose($fh); };
+
+                while (($line = $readLine()) !== false) {
                     $line = trim($line);
 
-                    // Detect table start: "metavox_gf_fields":[
+                    // Detect table start
                     foreach (self::TABLES as $table) {
                         if (str_contains($line, '"' . $table . '":[')) {
                             $currentTable = $table;
-                            // The first row may be on the same line after the [
                             $bracketPos = strpos($line, ':[');
                             if ($bracketPos !== false) {
                                 $afterBracket = trim(substr($line, $bracketPos + 2));
@@ -180,10 +208,10 @@ class BackupController extends Controller {
                     }
                 }
 
-                fclose($fh);
+                $closeFh();
                 $this->db->commit();
 
-                $this->logger->info('MetaVox restore completed from {filename}: {fields} fields, {gf_meta} groupfolder metadata, {file_meta} file metadata', [
+                $this->logger->info('MetaVox restore completed from {filename}', [
                     'filename' => $filename,
                     'fields' => $restored['metavox_gf_fields'],
                     'gf_meta' => $restored['metavox_gf_metadata'],
@@ -206,9 +234,9 @@ class BackupController extends Controller {
 
     /**
      * Parse and insert a single row from the backup file.
+     * Validates column names against the known schema.
      */
     private function restoreRow(string $table, string $line, array &$restored): void {
-        // Strip trailing comma
         $line = rtrim($line, ',');
         if (!$line || $line === ']' || $line === ']}' || $line === ']}}') {
             return;
@@ -216,6 +244,13 @@ class BackupController extends Controller {
 
         $row = json_decode($line, true);
         if (!$row || !is_array($row)) {
+            return;
+        }
+
+        // Validate column names against known schema
+        $allowedColumns = $this->getAllowedColumns($table);
+        $row = array_intersect_key($row, array_flip($allowedColumns));
+        if (empty($row)) {
             return;
         }
 
@@ -231,14 +266,26 @@ class BackupController extends Controller {
     }
 
     /**
-     * Stream all tables to a JSON file row by row.
+     * Get allowed column names for a table (whitelist).
+     */
+    private function getAllowedColumns(string $table): array {
+        static $schemas = [
+            'metavox_gf_fields' => ['id', 'field_name', 'field_label', 'field_type', 'field_description', 'field_options', 'is_required', 'sort_order', 'scope', 'applies_to_groupfolder', 'created_at', 'updated_at'],
+            'metavox_gf_metadata' => ['id', 'groupfolder_id', 'field_name', 'field_value', 'created_at', 'updated_at'],
+            'metavox_file_gf_meta' => ['id', 'file_id', 'groupfolder_id', 'field_name', 'field_value', 'created_at', 'updated_at'],
+        ];
+        return $schemas[$table] ?? [];
+    }
+
+    /**
+     * Stream all tables to a gzip compressed JSON file.
      */
     private function streamBackupToFile(string $path): array {
-        $fh = fopen($path, 'w');
+        $gz = gzopen($path, 'wb6');
         $counts = [];
 
-        fwrite($fh, '{"version":' . json_encode($this->getAppVersion()));
-        fwrite($fh, ',"created_at":' . json_encode(date('c')));
+        gzwrite($gz, '{"version":' . json_encode($this->getAppVersion()));
+        gzwrite($gz, ',"created_at":' . json_encode(date('c')));
 
         foreach (self::TABLES as $table) {
             $qb = $this->db->getQueryBuilder();
@@ -246,36 +293,37 @@ class BackupController extends Controller {
             $counts[$table] = (int)$qb->executeQuery()->fetchOne();
         }
 
-        fwrite($fh, ',"counts":' . json_encode($counts));
-        fwrite($fh, ',"tables":{');
+        gzwrite($gz, ',"counts":' . json_encode($counts));
+        gzwrite($gz, ',"tables":{');
 
         $firstTable = true;
         foreach (self::TABLES as $table) {
             if (!$firstTable) {
-                fwrite($fh, ',');
+                gzwrite($gz, ',');
             }
             $firstTable = false;
 
-            fwrite($fh, json_encode($table) . ':[');
-            $this->streamTable($fh, $table);
-            fwrite($fh, ']');
+            gzwrite($gz, json_encode($table) . ':[');
+            $this->streamTable($gz, $table);
+            gzwrite($gz, ']');
         }
 
-        fwrite($fh, '}}');
-        fclose($fh);
+        gzwrite($gz, '}}');
+        gzclose($gz);
 
         return $counts;
     }
 
-    private function streamTable($fh, string $table): void {
-        $offset = 0;
+    private function streamTable($gz, string $table): void {
+        $lastId = 0;
         $firstRow = true;
 
         do {
             $qb = $this->db->getQueryBuilder();
             $qb->select('*')
                ->from($table)
-               ->setFirstResult($offset)
+               ->where($qb->expr()->gt('id', $qb->createNamedParameter($lastId, \OCP\DB\QueryBuilder\IQueryBuilder::PARAM_INT)))
+               ->orderBy('id', 'ASC')
                ->setMaxResults(self::CHUNK_SIZE);
 
             $result = $qb->executeQuery();
@@ -283,24 +331,21 @@ class BackupController extends Controller {
 
             while ($row = $result->fetch()) {
                 if (!$firstRow) {
-                    fwrite($fh, ",\n");
+                    gzwrite($gz, ",\n");
                 }
                 $firstRow = false;
-                fwrite($fh, json_encode($row, JSON_UNESCAPED_UNICODE));
+                gzwrite($gz, json_encode($row, JSON_UNESCAPED_UNICODE));
+                $lastId = (int)$row['id'];
                 $chunkSize++;
             }
             $result->closeCursor();
-
-            $offset += self::CHUNK_SIZE;
         } while ($chunkSize === self::CHUNK_SIZE);
     }
 
     /**
-     * Parse the JSON header (first ~500 bytes) to extract metadata
-     * without reading the entire file.
+     * Parse the JSON header to extract metadata.
      */
     private function parseHeader(string $header): array {
-        // The counts JSON ends with },"tables": — find that boundary
         $tablesPos = strpos($header, ',"tables"');
         if ($tablesPos !== false) {
             $headerJson = substr($header, 0, $tablesPos) . '}';
@@ -312,11 +357,7 @@ class BackupController extends Controller {
         return [];
     }
 
-    /**
-     * Get the filesystem path to the backup directory.
-     */
     private function getBackupDir(): string {
-        // Ensure folder exists in IAppData (creates DB entry)
         try {
             $this->appData->getFolder('backups');
         } catch (NotFoundException) {
@@ -335,7 +376,10 @@ class BackupController extends Controller {
     }
 
     private function cleanupOldBackups(string $dir): void {
-        $files = glob($dir . '/metavox_backup_*.json');
+        $files = array_merge(
+            glob($dir . '/metavox_backup_*.json.gz') ?: [],
+            glob($dir . '/metavox_backup_*.json') ?: []
+        );
         sort($files);
 
         while (\count($files) > self::MAX_BACKUPS) {
@@ -351,5 +395,12 @@ class BackupController extends Controller {
         } catch (\Exception) {
             return 'unknown';
         }
+    }
+
+    private function formatBytes(int $bytes): string {
+        if ($bytes >= 1073741824) return round($bytes / 1073741824, 1) . ' GB';
+        if ($bytes >= 1048576) return round($bytes / 1048576, 1) . ' MB';
+        if ($bytes >= 1024) return round($bytes / 1024, 1) . ' KB';
+        return $bytes . ' B';
     }
 }
