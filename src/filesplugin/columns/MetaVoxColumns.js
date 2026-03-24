@@ -509,6 +509,12 @@ export function startColumnWatcher() {
 			lastDir = currentDir
 			// Show loading state while new folder loads
 			document.querySelector('.files-list')?.classList.add('metavox-loading')
+
+			// Detect if we're switching groupfolders or navigating within the same one
+			const newGfId = detectCurrentGroupfolder()
+			const prevGfId = getActiveGroupfolderId()
+			const switchingGroupfolder = newGfId !== prevGfId
+
 			if (getColumnsActive()) {
 				uninstallSortBypass()
 				removeAllInjectedColumns()
@@ -520,32 +526,39 @@ export function startColumnWatcher() {
 				setColumnsActive(false)
 				setActiveGroupfolderId(null)
 			}
-			metadataCache.clear()
+
+			// Only clear metadata cache when switching groupfolders.
+			// Within the same teamfolder, keep cached metadata (notify_push keeps it fresh).
+			if (switchingGroupfolder) {
+				metadataCache.clear()
+			}
+
 			const _fi2 = getFilterInstance()
 			if (_fi2) _fi2.setSortState(null)
-			setActiveViews([])
-			setActiveView(null)
-			setAvailableFields([])
+			if (switchingGroupfolder) {
+				setActiveViews([])
+				setActiveView(null)
+				setAvailableFields([])
+			}
 
 			// Early metadata prefetch: start API call as soon as file IDs are known,
 			// parallel with scheduleInjection (don't wait for columns to be ready).
 			// Try dirContents first (Vue data, available before DOM renders),
 			// then fall back to DOM rows.
-			const gfId = detectCurrentGroupfolder()
-			if (gfId) {
+			if (newGfId) {
 				const earlyFetch = () => {
 					// Prefer dirContents (available before DOM rows render)
 					const fl = _findFilesList()
 					const dirIds = fl?.dirContents?.map(n => n.fileid).filter(Boolean) || []
 					if (dirIds.length > 0) {
-						loadAllMetadata(gfId)
+						loadAllMetadata(newGfId)
 						return true
 					}
 					// Fallback: DOM rows
 					const rows = document.querySelectorAll('tr[data-cy-files-list-row]')
 					const rowIds = [...rows].map(r => Number(r.getAttribute('data-cy-files-list-row-fileid'))).filter(Boolean)
 					if (rowIds.length > 0) {
-						loadAllMetadata(gfId)
+						loadAllMetadata(newGfId)
 						return true
 					}
 					return false
