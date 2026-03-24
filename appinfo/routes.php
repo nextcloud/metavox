@@ -120,6 +120,7 @@ return [
         ['name' => 'backup#trigger', 'url' => '/api/backup/trigger', 'verb' => 'POST'],
         ['name' => 'backup#restore', 'url' => '/api/backup/restore', 'verb' => 'POST'],
         ['name' => 'backup#download', 'url' => '/api/backup/download', 'verb' => 'GET'],
+        ['name' => 'backup#status', 'url' => '/api/backup/status', 'verb' => 'GET'],
     ],
 
     // ========================================

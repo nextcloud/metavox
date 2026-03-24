@@ -6,12 +6,50 @@
 				{{ t('metavox', 'Automatic daily backups of all metadata. You can also create manual backups and restore from any backup.') }}
 			</p>
 
+			<!-- Progress bar (shown during export/import) -->
+			<div v-if="operationStatus && operationStatus.status === 'running'" class="progress-section">
+				<div class="progress-header">
+					<span class="progress-label">
+						{{ operationStatus.operation === 'export' ? t('metavox', 'Creating backup...') : t('metavox', 'Restoring backup...') }}
+					</span>
+					<span class="progress-detail">
+						{{ formatNumber(operationStatus.progress) }} / {{ formatNumber(operationStatus.total) }}
+						<template v-if="operationStatus.table">
+							&middot; {{ operationStatus.table }}
+						</template>
+					</span>
+				</div>
+				<div class="progress-bar-container">
+					<div class="progress-bar-fill" :style="{ width: progressPercent + '%' }" />
+				</div>
+				<span class="progress-percent">{{ progressPercent }}%</span>
+			</div>
+
+			<!-- Completion message -->
+			<div v-if="operationStatus && operationStatus.status === 'completed'" class="progress-section completed">
+				<NcNoteCard type="success">
+					{{ operationStatus.operation === 'export' ? t('metavox', 'Backup completed') : t('metavox', 'Restore completed') }}
+					&middot; {{ operationStatus.duration }}s
+					<template v-if="operationStatus.size">
+						&middot; {{ formatSize(operationStatus.size) }}
+					</template>
+				</NcNoteCard>
+			</div>
+
+			<!-- Error message -->
+			<div v-if="operationStatus && operationStatus.status === 'error'" class="progress-section">
+				<NcNoteCard type="error">
+					{{ operationStatus.operation === 'export' ? t('metavox', 'Backup failed') : t('metavox', 'Restore failed') }}:
+					{{ operationStatus.error }}
+				</NcNoteCard>
+			</div>
+
 			<!-- Create backup -->
 			<div class="backup-actions">
 				<NcButton type="primary"
-					:disabled="creatingBackup"
+					:disabled="isOperationRunning"
 					@click="createBackup">
-					{{ creatingBackup ? t('metavox', 'Creating backup...') : t('metavox', 'Create backup now') }}
+					{{ t('metavox', 'Create backup now') }}
 				</NcButton>
 			</div>
 
@@ -36,6 +74,7 @@
 							v{{ backup.version }} &middot;
 							{{ totalEntries(backup) }} {{ t('metavox', 'entries') }} &middot;
 							{{ formatSize(backup.size) }}
+							<template v-if="backup.compressed"> &middot; gz</template>
 						</span>
 					</div>
 					<div class="backup-actions-row">
@@ -44,9 +83,9 @@
 							{{ t('metavox', 'Download') }}
 						</NcButton>
 						<NcButton type="secondary"
-							:disabled="restoring === backup.filename"
+							:disabled="isOperationRunning"
 							@click="confirmRestore(backup)">
-							{{ restoring === backup.filename ? t('metavox', 'Restoring...') : t('metavox', 'Restore') }}
+							{{ t('metavox', 'Restore') }}
 						</NcButton>
 					</div>
 				</div>
@@ -73,10 +112,6 @@
 				</NcButton>
 			</template>
 		</NcDialog>
-
-		<div v-if="message" :class="['message', messageType]">
-			{{ message }}
-		</div>
 	</div>
 </template>
 
@@ -94,23 +129,35 @@ export default {
 		NcNoteCard,
 	},
 
-	emits: ['notification'],
-
 	data() {
 		return {
 			backups: [],
 			loading: true,
-			creatingBackup: false,
-			restoring: null,
 			showConfirmDialog: false,
 			selectedBackup: null,
-			message: '',
-			messageType: 'success',
+			operationStatus: null,
+			pollTimer: null,
 		}
+	},
+
+	computed: {
+		isOperationRunning() {
+			return this.operationStatus?.status === 'running'
+		},
+		progressPercent() {
+			if (!this.operationStatus || !this.operationStatus.total) return 0
+			return Math.min(100, Math.round((this.operationStatus.progress / this.operationStatus.total) * 100))
+		},
 	},
 
 	mounted() {
 		this.loadBackups()
+		// Check if an operation is already running (survives page refresh)
+		this.pollStatus()
+	},
+
+	beforeUnmount() {
+		this.stopPolling()
 	},
 
 	methods: {
@@ -121,28 +168,30 @@ export default {
 				this.backups = response.data.backups || []
 			} catch (error) {
 				console.error('Failed to load backups:', error)
-				this.showMessage(this.t('metavox', 'Failed to load backups'), 'error')
 			} finally {
 				this.loading = false
 			}
 		},
 
 		async createBackup() {
-			this.creatingBackup = true
-			try {
-				const response = await axios.post(generateUrl('/apps/metavox/api/backup/trigger'))
-				if (response.data.success) {
-					this.showMessage(this.t('metavox', 'Backup created successfully'), 'success')
-					await this.loadBackups()
-				} else {
-					this.showMessage(this.t('metavox', 'Failed to create backup'), 'error')
+			// Fire and forget — the request runs server-side, we poll for progress
+			axios.post(generateUrl('/apps/metavox/api/backup/trigger')).then(() => {
+				this.loadBackups()
+			}).catch((error) => {
+				if (error.response?.status !== 409) {
+					console.error('Backup trigger failed:', error)
 				}
-			} catch (error) {
-				console.error('Failed to create backup:', error)
-				this.showMessage(this.t('metavox', 'Failed to create backup'), 'error')
-			} finally {
-				this.creatingBackup = false
+			})
+
+			// Start polling immediately
+			this.operationStatus = {
+				status: 'running',
+				operation: 'export',
+				progress: 0,
+				total: 0,
+				table: '',
 			}
+			this.startPolling()
 		},
 
 		downloadBackup(filename) {
@@ -159,29 +208,65 @@ export default {
 			this.showConfirmDialog = false
 			if (!this.selectedBackup) return
 
-			this.restoring = this.selectedBackup.filename
+			// Fire and forget
+			axios.post(generateUrl('/apps/metavox/api/backup/restore'), {
+				filename: this.selectedBackup.filename,
+			}).then(() => {
+				this.loadBackups()
+			}).catch((error) => {
+				if (error.response?.status !== 409) {
+					console.error('Restore failed:', error)
+				}
+			})
+
+			// Start polling immediately
+			this.operationStatus = {
+				status: 'running',
+				operation: 'import',
+				progress: 0,
+				total: 0,
+				table: 'preparing',
+			}
+			this.startPolling()
+		},
+
+		startPolling() {
+			this.stopPolling()
+			this.pollTimer = setInterval(() => this.pollStatus(), 2000)
+		},
+
+		stopPolling() {
+			if (this.pollTimer) {
+				clearInterval(this.pollTimer)
+				this.pollTimer = null
+			}
+		},
+
+		async pollStatus() {
 			try {
-				const response = await axios.post(generateUrl('/apps/metavox/api/backup/restore'), {
-					filename: this.selectedBackup.filename,
-				})
-				if (response.data.success) {
-					const r = response.data.restored
-					this.showMessage(
-						this.t('metavox', 'Restore completed: {fields} fields, {gfMeta} groupfolder metadata, {fileMeta} file metadata entries', {
-							fields: r.metavox_gf_fields,
-							gfMeta: r.metavox_gf_metadata,
-							fileMeta: r.metavox_file_gf_meta,
-						}),
-						'success',
-					)
+				const response = await axios.get(generateUrl('/apps/metavox/api/backup/status'))
+				const status = response.data
+
+				if (status.status === 'running') {
+					this.operationStatus = status
+					if (!this.pollTimer) {
+						this.startPolling()
+					}
+				} else if (status.status === 'completed' || status.status === 'error') {
+					this.operationStatus = status
+					this.stopPolling()
+					if (status.status === 'completed') {
+						this.loadBackups()
+					}
 				} else {
-					this.showMessage(this.t('metavox', 'Restore failed'), 'error')
+					// idle — no operation running
+					if (this.pollTimer) {
+						this.stopPolling()
+					}
 				}
 			} catch (error) {
-				console.error('Failed to restore backup:', error)
-				this.showMessage(this.t('metavox', 'Restore failed: ') + (error.response?.data?.error || error.message), 'error')
-			} finally {
-				this.restoring = null
+				// Status endpoint unavailable — stop polling
+				this.stopPolling()
 			}
 		},
 
@@ -204,7 +289,7 @@ export default {
 
 		formatSize(bytes) {
 			if (!bytes) return '0 B'
-			const units = ['B', 'KB', 'MB']
+			const units = ['B', 'KB', 'MB', 'GB']
 			let i = 0
 			let size = bytes
 			while (size >= 1024 && i < units.length - 1) {
@@ -214,12 +299,9 @@ export default {
 			return size.toFixed(i > 0 ? 1 : 0) + ' ' + units[i]
 		},
 
-		showMessage(text, type) {
-			this.message = text
-			this.messageType = type
-			setTimeout(() => {
-				this.message = ''
-			}, 8000)
+		formatNumber(n) {
+			if (!n) return '0'
+			return Number(n).toLocaleString()
 		},
 
 		t(app, text, vars) {
@@ -307,22 +389,56 @@ export default {
 	text-align: center;
 }
 
-.message {
-	margin-top: 15px;
-	padding: 10px 15px;
-	border-radius: var(--border-radius);
-	font-size: 14px;
+// Progress bar
+.progress-section {
+	margin-bottom: 20px;
+	padding: 16px 20px;
+	background: var(--color-background-hover);
+	border-radius: var(--border-radius-large);
+}
 
-	&.success {
-		background: #d4edda;
-		color: #155724;
-		border: 1px solid #c3e6cb;
-	}
+.progress-section.completed {
+	padding: 0;
+	background: none;
+}
 
-	&.error {
-		background: #f8d7da;
-		color: #721c24;
-		border: 1px solid #f5c6cb;
-	}
+.progress-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 8px;
+}
+
+.progress-label {
+	font-weight: 600;
+	color: var(--color-main-text);
+}
+
+.progress-detail {
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
+}
+
+.progress-bar-container {
+	width: 100%;
+	height: 8px;
+	background: var(--color-border);
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+.progress-bar-fill {
+	height: 100%;
+	background: var(--color-primary-element);
+	border-radius: 4px;
+	transition: width 0.5s ease;
+}
+
+.progress-percent {
+	display: block;
+	text-align: right;
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
+	margin-top: 4px;
 }
 </style>
