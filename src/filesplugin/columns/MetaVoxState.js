@@ -28,9 +28,34 @@ let _activeGroupfolderId = null
 export function getActiveGroupfolderId() { return _activeGroupfolderId }
 export function setActiveGroupfolderId(v) { _activeGroupfolderId = v }
 
-// ── Metadata cache (mutable Map — export directly) ──────────────────
-/** @type {Map<number, Object>} File metadata cache: fileId -> { field_name: value } */
-export const metadataCache = new Map()
+// ── Metadata cache (LRU Map — evicts oldest entries when exceeding limit) ──
+const MAX_CACHE_SIZE = 100000
+const _metadataCache = new Map()
+export const metadataCache = {
+	get: (key) => { return _metadataCache.get(key) },
+	set: (key, value) => {
+		// Delete + re-add moves key to end (most recent)
+		_metadataCache.delete(key)
+		_metadataCache.set(key, value)
+		// Evict oldest 25% when over limit
+		if (_metadataCache.size > MAX_CACHE_SIZE) {
+			const toRemove = Math.floor(MAX_CACHE_SIZE * 0.25)
+			const iter = _metadataCache.keys()
+			for (let i = 0; i < toRemove; i++) {
+				_metadataCache.delete(iter.next().value)
+			}
+		}
+	},
+	has: (key) => _metadataCache.has(key),
+	delete: (key) => _metadataCache.delete(key),
+	clear: () => _metadataCache.clear(),
+	keys: () => _metadataCache.keys(),
+	values: () => _metadataCache.values(),
+	entries: () => _metadataCache.entries(),
+	forEach: (fn) => _metadataCache.forEach(fn),
+	get size() { return _metadataCache.size },
+	[Symbol.iterator]: () => _metadataCache[Symbol.iterator](),
+}
 
 // ── Columns active flag ──────────────────────────────────────────────
 let _columnsActive = false

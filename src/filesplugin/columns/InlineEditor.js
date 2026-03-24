@@ -9,7 +9,7 @@
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 import { MARKER_CLASS } from './ColumnStyles.js'
-import { saveSingleField } from './MetaVoxAPI.js'
+import { saveSingleField, saveBulkFields } from './MetaVoxAPI.js'
 import { parseFieldOptions, formatValue } from './ColumnUtils.js'
 import { permissionCache, metadataCache, getActiveGroupfolderId } from './MetaVoxState.js'
 import { translate } from '@nextcloud/l10n'
@@ -777,19 +777,25 @@ export function setupFillHandle(handle, sourceTd, config) {
 		const editorEl = sourceTd.querySelector('input, select')
 		const value = editorEl ? editorEl.value : sourceTd._originalValue || ''
 
-		// Collect old values for batch undo, then save
+		// Collect file IDs and old values, then save in one bulk call
 		const activeColumnConfigs = _getActiveColumnConfigs ? _getActiveColumnConfigs() : []
 		const undoEntries = []
+		const fileIds = []
 		for (const cell of highlightedCells) {
 			cell.classList.remove('metavox-fill-highlight')
 			const fileId = Number(cell.dataset.fileId)
 			const meta = metadataCache.get(fileId) || {}
 			undoEntries.push({ fileId, fieldName, oldValue: meta[fieldName] })
-			saveSingleField(fileId, fieldName, value, { skipUndo: true })
+			fileIds.push(fileId)
 			const cellConfig = activeColumnConfigs.find(c => c.field_name === fieldName)
 			if (cellConfig && _setCellValue) _setCellValue(cell, value, cellConfig)
 		}
 		highlightedCells = []
+
+		// Single bulk API call instead of N separate requests
+		if (fileIds.length > 0) {
+			saveBulkFields(fileIds, fieldName, value)
+		}
 
 		// Single undo toast for the entire fill operation
 		if (undoEntries.length > 0) {
