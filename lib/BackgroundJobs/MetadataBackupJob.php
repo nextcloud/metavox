@@ -6,15 +6,16 @@ namespace OCA\MetaVox\BackgroundJobs;
 
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\TimedJob;
+use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\Files\IAppData;
 use OCP\Files\NotFoundException;
 use OCP\IDBConnection;
 use Psr\Log\LoggerInterface;
 
 /**
- * Daily automatic backup of all metadata tables to JSON.
+ * Daily automatic backup of all metadata tables.
  *
- * Streams rows directly to disk to handle millions of entries.
+ * Gzip compressed, keyset paginated for performance with millions of rows.
  * Stores backups in appdata_xxx/metavox/backups/.
  * Keeps a rolling window of 7 backups.
  */
@@ -36,17 +37,22 @@ class MetadataBackupJob extends TimedJob {
 
     protected function run(mixed $argument): void {
         try {
+            $start = microtime(true);
             $backupDir = $this->ensureBackupDir();
 
-            $filename = 'metavox_backup_' . date('Y-m-d') . '.json';
+            $filename = 'metavox_backup_' . date('Y-m-d') . '.json.gz';
             $path = $backupDir . '/' . $filename;
 
             $counts = $this->streamBackupToFile($path);
-
             $this->cleanupOldBackups($backupDir);
 
-            $this->logger->info('MetaVox backup created: {filename} ({fields} fields, {gf_meta} groupfolder metadata, {file_meta} file metadata)', [
+            $duration = round(microtime(true) - $start, 1);
+            $size = $this->formatBytes(filesize($path));
+
+            $this->logger->info('MetaVox backup created: {filename} ({size}, {duration}s) — {fields} fields, {gf_meta} gf metadata, {file_meta} file metadata', [
                 'filename' => $filename,
+                'size' => $size,
+                'duration' => $duration,
                 'fields' => $counts['metavox_gf_fields'],
                 'gf_meta' => $counts['metavox_gf_metadata'],
                 'file_meta' => $counts['metavox_file_gf_meta'],
@@ -57,11 +63,11 @@ class MetadataBackupJob extends TimedJob {
     }
 
     private function streamBackupToFile(string $path): array {
-        $fh = fopen($path, 'w');
+        $gz = gzopen($path, 'wb6');
         $counts = [];
 
-        fwrite($fh, '{"version":' . json_encode($this->getAppVersion()));
-        fwrite($fh, ',"created_at":' . json_encode(date('c')));
+        gzwrite($gz, '{"version":' . json_encode($this->getAppVersion()));
+        gzwrite($gz, ',"created_at":' . json_encode(date('c')));
 
         foreach (self::TABLES as $table) {
             $qb = $this->db->getQueryBuilder();
@@ -69,36 +75,41 @@ class MetadataBackupJob extends TimedJob {
             $counts[$table] = (int)$qb->executeQuery()->fetchOne();
         }
 
-        fwrite($fh, ',"counts":' . json_encode($counts));
-        fwrite($fh, ',"tables":{');
+        gzwrite($gz, ',"counts":' . json_encode($counts));
+        gzwrite($gz, ',"tables":{');
 
         $firstTable = true;
         foreach (self::TABLES as $table) {
             if (!$firstTable) {
-                fwrite($fh, ',');
+                gzwrite($gz, ',');
             }
             $firstTable = false;
 
-            fwrite($fh, json_encode($table) . ':[');
-            $this->streamTable($fh, $table);
-            fwrite($fh, ']');
+            gzwrite($gz, json_encode($table) . ':[');
+            $this->streamTable($gz, $table);
+            gzwrite($gz, ']');
         }
 
-        fwrite($fh, '}}');
-        fclose($fh);
+        gzwrite($gz, '}}');
+        gzclose($gz);
 
         return $counts;
     }
 
-    private function streamTable($fh, string $table): void {
-        $offset = 0;
+    /**
+     * Stream a table using keyset pagination (WHERE id > lastId)
+     * instead of OFFSET for O(1) per chunk performance.
+     */
+    private function streamTable($gz, string $table): void {
+        $lastId = 0;
         $firstRow = true;
 
         do {
             $qb = $this->db->getQueryBuilder();
             $qb->select('*')
                ->from($table)
-               ->setFirstResult($offset)
+               ->where($qb->expr()->gt('id', $qb->createNamedParameter($lastId, IQueryBuilder::PARAM_INT)))
+               ->orderBy('id', 'ASC')
                ->setMaxResults(self::CHUNK_SIZE);
 
             $result = $qb->executeQuery();
@@ -106,22 +117,17 @@ class MetadataBackupJob extends TimedJob {
 
             while ($row = $result->fetch()) {
                 if (!$firstRow) {
-                    fwrite($fh, ",\n");
+                    gzwrite($gz, ",\n");
                 }
                 $firstRow = false;
-                fwrite($fh, json_encode($row, JSON_UNESCAPED_UNICODE));
+                gzwrite($gz, json_encode($row, JSON_UNESCAPED_UNICODE));
+                $lastId = (int)$row['id'];
                 $chunkSize++;
             }
             $result->closeCursor();
-
-            $offset += self::CHUNK_SIZE;
         } while ($chunkSize === self::CHUNK_SIZE);
     }
 
-    /**
-     * Get the filesystem path to the backup directory.
-     * Uses IAppData to resolve the path, then writes directly to disk.
-     */
     private function ensureBackupDir(): string {
         try {
             $this->appData->getFolder('backups');
@@ -141,7 +147,10 @@ class MetadataBackupJob extends TimedJob {
     }
 
     private function cleanupOldBackups(string $dir): void {
-        $files = glob($dir . '/metavox_backup_*.json');
+        $files = array_merge(
+            glob($dir . '/metavox_backup_*.json.gz') ?: [],
+            glob($dir . '/metavox_backup_*.json') ?: []
+        );
         sort($files);
 
         while (\count($files) > self::MAX_BACKUPS) {
@@ -157,5 +166,12 @@ class MetadataBackupJob extends TimedJob {
         } catch (\Exception) {
             return 'unknown';
         }
+    }
+
+    private function formatBytes(int $bytes): string {
+        if ($bytes >= 1073741824) return round($bytes / 1073741824, 1) . ' GB';
+        if ($bytes >= 1048576) return round($bytes / 1048576, 1) . ' MB';
+        if ($bytes >= 1024) return round($bytes / 1024, 1) . ' KB';
+        return $bytes . ' B';
     }
 }
