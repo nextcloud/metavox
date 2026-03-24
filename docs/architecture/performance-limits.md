@@ -156,14 +156,16 @@ Each user opening a folder with metadata columns generates:
 | Filter values (lazy, on dropdown open) | 0–1 | 0–1 (cached 300s server-side) |
 | **Total per folder open** | **1–4** | **~5–8** |
 
-### Data Consistency
+### Data Consistency & Real-Time Sync
 
-MetaVox currently uses a **last-write-wins** model for concurrent edits:
+When **notify_push** is installed and configured, MetaVox supports real-time collaboration:
 
-- **No pessimistic locking**: Two users can edit the same field simultaneously. The last save overwrites the previous value without warning.
-- **No real-time sync**: There are no WebSocket or Server-Sent Events connections. Users work in isolation.
-- **30-second cache staleness**: After User A saves a value, User B may see the old value for up to 30 seconds (backend cache TTL).
-- **No edit indicators**: There is no "User X is editing" notification.
+- **Cell locking**: When a user starts editing a cell, it is locked for other users (30-second TTL via Redis). Other users see a lock indicator with the editor's name.
+- **Real-time push**: Metadata changes are pushed to all users viewing the same groupfolder via WebSocket (notify_push). No polling required.
+- **Presence tracking**: MetaVox tracks which users are actively viewing a groupfolder. Push events are only sent to active viewers, reducing unnecessary traffic.
+- **Graceful degradation**: Without notify_push, MetaVox falls back to last-write-wins with eventual consistency via cache expiry.
+
+See [Real-Time Sync](../features/real-time-sync.md) for full details.
 
 ### Concurrent User Capacity
 
@@ -237,6 +239,6 @@ Capacity depends heavily on server configuration and folder size:
 
 5. **Use the Views feature** to show only relevant columns per use case, rather than displaying all fields at once. This reduces API response sizes and improves rendering performance.
 
-6. **For multi-user editing scenarios**, be aware of the last-write-wins behavior. Coordinate edits on shared files to avoid silent overwrites.
+6. **For multi-user editing**, install notify_push for real-time sync and cell locking. Without it, last-write-wins applies.
 
 7. **Consider folder structure.** Splitting large collections across multiple folders (each under 5,000 files) is more effective than relying on hardware upgrades alone.

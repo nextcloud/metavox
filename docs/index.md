@@ -23,7 +23,16 @@ Installation, configuration, and compliance settings.
 - [Views](admin/views.md) - Create and manage views per team folder
 - [Compliance Templates](admin/compliance-templates.md) - GDPR, WOO, and Archives Act templates
 - [Flow Integration](admin/flow-integration.md) - Automate workflows with metadata
-- [Licensing](admin/licensing.md) - License configuration and monitoring
+- [Backup & Restore](admin/backup-restore.md) - Backup and restore metadata
+- [Settings](admin/settings.md) - Admin settings (AI, telemetry)
+- [Telemetry](admin/telemetry.md) - Usage reporting
+
+### Features
+
+Advanced features and capabilities.
+
+- [Real-Time Sync](features/real-time-sync.md) - Real-time metadata sync and cell locking via notify_push
+- [AI Autofill](features/ai-autofill.md) - AI-powered metadata suggestions
 
 ### For Architects
 
@@ -32,6 +41,7 @@ Technical documentation for integration and evaluation.
 - [Architecture Overview](architecture/overview.md) - System design and components
 - [Privacy & Security](architecture/privacy.md) - Data locality and GDPR compliance
 - [API Reference](architecture/api-reference.md) - OCS API endpoints and batch operations
+- [Performance Limits](architecture/performance-limits.md) - Capacity planning and scaling
 - [Integration Guide](architecture/integration.md) - Nextcloud, SharePoint migration, and external systems
 
 ## Getting Started

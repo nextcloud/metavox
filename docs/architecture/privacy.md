@@ -6,12 +6,12 @@ This document describes how MetaVox handles data privacy and security, helping o
 
 MetaVox is built with privacy as a core principle:
 
-### On-Premise Only
+### On-Premise Data Storage
 
-- **No external services**: MetaVox does not connect to any external servers
-- **No telemetry**: No usage data is collected or transmitted
-- **No cloud dependencies**: Works entirely within your Nextcloud instance
-- **Air-gapped compatible**: Functions without internet connectivity
+- **Metadata stays local**: All metadata is stored in your Nextcloud database — no metadata leaves your infrastructure
+- **No cloud dependencies**: Core functionality works entirely within your Nextcloud instance
+- **Optional telemetry**: Anonymous usage statistics can be sent to help improve MetaVox (enabled by default, can be disabled). See [Telemetry](../admin/telemetry.md) for details
+- **Air-gapped compatible**: Disable telemetry for fully air-gapped operation
 
 ### Data Locality
 
@@ -25,9 +25,8 @@ All data stays within your infrastructure:
 │  │        Nextcloud Server        │  │
 │  │  ┌──────────────────────────┐  │  │
 │  │  │      MetaVox App         │  │  │
-│  │  │  - No external calls     │  │  │
-│  │  │  - No API requests out   │  │  │
-│  │  │  - No tracking           │  │  │
+│  │  │  - Metadata stays local  │  │  │
+│  │  │  - Optional telemetry    │  │  │
 │  │  └──────────────────────────┘  │  │
 │  │              │                  │  │
 │  │  ┌───────────▼──────────────┐  │  │
@@ -38,6 +37,8 @@ All data stays within your infrastructure:
 │  └────────────────────────────────┘  │
 └─────────────────────────────────────┘
 ```
+
+> **Note**: When telemetry is enabled (default), MetaVox sends anonymous aggregate statistics (user count, field count, version numbers) to an external server. No metadata values, file names, or user names are transmitted. Telemetry can be fully disabled in admin settings. See [Telemetry](../admin/telemetry.md).
 
 ## Data Storage
 
@@ -53,7 +54,7 @@ All data stays within your infrastructure:
 - File contents (only metadata about files)
 - User credentials
 - External references
-- Analytics or tracking data
+- Analytics or tracking data (telemetry only sends aggregate counts, not individual data)
 
 ### Data Relationship to Files
 
@@ -165,16 +166,18 @@ Metadata is stored in Nextcloud's database:
 
 ## Third-Party Dependencies
 
-MetaVox has no runtime dependencies outside Nextcloud:
+MetaVox has minimal runtime dependencies:
 
 | Dependency | Type | Purpose |
 |------------|------|---------|
 | Nextcloud Server | Required | Platform |
 | Group Folders | Required | Team folder support |
+| notify_push | Optional | Real-time sync and cell locking |
+| Redis | Optional | Caching, presence tracking, cell locking |
 | Vue.js | Bundled | Frontend framework |
 | PHP libraries | Bundled | Backend functionality |
 
-No external API calls, no CDN resources, no external fonts or scripts.
+No CDN resources, no external fonts or scripts. The only external connection is optional telemetry (can be disabled).
 
 ## Recommendations for Sensitive Environments
 
@@ -191,3 +194,4 @@ For high-security deployments:
 - [Architecture Overview](overview.md) - Technical architecture
 - [Compliance Templates](../admin/compliance-templates.md) - Pre-built schemas
 - [Permissions](../admin/permissions.md) - Access control
+- [Telemetry](../admin/telemetry.md) - Usage reporting settings

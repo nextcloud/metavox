@@ -33,14 +33,53 @@ With Flow integration, you can create rules like:
 
 ### Available Operators
 
+#### Text / General
+
 | Operator | Description |
 |----------|-------------|
-| is | Exact match |
-| is not | Does not match |
-| contains | Value contains the text |
-| does not contain | Value does not contain the text |
-| matches regex | Regular expression match |
-| does not match regex | Regular expression does not match |
+| `is` | Exact match |
+| `!is` | Does not match |
+| `contains` | Value contains the text |
+| `!contains` | Value does not contain the text |
+| `matches` | Regular expression match |
+| `!matches` | Regular expression does not match |
+
+#### Empty Checks (all field types)
+
+| Operator | Description |
+|----------|-------------|
+| `empty` | Field has no value |
+| `!empty` | Field has a value |
+
+#### Date Fields
+
+| Operator | Description |
+|----------|-------------|
+| `before` | Date is before the given value |
+| `after` | Date is after the given value |
+
+#### Number Fields
+
+| Operator | Description |
+|----------|-------------|
+| `greater` | Value is greater than |
+| `less` | Value is less than |
+| `greaterOrEqual` | Value is greater than or equal to |
+| `lessOrEqual` | Value is less than or equal to |
+
+#### Select / Multiselect Fields
+
+| Operator | Description |
+|----------|-------------|
+| `oneOf` | Value matches one of the given options |
+| `containsAll` | Value contains all given options |
+
+#### Checkbox Fields
+
+| Operator | Description |
+|----------|-------------|
+| `isTrue` | Checkbox is checked |
+| `isFalse` | Checkbox is unchecked |
 
 ### Field-Specific Input
 
@@ -48,6 +87,7 @@ The value input adapts to the field type:
 - **Dropdown fields**: Show configured options
 - **Checkbox fields**: Show Yes/No
 - **Date fields**: Show date picker
+- **Number fields**: Numeric input
 - **Text fields**: Free text input
 
 ## Example Use Cases

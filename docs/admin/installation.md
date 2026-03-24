@@ -4,7 +4,7 @@ This guide covers installing and configuring MetaVox for your Nextcloud instance
 
 ## Requirements
 
-- Nextcloud 28 or higher
+- Nextcloud 31 or higher (tested up to Nextcloud 33)
 - Group Folders app installed and configured
 - Administrator access
 
@@ -97,7 +97,7 @@ Or update manually by replacing the app folder with the new version.
 ### Cannot edit metadata
 
 - User needs edit permissions on the document
-- Team folder metadata is always read-only for non-admins
+- Check user permissions — view, edit, and manage-fields are separate permission levels
 - Check if fields are defined for this Team folder
 
 ### Import fails
@@ -117,4 +117,5 @@ Or update manually by replacing the app folder with the new version.
 - [Permissions](permissions.md) - Configure access control
 - [Compliance Templates](compliance-templates.md) - Use pre-built templates
 - [Flow Integration](flow-integration.md) - Automate workflows
-- [Licensing](licensing.md) - Configure license management
+- [Telemetry](telemetry.md) - Usage reporting settings
+- [Backup & Restore](backup-restore.md) - Backup and restore metadata

@@ -17,6 +17,8 @@ As an administrator, you can create, edit, and delete views per team folder. Vie
 
 The view immediately appears in the tab bar for users in that team folder.
 
+![View editor](../../screenshots/view-editor.png)
+
 ## Settings
 
 ### Name

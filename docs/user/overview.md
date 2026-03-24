@@ -33,6 +33,12 @@ You'll see two types of metadata:
 
 ![MetaVox sidebar](../../screenshots/File%20metadata.png)
 
+## Inline Editing in File List
+
+You can also edit metadata directly in the file list by double-clicking a cell. An inline editor opens for the field type (text input, dropdown, date picker, etc.).
+
+![Inline editing](../../screenshots/inline-editing.gif)
+
 ## Editing Metadata
 
 If you have edit permissions on a document:
@@ -102,3 +108,5 @@ Contact your Nextcloud administrator if:
 - [Views](views.md) - Switching between predefined views
 - [Bulk Editing](bulk-editing.md) - Edit metadata for multiple files
 - [Exporting Data](exporting-data.md) - Export metadata to CSV
+- [AI Autofill](../features/ai-autofill.md) - AI-powered metadata suggestions
+- [Real-Time Sync](../features/real-time-sync.md) - Collaborative editing with cell locking
