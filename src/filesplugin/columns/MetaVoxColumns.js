@@ -36,6 +36,7 @@ import {
 	getMetavoxGroupfolders,
 	setMetavoxAllGfData,
 	getMetavoxAllGfData,
+	permissionCache,
 } from './MetaVoxState.js'
 
 import { formatValue, getColWidth } from './ColumnUtils.js'
@@ -106,6 +107,7 @@ import {
 	registerMetaVoxFilter,
 	removeFilters,
 	getFilterInstance,
+	updateFilterCache,
 } from './MetadataFilter.js'
 
 import { setCellValue } from './ColumnDOM.js'
@@ -329,8 +331,28 @@ export async function updateColumnsForCurrentFolder(prefetched = null) {
 		}
 	}
 
-	// Load metadata for ALL files in the folder
-	loadAllMetadata(groupfolderId)
+	// Use prefetched directory metadata if available (IInitialState — instant, no API call)
+	let metadataPrefetched = false
+	if (prefetched?.directoryMetadata && Object.keys(prefetched.directoryMetadata).length > 0) {
+		const NC_PERMISSION_UPDATE = 2
+		for (const [fileId, fields2] of Object.entries(prefetched.directoryMetadata)) {
+			const id = Number(fileId)
+			if (fields2._permissions !== undefined) {
+				permissionCache.set(id, (fields2._permissions & NC_PERMISSION_UPDATE) !== 0)
+				delete fields2._permissions
+			}
+			metadataCache.set(id, fields2)
+		}
+		updateAllRowCells()
+		updateFilterCache(metadataCache)
+		document.querySelector('.files-list')?.classList.remove('metavox-loading')
+		metadataPrefetched = true
+	}
+
+	// Only fetch metadata via API if not already prefetched
+	if (!metadataPrefetched) {
+		loadAllMetadata(groupfolderId)
+	}
 
 	// Watch dirContents for changes — NC33 populates it asynchronously.
 	// When it grows, load any new uncached files in one batch.
@@ -406,6 +428,7 @@ function scheduleInjection() {
 				fields: cached.fields || [],
 				viewsResult: { views: cached.views || [], canManage: cached.can_manage === true },
 				filterValues: cached.filter_values || {},
+				directoryMetadata: cached.directory_metadata || null,
 			}
 		}
 
@@ -503,6 +526,39 @@ export function startColumnWatcher() {
 			setActiveViews([])
 			setActiveView(null)
 			setAvailableFields([])
+
+			// Early metadata prefetch: start API call as soon as file IDs are known,
+			// parallel with scheduleInjection (don't wait for columns to be ready).
+			// Try dirContents first (Vue data, available before DOM renders),
+			// then fall back to DOM rows.
+			const gfId = detectCurrentGroupfolder()
+			if (gfId) {
+				const earlyFetch = () => {
+					// Prefer dirContents (available before DOM rows render)
+					const fl = _findFilesList()
+					const dirIds = fl?.dirContents?.map(n => n.fileid).filter(Boolean) || []
+					if (dirIds.length > 0) {
+						loadAllMetadata(gfId)
+						return true
+					}
+					// Fallback: DOM rows
+					const rows = document.querySelectorAll('tr[data-cy-files-list-row]')
+					const rowIds = [...rows].map(r => Number(r.getAttribute('data-cy-files-list-row-fileid'))).filter(Boolean)
+					if (rowIds.length > 0) {
+						loadAllMetadata(gfId)
+						return true
+					}
+					return false
+				}
+				// Try immediately, then retry every 30ms for up to 300ms
+				if (!earlyFetch()) {
+					let attempts = 0
+					const retryTimer = setInterval(() => {
+						if (earlyFetch() || ++attempts >= 10) clearInterval(retryTimer)
+					}, 30)
+				}
+			}
+
 			scheduleInjection()
 		}
 	}
