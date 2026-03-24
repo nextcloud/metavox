@@ -128,7 +128,7 @@ class Application extends App implements IBootstrap {
                                 if ($dirNode instanceof \OCP\Files\Folder) {
                                     $children = $dirNode->getDirectoryListing();
                                     $fileIds = array_map(fn($n) => $n->getId(), $children);
-                                    if (!empty($fileIds) && count($fileIds) <= 500) {
+                                    if (!empty($fileIds) && count($fileIds) <= 100) {
                                         $filterService = \OC::$server->get(FilterService::class);
                                         $gfData['directory_metadata'] = $filterService->getDirectoryMetadata($fileIds, $groupfolderId);
                                     }

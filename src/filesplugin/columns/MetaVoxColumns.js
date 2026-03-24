@@ -656,14 +656,25 @@ function _handlePushEvent(eventName, body) {
 
 	if (eventName === 'metavox_metadata_changed') {
 		if (gfId && gfId !== getActiveGroupfolderId()) return
+
 		if (fileId && body.fieldName) {
-			// Direct cache update from push event (no API call needed)
+			// Single field change — direct cache update (no API call)
 			const existing = metadataCache.get(fileId) || {}
 			existing[body.fieldName] = body.value ?? ''
 			metadataCache.set(fileId, existing)
 			updateAllRowCells()
+		} else if (body.fileIds && Array.isArray(body.fileIds) && getActiveGroupfolderId()) {
+			// Batch change — multiple files changed, refetch from server
+			fetchDirectoryMetadata(getActiveGroupfolderId(), body.fileIds).then(data => {
+				for (const [fid, fields] of Object.entries(data)) {
+					const id = Number(fid)
+					if (fields._permissions !== undefined) delete fields._permissions
+					metadataCache.set(id, fields)
+				}
+				updateAllRowCells()
+			})
 		} else if (fileId && getActiveGroupfolderId()) {
-			// Fallback: fetch from server if no field data in push event
+			// Single file without field data — fetch from server
 			fetchDirectoryMetadata(getActiveGroupfolderId(), [fileId]).then(data => {
 				for (const [fid, fields] of Object.entries(data)) {
 					const id = Number(fid)

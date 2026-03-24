@@ -10,6 +10,7 @@ use OCP\ICache;
 class PresenceService {
 
     private const TTL = 1800; // 30 minutes
+    private const REGISTER_COOLDOWN = 300; // 5 minutes — skip JSON parsing if recently registered
     private ICache $cache;
 
     public function __construct(ICacheFactory $cacheFactory) {
@@ -18,11 +19,22 @@ class PresenceService {
 
     /**
      * Register a user's presence in a groupfolder.
-     * Stored as a JSON map of userId => timestamp in a single cache key per groupfolder.
-     * Entries older than 30 minutes are pruned on each update.
+     *
+     * Uses a per-user cooldown key to avoid expensive JSON parsing on every request.
+     * The heavy JSON blob update only happens once per 5 minutes per user.
      */
     public function register(int $groupfolderId, string $userId): void {
         try {
+            // Fast path: skip if this user registered recently (1 cheap Redis GET)
+            $cooldownKey = "gf_{$groupfolderId}_pr_{$userId}";
+            if ($this->cache->get($cooldownKey) !== null) {
+                return;
+            }
+
+            // Mark as recently registered (5 min cooldown)
+            $this->cache->set($cooldownKey, '1', self::REGISTER_COOLDOWN);
+
+            // Update the shared presence map (only 1x per 5 min per user)
             $key = "gf_{$groupfolderId}";
             $raw = $this->cache->get($key);
             $presence = $raw ? json_decode($raw, true) : [];
@@ -41,6 +53,9 @@ class PresenceService {
      */
     public function remove(int $groupfolderId, string $userId): void {
         try {
+            // Clear cooldown so next visit re-registers
+            $this->cache->remove("gf_{$groupfolderId}_pr_{$userId}");
+
             $key = "gf_{$groupfolderId}";
             $raw = $this->cache->get($key);
             $presence = $raw ? json_decode($raw, true) : [];

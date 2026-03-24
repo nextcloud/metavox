@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Service;
 
+use OCP\ICacheFactory;
+use OCP\ICache;
 use OCP\IDBConnection;
 use OCP\IGroupManager;
 use OCP\DB\QueryBuilder\IQueryBuilder;
@@ -13,42 +15,89 @@ class PushService {
     private IDBConnection $db;
     private IGroupManager $groupManager;
     private PresenceService $presenceService;
+    private ICache $cache;
     private $notifyQueue = null;
+
+    /**
+     * Batched metadata changes within the current request.
+     * Flushed in destructor to reduce push fan-out.
+     * @var array<int, array<int, array{fieldName: ?string, value: ?string}>>
+     *      groupfolderId => [fileId => {fieldName, value}]
+     */
+    private array $pendingChanges = [];
+    private bool $shutdownRegistered = false;
 
     public function __construct(
         IDBConnection $db,
         IGroupManager $groupManager,
-        PresenceService $presenceService
+        PresenceService $presenceService,
+        ICacheFactory $cacheFactory
     ) {
         $this->db = $db;
         $this->groupManager = $groupManager;
         $this->presenceService = $presenceService;
+        $this->cache = $cacheFactory->createDistributed('metavox_push');
 
-        // Optional: notify_push for real-time metadata sync
         try {
             $this->notifyQueue = \OC::$server->get(\OCA\NotifyPush\Queue\IQueue::class);
         } catch (\Exception $e) {
-            // notify_push not installed — real-time sync disabled
+            // notify_push not installed
         }
     }
 
     /**
-     * Push metadata changed event to active viewers.
+     * Queue a metadata changed event. Batched and sent at end of request.
+     * Multiple saves to the same file in one request = 1 push event.
      */
     public function metadataChanged(int $groupfolderId, int $fileId, ?string $fieldName = null, ?string $value = null): void {
-        $payload = [
-            'gfId' => $groupfolderId,
-            'fileId' => $fileId,
+        $this->pendingChanges[$groupfolderId][$fileId] = [
+            'fieldName' => $fieldName,
+            'value' => $value,
         ];
-        if ($fieldName !== null) {
-            $payload['fieldName'] = $fieldName;
-            $payload['value'] = $value;
+
+        // Register shutdown handler once to flush all pending changes
+        if (!$this->shutdownRegistered) {
+            $this->shutdownRegistered = true;
+            register_shutdown_function([$this, 'flushPendingChanges']);
         }
-        $this->broadcast($groupfolderId, 'metavox_metadata_changed', $payload);
     }
 
     /**
-     * Push lock event to active viewers.
+     * Flush all pending metadata changes as batched push events.
+     * Called automatically at end of request.
+     */
+    public function flushPendingChanges(): void {
+        if (empty($this->pendingChanges)) return;
+
+        foreach ($this->pendingChanges as $groupfolderId => $files) {
+            if (count($files) === 1) {
+                // Single file change — send with field data for direct cache update
+                $fileId = array_key_first($files);
+                $change = $files[$fileId];
+                $payload = [
+                    'gfId' => $groupfolderId,
+                    'fileId' => $fileId,
+                ];
+                if ($change['fieldName'] !== null) {
+                    $payload['fieldName'] = $change['fieldName'];
+                    $payload['value'] = $change['value'];
+                }
+                $this->broadcast($groupfolderId, 'metavox_metadata_changed', $payload);
+            } else {
+                // Multiple files changed — send batch event (frontend refetches)
+                $fileIds = array_map('intval', array_keys($files));
+                $this->broadcast($groupfolderId, 'metavox_metadata_changed', [
+                    'gfId' => $groupfolderId,
+                    'fileIds' => $fileIds,
+                ]);
+            }
+        }
+
+        $this->pendingChanges = [];
+    }
+
+    /**
+     * Push lock event to active viewers (immediate, not batched).
      */
     public function cellLocked(int $groupfolderId, int $fileId, string $fieldName, string $userId): void {
         $this->broadcast($groupfolderId, 'metavox_cell_locked', [
@@ -60,7 +109,7 @@ class PushService {
     }
 
     /**
-     * Push unlock event to active viewers.
+     * Push unlock event to active viewers (immediate, not batched).
      */
     public function cellUnlocked(int $groupfolderId, int $fileId, string $fieldName): void {
         $this->broadcast($groupfolderId, 'metavox_cell_unlocked', [
@@ -79,8 +128,8 @@ class PushService {
         try {
             $activeViewers = $this->presenceService->getActiveViewers($groupfolderId);
 
-            // Fallback: if no presence data, push to all members
-            $userIds = !empty($activeViewers) ? $activeViewers : $this->getGroupfolderUserIds($groupfolderId);
+            // Fallback with caching: if no presence data, use cached member list
+            $userIds = !empty($activeViewers) ? $activeViewers : $this->getCachedGroupfolderUserIds($groupfolderId);
 
             foreach ($userIds as $userId) {
                 $this->notifyQueue->push('notify_custom', [
@@ -92,6 +141,22 @@ class PushService {
         } catch (\Exception $e) {
             // Silently fail — push is best-effort
         }
+    }
+
+    /**
+     * Get all user IDs for a groupfolder with 5-minute cache.
+     */
+    private function getCachedGroupfolderUserIds(int $groupfolderId): array {
+        $cacheKey = "gf_{$groupfolderId}_members";
+        $cached = $this->cache->get($cacheKey);
+        if ($cached !== null) {
+            $decoded = json_decode($cached, true);
+            if (is_array($decoded)) return $decoded;
+        }
+
+        $userIds = $this->getGroupfolderUserIds($groupfolderId);
+        $this->cache->set($cacheKey, json_encode($userIds), 300);
+        return $userIds;
     }
 
     /**

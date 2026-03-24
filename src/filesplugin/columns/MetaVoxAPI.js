@@ -259,3 +259,38 @@ export async function saveSingleField(fileId, fieldName, newValue, options = {})
 		if (_updateAllRowCells) _updateAllRowCells()
 	}
 }
+
+/**
+ * Save the same field+value to multiple files in one API call.
+ * Used by fill-handle to avoid N separate requests.
+ *
+ * @param {number[]} fileIds
+ * @param {string}   fieldName
+ * @param {*}        value
+ */
+export async function saveBulkFields(fileIds, fieldName, value) {
+	const activeGroupfolderId = getActiveGroupfolderId()
+	if (!activeGroupfolderId || fileIds.length === 0) return
+
+	// Update cache immediately for all files
+	for (const fileId of fileIds) {
+		const meta = metadataCache.get(fileId) || {}
+		meta[fieldName] = value
+		metadataCache.set(fileId, meta)
+	}
+	if (_updateAllRowCells) _updateAllRowCells()
+
+	// Single bulk API call
+	try {
+		await axios.post(
+			generateUrl('/apps/metavox/api/files/bulk-metadata'),  // Internal route (FieldController)
+			{
+				fileIds,
+				metadata: { [fieldName]: value },
+				mergeStrategy: 'overwrite',
+			},
+		)
+	} catch (e) {
+		console.error('MetaVox: Bulk save failed', e)
+	}
+}
