@@ -4,76 +4,88 @@ MetaVox uses Nextcloud's existing permission system. This guide explains how per
 
 ## Permission Model
 
-MetaVox follows a simple principle: **metadata permissions follow document permissions**.
+MetaVox uses a granular permission system with three levels that can be assigned per user, per group, and per groupfolder:
 
-| User Permission | Can View Metadata | Can Edit Document Metadata | Can Edit Team Folder Metadata |
-|-----------------|-------------------|---------------------------|------------------------------|
-| Read-only | Yes | No | No |
-| Read/Write | Yes | Yes | No |
-| Administrator | Yes | Yes | Yes |
+| Permission | Description | Default |
+|------------|-------------|---------|
+| `view_metadata` | View metadata values | All users with folder access |
+| `edit_metadata` | Edit metadata values for files | Users with write access |
+| `manage_fields` | Create/edit/delete fields, manage views | Administrators only |
 
-## Roles Explained
+Nextcloud administrators always have all permissions regardless of configuration.
 
-### Regular Users
+### Permission Matrix
 
-Users with **read access** to a Team folder can:
-- View all metadata (Team folder and document level)
-- See metadata in the sidebar when viewing files
+| Action | view_metadata | edit_metadata | manage_fields | Admin |
+|--------|:---:|:---:|:---:|:---:|
+| View metadata in sidebar | Yes | Yes | Yes | Yes |
+| View metadata columns in file list | Yes | Yes | Yes | Yes |
+| Edit document metadata | No | Yes | Yes | Yes |
+| Use bulk metadata editor | No | Yes | Yes | Yes |
+| Export metadata to CSV | No | Yes | Yes | Yes |
+| Create/edit/delete fields | No | No | Yes | Yes |
+| Create/edit/delete views | No | No | Yes | Yes |
+| Import/export field definitions | No | No | Yes | Yes |
+| Access MetaVox admin settings | No | No | No | Yes |
 
-Users with **write access** can additionally:
-- Edit document-specific metadata
-- Use the bulk metadata editor
-- Export metadata to CSV
+## Granting Permissions
 
-### Administrators
+### To a User
 
-Administrators can:
-- Define metadata fields for Team folders
-- Define document metadata schemas
-- Import/export field definitions
-- Edit Team folder metadata values
-- Access MetaVox settings
+```bash
+curl -X POST "https://your-nextcloud.com/apps/metavox/api/permissions/user" \
+  -H "Content-Type: application/json" \
+  -b "session-cookie" \
+  -d '{"user_id": "jane", "permission": "edit_metadata", "groupfolder_id": 3}'
+```
 
-## Team Folder Metadata vs Document Metadata
+### To a Group
 
-### Team Folder Metadata
+```bash
+curl -X POST "https://your-nextcloud.com/apps/metavox/api/permissions/group" \
+  -H "Content-Type: application/json" \
+  -b "session-cookie" \
+  -d '{"group_id": "woo-beheerders", "permission": "manage_fields", "groupfolder_id": 3}'
+```
 
-- **Defined by**: Administrators
-- **Applies to**: All documents in the Team folder
-- **Editable by**: Administrators only
-- **Visibility**: Read-only for regular users
+### Viewing Permissions
 
-Use cases:
-- Project classification
-- Department assignment
-- Compliance category
+```bash
+# View all permissions
+curl "https://your-nextcloud.com/apps/metavox/api/permissions" -b "session-cookie"
 
-### Document Metadata
+# Check your own permissions
+curl "https://your-nextcloud.com/apps/metavox/api/permissions/me" -b "session-cookie"
 
-- **Defined by**: Administrators
-- **Applies to**: Individual documents
-- **Editable by**: Users with write access
-- **Visibility**: Anyone with read access
+# Check a specific permission
+curl "https://your-nextcloud.com/apps/metavox/api/permissions/check?permission=edit_metadata&groupfolder_id=3" -b "session-cookie"
+```
 
-Use cases:
-- Document status
-- Review dates
-- Responsible person
+### Revoking Permissions
+
+```bash
+# Revoke user permission
+curl -X DELETE "https://your-nextcloud.com/apps/metavox/api/permissions/user/{permissionId}" -b "session-cookie"
+
+# Revoke group permission
+curl -X DELETE "https://your-nextcloud.com/apps/metavox/api/permissions/group/{permissionId}" -b "session-cookie"
+```
 
 ## Inheritance
 
-Metadata permissions are inherited from the Nextcloud file system:
+Permissions are scoped to groupfolders. If a permission is granted without a `groupfolder_id`, it applies to all groupfolders:
 
 ```
-Team Folder (Admin sets folder metadata)
-├── Subfolder A (inherits permissions)
-│   ├── Document 1 (user edits document metadata)
-│   └── Document 2
+Team Folder A (user has edit_metadata)
+├── Subfolder A (inherits edit_metadata)
+│   ├── Document 1 (user can edit metadata)
+│   └── Document 2 (user can edit metadata)
 └── Subfolder B
-    └── Document 3
-```
+    └── Document 3 (user can edit metadata)
 
-If a user has write access to "Document 1", they can edit its document metadata. Team folder metadata remains read-only.
+Team Folder B (user has view_metadata only)
+├── Document 4 (user can only view metadata)
+```
 
 ## Best Practices
 
@@ -101,16 +113,14 @@ If a user has write access to "Document 1", they can edit its document metadata.
 
 ### User can't edit document metadata
 
-1. Verify user has write access to the specific document
-2. Check if the document is in a Team folder (not personal folder)
-3. Ensure document metadata fields are defined
+1. Check if the user has `edit_metadata` permission for this groupfolder
+2. Verify user has write access to the specific document in Nextcloud
+3. Check if the document is in a Team folder (not personal folder)
+4. Ensure metadata fields are defined for this Team folder
 
-### User wants to edit Team folder metadata
+### User wants to manage fields or views
 
-Only administrators can edit Team folder metadata. If a regular user needs to set folder-level information:
-1. Promote them to administrator (if appropriate)
-2. Or have an administrator make the changes
-3. Or reconsider whether this should be document-level metadata instead
+The user needs the `manage_fields` permission. Grant it via the admin API or ask an administrator to assign it.
 
 ## See Also
 

@@ -86,6 +86,8 @@ Cell updates instantly in User B's grid view
 
 ### Cell Locking
 
+![Cell lock indicator](../../screenshots/cell-lock-detail.png)
+
 ```
 User A double-clicks a cell
     ↓

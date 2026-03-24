@@ -20,6 +20,8 @@ Above the file list you'll see a bar with the available views for the current te
 
 The active view is shown in bold with a blue dot. If a view has a pencil icon (✎), clicking it opens the editor (admin only).
 
+![View tabs](../../screenshots/views-tabs.png)
+
 ## Adjusting filters (temporarily)
 
 Next to the view tabs, the **MetaVox filter button** appears in the Nextcloud filter bar. Use it to apply additional filters on top of the active view.
@@ -30,6 +32,8 @@ Next to the view tabs, the **MetaVox filter button** appears in the Nextcloud fi
 4. The file list updates immediately
 
 Each field is shown as a collapsible section. A badge next to the field name shows how many filter values are currently active for that field.
+
+![Filter panel](../../screenshots/filter-panel.png)
 
 Filters set this way are **temporary** — they are not saved to the view and disappear when you navigate away or switch views.
 
