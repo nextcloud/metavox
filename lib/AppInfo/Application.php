@@ -9,6 +9,7 @@ use OCA\MetaVox\Listener\FileCopyListener;
 use OCA\MetaVox\Listener\RegisterFlowChecksListener;
 use OCA\MetaVox\Search\MetadataSearchProvider;
 use OCA\MetaVox\Service\FieldService;
+use OCA\MetaVox\Service\FilterService;
 use OCA\MetaVox\Service\PermissionService;
 use OCA\MetaVox\Service\PresenceService;
 use OCA\MetaVox\Service\UserFieldService;
@@ -110,14 +111,35 @@ class Application extends App implements IBootstrap {
                         $viewService = \OC::$server->get(ViewService::class);
                         $permissionService = \OC::$server->get(PermissionService::class);
 
+                        $gfData = [
+                            'fields' => $fieldService->getAssignedFileFieldsForGroupfolder($groupfolderId),
+                            'views' => $viewService->getViewsForGroupfolder($groupfolderId),
+                            'can_manage' => $permissionService->hasPermission(
+                                $userId, PermissionService::PERM_MANAGE_FIELDS, $groupfolderId
+                            ),
+                        ];
+
+                        // Prefetch directory metadata for instant cell rendering
+                        if ($dir !== '') {
+                            try {
+                                $rootFolder = \OC::$server->get(\OCP\Files\IRootFolder::class);
+                                $userFolder = $rootFolder->getUserFolder($userId);
+                                $dirNode = $userFolder->get($dir);
+                                if ($dirNode instanceof \OCP\Files\Folder) {
+                                    $children = $dirNode->getDirectoryListing();
+                                    $fileIds = array_map(fn($n) => $n->getId(), $children);
+                                    if (!empty($fileIds) && count($fileIds) <= 500) {
+                                        $filterService = \OC::$server->get(FilterService::class);
+                                        $gfData['directory_metadata'] = $filterService->getDirectoryMetadata($fileIds, $groupfolderId);
+                                    }
+                                }
+                            } catch (\Exception $e) {
+                                // Skip — JS will fetch via API
+                            }
+                        }
+
                         $initData['all_gf_data'] = [
-                            $groupfolderId => [
-                                'fields' => $fieldService->getAssignedFileFieldsForGroupfolder($groupfolderId),
-                                'views' => $viewService->getViewsForGroupfolder($groupfolderId),
-                                'can_manage' => $permissionService->hasPermission(
-                                    $userId, PermissionService::PERM_MANAGE_FIELDS, $groupfolderId
-                                ),
-                            ],
+                            $groupfolderId => $gfData,
                         ];
                     }
 
