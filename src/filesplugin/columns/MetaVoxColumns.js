@@ -705,19 +705,26 @@ function _handlePushEvent(eventName, body) {
 			cell.dataset.lockedBy = userId
 			cell._metavoxLocked = true
 
-			// Show persistent tooltip on hover
-			let tooltip = cell.querySelector('.metavox-lock-tooltip')
-			if (!tooltip) {
-				tooltip = document.createElement('div')
-				tooltip.className = 'metavox-lock-tooltip'
-				tooltip.style.cssText = 'display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;white-space:nowrap;z-index:9999;pointer-events:none;margin-bottom:4px;'
-				cell.style.position = 'relative'
-				cell.style.overflow = 'visible'
-				cell.appendChild(tooltip)
-				cell.addEventListener('mouseenter', () => { if (cell._metavoxLocked && tooltip) tooltip.style.display = 'block' })
-				cell.addEventListener('mouseleave', () => { if (tooltip) tooltip.style.display = 'none' })
+			// Show user badge portaled to body (avoids table overflow clipping)
+			if (cell._lockBadge) cell._lockBadge.remove()
+			const badge = document.createElement('div')
+			badge.className = 'metavox-lock-badge'
+			badge.style.cssText = 'position:fixed;background:#e9a31c;color:#fff;padding:1px 8px;border-radius:8px;font-size:11px;font-weight:600;white-space:nowrap;z-index:10000;pointer-events:none;line-height:16px;box-shadow:0 1px 3px rgba(0,0,0,.2);'
+			badge.textContent = '🔒 ' + userId
+			document.body.appendChild(badge)
+			cell._lockBadge = badge
+
+			// Position badge above the cell
+			const positionBadge = () => {
+				if (!cell._lockBadge) return
+				const rect = cell.getBoundingClientRect()
+				badge.style.top = (rect.top - 14) + 'px'
+				badge.style.left = (rect.right - badge.offsetWidth) + 'px'
 			}
-			tooltip.textContent = `🔒 ${userId}`
+			positionBadge()
+			// Reposition on scroll
+			cell._lockScrollHandler = () => positionBadge()
+			document.addEventListener('scroll', cell._lockScrollHandler, { capture: true })
 		} else {
 			cell.style.backgroundColor = ''
 			cell.style.boxShadow = ''
@@ -726,8 +733,14 @@ function _handlePushEvent(eventName, body) {
 			cell.style.overflow = ''
 			delete cell.dataset.lockedBy
 			delete cell._metavoxLocked
-			const tooltip = cell.querySelector('.metavox-lock-tooltip')
-			if (tooltip) tooltip.remove()
+			if (cell._lockBadge) {
+				cell._lockBadge.remove()
+				delete cell._lockBadge
+			}
+			if (cell._lockScrollHandler) {
+				document.removeEventListener('scroll', cell._lockScrollHandler, { capture: true })
+				delete cell._lockScrollHandler
+			}
 		}
 	}
 }
