@@ -354,6 +354,9 @@ export async function updateColumnsForCurrentFolder(prefetched = null) {
 		loadAllMetadata(groupfolderId)
 	}
 
+	// Always render cached metadata into cells (covers back-navigation with push-updated cache)
+	updateAllRowCells()
+
 	// Watch dirContents for changes — NC33 populates it asynchronously.
 	// When it grows, load any new uncached files in one batch.
 	const fl = _findFilesList()
@@ -524,7 +527,11 @@ export function startColumnWatcher() {
 				closeViewEditor()
 				stopRowObserver()
 				setColumnsActive(false)
-				setActiveGroupfolderId(null)
+				// Only clear groupfolder ID when switching teamfolders.
+				// Keep it set during submap navigation so push events keep working.
+				if (switchingGroupfolder) {
+					setActiveGroupfolderId(null)
+				}
 			}
 
 			// Only clear metadata cache when switching groupfolders.
@@ -649,7 +656,14 @@ function _handlePushEvent(eventName, body) {
 
 	if (eventName === 'metavox_metadata_changed') {
 		if (gfId && gfId !== getActiveGroupfolderId()) return
-		if (fileId && getActiveGroupfolderId()) {
+		if (fileId && body.fieldName) {
+			// Direct cache update from push event (no API call needed)
+			const existing = metadataCache.get(fileId) || {}
+			existing[body.fieldName] = body.value ?? ''
+			metadataCache.set(fileId, existing)
+			updateAllRowCells()
+		} else if (fileId && getActiveGroupfolderId()) {
+			// Fallback: fetch from server if no field data in push event
 			fetchDirectoryMetadata(getActiveGroupfolderId(), [fileId]).then(data => {
 				for (const [fid, fields] of Object.entries(data)) {
 					const id = Number(fid)

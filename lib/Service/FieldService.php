@@ -980,7 +980,7 @@ public function saveGroupfolderFileFieldValue(int $groupfolderId, int $fileId, i
         $this->cacheService->updateFileField($groupfolderId, $fileId, $fieldName, $value);
 
         $this->queueSearchIndexUpdate($fileId);
-        $this->pushService->metadataChanged($groupfolderId, $fileId);
+        $this->pushService->metadataChanged($groupfolderId, $fileId, $fieldName, $value);
         return true;
 
     } catch (\Exception $e) {

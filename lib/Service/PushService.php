@@ -35,11 +35,16 @@ class PushService {
     /**
      * Push metadata changed event to active viewers.
      */
-    public function metadataChanged(int $groupfolderId, int $fileId): void {
-        $this->broadcast($groupfolderId, 'metavox_metadata_changed', [
+    public function metadataChanged(int $groupfolderId, int $fileId, ?string $fieldName = null, ?string $value = null): void {
+        $payload = [
             'gfId' => $groupfolderId,
             'fileId' => $fileId,
-        ]);
+        ];
+        if ($fieldName !== null) {
+            $payload['fieldName'] = $fieldName;
+            $payload['value'] = $value;
+        }
+        $this->broadcast($groupfolderId, 'metavox_metadata_changed', $payload);
     }
 
     /**
