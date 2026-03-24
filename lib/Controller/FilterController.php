@@ -62,14 +62,13 @@ class FilterController extends BaseController {
                 return new JSONResponse(['error' => 'Maximum 200 file IDs per request'], Http::STATUS_BAD_REQUEST);
             }
 
-            // Verify per-file access (respects ACL restrictions within groupfolder)
-            $accessibleFileIds = $this->filterAccessibleFileIds($fileIds, $user->getUID());
-            if (empty($accessibleFileIds)) {
-                return new JSONResponse([], Http::STATUS_OK);
-            }
-
-            $metadata = $this->filterService->getDirectoryMetadata($accessibleFileIds, $groupfolderId);
-            return new JSONResponse($metadata, Http::STATUS_OK);
+            // Groupfolder access is verified above. Per-file ACL checks are skipped
+            // for the internal controller (Files app context) to avoid N getById() calls.
+            // The external API controller (ApiFilterController) still does per-file checks.
+            $metadata = $this->filterService->getDirectoryMetadata($fileIds, $groupfolderId);
+            $response = new JSONResponse($metadata, Http::STATUS_OK);
+            $response->addHeader('Cache-Control', 'private, max-age=30');
+            return $response;
         } catch (\Exception $e) {
             return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
