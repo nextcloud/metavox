@@ -1,13 +1,13 @@
 <template>
 	<div class="metavox-check">
 		<div class="check-field">
-			<label>{{ t('metavox', 'Metadata field') }}</label>
+			<label>Metadata field</label>
 			<select
 				v-model="selectedFieldName"
 				class="nc-select-input"
 				@change="onFieldChange"
 			>
-				<option value="" disabled>{{ t('metavox', 'Select a metadata field') }}</option>
+				<option value="" disabled>Select a metadata field</option>
 				<option
 					v-for="field in groupedFields"
 					:key="field.name"
@@ -18,12 +18,12 @@
 					{{ field.label }}
 				</option>
 			</select>
-			<span v-if="loadingFields" class="loading-indicator">{{ t('metavox', 'Loading...') }}</span>
+			<span v-if="loadingFields" class="loading-indicator">Loading...</span>
 		</div>
 
 		<!-- Operator selection based on field type -->
 		<div v-if="selectedField && !selectedField.isHeader" class="check-field">
-			<label>{{ t('metavox', 'Operator') }}</label>
+			<label>Operator</label>
 			<select
 				v-model="selectedOperator"
 				class="nc-select-input"
@@ -45,7 +45,7 @@
 			:key="'value-' + selectedFieldName + '-' + (selectedField.type || 'text') + '-' + selectedOperator"
 			class="check-field"
 		>
-			<label>{{ t('metavox', 'Value to check') }}</label>
+			<label>Value to check</label>
 
 			<!-- Checkbox/Boolean field - Yes/No dropdown -->
 			<select
@@ -54,9 +54,9 @@
 				class="nc-select-input"
 				@change="updateValue"
 			>
-				<option value="" disabled>{{ t('metavox', 'Select a value') }}</option>
-				<option value="1">{{ t('metavox', 'Yes (checked)') }}</option>
-				<option value="0">{{ t('metavox', 'No (unchecked)') }}</option>
+				<option value="" disabled>Select a value</option>
+				<option value="1">Yes (checked)</option>
+				<option value="0">No (unchecked)</option>
 			</select>
 
 			<!-- Select/Dropdown field with oneOf support (multi-select) -->
@@ -83,7 +83,7 @@
 				class="nc-select-input"
 				@change="updateValue"
 			>
-				<option value="" disabled>{{ t('metavox', 'Select a value') }}</option>
+				<option value="" disabled>Select a value</option>
 				<option
 					v-for="opt in fieldOptions"
 					:key="opt.value"
@@ -125,7 +125,7 @@
 				v-model="checkValue"
 				type="number"
 				class="nc-input-field"
-				:placeholder="t('metavox', 'Enter a number')"
+				placeholder="Enter a number"
 				@input="updateValue"
 			>
 
@@ -135,19 +135,19 @@
 				v-model="checkValue"
 				type="text"
 				class="nc-input-field"
-				:placeholder="t('metavox', 'Enter expected value')"
+				placeholder="Enter expected value"
 				@input="updateValue"
 			>
 		</div>
 
 		<div v-if="selectedField" class="check-field">
-			<label>{{ t('metavox', 'Team folder (optional)') }}</label>
+			<label>Team folder (optional)</label>
 			<select
 				v-model="selectedGroupfolderId"
 				class="nc-select-input"
 				@change="updateValue"
 			>
-				<option value="">{{ t('metavox', 'Auto-detect') }}</option>
+				<option value="">Auto-detect</option>
 				<option
 					v-for="gf in groupfolders"
 					:key="gf.id"
@@ -156,11 +156,11 @@
 					{{ gf.label }}
 				</option>
 			</select>
-			<p class="hint">{{ t('metavox', 'Leave empty to auto-detect from file location') }}</p>
+			<p class="hint">Leave empty to auto-detect from file location</p>
 		</div>
 
 		<div v-if="selectedField && (checkValue || !showValueInput)" class="check-preview">
-			<span class="preview-label">{{ t('metavox', 'Check configuration:') }}</span>
+			<span class="preview-label">Check configuration:</span>
 			<code>{{ selectedField.label }} {{ operatorLabel }}<span v-if="showValueInput"> "{{ displayValue }}"</span></code>
 		</div>
 	</div>
@@ -342,7 +342,7 @@ export default {
 
 			if (fileFields.length > 0) {
 				result.push({
-					label: this.t('metavox', '── File fields ──'),
+					label: '── File fields ──',
 					name: '__header_file__',
 					isHeader: true,
 				})
@@ -351,7 +351,7 @@ export default {
 
 			if (groupfolderFields.length > 0) {
 				result.push({
-					label: this.t('metavox', '── Team folder fields ──'),
+					label: '── Team folder fields ──',
 					name: '__header_groupfolder__',
 					isHeader: true,
 				})
@@ -505,18 +505,6 @@ export default {
 			}
 
 			this.$emit('input', JSON.stringify(config))
-		},
-
-		t(app, text, vars) {
-			if (typeof window.t === 'function') {
-				return window.t(app, text, vars)
-			}
-			if (vars) {
-				return Object.keys(vars).reduce((result, key) => {
-					return result.replace(`{${key}}`, vars[key])
-				}, text)
-			}
-			return text
 		},
 	},
 
