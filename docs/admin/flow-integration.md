@@ -106,11 +106,14 @@ Result: Users cannot access files marked as confidential unless the condition is
 
 ![Notification example](../../screenshots/Flow-Notification.png)
 
-1. Create a Flow rule with trigger "File updated"
-2. Add condition: MetaVox metadata > `status` **is** `approved`
-3. Add action: **Send notification** to document owner
+> **Note**: The "Send notification" action is only available in **personal** Flow settings (**Settings > Personal > Flow**), not in the admin Flow panel. This is a Nextcloud design choice — notification flows are configured per user.
 
-Result: When a document's status changes to "approved", the owner receives a notification.
+1. Go to **Settings > Personal > Flow**
+2. Create a Flow rule with trigger "File updated"
+3. Add condition: MetaVox metadata > `status` **is** `approved`
+4. Add action: **Send notification**
+
+Result: When a document's status changes to "approved", you receive a notification.
 
 ### Restrict Downloads for Unreviewed Documents
 
@@ -134,6 +137,15 @@ Result: Files created in the Legal department are automatically tagged.
 - **Field grouping**: Fields are grouped by type: "File fields" (per-document) and "Team folder fields" (inherited from folder)
 - **Testing**: Test rules with non-critical files first
 - **Logging**: Check Nextcloud logs if rules don't trigger as expected
+
+## Admin vs Personal Flow
+
+| Action | Where to configure | Scope |
+|--------|-------------------|-------|
+| **Block access to a file** | Settings > Administration > Flow | Applies to all users |
+| **Send notification** | Settings > Personal > Flow | Applies to you only |
+
+Both types of flow rules can use MetaVox metadata as a condition.
 
 ## Limitations
 
