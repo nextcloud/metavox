@@ -45,7 +45,7 @@ export function injectColumnStyles() {
 		.files-list__header {
 			position: sticky !important;
 			left: 44px !important;
-			z-index: 10 !important;
+			z-index: 55 !important;
 		}
 		.files-list {
 			overflow-x: visible !important;
