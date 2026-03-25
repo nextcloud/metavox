@@ -5,34 +5,45 @@
 		size="normal"
 		@close="close">
 		<div class="bulk-metadata-modal">
-			<!-- Compact header -->
+			<!-- Header -->
 			<div class="modal-header">
-				<h2 class="modal-title">MetaVox</h2>
-				<span class="file-count">{{ files.length }} {{ files.length === 1 ? 'file' : 'files' }}</span>
+				<h2 class="modal-title">Edit Metadata</h2>
+				<div class="file-badges">
+					<span v-for="(file, i) in files.slice(0, 5)" :key="i" class="file-badge">
+						{{ file.basename }}
+					</span>
+					<span v-if="files.length > 5" class="file-badge file-badge--more">
+						+{{ files.length - 5 }}
+					</span>
+				</div>
 			</div>
 
-			<!-- Selected files (compact) -->
-			<div class="selected-files">
-				<span class="files-label">{{ t('metavox', 'Selected Files') }}:</span>
-				<span class="files-names">{{ fileNames }}</span>
-			</div>
-
-			<!-- Inline merge strategy -->
-			<div class="merge-strategy">
-				<NcCheckboxRadioSwitch
-					:model-value="mergeStrategy === 'overwrite'"
-					type="radio"
-					name="merge-strategy"
-					@update:model-value="mergeStrategy = 'overwrite'">
-					{{ t('metavox', 'Overwrite existing values') }}
-				</NcCheckboxRadioSwitch>
-				<NcCheckboxRadioSwitch
-					:model-value="mergeStrategy === 'fill-empty'"
-					type="radio"
-					name="merge-strategy"
-					@update:model-value="mergeStrategy = 'fill-empty'">
-					{{ t('metavox', 'Only fill empty fields') }}
-				</NcCheckboxRadioSwitch>
+			<!-- Strategy + Search bar -->
+			<div class="toolbar">
+				<div class="strategy-selector">
+					<NcCheckboxRadioSwitch
+						:model-value="mergeStrategy === 'overwrite'"
+						type="radio"
+						name="merge-strategy"
+						@update:model-value="mergeStrategy = 'overwrite'">
+						Overwrite existing values
+					</NcCheckboxRadioSwitch>
+					<NcCheckboxRadioSwitch
+						:model-value="mergeStrategy === 'fill-empty'"
+						type="radio"
+						name="merge-strategy"
+						@update:model-value="mergeStrategy = 'fill-empty'">
+						Only fill empty fields
+					</NcCheckboxRadioSwitch>
+				</div>
+				<div v-if="fields.length > 6" class="field-search">
+					<MagnifyIcon :size="16" class="search-icon" />
+					<input
+						v-model="searchQuery"
+						type="text"
+						class="search-input"
+						placeholder="Search fields...">
+				</div>
 			</div>
 
 			<!-- Loading state -->
@@ -42,9 +53,9 @@
 			</div>
 
 			<!-- Metadata form -->
-			<div v-else-if="fields.length > 0" class="metadata-section">
+			<div v-else-if="filteredFields.length > 0" class="metadata-section">
 				<MetadataForm
-					:fields="fields"
+					:fields="filteredFields"
 					:values="metadata"
 					:select-values="selectValues"
 					:multi-select-values="multiSelectValues"
@@ -53,6 +64,9 @@
 			</div>
 
 			<!-- No fields message -->
+			<div v-else-if="fields.length > 0 && searchQuery" class="no-fields">
+				<p>No fields matching "{{ searchQuery }}"</p>
+			</div>
 			<div v-else class="no-fields">
 				<p>{{ t('metavox', 'No metadata fields available for these files.') }}</p>
 			</div>
@@ -107,6 +121,9 @@ import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 import DeleteIcon from 'vue-material-design-icons/Delete.vue'
 import DownloadIcon from 'vue-material-design-icons/Download.vue'
+import PencilIcon from 'vue-material-design-icons/Pencil.vue'
+import FileDocumentEditIcon from 'vue-material-design-icons/FileDocumentEdit.vue'
+import MagnifyIcon from 'vue-material-design-icons/Magnify.vue'
 import MetadataForm from './MetadataForm.vue'
 
 export default {
@@ -119,6 +136,9 @@ export default {
 		NcLoadingIcon,
 		DeleteIcon,
 		DownloadIcon,
+		PencilIcon,
+		FileDocumentEditIcon,
+		MagnifyIcon,
 		MetadataForm,
 	},
 
@@ -148,6 +168,7 @@ export default {
 			selectValues: {},
 			multiSelectValues: {},
 			selectKey: 0,
+			searchQuery: '',
 		}
 	},
 
@@ -155,12 +176,13 @@ export default {
 		hasChanges() {
 			return JSON.stringify(this.metadata) !== JSON.stringify(this.originalMetadata)
 		},
-		fileNames() {
-			const names = this.files.map(f => f.basename)
-			if (names.length <= 3) {
-				return names.join(', ')
-			}
-			return names.slice(0, 3).join(', ') + ` +${names.length - 3}`
+		filteredFields() {
+			if (!this.searchQuery) return this.fields
+			const q = this.searchQuery.toLowerCase()
+			return this.fields.filter(f =>
+				(f.field_label || '').toLowerCase().includes(q) ||
+				(f.field_name || '').toLowerCase().includes(q)
+			)
 		},
 	},
 
@@ -429,56 +451,120 @@ export default {
 
 <style scoped>
 .bulk-metadata-modal {
-	padding: 16px;
+	padding: 20px;
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
-	max-height: 70vh;
-	overflow-y: auto;
+	max-height: 75vh;
 }
 
+/* Header */
 .modal-header {
 	display: flex;
-	justify-content: space-between;
-	align-items: center;
+	flex-direction: column;
+	gap: 6px;
 }
 
 .modal-title {
 	margin: 0;
-	font-size: 18px;
-	font-weight: 600;
+	font-size: 20px;
+	font-weight: 700;
 }
 
-.file-count {
-	font-size: 13px;
-	color: var(--color-text-maxcontrast);
-	background: var(--color-background-dark);
+.file-badges {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+
+.file-badge {
+	display: inline-block;
+	font-size: 12px;
 	padding: 2px 8px;
 	border-radius: 10px;
+	background: var(--color-primary-element-light, rgba(0,130,201,.1));
+	color: var(--color-primary-element);
+	max-width: 180px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
-.selected-files {
-	font-size: 13px;
+.file-badge--more {
+	background: var(--color-background-dark);
 	color: var(--color-text-maxcontrast);
-	line-height: 1.4;
 }
 
-.files-label {
-	font-weight: 500;
-	color: var(--color-main-text);
-}
-
-.files-names {
-	word-break: break-word;
-}
-
-.merge-strategy {
+/* Toolbar: strategy + search */
+.toolbar {
 	display: flex;
-	gap: 16px;
-	padding: 8px 0;
+	align-items: center;
+	gap: 10px;
+	padding-bottom: 8px;
 	border-bottom: 1px solid var(--color-border);
 }
 
+.strategy-selector {
+	display: flex;
+	gap: 4px;
+	flex-shrink: 0;
+}
+
+/* Search */
+.field-search {
+	flex: 1;
+	position: relative;
+}
+
+.search-icon {
+	position: absolute;
+	left: 8px;
+	top: 50%;
+	transform: translateY(-50%);
+	pointer-events: none;
+	color: var(--color-text-maxcontrast);
+}
+
+.search-input {
+	width: 100%;
+	height: 32px;
+	padding: 0 12px 0 30px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large, 10px);
+	background: var(--color-main-background);
+	font-size: 13px;
+	outline: none;
+	box-sizing: border-box;
+}
+
+.search-input:focus {
+	border-color: var(--color-primary-element);
+}
+
+/* Metadata form — compact override */
+.metadata-section {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+}
+
+.metadata-section :deep(.metadata-form) {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.metadata-section :deep(.field-container) {
+	padding: 6px 0;
+	border-bottom: none;
+}
+
+.metadata-section :deep(.field-label) {
+	font-size: 12px;
+	margin-bottom: 2px;
+}
+
+/* Loading / empty */
 .loading-state {
 	display: flex;
 	flex-direction: column;
@@ -488,12 +574,6 @@ export default {
 	color: var(--color-text-maxcontrast);
 }
 
-.metadata-section {
-	flex: 1;
-	min-height: 0;
-	overflow-y: auto;
-}
-
 .no-fields {
 	padding: 16px;
 	text-align: center;
@@ -501,6 +581,7 @@ export default {
 	font-size: 13px;
 }
 
+/* Actions */
 .modal-actions {
 	display: flex;
 	justify-content: space-between;
