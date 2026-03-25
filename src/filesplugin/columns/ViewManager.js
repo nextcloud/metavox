@@ -74,24 +74,24 @@ export function injectViewStyles() {
 			position: sticky;
 			top: 0;
 			left: 44px;
-			z-index: 62;
+			z-index: 50;
 		}
 		/* Sticky stacking: tabs (top:0) → filters (top:tabs) → thead (top:tabs+filters).
 		   All offsets via CSS custom properties, computed by JS ResizeObserver. */
 		#${VIEW_TABS_ID} ~ .files-list__filters {
 			position: sticky !important;
 			top: var(--mv-filters-top, 0px) !important;
-			z-index: 61 !important;
+			z-index: 49 !important;
 			background: var(--color-main-background);
 		}
 		#${VIEW_TABS_ID} ~ .files-list__table thead {
 			top: var(--mv-thead-top, 0px) !important;
-			z-index: 60 !important;
+			z-index: 48 !important;
 		}
 		/* Selection overlay ("X selected") must sit above the sticky tabs */
 		#${VIEW_TABS_ID} ~ .files-list__thead-overlay {
 			top: var(--mv-filters-top, 0px) !important;
-			z-index: 63 !important;
+			z-index: 51 !important;
 		}
 		/* Sticky "All" tab */
 		#${VIEW_TABS_ID} > .mv-tab-all {

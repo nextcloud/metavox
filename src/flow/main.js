@@ -5,7 +5,9 @@
  * This enables metadata-based conditions in Flow rules for access control.
  */
 
-import MetadataCheck from './MetadataCheck.vue'
+import MetadataCheck from './MetadataCheck.js'
+
+const t = window.t || ((app, text) => text)
 
 // Wait for the WorkflowEngine to be ready
 window.addEventListener('DOMContentLoaded', () => {
@@ -27,18 +29,10 @@ window.addEventListener('DOMContentLoaded', () => {
 })
 
 function registerFlowComponents() {
-	/**
-	 * Register the MetaVox check with Nextcloud's Workflow Engine
-	 *
-	 * We use a single generic operator here. The actual operator selection
-	 * is handled within the Vue component based on field type.
-	 * The selected operator is stored in the config JSON.
-	 */
 	OCA.WorkflowEngine.registerCheck({
 		class: 'OCA\\MetaVox\\Flow\\MetadataCheck',
 		name: t('metavox', 'MetaVox metadata'),
 		operators: [
-			// Single generic operator - actual operator is selected in the component
 			{ operator: 'matches', name: t('metavox', 'where') },
 		],
 		component: MetadataCheck,
