@@ -556,9 +556,17 @@ function _registerDirect() {
 				store.filters.push(filterInstance)
 			}
 		} else {
-			// NC32: do NOT register in the store — NC32's onUpdated mount loop
-			// crashes on Vue 3 filter components. We handle filtering client-side
-			// via our own button + popover, and apply filter/sort via metadataCache.
+			// NC32: register in store for filter() to be called, but mount() is a no-op.
+			// The UI is handled by our own injected button + popover.
+			try {
+				if (typeof store.addFilter === 'function') {
+					store.addFilter(filterInstance)
+				} else if (Array.isArray(store.filters)) {
+					store.filters.push(filterInstance)
+				}
+			} catch (e) {
+				// Store registration failed — filter will work client-side only
+			}
 		}
 		// Wire chip listener (NC33 only — NC32 doesn't support store.$patch for filters)
 		if (window._nc_files_scope?.v4_0 && typeof store.$patch === 'function') {
