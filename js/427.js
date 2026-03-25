@@ -1,1 +1,1 @@
-"use strict";(self.webpackChunkmetavox=self.webpackChunkmetavox||[]).push([[427],{427(e,a,s){s.r(a),s.d(a,{default:()=>t.N});var t=s(9593)}}]);
+"use strict";(self.webpackChunkmetavox=self.webpackChunkmetavox||[]).push([[427],{30427(e,a,s){s.r(a),s.d(a,{default:()=>t.N});var t=s(86126)}}]);
