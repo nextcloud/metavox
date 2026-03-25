@@ -556,28 +556,25 @@ function _registerDirect() {
 				store.filters.push(filterInstance)
 			}
 		} else {
-			// NC32: register the real filterInstance in the store so filter() and
-			// EventTarget events work. But we handle the UI via our own button,
-			// not via NC32's onUpdated mount loop.
-			if (typeof store.addFilter === 'function') {
-				store.addFilter(filterInstance)
-			} else {
-				store.filters.push(filterInstance)
-			}
+			// NC32: do NOT register in the store — NC32's onUpdated mount loop
+			// crashes on Vue 3 filter components. We handle filtering client-side
+			// via our own button + popover, and apply filter/sort via metadataCache.
 		}
-		// Wire chip listener
-		filterInstance.addEventListener('update:chips', (e) => {
-			store.$patch(state => {
-				const chips = e.detail || []
-				const next = { ...state.chips }
-				if (chips.length > 0) {
-					next[FILTER_ID] = chips
-				} else {
-					delete next[FILTER_ID]
-				}
-				state.chips = next
+		// Wire chip listener (NC33 only — NC32 doesn't support store.$patch for filters)
+		if (window._nc_files_scope?.v4_0 && typeof store.$patch === 'function') {
+			filterInstance.addEventListener('update:chips', (e) => {
+				store.$patch(state => {
+					const chips = e.detail || []
+					const next = { ...state.chips }
+					if (chips.length > 0) {
+						next[FILTER_ID] = chips
+					} else {
+						delete next[FILTER_ID]
+					}
+					state.chips = next
+				})
 			})
-		})
+		}
 	}
 
 	// NC32: inject our own filter button since we can't use store.addFilter
