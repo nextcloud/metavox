@@ -20,6 +20,10 @@ When the bulk editor modal opens, you'll see all available metadata fields for t
 
 ![Bulk Edit Modal](../../screenshots/BulkeditMetadataModal.png)
 
+### Finding Fields
+
+When a Team folder has more than 6 metadata fields, a search bar appears at the top of the modal. Type to filter fields by name — the search is case-insensitive and matches on both field label and internal name.
+
 ### Editing Fields
 
 - Fill in the fields you want to update
