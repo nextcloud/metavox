@@ -36,8 +36,8 @@ This guide covers installing and configuring MetaVox for your Nextcloud instance
 | Flow integration | Yes | Yes | Yes |
 | Backup & restore | Yes | Yes | Yes |
 | Metadata caching (performance) | APCu only | Distributed | Distributed |
-| Cell locking (prevent conflicts) | No | Yes | Yes |
-| Presence tracking | No | Yes | Yes |
+| Cell locking (prevent conflicts) | No | No | Yes |
+| Presence tracking | No | No | Yes |
 | Real-time sync (live updates) | No | No | Yes |
 
 ## Installation
