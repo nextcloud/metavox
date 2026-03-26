@@ -15,3 +15,6 @@ node_modules
 # Build
 *.log
 *.tar.gz
+
+# Signing
+*.key
