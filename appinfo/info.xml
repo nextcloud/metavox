@@ -30,11 +30,9 @@
     <repository type="git">https://github.com/nextcloud/metavox.git</repository>
     <bugs>https://github.com/nextcloud/metavox/issues</bugs>
     <dependencies>
+        <php min-version="8.1"/>
         <nextcloud min-version="31" max-version="33"/>
     </dependencies>
-    <api-documentation>
-        <openapi>openapi.json</openapi>
-    </api-documentation>
     <settings>
         <admin>OCA\MetaVox\Settings\Admin</admin>
         <admin-section>OCA\MetaVox\Settings\AdminSection</admin-section>
