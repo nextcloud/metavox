@@ -4,9 +4,41 @@ This guide covers installing and configuring MetaVox for your Nextcloud instance
 
 ## Requirements
 
-- Nextcloud 31 or higher (tested up to Nextcloud 33)
-- Group Folders app installed and configured
-- Administrator access
+### Required
+
+| Dependency | Why |
+|------------|-----|
+| **Nextcloud 31+** (tested up to 33) | Platform |
+| **Group Folders** app | MetaVox adds metadata to Team Folders — without Group Folders there are no Team Folders |
+| **Administrator access** | Field definitions and app settings require admin rights |
+
+### Recommended
+
+| Dependency | Why | Without it |
+|------------|-----|------------|
+| **Redis** | MetaVox uses Redis for metadata caching (30s TTL), field definition caching (600s TTL), presence tracking, and cell locking | MetaVox still works but falls back to APCu (local cache, not shared across PHP workers). Cell locking and presence tracking are disabled. Performance with multiple concurrent users is reduced |
+
+### Optional
+
+| Dependency | Why | Without it |
+|------------|-----|------------|
+| **notify_push** app | Enables real-time metadata sync between users. When one user edits metadata, all other users see the change instantly via WebSocket | Users must manually refresh to see other users' changes. Cell locking indicators are not shown. Last-write-wins applies for concurrent edits |
+| **Nextcloud AI provider** (e.g. LLM2) | Powers the AI Autofill feature that suggests metadata values based on file content | AI Autofill button does not appear. All other features work normally |
+
+### Feature Availability
+
+| Feature | Base install | + Redis | + Redis + notify_push |
+|---------|:-----------:|:-------:|:---------------------:|
+| Metadata fields & editing | Yes | Yes | Yes |
+| Inline grid editing | Yes | Yes | Yes |
+| Bulk editing & CSV export | Yes | Yes | Yes |
+| Filter & sort | Yes | Yes | Yes |
+| Flow integration | Yes | Yes | Yes |
+| Backup & restore | Yes | Yes | Yes |
+| Metadata caching (performance) | APCu only | Distributed | Distributed |
+| Cell locking (prevent conflicts) | No | Yes | Yes |
+| Presence tracking | No | Yes | Yes |
+| Real-time sync (live updates) | No | No | Yes |
 
 ## Installation
 
