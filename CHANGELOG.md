@@ -167,6 +167,60 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.4.9] - 2026-02-17
+
+### Added
+- Statistics tab in admin panel with usage analytics
+- Telemetry expansion with detailed field and groupfolder metrics
+- Dutch and German translations for statistics and telemetry
+
+---
+
+## [1.4.8] - 2026-02-14
+
+### Fixed
+- Fixed Files app detection behind reverse proxy with subpath
+
+---
+
+## [1.4.7] - 2026-01-15
+
+### Added
+- Field-type specific Flow operators for NC33 compatibility
+- Telemetry service for usage tracking
+- Compliance templates for Dutch government (AVG, WOO, Archiefwet)
+- Flow screenshots for documentation
+
+### Fixed
+- Fixed bulk metadata action registration
+- Fixed field_options format in compliance templates
+
+---
+
+## [1.4.6] - 2026-01-10
+
+### Fixed
+- Fixed Flow check persistence and field loading
+
+---
+
+## [1.4.5] - 2026-01-08
+
+### Added
+- **Nextcloud Flow Integration**: Metadata-based access control via Flow automation
+- Bulk edit documentation and screenshots
+- Field types documentation with screenshots
+
+---
+
+## [1.4.1] - 2025-12-18
+
+### Changed
+- Sidebar UI improvements
+- Removed leftover debug files (debug_page.html, run_migration.php)
+
+---
+
 ## [1.4.0] - 2025-12-16
 
 ### Added
@@ -249,11 +303,15 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [1.1.3] - 2025-10-01
 
 ### Added
-- Support for NextCloud 32.
+- Support for NextCloud 32
+
+### Changed
+- Updated API documentation
+- Updated ROADMAP
 
 ### Fixed
-- Resolved an issue where values could not be selected in the multi-select component when spaces were present.
-- Resolved an issue in the external API that prevented retrieving fields associated with a group folder.
+- Resolved an issue where values could not be selected in the multi-select component when spaces were present
+- Resolved an issue in the external API that prevented retrieving fields associated with a group folder
 
 ---
 
@@ -267,7 +325,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [1.1.1] - 2025-09-18
 
 ### Fixed
-- Fixed an issue where it was not possible to add columns.
+- Fixed an issue where it was not possible to add columns
 
 ---
 
@@ -288,9 +346,27 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ## [1.0.6] - 2025-09-07
 ### Added
 - Initial public release of Metavox for Nextcloud
-  
+
 ---
 
 ## [1.0.5] - 2025-09-04
 ### Added
 - Initial public release of Metavox for Nextcloud
+
+---
+
+## [1.0.2] - 2025-09-01
+### Fixed
+- Renamed logo file for consistency
+
+---
+
+## [1.0.1] - 2025-08-30
+### Fixed
+- Updated app metadata in info.xml
+
+---
+
+## [1.0.0] - 2025-08-28
+### Added
+- Initial release of MetaVox
