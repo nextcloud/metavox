@@ -6,6 +6,58 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [2.0.0] - 2026-03-26
+
+### Added
+- Inline grid editing with field-type-specific editors (text, number, date, checkbox, URL, filelink, user)
+- Cell locking with real-time sync via notify_push + Redis (prevents concurrent edits)
+- Presence tracking — push events only sent to users actively viewing a groupfolder
+- Views system — predefined column/filter/sort/formatting combinations with tabs UI
+- Client-side filter and sort — zero server calls, operates on metadata cache
+- Undo support with toast notification and field revert
+- Fill handle for quick cell value propagation
+- Lock badge with username — portaled, always visible during editing
+- Rich cell rendering for user, URL, and filelink field types
+- Backup/restore with progress bar, gzip compression, and keyset pagination
+- AI autofill capability for metadata fields
+- Bulk metadata modal UI with search
+- Flow integration (vanilla JS, Vue 2 compatible)
+- Checkbox fields use Yes/No dropdown with fill handle support
+- NC32 compatibility with feature detection and fallback UI
+
+### Changed
+- Complete JS modular refactor: monolithic MetaVoxColumns split into 14 focused modules
+- Centralized state management via MetaVoxState.js
+- PHP 8 attributes replace annotation docblocks
+- BaseController extraction for shared controller logic
+- Services split into dedicated responsibilities (Field, Filter, View, Cache, Presence, Lock, Push)
+- Single init endpoint eliminates 4 sequential API calls
+- Inline init data via IInitialState for instant pageload (~8ms vs ~1500ms)
+- Replace error_log with LoggerInterface (fixes #49)
+- Documentation completely restructured (admin, user, architecture, features)
+
+### Fixed
+- NC32 sorting — DOM-based row reorder fallback
+- NC32 sidebar tab + filter registration crashes
+- NC33 sidebar tab and bulk metadata action registration via scoped globals
+- Breadcrumb dropdown no longer blocked by view tabs
+- Cell lock released when user switches to another program
+- Prevent notify_push crash on malformed WebSocket messages
+- Prevent flex layout from inflating column widths
+- Loading indicator timing and spinner hang prevention
+- N+1 queries in permission and groupfolder lookups
+
+### Performance
+- 10K+ user scalability — presence cooldown, push batching, LRU cache
+- Direct push cache updates eliminate race conditions
+- Metadata cache persists across submap navigation
+- Instant metadata on pageload with early prefetch on navigation
+- Bulk metadata loading with lazy filters and virtual scroll optimization
+- Optimized restore with batch inserts + cross-platform support
+- Optimized metadata loading for large datasets (43M+ rows)
+
+---
+
 ## [1.8.3] - 2026-02-20
 
 ### Added
