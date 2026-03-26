@@ -137,7 +137,6 @@ export async function loadAllMetadata(gfId) {
 	// Filter out already cached
 	const totalFound = fileIds.length
 	fileIds = fileIds.filter(id => !metadataCache.has(id))
-	console.log(`[MetaVox load] source=${source} found=${totalFound} uncached=${fileIds.length}`)
 	if (fileIds.length === 0) return
 
 	const CHUNK = 200

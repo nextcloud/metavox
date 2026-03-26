@@ -38,5 +38,4 @@ function registerFlowComponents() {
 		component: MetadataCheck,
 	})
 
-	console.log('MetaVox Flow check registered')
 }

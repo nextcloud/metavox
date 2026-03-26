@@ -91,7 +91,6 @@ export default {
       return window.t ? window.t(app, text) : text
     },
     onInput(value) {
-      console.log('UrlFieldInput onInput called with:', value)
       this.$emit('update:modelValue', value)
       this.$emit('input', value)
     }
