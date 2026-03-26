@@ -74,9 +74,15 @@ export function handleSort(fieldName, fieldType) {
 		fi._serverFileIdMap.set(ids[i], i)
 	}
 
-	ensureSortBypass()
+	// NC33: patch Vue computed to bypass re-sort
+	// NC32: Vue internals not accessible — reorder DOM rows directly
+	const bypassInstalled = ensureSortBypass()
 	updateSortIndicators()
 	fi._emitFilterUpdate()
+
+	if (!bypassInstalled) {
+		reorderDomRows(ids)
+	}
 }
 
 export function updateSortIndicators() {
@@ -124,6 +130,9 @@ export function _findFilesList() {
 	return null
 }
 
+/**
+ * @returns {boolean} true if the bypass was installed or already active
+ */
 export function ensureSortBypass(retries) {
 	const filesList = _findFilesList()
 	if (!filesList) {
@@ -132,11 +141,11 @@ export function ensureSortBypass(retries) {
 		if (attempt < 10) {
 			setTimeout(() => ensureSortBypass(attempt + 1), 200 * (attempt + 1))
 		}
-		return
+		return false
 	}
 
 	const watcher = filesList._computedWatchers?.dirContentsSorted
-	if (!watcher?.getter) return
+	if (!watcher?.getter) return false
 
 	// Install the bypass if not yet patched on this instance
 	if (_bypassedFilesList !== filesList) {
@@ -156,6 +165,7 @@ export function ensureSortBypass(retries) {
 	watcher.dirty = true
 	watcher.evaluate()
 	filesList.$forceUpdate()
+	return true
 }
 
 export function uninstallSortBypass() {
@@ -170,4 +180,47 @@ export function uninstallSortBypass() {
 	}
 	_bypassedFilesList = null
 	_origSortGetter = null
+}
+
+// ========================================
+// NC32 DOM-based row reorder fallback
+// ========================================
+
+/**
+ * Reorder (and optionally filter) tbody rows by sorted file IDs.
+ * Used on NC32 where Vue internals are not accessible for sort bypass.
+ * Rows whose file ID is not in sortedIds are hidden (filtered out).
+ * Pass null to reset (show all rows in original order).
+ */
+export function reorderDomRows(sortedIds) {
+	const tbody = document.querySelector('.files-list__table tbody')
+	if (!tbody) return
+
+	const rows = [...tbody.querySelectorAll('tr[data-cy-files-list-row]')]
+
+	// Reset: show all rows
+	if (!sortedIds) {
+		for (const row of rows) {
+			row.style.display = ''
+		}
+		return
+	}
+
+	const orderMap = new Map()
+	for (let i = 0; i < sortedIds.length; i++) {
+		orderMap.set(sortedIds[i], i)
+	}
+
+	// Hide rows not in the sorted set, show the rest
+	for (const row of rows) {
+		const id = Number(row.getAttribute('data-cy-files-list-row-fileid'))
+		row.style.display = orderMap.has(id) ? '' : 'none'
+	}
+
+	// Sort visible rows
+	rows.filter(r => r.style.display !== 'none').sort((a, b) => {
+		const idA = Number(a.getAttribute('data-cy-files-list-row-fileid'))
+		const idB = Number(b.getAttribute('data-cy-files-list-row-fileid'))
+		return (orderMap.get(idA) ?? 0) - (orderMap.get(idB) ?? 0)
+	}).forEach(row => tbody.appendChild(row))
 }
