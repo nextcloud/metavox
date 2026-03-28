@@ -6,6 +6,13 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [2.0.1] - 2026-03-28
+
+### Fixed
+- View switching crashed with `fetchServerSortedIds is not a function` — replaced with `triggerResort()`. This prevented the edit icon from appearing on active view tabs and blocked view activation entirely when a sort field was configured.
+
+---
+
 ## [2.0.0] - 2026-03-26
 
 ### Added
