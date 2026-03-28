@@ -3,12 +3,16 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Service;
 
+use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 use Psr\Log\LoggerInterface;
 
 /**
- * Service for API field operations
- * Handles batch operations and complex field logic
+ * Service for external API field operations.
+ *
+ * This is the facade between ApiFieldController (OCS) and FieldService.
+ * All external API metadata operations go through this service, shielding
+ * the external API from internal FieldService implementation changes.
  */
 class ApiFieldService {
     private IDBConnection $db;
@@ -24,6 +28,126 @@ class ApiFieldService {
         $this->fieldService = $fieldService;
         $this->logger = $logger;
     }
+
+    // ========================================
+    // Single-file metadata operations
+    // ========================================
+
+    /**
+     * Get metadata for a single file (API-safe).
+     * Auto-detects groupfolder and delegates to the groupfolder-scoped query.
+     */
+    public function getFileMetadata(int $fileId): array {
+        $groupfolderId = $this->detectGroupfolderIdForFile($fileId);
+        if ($groupfolderId !== null) {
+            return $this->fieldService->getGroupfolderFileMetadata($groupfolderId, $fileId);
+        }
+        // Fallback: use FieldService's basic query (no groupfolder context)
+        return $this->fieldService->getFieldMetadata($fileId);
+    }
+
+    /**
+     * Get metadata for a file within a specific groupfolder (API-safe).
+     */
+    public function getGroupfolderFileMetadata(int $groupfolderId, int $fileId): array {
+        return $this->fieldService->getGroupfolderFileMetadata($groupfolderId, $fileId);
+    }
+
+    /**
+     * Save metadata for a single file (API-safe).
+     * Translates field_name → field_id and handles array values.
+     */
+    public function saveFileMetadata(int $fileId, array $metadata): void {
+        $fields = $this->fieldService->getAllFields();
+        $fieldMap = [];
+        foreach ($fields as $field) {
+            $fieldMap[$field['field_name']] = $field['id'];
+        }
+
+        foreach ($metadata as $fieldName => $value) {
+            if (isset($fieldMap[$fieldName])) {
+                if (is_array($value)) {
+                    $value = implode(';#', $value);
+                }
+                $this->fieldService->saveFieldValue($fileId, $fieldMap[$fieldName], (string)$value);
+            }
+        }
+    }
+
+    /**
+     * Save metadata for a file within a specific groupfolder (API-safe).
+     * Translates field_name → field_id and handles array values.
+     */
+    public function saveGroupfolderFileMetadata(int $groupfolderId, int $fileId, array $metadata): void {
+        $fields = $this->fieldService->getFieldsByScope('groupfolder');
+        $fieldMap = [];
+        foreach ($fields as $field) {
+            $fieldMap[$field['field_name']] = $field['id'];
+        }
+
+        foreach ($metadata as $fieldName => $value) {
+            if (isset($fieldMap[$fieldName])) {
+                if (is_array($value)) {
+                    $value = implode(';#', $value);
+                }
+                $this->fieldService->saveGroupfolderFileFieldValue($groupfolderId, $fileId, $fieldMap[$fieldName], (string)$value, $fieldName);
+            }
+        }
+    }
+
+    /**
+     * Get metadata for multiple files (API-safe, max 100).
+     */
+    public function getBulkFileMetadata(array $fileIds): array {
+        return $this->fieldService->getBulkFileMetadata($fileIds);
+    }
+
+    // ========================================
+    // Groupfolder detection (API-specific)
+    // ========================================
+
+    /**
+     * Detect the groupfolder ID for a file.
+     * Checks metavox_file_gf_meta first, then falls back to storage ID pattern matching.
+     * This logic lives here (not in FieldService) because only the external API
+     * needs auto-detection — internal flows always have groupfolder context.
+     */
+    public function detectGroupfolderIdForFile(int $fileId): ?int {
+        try {
+            // Check if this file has any metadata stored — the groupfolder_id is in that table
+            $qb = $this->db->getQueryBuilder();
+            $qb->selectDistinct('groupfolder_id')
+               ->from('metavox_file_gf_meta')
+               ->where($qb->expr()->eq('file_id', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_INT)))
+               ->setMaxResults(1);
+            $result = $qb->executeQuery();
+            $gfId = $result->fetchOne();
+            $result->closeCursor();
+            if ($gfId !== false && $gfId !== null) {
+                return (int)$gfId;
+            }
+
+            // Fallback: check the file's storage to find the groupfolder
+            $qb2 = $this->db->getQueryBuilder();
+            $qb2->select('s.id')
+                ->from('filecache', 'fc')
+                ->innerJoin('fc', 'storages', 's', 'fc.storage = s.numeric_id')
+                ->where($qb2->expr()->eq('fc.fileid', $qb2->createNamedParameter($fileId, IQueryBuilder::PARAM_INT)));
+            $result2 = $qb2->executeQuery();
+            $storageId = $result2->fetchOne();
+            $result2->closeCursor();
+            if ($storageId && preg_match('/groupfolder[:\/_]+(\d+)/i', $storageId, $matches)) {
+                return (int)$matches[1];
+            }
+        } catch (\Exception $e) {
+            $this->logger->debug('ApiFieldService: detectGroupfolderIdForFile failed', ['fileId' => $fileId, 'exception' => $e->getMessage()]);
+        }
+        return null;
+    }
+
+    // ========================================
+    // Batch operations
+    // ========================================
 
     /**
      * Batch update file metadata for multiple files
@@ -235,7 +359,7 @@ class ApiFieldService {
         $results = [];
 
         // Get source metadata
-        $sourceMetadata = $this->fieldService->getFieldMetadata($sourceFileId);
+        $sourceMetadata = $this->getFileMetadata($sourceFileId);
 
         if (empty($sourceMetadata)) {
             return [

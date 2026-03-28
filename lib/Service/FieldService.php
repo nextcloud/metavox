@@ -389,8 +389,6 @@ public function deleteField(int $id): bool {
     }
 }
 public function getFieldMetadata(int $fileId): array {
-        // Only groupfolder file metadata is supported now
-        // This returns metadata from metavox_file_gf_meta joined with metavox_gf_fields
         $qb = $this->db->getQueryBuilder();
         $qb->select('f.id', 'f.field_name', 'f.field_label', 'f.field_type', 'f.field_options', 'f.is_required', 'v.field_value as value')
            ->from('metavox_gf_fields', 'f')

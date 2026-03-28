@@ -274,7 +274,7 @@ class ApiFieldController extends BaseOCSController {
                 return new DataResponse(['error' => 'No accessible files found'], Http::STATUS_FORBIDDEN);
             }
 
-            $metadata = $this->fieldService->getBulkFileMetadata($accessibleFileIds);
+            $metadata = $this->apiFieldService->getBulkFileMetadata($accessibleFileIds);
             return new DataResponse($metadata, Http::STATUS_OK);
         } catch (\Exception $e) {
             $this->logger->error('MetaVox: getBulkFileMetadata error', ['exception' => $e]);
@@ -297,7 +297,7 @@ class ApiFieldController extends BaseOCSController {
                 return new DataResponse(['error' => 'Access denied to file'], Http::STATUS_FORBIDDEN);
             }
 
-            $metadata = $this->fieldService->getFieldMetadata($fileId);
+            $metadata = $this->apiFieldService->getFileMetadata($fileId);
             return new DataResponse($metadata, Http::STATUS_OK);
         } catch (\Exception $e) {
             return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
@@ -320,20 +320,7 @@ class ApiFieldController extends BaseOCSController {
             }
 
             $metadata = $this->request->getParam('metadata', []);
-            $fields = $this->fieldService->getAllFields();
-            $fieldMap = [];
-            foreach ($fields as $field) {
-                $fieldMap[$field['field_name']] = $field['id'];
-            }
-
-            foreach ($metadata as $fieldName => $value) {
-                if (isset($fieldMap[$fieldName])) {
-                    if (is_array($value)) {
-                        $value = implode(';#', $value);
-                    }
-                    $this->fieldService->saveFieldValue($fileId, $fieldMap[$fieldName], (string)$value);
-                }
-            }
+            $this->apiFieldService->saveFileMetadata($fileId, $metadata);
 
             return new DataResponse(['success' => true], Http::STATUS_OK);
         } catch (\Exception $e) {
@@ -443,7 +430,7 @@ class ApiFieldController extends BaseOCSController {
                 return new DataResponse(['error' => 'Access denied to file'], Http::STATUS_FORBIDDEN);
             }
 
-            $metadata = $this->fieldService->getGroupfolderFileMetadata($groupfolderId, $fileId);
+            $metadata = $this->apiFieldService->getGroupfolderFileMetadata($groupfolderId, $fileId);
             return new DataResponse($metadata, Http::STATUS_OK);
         } catch (\Exception $e) {
             return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
@@ -466,21 +453,7 @@ class ApiFieldController extends BaseOCSController {
             }
 
             $metadata = $this->request->getParam('metadata', []);
-
-            $fields = $this->fieldService->getFieldsByScope('groupfolder');
-            $fieldMap = [];
-            foreach ($fields as $field) {
-                $fieldMap[$field['field_name']] = $field['id'];
-            }
-
-            foreach ($metadata as $fieldName => $value) {
-                if (isset($fieldMap[$fieldName])) {
-                    if (is_array($value)) {
-                        $value = implode(';#', $value);
-                    }
-                    $this->fieldService->saveGroupfolderFileFieldValue($groupfolderId, $fileId, $fieldMap[$fieldName], (string)$value, $fieldName);
-                }
-            }
+            $this->apiFieldService->saveGroupfolderFileMetadata($groupfolderId, $fileId, $metadata);
 
             return new DataResponse(['success' => true], Http::STATUS_OK);
         } catch (\Exception $e) {
