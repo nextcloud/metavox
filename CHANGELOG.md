@@ -6,6 +6,23 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [2.0.0-beta.3] - 2026-03-28
+
+### Changed
+- **Architecture: ApiFieldService is now a full facade** between the OCS API and FieldService. All external API metadata operations (get, save, bulk) go through ApiFieldService, shielding the external API from internal FieldService changes.
+- Moved `detectGroupfolderIdForFile()` from FieldService to ApiFieldService — groupfolder auto-detection is an API concern, not an internal one.
+- Reverted beta.3 change to `FieldService::getFieldMetadata()` — the groupfolder auto-detection logic now lives in `ApiFieldService::getFileMetadata()` where it belongs.
+
+### Added
+- `ApiFieldService::getFileMetadata()` — with groupfolder auto-detection
+- `ApiFieldService::getGroupfolderFileMetadata()` — groupfolder-scoped read
+- `ApiFieldService::saveFileMetadata()` — translates field_name to field_id
+- `ApiFieldService::saveGroupfolderFileMetadata()` — groupfolder-scoped save
+- `ApiFieldService::getBulkFileMetadata()` — bulk read facade
+- `ApiFieldService::detectGroupfolderIdForFile()` — resolves a file's groupfolder
+
+---
+
 ## [2.0.0-beta.2] - 2026-03-28
 
 ### Fixed
