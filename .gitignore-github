@@ -1,5 +1,4 @@
-# Additional ignores for GitHub only
-# These files should go to Gitea but not to GitHub
-
-docs/metavox-waarde-analyse.md
-docs/internal/
+# Files excluded from GitHub (kept on Gitea only)
+# Used by push-to-github.sh
+internal-docs/
+deploy.sh
