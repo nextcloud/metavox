@@ -19,5 +19,6 @@ node_modules
 # Signing
 *.key
 
-# Internal docs (push to Gitea only with: git add -f internal-docs/)
+# Internal docs and deploy scripts (push to Gitea only with: git add -f)
 internal-docs/
+deploy.sh
