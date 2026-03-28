@@ -804,7 +804,7 @@ export function applyView(view, filterInstance) {
 		})
 		ensureSortBypass()
 		updateSortIndicators()
-		fi.fetchServerSortedIds()
+		fi.triggerResort()
 	} else if (fi) {
 		fi.setSortState(null)
 		fi.clearServerState()
