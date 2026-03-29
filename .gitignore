@@ -20,5 +20,5 @@ node_modules
 *.key
 
 # Internal docs and deploy scripts (push to Gitea only with: git add -f)
-# internal-docs/
+internal-docs/
 deploy.sh
