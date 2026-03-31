@@ -102,6 +102,10 @@ let _canManageViews = false
 export function getCanManageViews() { return _canManageViews }
 export function setCanManageViews(v) { _canManageViews = v }
 
+let _viewCleared = false
+export function getViewCleared() { return _viewCleared }
+export function setViewCleared(v) { _viewCleared = v }
+
 // ── Available fields ─────────────────────────────────────────────────
 let _availableFields = []
 export function getAvailableFields() { return _availableFields }

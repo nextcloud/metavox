@@ -353,7 +353,7 @@
         "Close": "Sluiten",
         "Name": "Naam",
         "View name": "Naam van de weergave",
-        "Default view": "Standaard weergave",
+        "Standard view": "Standaardweergave",
         "Columns": "Kolommen",
         "Field": "Veld",
         "Visible": "Zichtbaar",
@@ -387,7 +387,10 @@
         "Invalid configuration format": "Ongeldig configuratieformaat",
         "Invalid operator": "Ongeldige operator",
         "Metadata field name is required": "Metadata veldnaam is verplicht",
-        "Comparison value is required": "Vergelijkingswaarde is verplicht"
+        "Comparison value is required": "Vergelijkingswaarde is verplicht",
+
+        "Default": "Standaard",
+        "Standard view — loads automatically when opening this folder": "Standaardweergave — wordt automatisch geladen bij het openen van deze map"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

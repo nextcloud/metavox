@@ -353,7 +353,7 @@
         "Close": "Schließen",
         "Name": "Name",
         "View name": "Name der Ansicht",
-        "Default view": "Standardansicht",
+        "Standard view": "Standardansicht",
         "Columns": "Spalten",
         "Field": "Feld",
         "Visible": "Sichtbar",
@@ -387,7 +387,10 @@
         "Invalid configuration format": "Ungültiges Konfigurationsformat",
         "Invalid operator": "Ungültiger Operator",
         "Metadata field name is required": "Metadatenfeldname ist erforderlich",
-        "Comparison value is required": "Vergleichswert ist erforderlich"
+        "Comparison value is required": "Vergleichswert ist erforderlich",
+
+        "Default": "Standard",
+        "Standard view — loads automatically when opening this folder": "Standardansicht — wird beim Öffnen dieses Ordners automatisch geladen"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

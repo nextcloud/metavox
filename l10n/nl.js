@@ -343,7 +343,7 @@ OC.L10N.register(
     "Close" : "Sluiten",
     "Name" : "Naam",
     "View name" : "Naam van de weergave",
-    "Default view" : "Standaard weergave",
+    "Standard view" : "Standaardweergave",
     "Columns" : "Kolommen",
     "Field" : "Veld",
     "Visible" : "Zichtbaar",

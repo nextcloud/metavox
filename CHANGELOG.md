@@ -20,6 +20,10 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - `ApiFieldService::saveGroupfolderFileMetadata()` — groupfolder-scoped save
 - `ApiFieldService::getBulkFileMetadata()` — bulk read facade
 - `ApiFieldService::detectGroupfolderIdForFile()` — resolves a file's groupfolder
+- **Field name validation** — internal field names are now validated on frontend and backend. Only lowercase letters (a-z), numbers (0-9) and underscores (_) are allowed, must start with a letter. Invalid characters show a specific error message (e.g. "Spaces are not allowed — use underscores instead"). Applied to both Team folder Metadata and File Metadata admin panels, and both internal and OCS API controllers.
+- "Default" tab with 🏠 icon replaces "All" — visually separated from custom views with a vertical divider. Clicking it shows the standard Nextcloud file view without MetaVox filters.
+- Tooltip on Default tab: "Standard Nextcloud file view"
+- **New geometric fox icon** — outline style with `currentColor` support. Adapts to light/dark mode and Nextcloud theme colors. Removed hardcoded `#1a1a1a` fill and `filter: none !important` CSS overrides. Deleted `app-dark.svg` (no longer needed). Updated in header bar, sidebar tab, and filter bar button.
 
 ---
 
