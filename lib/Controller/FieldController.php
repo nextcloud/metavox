@@ -98,6 +98,13 @@ class FieldController extends BaseController {
                 return new JSONResponse(['error' => 'Field name, label, and type are required'], Http::STATUS_BAD_REQUEST);
             }
 
+            // Strip any prefix before validating the base name
+            $baseName = trim($fieldName);
+            $baseName = preg_replace('/^(file_gf_|gf_)/', '', $baseName);
+            if (!preg_match('/^[a-z][a-z0-9_]*$/', $baseName)) {
+                return new JSONResponse(['error' => 'Field name may only contain lowercase letters, numbers and underscores, and must start with a letter'], Http::STATUS_BAD_REQUEST);
+            }
+
             $fieldData = [
                 'field_name' => trim($fieldName),
                 'field_label' => trim($fieldLabel),

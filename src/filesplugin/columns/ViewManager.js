@@ -23,6 +23,8 @@ import {
 	getAvailableFields,
 	getViewTabsEl,
 	setViewTabsEl,
+	getViewCleared,
+	setViewCleared,
 	getPrefetchedFilterValues,
 	setPrefetchedFilterValues,
 	metadataCache,
@@ -93,11 +95,30 @@ export function injectViewStyles() {
 			top: var(--mv-filters-top, 0px) !important;
 			z-index: 51 !important;
 		}
-		/* Sticky "All" tab */
+		/* Sticky "Default" tab with separator */
 		#${VIEW_TABS_ID} > .mv-tab-all {
 			flex-shrink: 0;
 			margin-left: calc(var(--default-grid-baseline, 4px) * 2);
+			margin-right: calc(var(--default-grid-baseline, 4px) * 2);
 			z-index: 1;
+		}
+		#${VIEW_TABS_ID} > .mv-tab-all::after {
+			content: '';
+			position: absolute;
+			right: -5px;
+			top: 6px;
+			bottom: 6px;
+			width: 1px;
+			background: var(--color-border-dark, #ccc);
+		}
+		.mv-tab-home-icon {
+			display: inline-flex;
+			align-items: center;
+			opacity: 0.5;
+			margin-right: 2px;
+		}
+		#${VIEW_TABS_ID} .mv-tab-active .mv-tab-home-icon {
+			opacity: 0.8;
 		}
 		/* Sticky default view tab */
 		#${VIEW_TABS_ID} > .mv-tab-default {
@@ -292,15 +313,23 @@ export function injectViewTabs(views) {
 	const container = document.createElement('div')
 	container.id = VIEW_TABS_ID
 
-	// "All" tab — sticky, always visible
+	// "Default" tab — sticky, always visible, shows original NC Files view
 	const allTab = document.createElement('button')
 	allTab.type = 'button'
 	allTab.className = 'mv-tab mv-tab-all' + (!activeView ? ' mv-tab-active' : '')
-	allTab.textContent = translate('metavox', 'All')
+	allTab.title = translate('metavox', 'Standard Nextcloud file view')
+	// Home icon + label
+	const homeIcon = document.createElement('span')
+	homeIcon.className = 'mv-tab-home-icon'
+	homeIcon.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></svg>'
+	allTab.appendChild(homeIcon)
+	const allLabel = document.createElement('span')
+	allLabel.textContent = translate('metavox', 'Default')
+	allTab.appendChild(allLabel)
 	allTab.addEventListener('click', () => clearView())
 	container.appendChild(allTab)
 
-	// Default view tab — sticky, next to "All"
+	// Standard view tab — sticky, next to "Default"
 	const defaultView = views.find(v => v.is_default)
 	if (defaultView) {
 		const defTab = _makeViewTab(defaultView)
@@ -310,6 +339,7 @@ export function injectViewTabs(views) {
 		star.className = 'mv-tab-default-icon'
 		star.textContent = '\u2605'
 		defTab.insertBefore(star, defTab.firstChild)
+		defTab.title = translate('metavox', 'Standard view — loads automatically when opening this folder')
 		container.appendChild(defTab)
 	}
 
@@ -741,6 +771,7 @@ async function _confirmDeleteView(view) {
  */
 export function applyView(view, filterInstance) {
 	setActiveView(view)
+	setViewCleared(false)
 
 	const availableFields = getAvailableFields()
 
@@ -841,6 +872,7 @@ export function buildDefaultFilterConfigs() {
  */
 export function clearView() {
 	setActiveView(null)
+	setViewCleared(true)
 
 	const activeGroupfolderId = getActiveGroupfolderId()
 
@@ -863,9 +895,9 @@ export function clearView() {
 		fi.reset()
 	}
 
-	// No view active — hide columns but keep all fields filterable
+	// No view active — show default NC view without MetaVox filters
 	_applyViewColumns(null)
-	registerMetaVoxFilter(buildDefaultFilterConfigs(), activeGroupfolderId, metadataCache)
+	removeFilters()
 
 	// Clear sort and server state
 	if (fi) {

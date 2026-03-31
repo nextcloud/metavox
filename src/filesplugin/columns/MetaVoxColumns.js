@@ -36,6 +36,8 @@ import {
 	getMetavoxGroupfolders,
 	setMetavoxAllGfData,
 	getMetavoxAllGfData,
+	getViewCleared,
+	setViewCleared,
 	permissionCache,
 } from './MetaVoxState.js'
 
@@ -279,6 +281,7 @@ export async function updateColumnsForCurrentFolder(prefetched = null) {
 	}
 
 	setActiveGroupfolderId(groupfolderId)
+	setViewCleared(false) // Reset on folder switch — new folder can apply its default view
 
 	// Use prefetched data if available, otherwise fetch fields + views
 	let fields, viewsResult
@@ -323,7 +326,7 @@ export async function updateColumnsForCurrentFolder(prefetched = null) {
 		const params = new URLSearchParams(window.location.search)
 		if (params.has('mvview')) {
 			restoreViewFromUrl(viewsResult.views, filterInstance)
-		} else {
+		} else if (!getViewCleared()) {
 			const defaultView = viewsResult.views.find(v => v.is_default)
 			if (defaultView) {
 				applyView(defaultView, filterInstance)

@@ -112,7 +112,8 @@
               @update:model-value="formData.name = $event"
               :label="t('metavox', 'Field Name')"
               :placeholder="t('metavox', 'e.g., author, document_type, status')"
-              :helper-text="t('metavox', 'Internal name (no spaces, lowercase)')"
+              :helper-text="fieldNameError || t('metavox', 'Only lowercase letters (a-z), numbers (0-9) and underscores (_)')"
+              :error="!!fieldNameError"
               :show-trailing-button="!!formData.name"
               trailing-button-icon="check"
               required />
@@ -671,14 +672,29 @@ data() {
       return this.formData.type === 'select' || this.formData.type === 'multiselect'
     },
     
+    fieldNameError() {
+      const name = String(this.formData.name || '').trim()
+      if (!name) return ''
+      if (/\s/.test(name)) return this.t('metavox', 'Spaces are not allowed — use underscores instead')
+      if (/[A-Z]/.test(name)) return this.t('metavox', 'Uppercase letters are not allowed — use lowercase only')
+      if (/^[0-9_]/.test(name)) return this.t('metavox', 'Must start with a lowercase letter (a-z)')
+      if (/[^a-z0-9_]/.test(name)) {
+        const invalid = name.match(/[^a-z0-9_]/)[0]
+        return this.t('metavox', 'Invalid character "%s" — only a-z, 0-9 and _ allowed').replace('%s', invalid)
+      }
+      return ''
+    },
+
     isFormValid() {
       try {
-        const hasName = String(this.formData.name || '').trim().length > 0
+        const name = String(this.formData.name || '').trim()
+        const hasName = name.length > 0
+        const validName = /^[a-z][a-z0-9_]*$/.test(name)
         const hasLabel = String(this.formData.label || '').trim().length > 0
-        const hasValidOptions = !this.showOptionsField || 
+        const hasValidOptions = !this.showOptionsField ||
                                (this.formData.options && this.formData.options.some(o => String(o.value || '').trim().length > 0))
-        
-        return hasName && hasLabel && hasValidOptions
+
+        return hasName && validName && hasLabel && hasValidOptions
       } catch (error) {
         console.error('Error in isFormValid:', error)
         return false

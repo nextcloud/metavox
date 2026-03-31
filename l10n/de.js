@@ -343,7 +343,7 @@ OC.L10N.register(
     "Close" : "Schließen",
     "Name" : "Name",
     "View name" : "Name der Ansicht",
-    "Default view" : "Standardansicht",
+    "Standard view" : "Standardansicht",
     "Columns" : "Spalten",
     "Field" : "Feld",
     "Visible" : "Sichtbar",

@@ -29,7 +29,7 @@
 					type="checkbox"
 					:disabled="readonly"
 					@update:model-value="editorState.isDefault = $event">
-					{{ t('metavox', 'Default view') }}
+					{{ t('metavox', 'Standard view') }}
 				</NcCheckboxRadioSwitch>
 			</div>
 
