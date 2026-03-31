@@ -36,9 +36,51 @@ MetaVox exposes two types of API routes:
 
 ## Important Notes
 - All batch operations work with **groupfolder file fields** (stored in `metavox_gf_fields` and `metavox_file_gf_meta`)
-- Field names are **case-insensitive** (e.g., `file_gf_testfield` matches `file_gf_Testfield`)
 - Batch update/delete operations require both `file_id` and `groupfolder_id` per item
 - Read-only endpoints for stable data (column config, views, filter values) return `Cache-Control: private` headers
+
+## Field Naming Convention
+
+Field names (`field_name`) must follow a strict naming convention:
+
+### Rules
+- Only **lowercase letters** (a-z), **numbers** (0-9), and **underscores** (_) are allowed
+- Must **start with a letter** (not a number or underscore)
+- No spaces, uppercase letters, or special characters
+- Validated on both frontend and backend — invalid names are rejected with a `400 Bad Request`
+
+### Prefix Convention
+
+MetaVox uses prefixes to distinguish between field scopes:
+
+| Scope | Prefix | Example | Description |
+|-------|--------|---------|-------------|
+| Team folder metadata | `gf_` | `gf_publication_status` | Metadata that applies to the team folder itself |
+| File metadata | `file_gf_` | `file_gf_department` | Metadata that applies to individual files within a team folder |
+
+**Important:** The MetaVox admin UI adds the prefix automatically. The API does **not** — API consumers must include the correct prefix in the `field_name` when creating fields. If you omit the prefix, the field will be stored without it and may not appear correctly in the UI.
+
+### Examples
+
+```bash
+# Correct — file field with prefix
+curl -X POST ".../api/v1/groupfolder-fields" \
+  -d '{"field_name": "file_gf_department", "field_label": "Department", "field_type": "select"}'
+
+# Correct — team folder field with prefix
+curl -X POST ".../api/v1/groupfolder-fields" \
+  -d '{"field_name": "gf_classification", "field_label": "Classification", "field_type": "text", "applies_to_groupfolder": 1}'
+
+# Invalid — will be rejected (uppercase)
+curl -X POST ".../api/v1/groupfolder-fields" \
+  -d '{"field_name": "file_gf_Department", ...}'
+# → 400: "Field name may only contain lowercase letters, numbers and underscores"
+
+# Invalid — will be rejected (spaces)
+curl -X POST ".../api/v1/groupfolder-fields" \
+  -d '{"field_name": "file_gf_my field", ...}'
+# → 400: "Field name may only contain lowercase letters, numbers and underscores"
+```
 
 ---
 
