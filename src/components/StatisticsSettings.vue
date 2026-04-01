@@ -31,18 +31,6 @@
 				</div>
 			</div>
 
-			<!-- The Future of MetaVox -->
-			<div class="future-licensing-info">
-				<h4>{{ t('metavox', 'The Future of MetaVox') }}</h4>
-				<p>{{ t('metavox', 'MetaVox is and will remain free for most users. To keep MetaVox actively maintained and improved, we\'re considering a licensing model for larger organizations.') }}</p>
-				<p><strong>{{ t('metavox', 'If we proceed, our promise') }}:</strong></p>
-				<ul class="promise-list">
-					<li>{{ t('metavox', 'A free tier for small and medium installations') }}</li>
-					<li>{{ t('metavox', 'All current features remain available') }}</li>
-					<li>{{ t('metavox', 'Transparent pricing based on actual usage') }}</li>
-				</ul>
-				<p class="feedback-note">{{ t('metavox', 'We\'re currently collecting anonymous statistics to help us understand usage patterns and establish fair limits. Your feedback matters - together we\'re exploring a sustainable future for MetaVox.') }}</p>
-			</div>
 		</div>
 
 		<!-- Support & Licensing Section -->
@@ -72,7 +60,7 @@
 					<input id="organization-name"
 						v-model="organizationName"
 						type="text"
-						:placeholder="t('metavox', 'e.g. University of Amsterdam')"
+						:placeholder="t('metavox', 'e.g. Acme Corporation')"
 						class="contact-input">
 				</div>
 
@@ -90,6 +78,63 @@
 					@click="saveContactInfo">
 					{{ savingContact ? t('metavox', 'Saving...') : t('metavox', 'Save') }}
 				</NcButton>
+			</div>
+
+			<!-- Usage & License Status -->
+			<div v-if="licenseStats" class="license-status">
+				<h4>{{ t('metavox', 'Usage') }}</h4>
+
+				<div class="usage-bar">
+					<div class="usage-bar-label">
+						<span>{{ t('metavox', 'Team folders with metadata') }}</span>
+						<span class="usage-bar-count">{{ licenseStats.teamFoldersWithFields }} / {{ licenseStats.limits.teamFolderLimit || '∞' }}</span>
+					</div>
+					<div class="usage-bar-track">
+						<div class="usage-bar-fill"
+							:class="{ 'usage-warning': teamFolderPercent >= 80, 'usage-exceeded': teamFolderPercent >= 100 }"
+							:style="{ width: Math.min(teamFolderPercent, 100) + '%' }" />
+					</div>
+				</div>
+
+				<div class="usage-bar">
+					<div class="usage-bar-label">
+						<span>{{ t('metavox', 'Total metadata entries') }}</span>
+						<span class="usage-bar-count">{{ (licenseStats.totalEntries || 0).toLocaleString() }}</span>
+					</div>
+				</div>
+
+				<NcNoteCard v-if="licenseStats.limits.exceeded && !licenseStats.hasLicense" type="warning">
+					{{ t('metavox', 'Your installation exceeds the free tier limits. Consider a VoxCloud license for unlimited use.') }}
+					<a href="https://voxcloud.nl" target="_blank" rel="noopener noreferrer">{{ t('metavox', 'Learn more') }}</a>
+				</NcNoteCard>
+
+				<NcNoteCard v-if="licenseStats.hasLicense && licenseStats.licenseValid" type="success">
+					{{ t('metavox', 'License active — unlimited usage.') }}
+				</NcNoteCard>
+
+				<NcNoteCard v-if="licenseStats.hasLicense && !licenseStats.licenseValid" type="error">
+					{{ t('metavox', 'License key is invalid or expired. Please check your license key.') }}
+				</NcNoteCard>
+			</div>
+
+			<!-- License Key -->
+			<div class="license-key-section">
+				<h4>{{ t('metavox', 'License key') }}</h4>
+				<div class="field-row">
+					<input id="license-key"
+						v-model="licenseKey"
+						type="text"
+						:placeholder="t('metavox', 'e.g. MVOX-XXXX-XXXX-XXXX-XXXX')"
+						class="contact-input"
+						@input="_userEditedLicenseKey = true">
+				</div>
+				<div class="license-key-actions">
+					<button class="primary"
+						:disabled="savingLicense"
+						@click="saveLicenseKey">
+						{{ savingLicense ? t('metavox', 'Saving...') : t('metavox', 'Save & validate') }}
+					</button>
+				</div>
 			</div>
 		</div>
 
@@ -197,6 +242,10 @@ export default {
 			organizationName: '',
 			contactEmail: '',
 			savingContact: false,
+			licenseKey: '',
+			licenseStats: null,
+			savingLicense: false,
+			validatingLicense: false,
 			lastReport: null,
 			sendingTelemetry: false,
 			message: '',
@@ -209,9 +258,17 @@ export default {
 		}
 	},
 
+	computed: {
+		teamFolderPercent() {
+			if (!this.licenseStats?.limits?.teamFolderLimit) return 0
+			return (this.licenseStats.teamFoldersWithFields / this.licenseStats.limits.teamFolderLimit) * 100
+		},
+	},
+
 	mounted() {
 		this.loadStatus()
 		this.loadStats()
+		this.loadLicenseStats()
 	},
 
 	methods: {
@@ -283,6 +340,57 @@ export default {
 			} catch (error) {
 				console.error('Failed to update AI settings:', error)
 				this.showMessage(this.t('metavox', 'Failed to update settings'), 'error')
+			}
+		},
+
+		async loadLicenseStats() {
+			try {
+				const response = await axios.get(generateUrl('/apps/metavox/api/license/stats'))
+				if (response.data.success) {
+					this.licenseStats = response.data.stats
+					// Show masked key only on initial load, never overwrite user input
+					if (this.licenseStats.hasLicense && !this._userEditedLicenseKey) {
+						this.licenseKey = this.licenseStats.licenseKeyMasked || ''
+					}
+				}
+			} catch (error) {
+				console.error('Failed to load license stats:', error)
+			}
+		},
+
+		async saveLicenseKey() {
+			const key = this.licenseKey.trim()
+			if (!key) {
+				this.showMessage(this.t('metavox', 'Please enter a license key'), 'error')
+				return
+			}
+			this.savingLicense = true
+			try {
+				// Save the key
+				const saveRes = await axios.post(generateUrl('/apps/metavox/api/settings/license'), {
+					licenseKey: key,
+				})
+				if (!saveRes.data.success) {
+					this.showMessage(this.t('metavox', 'Failed to save license key'), 'error')
+					return
+				}
+
+				// Immediately validate
+				const valRes = await axios.post(generateUrl('/apps/metavox/api/license/validate'))
+				if (valRes.data.success && valRes.data.validation?.valid) {
+					// Report usage to bind instance to license
+					await axios.post(generateUrl('/apps/metavox/api/license/update-usage'))
+					this.showMessage(this.t('metavox', 'License saved and validated!'), 'success')
+				} else {
+					this.showMessage(this.t('metavox', 'License saved but validation failed: {reason}', { reason: valRes.data.validation?.reason || 'unknown' }), 'error')
+				}
+
+				await this.loadLicenseStats()
+			} catch (error) {
+				console.error('Failed to save/validate license key:', error)
+				this.showMessage(this.t('metavox', 'Failed to save license key'), 'error')
+			} finally {
+				this.savingLicense = false
 			}
 		},
 
@@ -414,48 +522,6 @@ export default {
 	color: var(--color-primary);
 }
 
-/* Future licensing info */
-.future-licensing-info {
-	margin-top: 24px;
-	padding: 20px;
-	background: var(--color-background-hover);
-	border-radius: var(--border-radius-large);
-	border-left: 4px solid var(--color-primary-element);
-}
-
-.future-licensing-info h4 {
-	margin: 0 0 12px 0;
-	font-size: 16px;
-	font-weight: 600;
-	color: var(--color-main-text);
-}
-
-.future-licensing-info p {
-	margin: 0 0 12px 0;
-	color: var(--color-main-text);
-	line-height: 1.5;
-}
-
-.future-licensing-info p:last-child {
-	margin-bottom: 0;
-}
-
-.promise-list {
-	margin: 8px 0 16px 0;
-	padding-left: 24px;
-	color: var(--color-main-text);
-}
-
-.promise-list li {
-	margin-bottom: 6px;
-	line-height: 1.4;
-}
-
-.feedback-note {
-	font-size: 13px;
-	color: var(--color-text-maxcontrast);
-	font-style: italic;
-}
 
 /* Contact info block */
 .contact-info-block {
@@ -524,6 +590,70 @@ export default {
 		border-color: var(--color-primary-element);
 		outline: none;
 	}
+}
+
+/* License status */
+.license-status {
+	margin-top: 24px;
+
+	h4 {
+		margin: 0 0 12px 0;
+		font-size: 14px;
+		font-weight: 600;
+	}
+}
+
+.usage-bar {
+	margin-bottom: 16px;
+}
+
+.usage-bar-label {
+	display: flex;
+	justify-content: space-between;
+	margin-bottom: 4px;
+	font-size: 14px;
+}
+
+.usage-bar-count {
+	font-weight: 600;
+}
+
+.usage-bar-track {
+	height: 8px;
+	background: var(--color-background-darker, #e0e0e0);
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+.usage-bar-fill {
+	height: 100%;
+	background: var(--color-primary-element);
+	border-radius: 4px;
+	transition: width 0.3s ease;
+
+	&.usage-warning {
+		background: var(--color-warning, #e9a211);
+	}
+
+	&.usage-exceeded {
+		background: var(--color-error, #e9322d);
+	}
+}
+
+.license-key-section {
+	margin-top: 20px;
+
+	h4 {
+		margin: 0 0 8px 0;
+		font-size: 14px;
+		font-weight: 600;
+	}
+}
+
+.license-key-actions {
+	display: flex;
+	gap: 8px;
+	margin-top: 8px;
 }
 
 /* Telemetry section */

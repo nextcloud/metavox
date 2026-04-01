@@ -78,6 +78,14 @@ return [
         ['name' => 'settings#save', 'url' => '/api/settings', 'verb' => 'POST'],
 
         // ========================================
+        // 🔑 LICENSE ROUTES
+        // ========================================
+        ['name' => 'license#getStats', 'url' => '/api/license/stats', 'verb' => 'GET'],
+        ['name' => 'license#saveSettings', 'url' => '/api/settings/license', 'verb' => 'POST'],
+        ['name' => 'license#validate', 'url' => '/api/license/validate', 'verb' => 'POST'],
+        ['name' => 'license#updateUsage', 'url' => '/api/license/update-usage', 'verb' => 'POST'],
+
+        // ========================================
         // 📊 TELEMETRY ROUTES
         // ========================================
         ['name' => 'telemetry#getStatus', 'url' => '/api/telemetry/status', 'verb' => 'GET'],
