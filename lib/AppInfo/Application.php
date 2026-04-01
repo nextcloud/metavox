@@ -51,8 +51,7 @@ class Application extends App implements IBootstrap {
             return;
         }
 
-        // Load icon CSS globally to fix sidebar icon scaling
-        \OCP\Util::addStyle('metavox', 'icon');
+        // Icon styling handled by NC via app.svg (#000) and app-dark.svg (#fff)
 
         // Load Files app integration only when needed
         $request = \OC::$server->getRequest();
