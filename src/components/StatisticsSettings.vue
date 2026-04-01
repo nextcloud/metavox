@@ -45,6 +45,54 @@
 			</div>
 		</div>
 
+		<!-- Support & Licensing Section -->
+		<div class="settings-section">
+			<h2>{{ t('metavox', 'Support & Licensing') }}</h2>
+			<p class="settings-section-desc">
+				{{ t('metavox', 'Need help or interested in a license for your organization?') }}
+			</p>
+
+			<div class="contact-info-block">
+				<p>
+					{{ t('metavox', 'Learn more about licensing and support') }}:
+					<a href="https://voxcloud.nl" target="_blank" rel="noopener noreferrer">voxcloud.nl</a>
+				</p>
+				<p>
+					{{ t('metavox', 'Questions about licensing?') }}
+					<a href="mailto:info@voxcloud.nl">info@voxcloud.nl</a>
+				</p>
+			</div>
+
+			<div class="contact-fields">
+				<h4>{{ t('metavox', 'Your organization (optional)') }}</h4>
+				<p class="field-desc">{{ t('metavox', 'These details are sent with your anonymous usage statistics so we can reach you if needed. They are never shared with third parties.') }}</p>
+
+				<div class="field-row">
+					<label for="organization-name">{{ t('metavox', 'Organization name') }}</label>
+					<input id="organization-name"
+						v-model="organizationName"
+						type="text"
+						:placeholder="t('metavox', 'e.g. University of Amsterdam')"
+						class="contact-input">
+				</div>
+
+				<div class="field-row">
+					<label for="contact-email">{{ t('metavox', 'Contact email') }}</label>
+					<input id="contact-email"
+						v-model="contactEmail"
+						type="email"
+						:placeholder="t('metavox', 'e.g. admin@example.com')"
+						class="contact-input">
+				</div>
+
+				<NcButton type="primary"
+					:disabled="savingContact"
+					@click="saveContactInfo">
+					{{ savingContact ? t('metavox', 'Saving...') : t('metavox', 'Save') }}
+				</NcButton>
+			</div>
+		</div>
+
 		<!-- AI Autofill Section -->
 		<div class="settings-section">
 			<h2>{{ t('metavox', 'AI Metadata Generation') }}</h2>
@@ -146,6 +194,9 @@ export default {
 		return {
 			telemetryEnabled: true,
 			aiEnabled: true,
+			organizationName: '',
+			contactEmail: '',
+			savingContact: false,
 			lastReport: null,
 			sendingTelemetry: false,
 			message: '',
@@ -176,6 +227,8 @@ export default {
 				}
 				if (settingsRes.data.success) {
 					this.aiEnabled = settingsRes.data.settings.ai_enabled
+					this.organizationName = settingsRes.data.settings.organization_name || ''
+					this.contactEmail = settingsRes.data.settings.contact_email || ''
 				}
 			} catch (error) {
 				console.error('Failed to load settings:', error)
@@ -230,6 +283,22 @@ export default {
 			} catch (error) {
 				console.error('Failed to update AI settings:', error)
 				this.showMessage(this.t('metavox', 'Failed to update settings'), 'error')
+			}
+		},
+
+		async saveContactInfo() {
+			this.savingContact = true
+			try {
+				await axios.post(generateUrl('/apps/metavox/api/settings'), {
+					organization_name: this.organizationName,
+					contact_email: this.contactEmail,
+				})
+				this.showMessage(this.t('metavox', 'Contact information saved.'), 'success')
+			} catch (error) {
+				console.error('Failed to save contact info:', error)
+				this.showMessage(this.t('metavox', 'Failed to save contact information'), 'error')
+			} finally {
+				this.savingContact = false
 			}
 		},
 
@@ -386,6 +455,75 @@ export default {
 	font-size: 13px;
 	color: var(--color-text-maxcontrast);
 	font-style: italic;
+}
+
+/* Contact info block */
+.contact-info-block {
+	margin-bottom: 20px;
+	padding: 16px 20px;
+	background: var(--color-background-hover);
+	border-radius: var(--border-radius-large);
+
+	p {
+		margin: 0 0 8px 0;
+		line-height: 1.5;
+
+		&:last-child {
+			margin-bottom: 0;
+		}
+	}
+
+	a {
+		color: var(--color-primary-element);
+		font-weight: 500;
+		text-decoration: none;
+
+		&:hover {
+			text-decoration: underline;
+		}
+	}
+}
+
+.contact-fields {
+	h4 {
+		margin: 0 0 8px 0;
+		font-size: 14px;
+		font-weight: 600;
+	}
+
+	.field-desc {
+		font-size: 13px;
+		color: var(--color-text-maxcontrast);
+		margin-bottom: 16px;
+	}
+}
+
+.field-row {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin-bottom: 12px;
+
+	label {
+		font-weight: 500;
+		font-size: 14px;
+	}
+}
+
+.contact-input {
+	width: 100%;
+	max-width: 400px;
+	padding: 8px 12px;
+	border: 2px solid var(--color-border-dark);
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	color: var(--color-main-text);
+	font-size: 14px;
+
+	&:focus {
+		border-color: var(--color-primary-element);
+		outline: none;
+	}
 }
 
 /* Telemetry section */
