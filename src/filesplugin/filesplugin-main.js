@@ -14,7 +14,7 @@ import { startColumnWatcher } from './columns/MetaVoxColumns.js'
 import FilesSidebarTab from './FilesSidebarTab.vue'
 
 // MetaVox icon SVG
-const metavoxIconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="20" height="20"><path d="M6,12 L2,2 L11,8 L16,6 L21,8 L30,2 L26,12 L28,17 L26,25 L16,31 L6,25 L4,17 Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><polygon points="13,17 9,15 9,19" fill="currentColor"/><polygon points="19,17 23,15 23,19" fill="currentColor"/><polygon points="16,23 13.5,20.5 18.5,20.5" fill="currentColor"/></svg>'
+const metavoxIconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -3 32 30"><polygon points="6.4,0.9 2,10.1 11,10.1"/><polygon points="17.5,0.9 13,10.1 22,10.1"/><rect x="2" y="10.1" width="20" height="13.1" rx="0.5" fill="none" stroke="#000" stroke-width="1.8"/><line x1="4.9" y1="15" x2="18.8" y2="15" stroke="#000" stroke-width="1"/><line x1="4.9" y1="17.4" x2="18.8" y2="17.4" stroke="#000" stroke-width="1"/><line x1="4.9" y1="19.8" x2="13" y2="19.8" stroke="#000" stroke-width="1"/></svg>'
 
 // ========================================
 // MetaVox Metadata Sidebar Tab
