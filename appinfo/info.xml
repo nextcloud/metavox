@@ -47,6 +47,7 @@ MetaVox adds SharePoint-style metadata management to Nextcloud Team Folders. Def
     </settings>
     <background-jobs>
         <job>OCA\MetaVox\BackgroundJobs\TelemetryJob</job>
+        <job>OCA\MetaVox\BackgroundJobs\LicenseUsageJob</job>
         <job>OCA\MetaVox\BackgroundJobs\CleanupDeletedMetadata</job>
         <job>OCA\MetaVox\BackgroundJobs\MetadataBackupJob</job>
 </background-jobs>

@@ -2,7 +2,7 @@
   <polygon points="8.6,1.2 2.6,13.5 14.7,13.5" fill="#fff"/>
   <polygon points="23.4,1.2 17.3,13.5 29.4,13.5" fill="#fff"/>
   <rect x="2.6" y="13.5" width="26.8" height="17.5" rx="0.7" fill="#fff"/>
-  <line x1="7" y1="20" x2="25" y2="20" stroke="#fff" stroke-width="1.5"/>
-  <line x1="7" y1="23.2" x2="25" y2="23.2" stroke="#fff" stroke-width="1.5"/>
-  <line x1="7" y1="26.4" x2="17.3" y2="26.4" stroke="#fff" stroke-width="1.5"/>
+  <line x1="7" y1="20" x2="25" y2="20" stroke="#000" stroke-width="1.5"/>
+  <line x1="7" y1="23.2" x2="25" y2="23.2" stroke="#000" stroke-width="1.5"/>
+  <line x1="7" y1="26.4" x2="17.3" y2="26.4" stroke="#000" stroke-width="1.5"/>
 </svg>

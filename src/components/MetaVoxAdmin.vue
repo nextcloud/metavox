@@ -1,5 +1,17 @@
 <template>
 	<div id="metavox-admin" class="section">
+		<!-- License Warning Banner -->
+		<div v-if="licenseBanner && !bannerDismissed" :class="['license-banner', licenseBanner.type]">
+			<span class="license-banner-text">
+				{{ licenseBanner.message }}
+				<a v-if="licenseBanner.link" :href="licenseBanner.link" :target="licenseBanner.external ? '_blank' : null"
+					@click.prevent="licenseBanner.external ? null : setActiveTab('statistics')">
+					{{ licenseBanner.linkText }}
+				</a>
+			</span>
+			<button class="license-banner-close" @click="bannerDismissed = true">&times;</button>
+		</div>
+
 		<!-- Header -->
 		<div class="section-header">
 			<h2>{{ t('metavox', 'MetaVox - Custom Metadata Fields') }}</h2>
@@ -65,6 +77,8 @@ import ChartBoxIcon from 'vue-material-design-icons/ChartBox.vue'
 import BackupRestoreIcon from 'vue-material-design-icons/BackupRestore.vue'
 
 // Import our custom components
+import axios from '@nextcloud/axios'
+import { generateUrl } from '@nextcloud/router'
 import GroupfolderMetadataFields from './GroupfolderMetadataFields.vue'
 import FileMetadataFields from './FileMetadataFields.vue'
 import ManageGroupfolders from './ManageGroupfolders.vue'
@@ -93,6 +107,8 @@ export default {
 	data() {
 		return {
 			activeTab: 'groupfolder-metadata',
+			bannerDismissed: false,
+			licenseStats: null,
 			tabs: [
 				{ id: 'groupfolder-metadata', name: this.t('metavox', 'Team folder Metadata') },
 				{ id: 'file-metadata', name: this.t('metavox', 'File Metadata') },
@@ -104,6 +120,36 @@ export default {
 		}
 	},
 	
+	computed: {
+		licenseBanner() {
+			if (!this.licenseStats) return null
+			const s = this.licenseStats
+			const limits = s.limits || {}
+			const hasKey = !!s.licenseKeyMasked
+
+			// Invalid/expired license key
+			if (hasKey && !s.licenseValid) {
+				return { type: 'error', message: this.t('metavox', 'Your MetaVox license key is invalid or expired.'), linkText: this.t('metavox', 'Update license'), link: '#statistics' }
+			}
+			// Free tier exceeded
+			if (!hasKey && limits.exceeded) {
+				return { type: 'error', message: this.t('metavox', 'Your installation exceeds the free tier limits.'), linkText: this.t('metavox', 'Get a license'), link: 'https://voxcloud.nl', external: true }
+			}
+			// Approaching free tier limits (>80%)
+			if (!hasKey && !limits.exceeded && limits.teamFoldersUsed > (s.freeTeamFolderLimit || 5) * 0.8) {
+				return { type: 'warning', message: this.t('metavox', 'You are approaching the free tier limits.'), linkText: this.t('metavox', 'View usage'), link: '#statistics' }
+			}
+			return null
+		},
+	},
+
+	async mounted() {
+		try {
+			const { data } = await axios.get(generateUrl('/apps/metavox/api/license/stats'))
+			if (data.success) this.licenseStats = data.stats
+		} catch (e) { /* silently fail — banner just won't show */ }
+	},
+
 	methods: {
 		setActiveTab(tab) {
 			this.activeTab = tab
@@ -151,6 +197,37 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+.license-banner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 12px 16px;
+	margin-bottom: 16px;
+	border-radius: var(--border-radius-large, 10px);
+	font-size: 14px;
+
+	&.error {
+		background: #c92a2a;
+		color: #fff;
+		a { color: #fff; text-decoration: underline; font-weight: 600; }
+	}
+	&.warning {
+		background: #e67700;
+		color: #fff;
+		a { color: #fff; text-decoration: underline; font-weight: 600; }
+	}
+}
+.license-banner-close {
+	background: none;
+	border: none;
+	color: inherit;
+	font-size: 20px;
+	cursor: pointer;
+	padding: 0 4px;
+	opacity: 0.7;
+	&:hover { opacity: 1; }
+}
+
 .section {
 	padding: 20px;
 }
