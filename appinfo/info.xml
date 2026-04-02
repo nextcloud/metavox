@@ -5,19 +5,25 @@
     <name>MetaVox</name>
 <summary>SharePoint-style metadata columns for Nextcloud Team Folders</summary>
 <description>
-MetaVox adds SharePoint-style metadata management to Nextcloud Team Folders. Define custom metadata fields and edit them inline — directly in the file list.
+MetaVox adds SharePoint-style metadata management to Nextcloud Team Folders. Define custom metadata fields and edit them inline — directly in the file list. Your files stay untouched: metadata is stored separately, never modifying file content.
+
+**10+ field types:** text, number, date, checkbox, dropdown, multi-select, URL, user picker, file link, and more.
 
 **Key Features:**
 
-- **Inline grid editing** — Double-click any cell to edit metadata. Supports text, numbers, dates, dropdowns, multi-select, checkboxes, URLs, user pickers, and file links.
-- **Views** — Save predefined column, filter, and sort combinations as tabs. Switch between views with one click.
-- **Real-time collaboration** — Cell locking prevents concurrent edits. Changes sync instantly via WebSocket (notify_push).
-- **Client-side filter and sort** — Instant filtering and sorting with zero server calls.
+- **Inline grid editing** — Double-click any cell to edit. Changes appear instantly for all users.
+- **Views** — Save column, filter, and sort combinations as tabs. Switch views with one click.
+- **Real-time collaboration** — Cell locking prevents concurrent edits. Syncs via WebSocket (notify_push).
+- **Client-side filter and sort** — Instant filtering with zero server calls.
 - **AI metadata autofill** — AI reads file content and suggests metadata values.
 - **Bulk editing** — Edit metadata for multiple files at once.
-- **Backup and restore** — Automated daily backups with manual restore.
-- **Flow integration** — Automate actions based on metadata values.
-- **Nextcloud 31, 32, and 33** support with automatic feature detection.
+- **Backup and restore** — Automated daily backups with one-click restore.
+- **Flow integration** — Automate actions based on metadata values (notifications, access control, retention).
+- **REST API** — Full OCS API for external integrations and bulk operations.
+
+**Ideal for:** SharePoint migrations, document classification, curriculum tagging, policy management, and research annotation. Used by universities, government organizations, and enterprises.
+
+Supports **Nextcloud 31, 32, and 33** with automatic feature detection.
 </description>
     <version>2.0.2</version>
     <licence>AGPL-3.0-or-later</licence>
@@ -26,8 +32,11 @@ MetaVox adds SharePoint-style metadata management to Nextcloud Team Folders. Def
     <namespace>MetaVox</namespace>
     <documentation>
         <user>https://github.com/nextcloud/metavox/blob/main/README.md</user>
-    </documentation>  
+        <admin>https://github.com/nextcloud/metavox/tree/main/docs/admin</admin>
+        <developer>https://github.com/nextcloud/metavox/blob/main/docs/architecture/api-reference.md</developer>
+    </documentation>
     <category>files</category>
+    <category>organization</category>
     <website>https://voxcloud.nl</website>
     <screenshot>https://raw.githubusercontent.com/nextcloud/metavox/main/screenshots/columns-collaboration.png</screenshot>
     <screenshot>https://raw.githubusercontent.com/nextcloud/metavox/main/screenshots/views-tabs.png</screenshot>
@@ -35,6 +44,7 @@ MetaVox adds SharePoint-style metadata management to Nextcloud Team Folders. Def
     <screenshot>https://raw.githubusercontent.com/nextcloud/metavox/main/screenshots/Manage%20team%20metadata.png</screenshot>
     <repository type="git">https://github.com/nextcloud/metavox.git</repository>
     <bugs>https://github.com/nextcloud/metavox/issues</bugs>
+    <discussion>https://github.com/nextcloud/metavox/discussions</discussion>
     <dependencies>
         <php min-version="8.1"/>
         <nextcloud min-version="31" max-version="33"/>
