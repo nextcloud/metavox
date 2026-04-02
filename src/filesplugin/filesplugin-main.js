@@ -193,6 +193,7 @@ async function registerLegacySidebarTab() {
 			id: 'metavox-metadata',
 			name: 'MetaVox',
 			iconSvg: metavoxIconSvg,
+			order: 100,
 
 			async mount(el, fileInfo, context) {
 				if (this.vueApp) {
