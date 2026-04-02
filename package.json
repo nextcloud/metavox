@@ -1,7 +1,7 @@
 {
   "name": "metavox",
   "description": "MetaVox - Custom Metadata Fields for Nextcloud",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "author": "Sam Ditmeijer",
   "license": "AGPL-3.0-or-later",
   "private": true,
