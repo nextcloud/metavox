@@ -279,13 +279,33 @@ class TelemetryService {
             $groupfoldersWithFields = (int)$result->fetchOne();
             $result->closeCursor();
 
-            // Groupfolders with metadata entries
+            // Groupfolders with metadata entries (both folder-level and file-level)
+            // Count from folder-level metadata
             $qb = $this->db->getQueryBuilder();
-            $qb->select($qb->func()->count($qb->createFunction('DISTINCT groupfolder_id'), 'count'))
-               ->from('metavox_file_gf_meta');
+            $qb->select('groupfolder_id')
+               ->from('metavox_gf_metadata')
+               ->groupBy('groupfolder_id');
             $result = $qb->executeQuery();
-            $groupfoldersWithMetadata = (int)$result->fetchOne();
+            $gfWithFolderMeta = [];
+            while ($row = $result->fetch()) {
+                $gfWithFolderMeta[(int)$row['groupfolder_id']] = true;
+            }
             $result->closeCursor();
+
+            // Count from file-level metadata
+            $qb = $this->db->getQueryBuilder();
+            $qb->select('groupfolder_id')
+               ->from('metavox_file_gf_meta')
+               ->groupBy('groupfolder_id');
+            $result = $qb->executeQuery();
+            $gfWithFileMeta = [];
+            while ($row = $result->fetch()) {
+                $gfWithFileMeta[(int)$row['groupfolder_id']] = true;
+            }
+            $result->closeCursor();
+
+            // Merge: unique groupfolders with any metadata
+            $groupfoldersWithMetadata = count($gfWithFolderMeta + $gfWithFileMeta);
 
             return [
                 'total' => $totalGroupfolders,
