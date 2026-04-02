@@ -246,24 +246,47 @@ class LicenseService {
 			$teamFoldersWithFields = (int)$result->fetchOne();
 			$result->closeCursor();
 
-			// Total metadata entries
+			// Total metadata entries (folder-level + file-level)
+			$qb = $this->db->getQueryBuilder();
+			$qb->select($qb->func()->count('*', 'count'))
+				->from('metavox_gf_metadata');
+			$result = $qb->executeQuery();
+			$folderEntries = (int)$result->fetchOne();
+			$result->closeCursor();
+
 			$qb = $this->db->getQueryBuilder();
 			$qb->select($qb->func()->count('*', 'count'))
 				->from('metavox_file_gf_meta');
 			$result = $qb->executeQuery();
-			$totalEntries = (int)$result->fetchOne();
+			$fileEntries = (int)$result->fetchOne();
 			$result->closeCursor();
 
-			// Entries per groupfolder
+			$totalEntries = $folderEntries + $fileEntries;
+
+			// Entries per groupfolder (both levels combined)
+			$entriesPerFolder = [];
+
+			$qb = $this->db->getQueryBuilder();
+			$qb->select('groupfolder_id')
+				->selectAlias($qb->func()->count('*'), 'count')
+				->from('metavox_gf_metadata')
+				->groupBy('groupfolder_id');
+			$result = $qb->executeQuery();
+			while ($row = $result->fetch()) {
+				$gfId = (int)$row['groupfolder_id'];
+				$entriesPerFolder[$gfId] = ($entriesPerFolder[$gfId] ?? 0) + (int)$row['count'];
+			}
+			$result->closeCursor();
+
 			$qb = $this->db->getQueryBuilder();
 			$qb->select('groupfolder_id')
 				->selectAlias($qb->func()->count('*'), 'count')
 				->from('metavox_file_gf_meta')
 				->groupBy('groupfolder_id');
 			$result = $qb->executeQuery();
-			$entriesPerFolder = [];
 			while ($row = $result->fetch()) {
-				$entriesPerFolder[(int)$row['groupfolder_id']] = (int)$row['count'];
+				$gfId = (int)$row['groupfolder_id'];
+				$entriesPerFolder[$gfId] = ($entriesPerFolder[$gfId] ?? 0) + (int)$row['count'];
 			}
 			$result->closeCursor();
 
