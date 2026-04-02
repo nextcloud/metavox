@@ -19,7 +19,7 @@ MetaVox adds SharePoint-style metadata management to Nextcloud Team Folders. Def
 - **Flow integration** — Automate actions based on metadata values.
 - **Nextcloud 31, 32, and 33** support with automatic feature detection.
 </description>
-    <version>2.0.1</version>
+    <version>2.0.2</version>
     <licence>AGPL-3.0-or-later</licence>
     <author mail="info@voxcloud.nl">Sam Ditmeijer</author>
     <author mail="info@voxcloud.nl">Rik Dekker</author>
