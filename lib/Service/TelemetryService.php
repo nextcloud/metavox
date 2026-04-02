@@ -232,16 +232,30 @@ class TelemetryService {
             $filesWithMeta = (int)$result->fetchOne();
             $result->closeCursor();
 
-            // Metadata per groupfolder
+            // Metadata per groupfolder (both folder-level and file-level)
+            $perGroupfolder = [];
+
+            $qb = $this->db->getQueryBuilder();
+            $qb->select('groupfolder_id')
+               ->selectAlias($qb->func()->count('*'), 'count')
+               ->from('metavox_gf_metadata')
+               ->groupBy('groupfolder_id');
+            $result = $qb->executeQuery();
+            while ($row = $result->fetch()) {
+                $gfId = (int)$row['groupfolder_id'];
+                $perGroupfolder[$gfId] = ($perGroupfolder[$gfId] ?? 0) + (int)$row['count'];
+            }
+            $result->closeCursor();
+
             $qb = $this->db->getQueryBuilder();
             $qb->select('groupfolder_id')
                ->selectAlias($qb->func()->count('*'), 'count')
                ->from('metavox_file_gf_meta')
                ->groupBy('groupfolder_id');
             $result = $qb->executeQuery();
-            $perGroupfolder = [];
             while ($row = $result->fetch()) {
-                $perGroupfolder[(int)$row['groupfolder_id']] = (int)$row['count'];
+                $gfId = (int)$row['groupfolder_id'];
+                $perGroupfolder[$gfId] = ($perGroupfolder[$gfId] ?? 0) + (int)$row['count'];
             }
             $result->closeCursor();
 
