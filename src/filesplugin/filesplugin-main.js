@@ -35,7 +35,12 @@ async function registerNewSidebarTab() {
 			return false
 		}
 
-		scope.filesSidebarTabs ??= new Map()
+		// Only use NC33 API if filesSidebarTabs Map already exists (created by NC33 itself).
+		// On NC31/NC32, _nc_files_scope may exist as empty object — creating the Map
+		// ourselves would bypass the legacy OCA.Files.Sidebar registration that NC32 actually reads.
+		if (!scope.filesSidebarTabs || !(scope.filesSidebarTabs instanceof Map)) {
+			return false
+		}
 
 		if (scope.filesSidebarTabs.has('metavox')) {
 			return true
