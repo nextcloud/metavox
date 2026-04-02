@@ -25,6 +25,7 @@ Installation, configuration, and compliance settings.
 - [Flow Integration](admin/flow-integration.md) - Automate workflows with metadata
 - [Backup & Restore](admin/backup-restore.md) - Backup and restore metadata
 - [Settings](admin/settings.md) - Admin settings (AI, telemetry)
+- [Licensing](admin/licensing.md) - License management and free tier limits
 - [Telemetry](admin/telemetry.md) - Usage reporting
 
 ### Features
