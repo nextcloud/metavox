@@ -6,6 +6,13 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [2.0.1] - 2026-04-02
+
+### Fixed
+- **NC32 migration crash** — Migration 14 (`metavox_gf_column_config`) used `boolean` type with `notnull` which caused "Bool NotNull cannot store false" error on NC32. Changed to `smallint` type. (#55)
+
+---
+
 ## [2.0.0] - 2026-04-02
 
 ### Added

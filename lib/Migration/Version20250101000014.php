@@ -37,9 +37,9 @@ class Version20250101000014 extends SimpleMigrationStep {
                 'comment' => 'FK to metavox_gf_fields.id',
             ]);
 
-            $table->addColumn('show_as_column', 'boolean', [
+            $table->addColumn('show_as_column', 'smallint', [
                 'notnull' => true,
-                'default' => true,
+                'default' => 1,
                 'comment' => 'Whether to show as column in file list',
             ]);
 
@@ -49,9 +49,9 @@ class Version20250101000014 extends SimpleMigrationStep {
                 'comment' => 'Display order in file list',
             ]);
 
-            $table->addColumn('filterable', 'boolean', [
+            $table->addColumn('filterable', 'smallint', [
                 'notnull' => true,
-                'default' => true,
+                'default' => 1,
                 'comment' => 'Whether filtering is enabled for this column',
             ]);
 
