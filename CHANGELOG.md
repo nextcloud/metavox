@@ -6,50 +6,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [2.0.0-beta.3] - 2026-03-31
-
-### Changed
-- **Architecture: ApiFieldService is now a full facade** between the OCS API and FieldService. All external API metadata operations (get, save, bulk) go through ApiFieldService, shielding the external API from internal FieldService changes.
-- Moved `detectGroupfolderIdForFile()` from FieldService to ApiFieldService — groupfolder auto-detection is an API concern, not an internal one.
-- Reverted beta.3 change to `FieldService::getFieldMetadata()` — the groupfolder auto-detection logic now lives in `ApiFieldService::getFileMetadata()` where it belongs.
-
-### Added
-- `ApiFieldService::getFileMetadata()` — with groupfolder auto-detection
-- `ApiFieldService::getGroupfolderFileMetadata()` — groupfolder-scoped read
-- `ApiFieldService::saveFileMetadata()` — translates field_name to field_id
-- `ApiFieldService::saveGroupfolderFileMetadata()` — groupfolder-scoped save
-- `ApiFieldService::getBulkFileMetadata()` — bulk read facade
-- `ApiFieldService::detectGroupfolderIdForFile()` — resolves a file's groupfolder
-- **Field name validation** — internal field names are now validated on frontend and backend. Only lowercase letters (a-z), numbers (0-9) and underscores (_) are allowed, must start with a letter. Invalid characters show a specific error message (e.g. "Spaces are not allowed — use underscores instead"). Applied to both Team folder Metadata and File Metadata admin panels, and both internal and OCS API controllers.
-- "Default" tab with 🏠 icon replaces "All" — visually separated from custom views with a vertical divider. Clicking it shows the standard Nextcloud file view without MetaVox filters.
-- Tooltip on Default tab: "Standard Nextcloud file view"
-- **New fox ears + document icon** — filled fox ear triangles with document body and metadata line cutouts. `app.svg` (#000) for light mode, `app-dark.svg` (#fff) for dark mode/header bar. Inline SVG (sidebar tab, filter bar) uses viewBox padding for correct NC sizing. Removed `icon.css` overrides and `addStyle('icon')` from Application.php.
-- **License warning banner** — red banner at top of admin panel when license is invalid/expired or free tier limits exceeded. Orange banner when approaching limits. Dismissable, with link to Statistics tab or voxcloud.nl.
-- **French translation** — complete FR translation (386 strings). All 4 languages (EN, NL, DE, FR) now in sync.
-- Created `en.json` as Transifex source file.
-- Added 33 missing NL/DE translations (license, field validation, support strings).
-- Removed 35 orphaned translation strings.
-- **Field naming convention documented** in API reference — prefix rules (`gf_`, `file_gf_`), validation rules, examples.
-
----
-
-## [2.0.0-beta.2] - 2026-03-28
-
-### Fixed
-- View switching crashed with `fetchServerSortedIds is not a function` — replaced with `triggerResort()`. This prevented the edit icon from appearing on active view tabs and blocked view activation entirely when a sort field was configured.
-
-### Changed
-- Updated app description and screenshots in info.xml
-
----
-
-## [2.0.0] - 2026-03-26
+## [2.0.0] - 2026-04-02
 
 ### Added
 - Inline grid editing with field-type-specific editors (text, number, date, checkbox, URL, filelink, user)
 - Cell locking with real-time sync via notify_push + Redis (prevents concurrent edits)
 - Presence tracking — push events only sent to users actively viewing a groupfolder
 - Views system — predefined column/filter/sort/formatting combinations with tabs UI
+- "Default" tab with 🏠 icon — shows standard Nextcloud file view without MetaVox filters, visually separated from custom views
 - Client-side filter and sort — zero server calls, operates on metadata cache
 - Undo support with toast notification and field revert
 - Fill handle for quick cell value propagation
@@ -61,19 +25,27 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Flow integration (vanilla JS, Vue 2 compatible)
 - Checkbox fields use Yes/No dropdown with fill handle support
 - NC32 compatibility with feature detection and fallback UI
+- **Field name validation** — only lowercase letters (a-z), numbers (0-9) and underscores allowed. Specific error messages on both frontend and backend.
+- **License warning banner** — red/orange banner at top of admin panel for invalid licenses or exceeded free tier limits
+- **ApiFieldService facade** — all external API metadata operations go through ApiFieldService, shielding FieldService from API concerns
+- **French translation** — complete FR support. All 4 languages (EN, NL, DE, FR) in sync at 386 strings.
+- **New fox ears + document icon** — filled triangles with document body, light/dark mode support via app.svg (#000) and app-dark.svg (#fff)
+- **Field naming convention** documented in API reference with prefix rules and examples
 
 ### Changed
 - Complete JS modular refactor: monolithic MetaVoxColumns split into 14 focused modules
 - Centralized state management via MetaVoxState.js
 - PHP 8 attributes replace annotation docblocks
-- BaseController extraction for shared controller logic
+- BaseController and BaseOCSController extraction for shared logic
 - Services split into dedicated responsibilities (Field, Filter, View, Cache, Presence, Lock, Push)
 - Single init endpoint eliminates 4 sequential API calls
 - Inline init data via IInitialState for instant pageload (~8ms vs ~1500ms)
 - Replace error_log with LoggerInterface (fixes #49)
 - Documentation completely restructured (admin, user, architecture, features)
+- Updated app description and screenshots in info.xml
 
 ### Fixed
+- View switching crash — `fetchServerSortedIds is not a function` replaced with `triggerResort()`
 - NC32 sorting — DOM-based row reorder fallback
 - NC32 sidebar tab + filter registration crashes
 - NC33 sidebar tab and bulk metadata action registration via scoped globals
@@ -83,6 +55,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Prevent flex layout from inflating column widths
 - Loading indicator timing and spinner hang prevention
 - N+1 queries in permission and groupfolder lookups
+- OCS `/api/v1/files/{fileId}/metadata` endpoint now auto-detects groupfolder correctly
 
 ### Performance
 - 10K+ user scalability — presence cooldown, push batching, LRU cache
