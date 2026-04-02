@@ -66,6 +66,10 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Optimized restore with batch inserts + cross-platform support
 - Optimized metadata loading for large datasets (43M+ rows)
 
+### Upgrade Notes
+- **Free tier introduced:** MetaVox 2.0.0 includes a free tier (5 team folders, 500 metadata entries per folder). If your installation exceeds these limits, an informational banner will appear in the admin panel. **All features continue to work — nothing is blocked or restricted.** For unlimited usage, visit [voxcloud.nl](https://voxcloud.nl).
+- **Nextcloud 31+ required:** Minimum version raised from NC28 to NC31.
+
 ---
 
 ## [1.8.3] - 2026-02-20
