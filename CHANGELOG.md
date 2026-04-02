@@ -6,6 +6,13 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [2.0.2] - 2026-04-02
+
+### Fixed
+- **Statistics showing 0 team folders** — "Team Folders with Metadata" count was always 0 when only folder-level metadata was configured. The query only checked file-level metadata (`metavox_file_gf_meta`), missing folder-level entries (`metavox_gf_metadata`). Now both tables are counted in statistics, telemetry, and license checks. (#55)
+
+---
+
 ## [2.0.1] - 2026-04-02
 
 ### Fixed
