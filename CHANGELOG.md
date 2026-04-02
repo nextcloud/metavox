@@ -6,6 +6,15 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [2.0.3] - 2026-04-02
+
+### Fixed
+- **NC31/NC32 sidebar tab not showing** — MetaVox tab was missing from the sidebar on NC31 and NC32 (reported on NC32.0.6). The NC33 registration path was incorrectly triggered on older versions because `window._nc_files_scope` existed as an empty object. Now verifies that the NC33 `filesSidebarTabs` Map is already initialized by Nextcloud before using it, otherwise falls back to the legacy `OCA.Files.Sidebar` API.
+- **NC32 sidebar tab order** — added `order: 100` to legacy tab registration so MetaVox appears after Sharing and Versions.
+- **NC32 filter button alignment** — added proper height and vertical-align to match native filter buttons.
+
+---
+
 ## [2.0.2] - 2026-04-02
 
 ### Fixed
