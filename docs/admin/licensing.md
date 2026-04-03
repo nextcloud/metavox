@@ -19,7 +19,8 @@ All features (inline editing, views, AI autofill, Flow integration, backup/resto
 |---|---|---|
 | **Price** | €1,500/year | €3,500/year |
 | All features | ✓ | ✓ |
-| Volume | Unlimited | Unlimited |
+| Team folders | 25 | Unlimited |
+| Entries per folder | Unlimited | Unlimited |
 | Nextcloud instances | 1 | 1 |
 | Support | Email, 3 business days | Priority, 1 business day |
 | SLA | — | ✓ |
