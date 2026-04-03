@@ -8,18 +8,18 @@ Without a license, MetaVox is fully functional with these limits:
 
 | Metric | Free tier limit |
 |--------|----------------|
-| Team folders with metadata | 5 |
+| Team folders with metadata | 20 |
 | Metadata entries per team folder | 500 |
 
 All features (inline editing, views, AI autofill, Flow integration, backup/restore, REST API) are available in the free tier. Nothing is disabled.
 
 ## License Tiers
 
-| | Standard | Enterprise |
+| | Professional | Enterprise |
 |---|---|---|
-| **Price** | €1,500/year | €3,500/year |
+| **Price** | €250/year | Contact us |
 | All features | ✓ | ✓ |
-| Team folders | 25 | Unlimited |
+| Team folders | 50 | Unlimited |
 | Entries per folder | Unlimited | Unlimited |
 | Nextcloud instances | 1 | 1 |
 | Support | Email, 3 business days | Priority, 1 business day |

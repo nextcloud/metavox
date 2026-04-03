@@ -11,7 +11,7 @@ use OCP\IDBConnection;
 use Psr\Log\LoggerInterface;
 
 class LicenseService {
-	private const FREE_TEAM_FOLDER_LIMIT = 5;
+	private const FREE_TEAM_FOLDER_LIMIT = 20;
 	private const FREE_ENTRIES_PER_FOLDER_LIMIT = 500;
 	private const LICENSE_SERVER_URL = 'https://licenses.voxcloud.nl';
 
