@@ -104,12 +104,12 @@
 				</div>
 
 				<NcNoteCard v-if="licenseStats.limits.exceeded && !licenseStats.hasLicense" type="warning">
-					{{ t('metavox', 'Your installation exceeds the free tier limits. Consider a VoxCloud license for unlimited use.') }}
-					<a href="https://voxcloud.nl" target="_blank" rel="noopener noreferrer">{{ t('metavox', 'Learn more') }}</a>
+					{{ t('metavox', 'Your organization is getting great value from MetaVox. Support the project and get unlimited volume + email support.') }}
+					<a href="https://voxcloud.nl/metavox/#pricing" target="_blank" rel="noopener noreferrer">{{ t('metavox', 'View pricing') }}</a>
 				</NcNoteCard>
 
 				<NcNoteCard v-if="licenseStats.hasLicense && licenseStats.licenseValid" type="success">
-					{{ t('metavox', 'License active — unlimited usage.') }}
+					{{ t('metavox', 'License active — thank you for supporting MetaVox!') }}
 				</NcNoteCard>
 
 				<NcNoteCard v-if="licenseStats.hasLicense && !licenseStats.licenseValid" type="error">
