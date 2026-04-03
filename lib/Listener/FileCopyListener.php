@@ -119,7 +119,7 @@ class FileCopyListener implements IEventListener {
     /**
      * Get all nodes of a given type recursively from a folder.
      */
-    private function getAllNodesRecursively(Node $folder, int $type): array {
+    private function getAllNodesRecursively(Node $folder, string $type): array {
         $nodes = [];
 
         if ($folder->getType() !== FileInfo::TYPE_FOLDER) {
