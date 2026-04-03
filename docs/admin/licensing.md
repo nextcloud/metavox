@@ -13,21 +13,22 @@ Without a license, MetaVox is fully functional with these limits:
 
 All features (inline editing, views, AI autofill, Flow integration, backup/restore, REST API) are available in the free tier. Nothing is disabled.
 
-## License Tiers
+## Paid Tiers
 
-| | Professional | Enterprise |
-|---|---|---|
-| **Price** | €250/year | Contact us |
-| All features | ✓ | ✓ |
-| Team folders | 50 | Unlimited |
-| Entries per folder | Unlimited | Unlimited |
-| Nextcloud instances | 1 | 1 |
-| Support | Email, 3 business days | Priority, 1 business day |
-| SLA | — | ✓ |
-| Dedicated contact | — | ✓ |
-| Onboarding assistance | — | ✓ |
+Pricing is based on organization size (number of Nextcloud users). All paid tiers include unlimited volume and email support.
+
+| Scale | Users | Price/year |
+|-------|-------|-----------|
+| Small | 1-50 | €249 |
+| Medium | 51-250 | €499 |
+| Large | 251-1000 | €999 |
+| Enterprise | 1000+ | Contact us |
+
+Enterprise includes: priority support (1 business day), SLA, dedicated contact, onboarding assistance.
 
 Education and government: 25% discount on all tiers.
+
+VoxCloud Suite (all apps): from €499/year. See [voxcloud.nl](https://voxcloud.nl/#pricing) for details.
 
 Organizations with multiple Nextcloud instances need a separate license per instance.
 
