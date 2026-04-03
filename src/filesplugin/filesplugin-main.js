@@ -253,6 +253,20 @@ async function registerLegacySidebarTab() {
 			},
 		}))
 
+		// NC32 sidebar doesn't sort tabs by order. Move MetaVox to end
+		// by replacing the entire array to trigger Vue reactivity.
+		try {
+			const state = window.OCA.Files.Sidebar._state
+			if (state?.tabs?.length > 1) {
+				const mvTab = state.tabs.find(t => t.id === 'metavox-metadata')
+				if (mvTab) {
+					const others = state.tabs.filter(t => t.id !== 'metavox-metadata')
+					others.push(mvTab)
+					state.tabs.splice(0, state.tabs.length, ...others)
+				}
+			}
+		} catch (e) { /* ignore */ }
+
 		return true
 	} catch (error) {
 		console.error('MetaVox: Failed to register sidebar tab with legacy API', error)
