@@ -12,7 +12,7 @@ use Psr\Log\LoggerInterface;
 
 class LicenseService {
 	private const FREE_TEAM_FOLDER_LIMIT = 20;
-	private const FREE_ENTRIES_PER_FOLDER_LIMIT = 500;
+	// No entries-per-folder limit — only folder count is limited in free tier
 	private const LICENSE_SERVER_URL = 'https://licenses.voxcloud.nl';
 
 	public function __construct(
@@ -153,22 +153,12 @@ class LicenseService {
 			// Free tier: check against hardcoded limits
 			$exceededFolders = $stats['teamFoldersWithFields'] > self::FREE_TEAM_FOLDER_LIMIT;
 
-			$exceededEntries = false;
-			foreach ($stats['entriesPerFolder'] as $folderId => $count) {
-				if ($count > self::FREE_ENTRIES_PER_FOLDER_LIMIT) {
-					$exceededEntries = true;
-					break;
-				}
-			}
-
 			return [
 				'isFree' => true,
 				'teamFolderLimit' => self::FREE_TEAM_FOLDER_LIMIT,
-				'entriesPerFolderLimit' => self::FREE_ENTRIES_PER_FOLDER_LIMIT,
 				'teamFoldersUsed' => $stats['teamFoldersWithFields'],
 				'teamFoldersExceeded' => $exceededFolders,
-				'entriesExceeded' => $exceededEntries,
-				'exceeded' => $exceededFolders || $exceededEntries,
+				'exceeded' => $exceededFolders,
 			];
 		}
 
@@ -230,7 +220,6 @@ class LicenseService {
 			'licenseKeyMasked' => $maskedKey,
 			'limits' => $limits,
 			'freeTeamFolderLimit' => self::FREE_TEAM_FOLDER_LIMIT,
-			'freeEntriesPerFolderLimit' => self::FREE_ENTRIES_PER_FOLDER_LIMIT,
 		];
 	}
 

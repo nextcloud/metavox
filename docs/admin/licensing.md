@@ -9,7 +9,7 @@ Without a license, MetaVox is fully functional with these limits:
 | Metric | Free tier limit |
 |--------|----------------|
 | Team folders with metadata | 20 |
-| Metadata entries per team folder | 500 |
+| Entries per folder | Unlimited |
 
 All features (inline editing, views, AI autofill, Flow integration, backup/restore, REST API) are available in the free tier. Nothing is disabled.
 
