@@ -104,8 +104,8 @@
 				</div>
 
 				<NcNoteCard v-if="licenseStats.limits.exceeded && !licenseStats.hasLicense" type="warning">
-					{{ t('metavox', 'Your organization is getting great value from MetaVox. Support the project and get unlimited volume + email support.') }}
-					<a href="https://voxcloud.nl/metavox/#pricing" target="_blank" rel="noopener noreferrer">{{ t('metavox', 'View pricing') }}</a>
+					<p>{{ t('metavox', 'Your organization is getting great value from MetaVox. Support the project and get unlimited volume + email support.') }}</p>
+					<p><a href="https://voxcloud.nl/metavox/#pricing" target="_blank" rel="noopener noreferrer" style="color: var(--color-primary-element); font-weight: 500;">{{ t('metavox', 'View pricing on voxcloud.nl') }} →</a></p>
 				</NcNoteCard>
 
 				<NcNoteCard v-if="licenseStats.hasLicense && licenseStats.licenseValid" type="success">
