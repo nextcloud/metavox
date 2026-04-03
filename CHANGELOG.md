@@ -11,6 +11,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Fixed
 - **Dark mode icon invisible** — inline SVGs (sidebar tab, filter bar, bulk edit) used hardcoded `stroke="#000"` which is invisible in dark mode. Changed to `currentColor` which inherits the theme text color automatically.
 - **NC32 filter button misaligned** — MetaVox filter button was 3px lower than native buttons (Type, Modified, People). Matched padding and margin to NC's native button styling.
+- **Folder copy error** — copying a folder with files showed "Move or copy: failed on some elements" despite successful copy. `FileCopyListener::getAllNodesRecursively()` declared `$type` as `int` but received `FileInfo::TYPE_FOLDER` ("dir") which is a string. Changed to `string` type. (#56)
 
 ---
 
