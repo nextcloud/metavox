@@ -11,7 +11,7 @@ import { translate, translatePlural } from '@nextcloud/l10n'
 import MetaVoxFilterPanel from './MetaVoxFilterPanel.vue'
 import { ensureSortBypass, reorderDomRows } from './Sorting.js'
 
-const METAVOX_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -3 32 30"><polygon points="6.4,0.9 2,10.1 11,10.1"/><polygon points="17.5,0.9 13,10.1 22,10.1"/><rect x="2" y="10.1" width="20" height="13.1" rx="0.5" fill="none" stroke="#000" stroke-width="1.8"/><line x1="4.9" y1="15" x2="18.8" y2="15" stroke="#000" stroke-width="1"/><line x1="4.9" y1="17.4" x2="18.8" y2="17.4" stroke="#000" stroke-width="1"/><line x1="4.9" y1="19.8" x2="13" y2="19.8" stroke="#000" stroke-width="1"/></svg>'
+const METAVOX_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -3 32 30"><polygon fill="currentColor" points="6.4,0.9 2,10.1 11,10.1"/><polygon fill="currentColor" points="17.5,0.9 13,10.1 22,10.1"/><rect x="2" y="10.1" width="20" height="13.1" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="4.9" y1="15" x2="18.8" y2="15" stroke="currentColor" stroke-width="1"/><line x1="4.9" y1="17.4" x2="18.8" y2="17.4" stroke="currentColor" stroke-width="1"/><line x1="4.9" y1="19.8" x2="13" y2="19.8" stroke="currentColor" stroke-width="1"/></svg>'
 
 const FILTER_ID = 'metavox-metadata'
 
