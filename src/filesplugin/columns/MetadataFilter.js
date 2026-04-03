@@ -613,8 +613,7 @@ function _injectNC32FilterButton(filterBar) {
 
 	const btn = document.createElement('button')
 	btn.id = 'metavox-filter-btn'
-	btn.className = 'action-item action-item--default-popover action-item--tertiary'
-	btn.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border:none;background:transparent;cursor:pointer;border-radius:var(--border-radius-pill,20px);font:inherit;color:var(--color-main-text);height:var(--default-clickable-area,44px);vertical-align:middle;'
+	btn.style.cssText = 'display:flex;align-items:center;gap:4px;padding:1px 8px 0 4px;margin:0;border:none;background:transparent;cursor:pointer;border-radius:var(--border-radius-pill,20px);font:inherit;color:var(--color-main-text);'
 	btn.innerHTML = `<span style="display:flex;align-items:center;width:20px;height:20px">${METAVOX_ICON_SVG}</span><span>MetaVox</span>`
 
 	let popover = null

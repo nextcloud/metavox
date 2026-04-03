@@ -6,6 +6,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [2.0.4] - 2026-04-03
+
+### Fixed
+- **Dark mode icon invisible** — inline SVGs (sidebar tab, filter bar, bulk edit) used hardcoded `stroke="#000"` which is invisible in dark mode. Changed to `currentColor` which inherits the theme text color automatically.
+- **NC32 filter button misaligned** — MetaVox filter button was 3px lower than native buttons (Type, Modified, People). Matched padding and margin to NC's native button styling.
+
+---
+
 ## [2.0.3] - 2026-04-02
 
 ### Fixed
