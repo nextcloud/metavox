@@ -139,8 +139,9 @@ export default {
 			if (hasKey && !s.licenseValid) {
 				return { type: 'info', message: this.t('metavox', 'Your MetaVox subscription key needs attention.'), linkText: this.t('metavox', 'Visit Support'), link: '#support' }
 			}
-			// No subscription + significant usage (>20 team folders) — friendly nudge
-			if (!hasKey && (s.teamFoldersWithFields || 0) > 20) {
+			// No subscription + significant usage — friendly nudge
+			// >50 users (exceeds smallest tier) or >20 team folders
+			if (!hasKey && ((s.totalUsers || 0) > 50 || (s.teamFoldersWithFields || 0) > 20)) {
 				return { type: 'info', message: this.t('metavox', 'Your organization is getting great value from MetaVox! Consider a subscription to support continued development.'), linkText: this.t('metavox', 'Learn more'), link: '#support' }
 			}
 			return null
