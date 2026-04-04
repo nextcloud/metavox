@@ -135,9 +135,9 @@ export default {
 			const s = this.licenseStats
 			const hasKey = !!s.licenseKeyMasked
 
-			// Invalid/expired subscription key
+			// Invalid/expired subscription key — friendly notice, not an error
 			if (hasKey && !s.licenseValid) {
-				return { type: 'error', message: this.t('metavox', 'Your MetaVox subscription key is invalid or expired.'), linkText: this.t('metavox', 'Update subscription'), link: '#support' }
+				return { type: 'info', message: this.t('metavox', 'Your MetaVox subscription key needs attention.'), linkText: this.t('metavox', 'Visit Support'), link: '#support' }
 			}
 			// No subscription + significant usage (>20 team folders) — friendly nudge
 			if (!hasKey && (s.teamFoldersWithFields || 0) > 20) {
@@ -210,16 +210,6 @@ export default {
 	border-radius: var(--border-radius-large, 10px);
 	font-size: 14px;
 
-	&.error {
-		background: #c92a2a;
-		color: #fff;
-		a { color: #fff; text-decoration: underline; font-weight: 600; }
-	}
-	&.warning {
-		background: #e67700;
-		color: #fff;
-		a { color: #fff; text-decoration: underline; font-weight: 600; }
-	}
 	&.info {
 		background: var(--color-primary-element, #0082c9);
 		color: #fff;
