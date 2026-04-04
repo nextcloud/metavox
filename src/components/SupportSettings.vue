@@ -119,34 +119,7 @@
 			</NcNoteCard>
 		</div>
 
-		<!-- Section 5: Subscription key -->
-		<div class="settings-section">
-			<h2>{{ t('metavox', 'Subscription key') }}</h2>
-
-			<div class="field-row">
-				<input id="license-key"
-					v-model="licenseKey"
-					type="text"
-					:placeholder="t('metavox', 'e.g. MVOX-XXXX-XXXX-XXXX-XXXX')"
-					class="contact-input"
-					@input="_userEditedLicenseKey = true">
-			</div>
-			<div class="license-key-actions">
-				<NcButton type="primary"
-					:disabled="savingLicense"
-					@click="saveLicenseKey">
-					{{ savingLicense ? t('metavox', 'Saving...') : t('metavox', 'Save & activate') }}
-				</NcButton>
-				<NcButton v-if="licenseStats && licenseStats.hasLicense"
-					type="tertiary"
-					:disabled="savingLicense"
-					@click="removeLicenseKey">
-					{{ t('metavox', 'Remove subscription key') }}
-				</NcButton>
-			</div>
-		</div>
-
-		<!-- Section 6: Your organization -->
+		<!-- Section 5: Your organization -->
 		<div class="settings-section">
 			<div class="contact-fields">
 				<h2>{{ t('metavox', 'Your organization (optional)') }}</h2>
@@ -174,6 +147,33 @@
 					:disabled="savingContact"
 					@click="saveContactInfo">
 					{{ savingContact ? t('metavox', 'Saving...') : t('metavox', 'Save') }}
+				</NcButton>
+			</div>
+		</div>
+
+		<!-- Section 6: Subscription key -->
+		<div class="settings-section">
+			<h2>{{ t('metavox', 'Subscription key') }}</h2>
+
+			<div class="field-row">
+				<input id="license-key"
+					v-model="licenseKey"
+					type="text"
+					:placeholder="t('metavox', 'e.g. MVOX-XXXX-XXXX-XXXX-XXXX')"
+					class="contact-input"
+					@input="_userEditedLicenseKey = true">
+			</div>
+			<div class="license-key-actions">
+				<NcButton type="primary"
+					:disabled="savingLicense"
+					@click="saveLicenseKey">
+					{{ savingLicense ? t('metavox', 'Saving...') : t('metavox', 'Save & activate') }}
+				</NcButton>
+				<NcButton v-if="licenseStats && licenseStats.hasLicense"
+					type="tertiary"
+					:disabled="savingLicense"
+					@click="removeLicenseKey">
+					{{ t('metavox', 'Remove subscription key') }}
 				</NcButton>
 			</div>
 		</div>
@@ -577,14 +577,14 @@ export default {
 	font-size: 14px;
 
 	&.success {
-		background: var(--color-success-light, #d4edda);
-		color: var(--color-success, #155724);
-		border: 1px solid var(--color-success, #c3e6cb);
+		background: #d4edda;
+		color: #155724;
+		border: 1px solid #c3e6cb;
 	}
 
 	&.error {
-		background: var(--color-error-light, #f8d7da);
-		color: var(--color-error, #721c24);
+		background: #f8d7da;
+		color: #721c24;
 		border: 1px solid var(--color-error, #f5c6cb);
 	}
 }
