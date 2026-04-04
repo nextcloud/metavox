@@ -137,6 +137,12 @@
 					@click="saveLicenseKey">
 					{{ savingLicense ? t('metavox', 'Saving...') : t('metavox', 'Save & activate') }}
 				</NcButton>
+				<NcButton v-if="licenseStats && licenseStats.hasLicense"
+					type="tertiary"
+					:disabled="savingLicense"
+					@click="removeLicenseKey">
+					{{ t('metavox', 'Remove subscription key') }}
+				</NcButton>
 			</div>
 		</div>
 
@@ -284,6 +290,23 @@ export default {
 			} catch (error) {
 				console.error('Failed to save/validate license key:', error)
 				this.showMessage(this.t('metavox', 'Failed to save subscription key'), 'error')
+			} finally {
+				this.savingLicense = false
+			}
+		},
+
+		async removeLicenseKey() {
+			this.savingLicense = true
+			try {
+				await axios.post(generateUrl('/apps/metavox/api/settings/license'), {
+					licenseKey: '',
+				})
+				this.licenseKey = ''
+				this._userEditedLicenseKey = false
+				await this.loadLicenseStats()
+				this.showMessage(this.t('metavox', 'Subscription key removed.'), 'success')
+			} catch (error) {
+				this.showMessage(this.t('metavox', 'Failed to remove subscription key'), 'error')
 			} finally {
 				this.savingLicense = false
 			}
