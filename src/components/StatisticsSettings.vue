@@ -33,111 +33,6 @@
 
 		</div>
 
-		<!-- Support & Licensing Section -->
-		<div class="settings-section">
-			<h2>{{ t('metavox', 'Support & Licensing') }}</h2>
-			<p class="settings-section-desc">
-				{{ t('metavox', 'Need help or interested in a subscription for your organization?') }}
-			</p>
-
-			<div class="contact-info-block">
-				<p>
-					{{ t('metavox', 'Learn more about licensing and support') }}:
-					<a href="https://voxcloud.nl" target="_blank" rel="noopener noreferrer">voxcloud.nl</a>
-				</p>
-				<p>
-					{{ t('metavox', 'Questions about licensing?') }}
-					<a href="mailto:info@voxcloud.nl">info@voxcloud.nl</a>
-				</p>
-			</div>
-
-			<div class="contact-fields">
-				<h4>{{ t('metavox', 'Your organization (optional)') }}</h4>
-				<p class="field-desc">{{ t('metavox', 'These details are sent with your anonymous usage statistics so we can reach you if needed. They are never shared with third parties.') }}</p>
-
-				<div class="field-row">
-					<label for="organization-name">{{ t('metavox', 'Organization name') }}</label>
-					<input id="organization-name"
-						v-model="organizationName"
-						type="text"
-						:placeholder="t('metavox', 'e.g. Acme Corporation')"
-						class="contact-input">
-				</div>
-
-				<div class="field-row">
-					<label for="contact-email">{{ t('metavox', 'Contact email') }}</label>
-					<input id="contact-email"
-						v-model="contactEmail"
-						type="email"
-						:placeholder="t('metavox', 'e.g. admin@example.com')"
-						class="contact-input">
-				</div>
-
-				<NcButton type="primary"
-					:disabled="savingContact"
-					@click="saveContactInfo">
-					{{ savingContact ? t('metavox', 'Saving...') : t('metavox', 'Save') }}
-				</NcButton>
-			</div>
-
-			<!-- Usage & License Status -->
-			<div v-if="licenseStats" class="license-status">
-				<h4>{{ t('metavox', 'Usage') }}</h4>
-
-				<div class="usage-bar">
-					<div class="usage-bar-label">
-						<span>{{ t('metavox', 'Team folders with metadata') }}</span>
-						<span class="usage-bar-count">{{ licenseStats.teamFoldersWithFields }} / {{ licenseStats.limits.teamFolderLimit || '∞' }}</span>
-					</div>
-					<div class="usage-bar-track">
-						<div class="usage-bar-fill"
-							:class="{ 'usage-warning': teamFolderPercent >= 80, 'usage-exceeded': teamFolderPercent >= 100 }"
-							:style="{ width: Math.min(teamFolderPercent, 100) + '%' }" />
-					</div>
-				</div>
-
-				<div class="usage-bar">
-					<div class="usage-bar-label">
-						<span>{{ t('metavox', 'Total metadata entries') }}</span>
-						<span class="usage-bar-count">{{ (licenseStats.totalEntries || 0).toLocaleString() }}</span>
-					</div>
-				</div>
-
-				<NcNoteCard v-if="licenseStats.limits.exceeded && !licenseStats.hasLicense" type="info">
-					<p>{{ t('metavox', 'Your organization is getting great value from MetaVox! Subscribe for unlimited team folders, email support and guaranteed Nextcloud compatibility.') }}</p>
-					<p><a href="https://voxcloud.nl/pricing/#metavox" target="_blank" rel="noopener noreferrer" style="color: var(--color-primary-element); font-weight: 500;">{{ t('metavox', 'View subscriptions on voxcloud.nl') }} →</a></p>
-				</NcNoteCard>
-
-				<NcNoteCard v-if="licenseStats.hasLicense && licenseStats.licenseValid" type="success">
-					{{ t('metavox', 'Subscription active — thank you for supporting MetaVox!') }}
-				</NcNoteCard>
-
-				<NcNoteCard v-if="licenseStats.hasLicense && !licenseStats.licenseValid" type="warning">
-					{{ t('metavox', 'Subscription key is invalid or expired. Please check your key or contact info@voxcloud.nl.') }}
-				</NcNoteCard>
-			</div>
-
-			<!-- License Key -->
-			<div class="license-key-section">
-				<h4>{{ t('metavox', 'Subscription key') }}</h4>
-				<div class="field-row">
-					<input id="license-key"
-						v-model="licenseKey"
-						type="text"
-						:placeholder="t('metavox', 'e.g. MVOX-XXXX-XXXX-XXXX-XXXX')"
-						class="contact-input"
-						@input="_userEditedLicenseKey = true">
-				</div>
-				<div class="license-key-actions">
-					<button class="primary"
-						:disabled="savingLicense"
-						@click="saveLicenseKey">
-						{{ savingLicense ? t('metavox', 'Saving...') : t('metavox', 'Save & activate') }}
-					</button>
-				</div>
-			</div>
-		</div>
-
 		<!-- AI Autofill Section -->
 		<div class="settings-section">
 			<h2>{{ t('metavox', 'AI Metadata Generation') }}</h2>
@@ -239,13 +134,6 @@ export default {
 		return {
 			telemetryEnabled: true,
 			aiEnabled: true,
-			organizationName: '',
-			contactEmail: '',
-			savingContact: false,
-			licenseKey: '',
-			licenseStats: null,
-			savingLicense: false,
-			validatingLicense: false,
 			lastReport: null,
 			sendingTelemetry: false,
 			message: '',
@@ -258,17 +146,9 @@ export default {
 		}
 	},
 
-	computed: {
-		teamFolderPercent() {
-			if (!this.licenseStats?.limits?.teamFolderLimit) return 0
-			return (this.licenseStats.teamFoldersWithFields / this.licenseStats.limits.teamFolderLimit) * 100
-		},
-	},
-
 	mounted() {
 		this.loadStatus()
 		this.loadStats()
-		this.loadLicenseStats()
 	},
 
 	methods: {
@@ -284,8 +164,6 @@ export default {
 				}
 				if (settingsRes.data.success) {
 					this.aiEnabled = settingsRes.data.settings.ai_enabled
-					this.organizationName = settingsRes.data.settings.organization_name || ''
-					this.contactEmail = settingsRes.data.settings.contact_email || ''
 				}
 			} catch (error) {
 				console.error('Failed to load settings:', error)
@@ -340,73 +218,6 @@ export default {
 			} catch (error) {
 				console.error('Failed to update AI settings:', error)
 				this.showMessage(this.t('metavox', 'Failed to update settings'), 'error')
-			}
-		},
-
-		async loadLicenseStats() {
-			try {
-				const response = await axios.get(generateUrl('/apps/metavox/api/license/stats'))
-				if (response.data.success) {
-					this.licenseStats = response.data.stats
-					// Show masked key only on initial load, never overwrite user input
-					if (this.licenseStats.hasLicense && !this._userEditedLicenseKey) {
-						this.licenseKey = this.licenseStats.licenseKeyMasked || ''
-					}
-				}
-			} catch (error) {
-				console.error('Failed to load license stats:', error)
-			}
-		},
-
-		async saveLicenseKey() {
-			const key = this.licenseKey.trim()
-			if (!key) {
-				this.showMessage(this.t('metavox', 'Please enter a subscription key'), 'error')
-				return
-			}
-			this.savingLicense = true
-			try {
-				// Save the key
-				const saveRes = await axios.post(generateUrl('/apps/metavox/api/settings/license'), {
-					licenseKey: key,
-				})
-				if (!saveRes.data.success) {
-					this.showMessage(this.t('metavox', 'Failed to save subscription key'), 'error')
-					return
-				}
-
-				// Immediately validate
-				const valRes = await axios.post(generateUrl('/apps/metavox/api/license/validate'))
-				if (valRes.data.success && valRes.data.validation?.valid) {
-					// Report usage to bind instance to license
-					await axios.post(generateUrl('/apps/metavox/api/license/update-usage'))
-					this.showMessage(this.t('metavox', 'Subscription activated!'), 'success')
-				} else {
-					this.showMessage(this.t('metavox', 'Subscription key saved but validation failed: {reason}', { reason: valRes.data.validation?.reason || 'unknown' }), 'error')
-				}
-
-				await this.loadLicenseStats()
-			} catch (error) {
-				console.error('Failed to save/validate license key:', error)
-				this.showMessage(this.t('metavox', 'Failed to save subscription key'), 'error')
-			} finally {
-				this.savingLicense = false
-			}
-		},
-
-		async saveContactInfo() {
-			this.savingContact = true
-			try {
-				await axios.post(generateUrl('/apps/metavox/api/settings'), {
-					organization_name: this.organizationName,
-					contact_email: this.contactEmail,
-				})
-				this.showMessage(this.t('metavox', 'Contact information saved.'), 'success')
-			} catch (error) {
-				console.error('Failed to save contact info:', error)
-				this.showMessage(this.t('metavox', 'Failed to save contact information'), 'error')
-			} finally {
-				this.savingContact = false
 			}
 		},
 

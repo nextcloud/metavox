@@ -5,7 +5,7 @@
 			<span class="license-banner-text">
 				{{ licenseBanner.message }}
 				<a v-if="licenseBanner.link" :href="licenseBanner.link" :target="licenseBanner.external ? '_blank' : null"
-					@click.prevent="licenseBanner.external ? null : setActiveTab('statistics')">
+					@click.prevent="licenseBanner.external ? null : setActiveTab('support')">
 					{{ licenseBanner.linkText }}
 				</a>
 			</span>
@@ -30,6 +30,7 @@
 				<CogIcon v-if="tab.id === 'groupfolders'" :size="16" />
 				<ShieldIcon v-if="tab.id === 'permissions'" :size="16" />
 			<ChartBoxIcon v-if="tab.id === 'statistics'" :size="16" />
+				<HeartIcon v-if="tab.id === 'support'" :size="16" />
 				<BackupRestoreIcon v-if="tab.id === 'backup'" :size="16" />
 				{{ tab.name }}
 			</button>
@@ -59,6 +60,9 @@
 				<StatisticsSettings
 					v-if="activeTab === 'statistics'" />
 
+				<SupportSettings
+					v-if="activeTab === 'support'" />
+
 				<BackupRestore
 					v-if="activeTab === 'backup'"
 					@notification="showNotification" />
@@ -74,6 +78,7 @@ import FileIcon from 'vue-material-design-icons/File.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
 import ShieldIcon from 'vue-material-design-icons/Shield.vue'
 import ChartBoxIcon from 'vue-material-design-icons/ChartBox.vue'
+import HeartIcon from 'vue-material-design-icons/Heart.vue'
 import BackupRestoreIcon from 'vue-material-design-icons/BackupRestore.vue'
 
 // Import our custom components
@@ -84,6 +89,7 @@ import FileMetadataFields from './FileMetadataFields.vue'
 import ManageGroupfolders from './ManageGroupfolders.vue'
 import PermissionsManager from './PermissionsManager.vue'
 import StatisticsSettings from './StatisticsSettings.vue'
+import SupportSettings from './SupportSettings.vue'
 import BackupRestore from './BackupRestore.vue'
 
 export default {
@@ -95,11 +101,13 @@ export default {
 		CogIcon,
 		ShieldIcon,
 		ChartBoxIcon,
+		HeartIcon,
 		GroupfolderMetadataFields,
 		FileMetadataFields,
 		ManageGroupfolders,
 		PermissionsManager,
 		StatisticsSettings,
+		SupportSettings,
 		BackupRestore,
 		BackupRestoreIcon,
 	},
@@ -115,6 +123,7 @@ export default {
 				{ id: 'groupfolders', name: this.t('metavox', 'Manage Team folders') },
 				{ id: 'permissions', name: this.t('metavox', 'User Permissions') },
 				{ id: 'statistics', name: this.t('metavox', 'Statistics') },
+				{ id: 'support', name: this.t('metavox', 'Support') },
 				{ id: 'backup', name: this.t('metavox', 'Backup & Restore') },
 			]
 		}
@@ -124,20 +133,15 @@ export default {
 		licenseBanner() {
 			if (!this.licenseStats) return null
 			const s = this.licenseStats
-			const limits = s.limits || {}
 			const hasKey = !!s.licenseKeyMasked
 
-			// Invalid/expired license key
+			// Invalid/expired subscription key
 			if (hasKey && !s.licenseValid) {
-				return { type: 'error', message: this.t('metavox', 'Your MetaVox license key is invalid or expired.'), linkText: this.t('metavox', 'Update license'), link: '#statistics' }
+				return { type: 'error', message: this.t('metavox', 'Your MetaVox subscription key is invalid or expired.'), linkText: this.t('metavox', 'Update subscription'), link: '#support' }
 			}
-			// Free tier exceeded
-			if (!hasKey && limits.exceeded) {
-				return { type: 'error', message: this.t('metavox', 'Your installation exceeds the free tier limits.'), linkText: this.t('metavox', 'Get a license'), link: 'https://voxcloud.nl', external: true }
-			}
-			// Approaching free tier limits (>80%)
-			if (!hasKey && !limits.exceeded && limits.teamFoldersUsed > (s.freeTeamFolderLimit || 5) * 0.8) {
-				return { type: 'warning', message: this.t('metavox', 'You are approaching the free tier limits.'), linkText: this.t('metavox', 'View usage'), link: '#statistics' }
+			// No subscription + significant usage (>20 team folders) — friendly nudge
+			if (!hasKey && (s.teamFoldersWithFields || 0) > 20) {
+				return { type: 'info', message: this.t('metavox', 'Your organization is getting great value from MetaVox! Consider a subscription to support continued development.'), linkText: this.t('metavox', 'Learn more'), link: '#support' }
 			}
 			return null
 		},
@@ -213,6 +217,11 @@ export default {
 	}
 	&.warning {
 		background: #e67700;
+		color: #fff;
+		a { color: #fff; text-decoration: underline; font-weight: 600; }
+	}
+	&.info {
+		background: var(--color-primary-element, #0082c9);
 		color: #fff;
 		a { color: #fff; text-decoration: underline; font-weight: 600; }
 	}
