@@ -105,7 +105,7 @@
 
 				<NcNoteCard v-if="licenseStats.limits.exceeded && !licenseStats.hasLicense" type="info">
 					<p>{{ t('metavox', 'Your organization is getting great value from MetaVox! Subscribe for unlimited team folders, email support and guaranteed Nextcloud compatibility.') }}</p>
-					<p><a href="https://voxcloud.nl/metavox/#pricing" target="_blank" rel="noopener noreferrer" style="color: var(--color-primary-element); font-weight: 500;">{{ t('metavox', 'View subscriptions on voxcloud.nl') }} →</a></p>
+					<p><a href="https://voxcloud.nl/pricing/#metavox" target="_blank" rel="noopener noreferrer" style="color: var(--color-primary-element); font-weight: 500;">{{ t('metavox', 'View subscriptions on voxcloud.nl') }} →</a></p>
 				</NcNoteCard>
 
 				<NcNoteCard v-if="licenseStats.hasLicense && licenseStats.licenseValid" type="success">
