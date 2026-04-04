@@ -37,7 +37,7 @@
 		<div class="settings-section">
 			<h2>{{ t('metavox', 'Support & Licensing') }}</h2>
 			<p class="settings-section-desc">
-				{{ t('metavox', 'Need help or interested in a license for your organization?') }}
+				{{ t('metavox', 'Need help or interested in a subscription for your organization?') }}
 			</p>
 
 			<div class="contact-info-block">
@@ -103,23 +103,23 @@
 					</div>
 				</div>
 
-				<NcNoteCard v-if="licenseStats.limits.exceeded && !licenseStats.hasLicense" type="warning">
-					<p>{{ t('metavox', 'Your organization is getting great value from MetaVox. Support the project and get unlimited volume + email support.') }}</p>
-					<p><a href="https://voxcloud.nl/metavox/#pricing" target="_blank" rel="noopener noreferrer" style="color: var(--color-primary-element); font-weight: 500;">{{ t('metavox', 'View pricing on voxcloud.nl') }} →</a></p>
+				<NcNoteCard v-if="licenseStats.limits.exceeded && !licenseStats.hasLicense" type="info">
+					<p>{{ t('metavox', 'Your organization is getting great value from MetaVox! Subscribe for unlimited team folders, email support and guaranteed Nextcloud compatibility.') }}</p>
+					<p><a href="https://voxcloud.nl/metavox/#pricing" target="_blank" rel="noopener noreferrer" style="color: var(--color-primary-element); font-weight: 500;">{{ t('metavox', 'View subscriptions on voxcloud.nl') }} →</a></p>
 				</NcNoteCard>
 
 				<NcNoteCard v-if="licenseStats.hasLicense && licenseStats.licenseValid" type="success">
-					{{ t('metavox', 'License active — thank you for supporting MetaVox!') }}
+					{{ t('metavox', 'Subscription active — thank you for supporting MetaVox!') }}
 				</NcNoteCard>
 
-				<NcNoteCard v-if="licenseStats.hasLicense && !licenseStats.licenseValid" type="error">
-					{{ t('metavox', 'License key is invalid or expired. Please check your license key.') }}
+				<NcNoteCard v-if="licenseStats.hasLicense && !licenseStats.licenseValid" type="warning">
+					{{ t('metavox', 'Subscription key is invalid or expired. Please check your key or contact info@voxcloud.nl.') }}
 				</NcNoteCard>
 			</div>
 
 			<!-- License Key -->
 			<div class="license-key-section">
-				<h4>{{ t('metavox', 'License key') }}</h4>
+				<h4>{{ t('metavox', 'Subscription key') }}</h4>
 				<div class="field-row">
 					<input id="license-key"
 						v-model="licenseKey"
@@ -132,7 +132,7 @@
 					<button class="primary"
 						:disabled="savingLicense"
 						@click="saveLicenseKey">
-						{{ savingLicense ? t('metavox', 'Saving...') : t('metavox', 'Save & validate') }}
+						{{ savingLicense ? t('metavox', 'Saving...') : t('metavox', 'Save & activate') }}
 					</button>
 				</div>
 			</div>
@@ -361,7 +361,7 @@ export default {
 		async saveLicenseKey() {
 			const key = this.licenseKey.trim()
 			if (!key) {
-				this.showMessage(this.t('metavox', 'Please enter a license key'), 'error')
+				this.showMessage(this.t('metavox', 'Please enter a subscription key'), 'error')
 				return
 			}
 			this.savingLicense = true
@@ -371,7 +371,7 @@ export default {
 					licenseKey: key,
 				})
 				if (!saveRes.data.success) {
-					this.showMessage(this.t('metavox', 'Failed to save license key'), 'error')
+					this.showMessage(this.t('metavox', 'Failed to save subscription key'), 'error')
 					return
 				}
 
@@ -380,15 +380,15 @@ export default {
 				if (valRes.data.success && valRes.data.validation?.valid) {
 					// Report usage to bind instance to license
 					await axios.post(generateUrl('/apps/metavox/api/license/update-usage'))
-					this.showMessage(this.t('metavox', 'License saved and validated!'), 'success')
+					this.showMessage(this.t('metavox', 'Subscription activated!'), 'success')
 				} else {
-					this.showMessage(this.t('metavox', 'License saved but validation failed: {reason}', { reason: valRes.data.validation?.reason || 'unknown' }), 'error')
+					this.showMessage(this.t('metavox', 'Subscription key saved but validation failed: {reason}', { reason: valRes.data.validation?.reason || 'unknown' }), 'error')
 				}
 
 				await this.loadLicenseStats()
 			} catch (error) {
 				console.error('Failed to save/validate license key:', error)
-				this.showMessage(this.t('metavox', 'Failed to save license key'), 'error')
+				this.showMessage(this.t('metavox', 'Failed to save subscription key'), 'error')
 			} finally {
 				this.savingLicense = false
 			}
