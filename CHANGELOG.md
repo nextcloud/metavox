@@ -6,6 +6,22 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [2.0.5] - 2026-04-05
+
+### Added
+- **Support tab** in admin panel — subscription info, pricing table, benefits overview, and subscription key management. Friendly, non-aggressive tone: "no limits, no restrictions, no catch."
+- **Remove subscription key** button — allows returning to free usage state after subscription expires.
+- **Localized pricing URL** — NL users link to Dutch pricing page, others to English.
+- **43 new translations** for Support tab content (EN, NL, DE, FR — 429 strings total).
+
+### Changed
+- **Banner tone** — all banners are now blue/info, no more red/orange. Subscription nudge triggers at >50 users or >20 team folders.
+- **Support tab replaces license section** in Statistics tab. Statistics now only shows stats, AI toggle, and telemetry.
+- **Organization fields above subscription key** — fill in org details before activating a key.
+- **Licensing docs** rewritten with current pricing (€49/149/349) and friendly tone.
+
+---
+
 ## [2.0.4] - 2026-04-03
 
 ### Fixed
