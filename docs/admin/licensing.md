@@ -1,87 +1,79 @@
-# Licensing
+# Support & Subscriptions
 
-MetaVox is free and open source (AGPL-3.0). All features are always available regardless of license status — this is a trust-based model. A license removes the free tier volume limits and includes support from VoxCloud.
+MetaVox is free and open source (AGPL-3.0). All features are always available — no limits, no restrictions, no catch. A subscription is optional and funds active development, guaranteed Nextcloud compatibility, and email support.
 
-## Free Tier
+## Free Usage
 
-Without a license, MetaVox is fully functional with these limits:
+MetaVox is fully functional without a subscription. There are no feature restrictions, no degraded performance, and no expiring trials. You are not in violation of anything by using MetaVox without a subscription.
 
-| Metric | Free tier limit |
-|--------|----------------|
-| Team folders with metadata | 20 |
-| Entries per folder | Unlimited |
+## Why Subscribe?
 
-All features (inline editing, views, AI autofill, Flow integration, backup/restore, REST API) are available in the free tier. Nothing is disabled.
+If MetaVox is valuable to your organization, a subscription helps keep it maintained and improved.
 
-## Paid Tiers
+| Included | Description |
+|----------|-------------|
+| Guaranteed compatibility | Tested with every new Nextcloud release |
+| Email support | Direct support from the developers |
+| Priority bug fixes | Your issues get priority attention |
+| Active development | New features and improvements |
 
-Pricing is based on organization size (number of Nextcloud users). All paid tiers include unlimited volume and email support.
+## Pricing
 
-| Scale | Users | Price/year |
-|-------|-------|-----------|
-| Small | 1-50 | €249 |
-| Medium | 51-250 | €499 |
-| Large | 251-1000 | €999 |
-| Enterprise | 1000+ | Contact us |
+Pricing is based on the number of Nextcloud users in your organization.
 
-Enterprise includes: priority support (1 business day), SLA, dedicated contact, onboarding assistance.
+| Users | Price |
+|-------|-------|
+| 1–50 | €49/year |
+| 51–250 | €149/year |
+| 251–1000 | €349/year |
+| 1000+ | Contact us |
 
-Education and government: 25% discount on all tiers.
+That's less than €1 per week for the smallest tier.
 
-VoxCloud Suite (all apps): from €499/year. See [voxcloud.nl](https://voxcloud.nl/#pricing) for details.
+Visit [voxcloud.nl/pricing](https://voxcloud.nl/pricing/#metavox) for details, or contact [info@voxcloud.nl](mailto:info@voxcloud.nl).
 
-Organizations with multiple Nextcloud instances need a separate license per instance.
+## Subscription Banner
 
-## Entering a License Key
+Organizations with more than 50 Nextcloud users who do not have an active subscription will see a blue informational banner at the top of the MetaVox admin panel. This is a friendly reminder, not a warning — all features continue to work normally.
+
+The banner disappears when:
+- A valid subscription key is entered
+- The admin dismisses it (reappears on next page load)
+
+The banner is only visible to administrators, never to regular users.
+
+## Entering a Subscription Key
 
 1. Go to **Settings** > **Administration** > **MetaVox**
-2. Open the **Statistics** tab
-3. Scroll to **Support & Licensing**
-4. Enter your license key in the **License key** field (format: `MVOX-XXXX-XXXX-XXXX-XXXX`)
-5. Click **Save & validate**
+2. Open the **Support** tab
+3. Optionally fill in your organization name and contact email
+4. Enter your subscription key in the **Subscription key** field (format: `MVOX-XXXX-XXXX-XXXX-XXXX`)
+5. Click **Save & activate**
 
-On success, you will see "License saved and validated!" and the usage warning will be replaced by "License active — unlimited usage."
+On success, you will see "Subscription activated!" and the banner will disappear.
+
+## Removing a Subscription Key
+
+If your subscription expires and you choose not to renew, you can remove the key:
+
+1. Go to **Settings** > **Administration** > **MetaVox** > **Support**
+2. Click **Remove subscription key**
+3. The key is removed and you return to the free usage state
 
 ## Organization Details
 
-In the same Support & Licensing section, you can optionally fill in your organization name and contact email. These are sent with your usage statistics so VoxCloud can reach you if needed. They are never shared with third parties.
+In the Support tab, you can optionally provide your organization name and contact email. These are sent with your anonymous usage statistics so we can reach you if needed. They are never shared with third parties.
 
 ## Single-Instance Binding
 
-Each license key is bound to exactly 1 Nextcloud instance. When you save and validate a key, it is bound to your instance via a SHA-256 hash of your instance URL. If the same key is used on a different instance, validation will fail.
-
-If you need to move your license to a new instance (e.g. server migration), contact info@voxcloud.nl to reset the binding.
-
-## Usage Reporting
-
-When a license is active, MetaVox reports usage statistics to VoxCloud once every 24 hours via a background job:
-
-- Number of team folders with metadata
-- Total metadata entries
-- Number of users
-
-This is separate from the anonymous telemetry (which runs independently and can be disabled). Usage reporting only runs when a license key is configured.
-
-## License Status in Admin Settings
-
-The Statistics tab shows your current usage with progress bars:
-
-- **Team folders with metadata**: X / 5 (free tier) or unlimited (licensed)
-- **Total metadata entries**: count displayed
-
-Color coding:
-- **Blue**: within limits
-- **Yellow**: approaching 80% of limit
-- **Red**: exceeded limit
-
-## What Happens When Limits Are Exceeded
-
-Nothing breaks. MetaVox continues to work normally. A warning banner appears in the admin settings suggesting a license. This banner is only visible to administrators, never to regular users.
+Each subscription key is bound to one Nextcloud instance. When you save and activate a key, it is bound via a SHA-256 hash of your instance URL. If you need to move your subscription to a new instance (e.g. server migration), contact [info@voxcloud.nl](mailto:info@voxcloud.nl).
 
 ## Offline / Server Unreachable
 
-If the VoxCloud license server is unreachable during validation, MetaVox falls back to the last known validation result. If the license was previously valid, it continues to be treated as valid. MetaVox never blocks functionality due to connectivity issues.
+If the VoxCloud license server is unreachable during validation, MetaVox falls back to the last known validation result. MetaVox never blocks functionality due to connectivity issues.
 
-## Purchasing a License
+## See Also
 
-Visit [voxcloud.nl](https://voxcloud.nl/#pricing) for pricing, or contact [info@voxcloud.nl](mailto:info@voxcloud.nl).
+- [Installation](installation.md) - Requirements and setup
+- [Settings](settings.md) - AI and telemetry settings
+- [Telemetry](telemetry.md) - Anonymous usage reporting
