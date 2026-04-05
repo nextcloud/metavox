@@ -75,7 +75,7 @@
 			</p>
 
 			<NcButton type="primary"
-				:href="(document.documentElement.lang || '').startsWith('nl') ? 'https://voxcloud.nl/pricing/#metavox' : 'https://voxcloud.nl/en/pricing/#metavox'"
+				:href="pricingUrl"
 				target="_blank"
 				rel="noopener noreferrer">
 				{{ t('metavox', 'View pricing & subscribe') }}
@@ -224,6 +224,13 @@ export default {
 			message: '',
 			messageType: 'success',
 		}
+	},
+
+	computed: {
+		pricingUrl() {
+			const lang = (window.document?.documentElement?.lang || '').split('-')[0]
+			return lang === 'nl' ? 'https://voxcloud.nl/pricing/#metavox' : 'https://voxcloud.nl/en/pricing/#metavox'
+		},
 	},
 
 	mounted() {
