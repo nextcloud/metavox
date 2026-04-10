@@ -429,6 +429,9 @@ OC.L10N.register(
     "— no sorting —" : "— no sorting —",
     "€149/year" : "149 €/an",
     "€349/year" : "349 €/an",
-    "€49/year" : "49 €/an"
+    "€49/year" : "49 €/an",
+    "Report sent successfully" : "Rapport envoyé avec succès",
+    "The telemetry server returned an error:" : "Le serveur de télémétrie a renvoyé une erreur :",
+    "Could not reach the telemetry server. Please try again later." : "Impossible de joindre le serveur de télémétrie. Veuillez réessayer plus tard."
 },
 "nplurals=2; plural=(n != 1);");

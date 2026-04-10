@@ -429,6 +429,9 @@ OC.L10N.register(
     "— no sorting —" : "— keine Sortierung —",
     "€149/year" : "€149/Jahr",
     "€349/year" : "€349/Jahr",
-    "€49/year" : "€49/Jahr"
+    "€49/year" : "€49/Jahr",
+    "Report sent successfully" : "Bericht erfolgreich gesendet",
+    "The telemetry server returned an error:" : "Der Telemetrie-Server hat einen Fehler zurückgegeben:",
+    "Could not reach the telemetry server. Please try again later." : "Der Telemetrie-Server ist nicht erreichbar. Bitte versuchen Sie es später erneut."
 },
 "nplurals=2; plural=(n != 1);");
