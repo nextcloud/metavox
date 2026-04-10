@@ -429,6 +429,9 @@ OC.L10N.register(
     "— no sorting —" : "— geen sortering —",
     "€149/year" : "€149/jaar",
     "€349/year" : "€349/jaar",
-    "€49/year" : "€49/jaar"
+    "€49/year" : "€49/jaar",
+    "Report sent successfully" : "Rapport succesvol verstuurd",
+    "The telemetry server returned an error:" : "De telemetrieserver gaf een fout:",
+    "Could not reach the telemetry server. Please try again later." : "Kan de telemetrieserver niet bereiken. Probeer het later opnieuw."
 },
 "nplurals=2; plural=(n != 1);");
