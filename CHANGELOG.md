@@ -6,6 +6,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [2.0.6] - Unreleased
+
+### Fixed
+- **Telemetry error feedback**: The "Send report now" button now shows the actual server error message (e.g., rate limit, connectivity issue) instead of silently failing
+- **View columns not enriched when created without field_id** — `enrichViewColumns()` only resolved columns by `field_id`, so views created via the API with only `field_name` were missing `field_type`, `field_label`, and `field_options`. This caused column headers to be invisible until the view was re-saved in the UI. Now resolves columns by both `field_id` and `field_name`.
+
+---
+
 ## [2.0.5] - 2026-04-05
 
 ### Added
