@@ -237,56 +237,82 @@ class ViewService {
      * Older views may not have these properties stored in their columns JSON.
      */
     private function enrichViewColumns(int $gfId, array $views): array {
-        // Collect all field_ids referenced in view columns
+        // Collect all field_ids and field_names referenced in view columns
         $fieldIds = [];
+        $fieldNames = [];
         foreach ($views as $view) {
             foreach ($view['columns'] ?? [] as $col) {
                 if (isset($col['field_id'])) {
                     $fieldIds[(int)$col['field_id']] = true;
                 }
+                if (isset($col['field_name']) && $col['field_name'] !== '') {
+                    $fieldNames[$col['field_name']] = true;
+                }
             }
         }
-        if (empty($fieldIds)) {
+        if (empty($fieldIds) && empty($fieldNames)) {
             return $views;
         }
 
-        // Load field metadata in one query
+        // Load field metadata — by id and/or by name
         $qb = $this->db->getQueryBuilder();
         $qb->select('id', 'field_name', 'field_label', 'field_type', 'field_options')
-           ->from('metavox_gf_fields')
-           ->where($qb->expr()->in('id', $qb->createNamedParameter(
-               array_keys($fieldIds),
-               IQueryBuilder::PARAM_INT_ARRAY
-           )));
+           ->from('metavox_gf_fields');
+
+        $conditions = [];
+        if (!empty($fieldIds)) {
+            $conditions[] = $qb->expr()->in('id', $qb->createNamedParameter(
+                array_keys($fieldIds),
+                IQueryBuilder::PARAM_INT_ARRAY
+            ));
+        }
+        if (!empty($fieldNames)) {
+            $conditions[] = $qb->expr()->in('field_name', $qb->createNamedParameter(
+                array_keys($fieldNames),
+                IQueryBuilder::PARAM_STR_ARRAY
+            ));
+        }
+        $qb->where($qb->expr()->orX(...$conditions));
+
         $result = $qb->executeQuery();
-        $fieldMap = [];
+        $fieldMapById = [];
+        $fieldMapByName = [];
         while ($row = $result->fetch()) {
-            $fieldMap[(int)$row['id']] = [
-                'field_name' => $row['field_name'],
-                'field_label' => $row['field_label'],
-                'field_type' => $row['field_type'],
+            $meta = [
+                'id'            => (int)$row['id'],
+                'field_name'    => $row['field_name'],
+                'field_label'   => $row['field_label'],
+                'field_type'    => $row['field_type'],
                 'field_options' => $row['field_options'] ? json_decode($row['field_options'], true) : [],
             ];
+            $fieldMapById[(int)$row['id']] = $meta;
+            $fieldMapByName[$row['field_name']] = $meta;
         }
         $result->closeCursor();
 
-        // Merge into view columns
+        // Merge into view columns (match by field_id first, then by field_name)
         foreach ($views as &$view) {
             foreach ($view['columns'] as &$col) {
                 $fid = (int)($col['field_id'] ?? 0);
-                if (isset($fieldMap[$fid])) {
-                    if (!isset($col['field_name']) || $col['field_name'] === '') {
-                        $col['field_name'] = $fieldMap[$fid]['field_name'];
-                    }
-                    if (!isset($col['field_label']) || $col['field_label'] === '') {
-                        $col['field_label'] = $fieldMap[$fid]['field_label'];
-                    }
-                    if (!isset($col['field_type']) || $col['field_type'] === '') {
-                        $col['field_type'] = $fieldMap[$fid]['field_type'];
-                    }
-                    if (!isset($col['field_options']) || empty($col['field_options'])) {
-                        $col['field_options'] = $fieldMap[$fid]['field_options'];
-                    }
+                $fname = $col['field_name'] ?? '';
+                $meta = $fieldMapById[$fid] ?? $fieldMapByName[$fname] ?? null;
+                if ($meta === null) {
+                    continue;
+                }
+                if (!isset($col['field_id']) || $col['field_id'] === 0) {
+                    $col['field_id'] = $meta['id'];
+                }
+                if (!isset($col['field_name']) || $col['field_name'] === '') {
+                    $col['field_name'] = $meta['field_name'];
+                }
+                if (!isset($col['field_label']) || $col['field_label'] === '') {
+                    $col['field_label'] = $meta['field_label'];
+                }
+                if (!isset($col['field_type']) || $col['field_type'] === '') {
+                    $col['field_type'] = $meta['field_type'];
+                }
+                if (!isset($col['field_options']) || empty($col['field_options'])) {
+                    $col['field_options'] = $meta['field_options'];
                 }
             }
             unset($col);

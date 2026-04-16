@@ -6,11 +6,15 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [2.0.6] - Unreleased
+## [2.0.6] - 2026-04-16
 
 ### Fixed
 - **Telemetry error feedback**: The "Send report now" button now shows the actual server error message (e.g., rate limit, connectivity issue) instead of silently failing
 - **View columns not enriched when created without field_id** — `enrichViewColumns()` only resolved columns by `field_id`, so views created via the API with only `field_name` were missing `field_type`, `field_label`, and `field_options`. This caused column headers to be invisible until the view was re-saved in the UI. Now resolves columns by both `field_id` and `field_name`.
+- **Sharing files with metadata crashes** — `FieldService::getGroupfolderIdByFileId()` was called by the Flow engine during share events but never implemented, causing an "undefined method" fatal error. Added the missing method. (#58)
+
+### Removed
+- Dead code: unreachable `saveFieldOverride()` and `getFieldOverrides()` controller methods referencing the removed `metavox_gf_overrides` table.
 
 ---
 
