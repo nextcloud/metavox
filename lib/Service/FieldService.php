@@ -467,6 +467,36 @@ public function saveFieldValue(int $fileId, int $fieldId, string $value): bool {
 }
 
     // Groupfolder functionality
+
+/**
+ * Look up the groupfolder ID for a file by checking the metadata database.
+ * Returns the first groupfolder_id found, or null if the file has no metadata stored.
+ */
+public function getGroupfolderIdByFileId(int $fileId): ?int {
+    try {
+        $qb = $this->db->getQueryBuilder();
+        $qb->selectDistinct('groupfolder_id')
+           ->from('metavox_file_gf_meta')
+           ->where($qb->expr()->eq('file_id', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_INT)))
+           ->setMaxResults(1);
+
+        $result = $qb->executeQuery();
+        $gfId = $result->fetchOne();
+        $result->closeCursor();
+
+        if ($gfId !== false && $gfId !== null) {
+            return (int)$gfId;
+        }
+    } catch (\Exception $e) {
+        $this->logger->debug('MetaVox: getGroupfolderIdByFileId failed', [
+            'exception' => $e,
+            'fileId' => $fileId,
+        ]);
+    }
+
+    return null;
+}
+
 public function getGroupfolders(string $userId, bool $adminMode = false): array {
     // Request-scope cache
     $cacheKey = $userId . ($adminMode ? '_admin' : '');

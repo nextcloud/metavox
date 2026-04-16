@@ -1,5 +1,10 @@
 # WebDAV-Client changelog
 
+## v5.9.0
+_2026-02-04_
+
+ * [#404](https://github.com/perry-mitchell/webdav-client/issues/404) CVE-2026-25128 fix in `fast-xml-parser`, major version upgrade
+
 ## v5.8.0
 _2025-02-12_
 

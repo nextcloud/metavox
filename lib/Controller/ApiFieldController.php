@@ -203,32 +203,6 @@ class ApiFieldController extends BaseOCSController {
     }
 
     /**
-     * Save field override for specific groupfolder (Admin only)
-     */
-    #[CORS]
-    #[NoCSRFRequired]
-    public function saveFieldOverride(int $groupfolderId): DataResponse {
-        try {
-            $fieldName = $this->request->getParam('field_name');
-            $appliesToGroupfolder = (int)$this->request->getParam('applies_to_groupfolder', 0);
-
-            if (empty($fieldName)) {
-                return new DataResponse(['success' => false, 'message' => 'Field name is required'], Http::STATUS_BAD_REQUEST);
-            }
-
-            $success = $this->fieldService->saveGroupfolderFieldOverride($groupfolderId, $fieldName, $appliesToGroupfolder);
-
-            if ($success) {
-                return new DataResponse(['success' => true], Http::STATUS_OK);
-            } else {
-                return new DataResponse(['success' => false, 'message' => 'Failed to save field override'], Http::STATUS_INTERNAL_SERVER_ERROR);
-            }
-        } catch (\Exception $e) {
-            return new DataResponse(['success' => false, 'message' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
      * Get metadata statistics (Admin only)
      */
     #[CORS]
@@ -484,25 +458,6 @@ class ApiFieldController extends BaseOCSController {
             return new DataResponse($fields, Http::STATUS_OK);
         } catch (\Exception $e) {
             $this->logger->error('MetaVox: getGroupfolderAssignedFields error', ['exception' => $e]);
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
-     * Get field overrides for specific groupfolder
-     */
-    #[CORS]
-    #[NoAdminRequired]
-    #[NoCSRFRequired]
-    public function getFieldOverrides(int $groupfolderId): DataResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof DataResponse) return $user;
-            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
-
-            $overrides = $this->fieldService->getGroupfolderFieldOverrides($groupfolderId);
-            return new DataResponse($overrides, Http::STATUS_OK);
-        } catch (\Exception $e) {
             return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
