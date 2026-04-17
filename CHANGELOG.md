@@ -6,6 +6,13 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [2.0.7] - 2026-04-17
+
+### Added
+- **Swedish (sv) translation** — complete translation of all 432 strings by Magnus (@maghog). (#62)
+
+---
+
 ## [2.0.6] - 2026-04-16
 
 ### Fixed
