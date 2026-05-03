@@ -55,7 +55,21 @@ Follow this checklist for every release to the Nextcloud App Store.
 
 ## 2. Translations (l10n/)
 
-Supported languages: **NL, DE** (source: EN)
+Supported languages: **NL, DE, FR, SV** (source: EN)
+
+### i18n anti-patterns (must avoid)
+
+- **Never compose translatable nouns via parameter substitution.** Pattern to avoid:
+  ```js
+  t('metavox', '{itemType} Metadata', { itemType })  // ❌ broken
+  ```
+  `t()` translates the *template* and substitutes `{itemType}` literally with the runtime value (always English: `"File"` / `"Folder"`). Other languages may compound (`Filmetadata`), use a preposition (`Métadonnées de fichier`), or change word order — none of which works with this pattern. Use separate literal keys per noun:
+  ```js
+  itemType === 'Folder' ? t('metavox', 'Folder Metadata') : t('metavox', 'File Metadata')  // ✓
+  ```
+  Same applies to empty-state messages, button labels, and any other UI string with a noun that varies by context. Reported by @maghog on #62 (fixed in v2.0.8).
+
+### Checks
 
 - [ ] Extract all translation strings from source code and compare with l10n files:
   ```bash
@@ -308,9 +322,20 @@ https://github.com/nextcloud/metavox/releases/download/vX.Y.Z/metavox-X.Y.Z.tar.
 
 ### 9.7 App Store Upload
 
-- **URL:** https://apps.nextcloud.com/developer/apps/releases/new
-- **Download URL:** GitHub release download URL (lowercase `metavox` in filename!)
-- **Signature:** Output from step 9.5
+Upload via the API (token stored in `Development/.claude/NextcloudApps/Keys/appstore-api-token.txt`):
+
+```bash
+curl -X POST https://apps.nextcloud.com/api/v1/apps/releases \
+  -H "Authorization: Token $(cat /Users/rikdekker/Documents/Development/.claude/NextcloudApps/Keys/appstore-api-token.txt)" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"download\": \"https://github.com/nextcloud/metavox/releases/download/vX.Y.Z/metavox-X.Y.Z.tar.gz\",
+    \"signature\": \"$(openssl dgst -sha512 -sign metavox.key metavox-X.Y.Z.tar.gz | openssl base64 -A)\"
+  }"
+```
+
+HTTP 200 = success. Alternatively, upload manually at https://apps.nextcloud.com/developer/apps/releases/new.
+
 - **Note:** Regenerate signature after any tarball change!
 
 ---

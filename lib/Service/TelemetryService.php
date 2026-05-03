@@ -352,15 +352,15 @@ class TelemetryService {
     private function getUserCount(): int {
         try {
             $count = 0;
-            $this->userManager->callForSeenUsers(function ($user) use (&$count) {
+            $this->userManager->callForAllUsers(function ($user) use (&$count) {
                 $count++;
             });
-            return $count;
+            return max(1, $count);
         } catch (\Exception $e) {
             $this->logger->warning('TelemetryService: Failed to count users', [
                 'error' => $e->getMessage()
             ]);
-            return 0;
+            return 1;
         }
     }
 
