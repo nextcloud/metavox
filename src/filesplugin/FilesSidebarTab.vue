@@ -73,7 +73,7 @@
 				<!-- Item Metadata Section (editable if permissions allow) -->
 				<div v-if="itemFields.length > 0" class="metadata-section">
 					<div class="item-metadata-header">
-						<h3>{{ t('metavox', '{itemType} Metadata', { itemType }) }}</h3>
+						<h3>{{ itemType === 'Folder' ? t('metavox', 'Folder Metadata') : t('metavox', 'File Metadata') }}</h3>
 						<NcButton v-if="(aiAvailable || aiGenerating) && canEdit && !isGroupfolderRoot"
 							type="tertiary"
 							:disabled="aiGenerating"
@@ -115,7 +115,7 @@
 					</div>
 				</div>
 				<div v-else-if="itemFields.length === 0" class="info-container">
-					<p>{{ t('metavox', 'No {itemType} metadata fields are configured for items in this Team folder. Contact your administrator to set up file metadata fields.', { itemType: itemType.toLowerCase() }) }}</p>
+					<p>{{ itemType === 'Folder' ? t('metavox', 'No folder metadata fields are configured for items in this Team folder. Contact your administrator to set up metadata fields.') : t('metavox', 'No file metadata fields are configured for items in this Team folder. Contact your administrator to set up metadata fields.') }}</p>
 				</div>
 			</div>
 		</div>

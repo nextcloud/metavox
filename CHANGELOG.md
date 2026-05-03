@@ -6,6 +6,16 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [2.0.8] - 2026-05-03
+
+### Fixed
+- **Sidebar header not translated** — `{itemType} Metadata` used an untranslated English variable, resulting in "File-metadata" in Swedish. Replaced with separate `File Metadata` / `Folder Metadata` strings so all languages translate the full header. Reported by Magnus (@maghog) on #62. Same anti-pattern fixed in the "No metadata fields configured" empty-state.
+
+### Changed
+- **Dutch (nl) translation polish** — 78 strings rewritten to use idiomatic Dutch compound forms (`Bestandsmetadata`, `Mapmetadata`, `Metadatavelden` instead of `Bestand Metadata`, `Map Metadata`, `Metadata Velden`) and sentence case for button labels (`Veld toevoegen` instead of `Veld Toevoegen`). Aligns with the Nextcloud Dutch style guide.
+
+---
+
 ## [2.0.7] - 2026-04-17
 
 ### Added
