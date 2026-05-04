@@ -30,7 +30,7 @@ Pricing is based on the number of Nextcloud users in your organization.
 
 That's less than €1 per week for the smallest tier.
 
-Visit [voxcloud.nl/pricing](https://voxcloud.nl/pricing/#metavox) for details, or contact [info@voxcloud.nl](mailto:info@voxcloud.nl).
+Visit [voxcommons.com/pricing](https://voxcommons.com/pricing/#metavox) for details, or contact [info@voxcommons.com](mailto:info@voxcommons.com).
 
 ## Subscription Banner
 
@@ -66,11 +66,11 @@ In the Support tab, you can optionally provide your organization name and contac
 
 ## Single-Instance Binding
 
-Each subscription key is bound to one Nextcloud instance. When you save and activate a key, it is bound via a SHA-256 hash of your instance URL. If you need to move your subscription to a new instance (e.g. server migration), contact [info@voxcloud.nl](mailto:info@voxcloud.nl).
+Each subscription key is bound to one Nextcloud instance. When you save and activate a key, it is bound via a SHA-256 hash of your instance URL. If you need to move your subscription to a new instance (e.g. server migration), contact [info@voxcommons.com](mailto:info@voxcommons.com).
 
 ## Offline / Server Unreachable
 
-If the VoxCloud license server is unreachable during validation, MetaVox falls back to the last known validation result. MetaVox never blocks functionality due to connectivity issues.
+If the VoxCommons license server is unreachable during validation, MetaVox falls back to the last known validation result. MetaVox never blocks functionality due to connectivity issues.
 
 ## See Also
 
