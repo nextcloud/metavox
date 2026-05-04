@@ -402,7 +402,7 @@ OC.L10N.register(
     "Your actual server URL" : "Your actual server URL",
     "Your installation" : "Your installation",
     "Your installation exceeds the free tier limits." : "Your installation exceeds the free tier limits.",
-    "Your installation exceeds the free tier limits. Consider a VoxCloud license for unlimited use." : "Your installation exceeds the free tier limits. Consider a VoxCloud license for unlimited use.",
+    "Your installation exceeds the free tier limits. Consider a VoxCommons license for unlimited use." : "Your installation exceeds the free tier limits. Consider a VoxCommons license for unlimited use.",
     "Your issues get priority attention" : "Your issues get priority attention",
     "Your organization (optional)" : "Your organization (optional)",
     "Your organization is getting great value from MetaVox! Consider a subscription to support continued development." : "Your organization is getting great value from MetaVox! Consider a subscription to support continued development.",
