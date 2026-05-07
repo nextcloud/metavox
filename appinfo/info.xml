@@ -27,8 +27,8 @@ Supports **Nextcloud 31, 32, and 33** with automatic feature detection.
 </description>
     <version>2.0.8</version>
     <licence>AGPL-3.0-or-later</licence>
-    <author mail="info@voxcommons.com">Sam Ditmeijer</author>
-    <author mail="info@voxcommons.com">Rik Dekker</author>
+    <author mail="info@voxcloud.nl">Sam Ditmeijer</author>
+    <author mail="info@voxcloud.nl">Rik Dekker</author>
     <namespace>MetaVox</namespace>
     <documentation>
         <user>https://github.com/nextcloud/metavox/blob/main/README.md</user>
@@ -37,7 +37,7 @@ Supports **Nextcloud 31, 32, and 33** with automatic feature detection.
     </documentation>
     <category>files</category>
     <category>organization</category>
-    <website>https://voxcommons.com</website>
+    <website>https://voxcloud.nl</website>
     <screenshot>https://raw.githubusercontent.com/nextcloud/metavox/main/screenshots/columns-collaboration.png</screenshot>
     <screenshot>https://raw.githubusercontent.com/nextcloud/metavox/main/screenshots/views-tabs.png</screenshot>
     <screenshot>https://raw.githubusercontent.com/nextcloud/metavox/main/screenshots/inline-editing.gif</screenshot>
