@@ -1,4 +1,7 @@
 
+**2.2.3 / 2026-04-07**
+- remove unnecessary files from npm package
+
 **2.2.2 / 2026-03-23**
 - fix for space string
 
