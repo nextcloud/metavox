@@ -13,9 +13,10 @@ import { columnWidths } from './MetaVoxState.js'
  *
  * @param {*}      value     Raw metadata value
  * @param {string} fieldType Field type identifier
+ * @param {Object} [field]   Optional field definition (for date includeTime)
  * @return {string}
  */
-export function formatValue(value, fieldType) {
+export function formatValue(value, fieldType, field = null) {
 	if (value === null || value === undefined || value === '') return ''
 
 	switch (fieldType) {
@@ -26,7 +27,11 @@ export function formatValue(value, fieldType) {
 	case 'date':
 		try {
 			const d = new Date(value)
-			if (!isNaN(d.getTime())) return d.toLocaleDateString()
+			if (!isNaN(d.getTime())) {
+				const opts = field?.field_options
+				const includeTime = !!(opts && typeof opts === 'object' && !Array.isArray(opts) && opts.includeTime)
+				return includeTime ? d.toLocaleString() : d.toLocaleDateString()
+			}
 		} catch (e) { /* fall through */ }
 		return value
 	case 'multiselect':

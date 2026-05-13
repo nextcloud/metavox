@@ -314,7 +314,7 @@ export function setCellValue(td, value, config) {
 		break
 	}
 	default: {
-		const formatted = formatValue(value, config.field_type)
+		const formatted = formatValue(value, config.field_type, config)
 		td.textContent = formatted || '\u2014'
 		td.title = formatted || ''
 		if (!formatted) td.classList.add(MARKER_CLASS + '--empty')

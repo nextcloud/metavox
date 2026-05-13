@@ -2,13 +2,14 @@
   <NcDatetimePicker
     :model-value="dateValue"
     @update:model-value="onUpdate"
-    type="date"
+    :type="includeTime ? 'datetime' : 'date'"
     :required="required"
     :placeholder="field.field_label" />
 </template>
 
 <script>
 import { NcDatetimePicker } from '@nextcloud/vue'
+import { dateFieldIncludesTime, formatLocalDatetime } from '../../utils/dateField.js'
 
 export default {
   name: 'DateFieldInput',
@@ -20,6 +21,9 @@ export default {
   },
   emits: ['update:modelValue'],
   computed: {
+    includeTime() {
+      return dateFieldIncludesTime(this.field)
+    },
     dateValue() {
       if (!this.modelValue) return null
       return new Date(this.modelValue)
@@ -29,10 +33,13 @@ export default {
     onUpdate(value) {
       if (!value) {
         this.$emit('update:modelValue', '')
+        return
+      }
+      const date = new Date(value)
+      if (this.includeTime) {
+        this.$emit('update:modelValue', formatLocalDatetime(date))
       } else {
-        const date = new Date(value)
-        const dateString = date.toISOString().split('T')[0]
-        this.$emit('update:modelValue', dateString)
+        this.$emit('update:modelValue', date.toISOString().split('T')[0])
       }
     }
   }

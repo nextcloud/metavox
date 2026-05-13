@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\MetaVox\Controller;
 
 use OCA\MetaVox\Service\ApiFieldService;
+use OCA\MetaVox\Service\ApiValidationException;
 use OCA\MetaVox\Service\FieldService;
 use OCA\MetaVox\Service\PermissionService;
 use OCP\AppFramework\Http;
@@ -115,12 +116,18 @@ class ApiFieldController extends BaseOCSController {
     #[NoCSRFRequired]
     public function createGroupfolderField(): DataResponse {
         try {
+            $fieldType = $this->request->getParam('field_type', 'text');
+            $fieldOptions = $this->apiFieldService->normaliseFieldDefinitionOptions(
+                $fieldType,
+                $this->request->getParam('field_options', [])
+            );
+
             $fieldData = [
                 'field_name' => $this->request->getParam('field_name'),
                 'field_label' => $this->request->getParam('field_label'),
-                'field_type' => $this->request->getParam('field_type', 'text'),
+                'field_type' => $fieldType,
                 'field_description' => $this->request->getParam('field_description', ''),
-                'field_options' => $this->request->getParam('field_options', []),
+                'field_options' => $fieldOptions,
                 'is_required' => $this->request->getParam('is_required', false),
                 'sort_order' => $this->request->getParam('sort_order', 0),
                 'scope' => 'groupfolder',
@@ -133,6 +140,8 @@ class ApiFieldController extends BaseOCSController {
 
             $id = $this->fieldService->createField($fieldData);
             return new DataResponse(['id' => $id, 'success' => true], Http::STATUS_CREATED);
+        } catch (ApiValidationException $e) {
+            return new DataResponse(['error' => 'Validation failed', 'fields' => $e->getErrors()], Http::STATUS_BAD_REQUEST);
         } catch (\Exception $e) {
             return new DataResponse(['error' => $e->getMessage(), 'success' => false], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
@@ -145,12 +154,18 @@ class ApiFieldController extends BaseOCSController {
     #[NoCSRFRequired]
     public function updateGroupfolderField(int $id): DataResponse {
         try {
+            $fieldType = $this->request->getParam('field_type', 'text');
+            $fieldOptions = $this->apiFieldService->normaliseFieldDefinitionOptions(
+                $fieldType,
+                $this->request->getParam('field_options', [])
+            );
+
             $fieldData = [
                 'field_name'             => $this->request->getParam('field_name'),
                 'field_label'            => $this->request->getParam('field_label'),
-                'field_type'             => $this->request->getParam('field_type', 'text'),
+                'field_type'             => $fieldType,
                 'field_description'      => $this->request->getParam('field_description', ''),
-                'field_options'          => $this->request->getParam('field_options', []),
+                'field_options'          => $fieldOptions,
                 'is_required'            => $this->request->getParam('is_required', false),
                 'sort_order'             => $this->request->getParam('sort_order', 0),
                 'applies_to_groupfolder' => $this->request->getParam('applies_to_groupfolder', false),
@@ -165,6 +180,8 @@ class ApiFieldController extends BaseOCSController {
                 return new DataResponse(['error' => 'Field not found or update failed'], Http::STATUS_NOT_FOUND);
             }
             return new DataResponse(['success' => true], Http::STATUS_OK);
+        } catch (ApiValidationException $e) {
+            return new DataResponse(['error' => 'Validation failed', 'fields' => $e->getErrors()], Http::STATUS_BAD_REQUEST);
         } catch (\Exception $e) {
             return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
@@ -304,6 +321,8 @@ class ApiFieldController extends BaseOCSController {
             $this->apiFieldService->saveFileMetadata($fileId, $metadata);
 
             return new DataResponse(['success' => true], Http::STATUS_OK);
+        } catch (ApiValidationException $e) {
+            return new DataResponse(['error' => 'Validation failed', 'fields' => $e->getErrors()], Http::STATUS_BAD_REQUEST);
         } catch (\Exception $e) {
             return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
@@ -361,6 +380,8 @@ class ApiFieldController extends BaseOCSController {
             $metadata = $this->request->getParam('metadata', []);
 
             $fields = $this->fieldService->getFieldsByScope('groupfolder');
+            $this->apiFieldService->validateMetadataValues($metadata, $fields);
+
             $fieldMap = [];
             foreach ($fields as $field) {
                 $fieldMap[$field['field_name']] = $field['id'];
@@ -376,6 +397,8 @@ class ApiFieldController extends BaseOCSController {
             }
 
             return new DataResponse(['success' => true], Http::STATUS_OK);
+        } catch (ApiValidationException $e) {
+            return new DataResponse(['error' => 'Validation failed', 'fields' => $e->getErrors()], Http::STATUS_BAD_REQUEST);
         } catch (\Exception $e) {
             return new DataResponse(['error' => $e->getMessage(), 'success' => false], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
@@ -437,6 +460,8 @@ class ApiFieldController extends BaseOCSController {
             $this->apiFieldService->saveGroupfolderFileMetadata($groupfolderId, $fileId, $metadata);
 
             return new DataResponse(['success' => true], Http::STATUS_OK);
+        } catch (ApiValidationException $e) {
+            return new DataResponse(['error' => 'Validation failed', 'fields' => $e->getErrors()], Http::STATUS_BAD_REQUEST);
         } catch (\Exception $e) {
             return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }

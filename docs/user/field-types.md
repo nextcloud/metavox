@@ -40,13 +40,22 @@ Numeric input that only accepts numbers.
 ---
 
 ### Date
-A date picker for selecting dates.
+A date picker for selecting dates. Optionally, the field can also capture a time component.
 
-**Use cases:** Publication date, expiry date, review date
+**Use cases:** Publication date, expiry date, review date, meeting start, deadlines
 
-**Example:** 2026-04-15
+**Examples:**
+- Date only: `2026-04-15`
+- Date + time: `2026-04-15T14:30:00`
 
-**Options:** None
+**Options:**
+- **Include time component** (default: off) — captures hours, minutes and seconds in
+  addition to the date. Stored as a floating ISO 8601 string (no timezone), matching
+  SharePoint's `SPFieldDateTime` with `DisplayFormat = DateTime`.
+
+**SharePoint migration note:** Columns with `DisplayFormat = DateOnly` map to MetaVox
+Date fields with this option **off**; `DateTime` maps to **on**. CSV import support is
+planned for a future release.
 
 ---
 

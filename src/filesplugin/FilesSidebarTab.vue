@@ -769,11 +769,14 @@ export default {
 				return value === '1' || value === true ? this.t('metavox', 'Yes') : this.t('metavox', 'No')
 			}
 
-			// Handle date
+			// Handle date (optionally with time component)
 			if (field.field_type === 'date' && value) {
 				try {
 					const date = new Date(value)
-					return date.toLocaleDateString()
+					if (isNaN(date.getTime())) return value
+					const opts = field.field_options
+					const includeTime = !!(opts && typeof opts === 'object' && !Array.isArray(opts) && opts.includeTime)
+					return includeTime ? date.toLocaleString() : date.toLocaleDateString()
 				} catch (e) {
 					return value
 				}

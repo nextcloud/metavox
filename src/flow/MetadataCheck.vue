@@ -110,13 +110,14 @@
 				</option>
 			</select>
 
-			<!-- Date field -->
+			<!-- Date field (optionally datetime-local) -->
 			<input
 				v-else-if="selectedField.type === 'date'"
 				v-model="checkValue"
-				type="date"
+				:type="dateFieldIncludesTime(selectedField) ? 'datetime-local' : 'date'"
+				:step="dateFieldIncludesTime(selectedField) ? 1 : undefined"
 				class="nc-input-field"
-				@change="updateValue"
+				@change="onDateChange"
 			>
 
 			<!-- Number field -->
@@ -169,6 +170,7 @@
 <script>
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
+import { dateFieldIncludesTime, padDatetimeLocal } from '../utils/dateField.js'
 
 // Operators per field type
 const OPERATORS_BY_TYPE = {
@@ -373,6 +375,15 @@ export default {
 	},
 
 	methods: {
+		dateFieldIncludesTime,
+
+		onDateChange() {
+			if (this.selectedField && dateFieldIncludesTime(this.selectedField)) {
+				this.checkValue = padDatetimeLocal(this.checkValue)
+			}
+			this.updateValue()
+		},
+
 		getOperatorsForFieldType(fieldType) {
 			return OPERATORS_BY_TYPE[fieldType] || DEFAULT_OPERATORS
 		},

@@ -222,6 +222,7 @@ The available configuration options are as follows:
 | `authType`    | `null`        | The authentication type to use. If not provided, defaults to trying to detect based upon whether `username` and `password` were provided. |
 | `attributeNamePrefix` | `@`   | Prefix used to identify attributes on the property object |
 | `contactHref` | _[This URL](https://github.com/perry-mitchell/webdav-client/blob/master/LOCK_CONTACT.md)_ | Contact URL used for LOCKs. |
+| `entityDecoder` | _None_      | Entity decoder configuration for XML parsing. See [entity decoder](#entity-decoder). |
 | `headers`     | `{}`          | Additional headers provided to all requests. Headers provided here are overridden by method-specific headers, including `Authorization`. |
 | `httpAgent`   | _None_        | HTTP agent instance. Available only in Node. See [http.Agent](https://nodejs.org/api/http.html#http_class_http_agent). |
 | `httpsAgent`  | _None_        | HTTPS agent instance. Available only in Node. See [https.Agent](https://nodejs.org/api/https.html#https_class_https_agent). |
@@ -229,6 +230,29 @@ The available configuration options are as follows:
 | `token`       | _None_        | Token object for authentication.                  |
 | `username`    | _None_        | Username for authentication.                      |
 | `withCredentials` | _None_    | Credentials inclusion setting for the request,    |
+
+### Entity decoder
+
+The `entityDecoder` option controls how XML entity references are decoded during XML parsing. When not set, entity expansion limits are unlimited (no restrictions).
+
+```typescript
+const client = createClient("https://some-server.org", {
+    username: "user",
+    password: "pass",
+    entityDecoder: {
+        limit: {
+            maxTotalExpansions: 1000,
+            maxExpandedLength: 50000
+        }
+    }
+});
+```
+
+| Property        | Default  | Description                                           |
+|-----------------|----------|-------------------------------------------------------|
+| `limit`         | _None_   | Security limits for entity expansion.                 |
+| `limit.maxTotalExpansions` | `0` | Maximum number of entity references expanded per document. `0` means unlimited. |
+| `limit.maxExpandedLength`  | `0` | Maximum number of characters added by entity expansion per document. `0` means unlimited. |
 
 ### Client methods
 

@@ -56,9 +56,18 @@ class ApiFieldService {
     /**
      * Save metadata for a single file (API-safe).
      * Translates field_name → field_id and handles array values.
+     *
+     * Value format contract for `date` fields:
+     *   - field_options.includeTime = false → value MUST match YYYY-MM-DD
+     *   - field_options.includeTime = true  → value MUST match YYYY-MM-DDTHH:mm:ss
+     *     (floating ISO 8601 — no `Z`, no timezone offset)
+     *
+     * @throws ApiValidationException if any date value fails the format contract.
      */
     public function saveFileMetadata(int $fileId, array $metadata): void {
         $fields = $this->fieldService->getAllFields();
+        $this->validateMetadataValues($metadata, $fields);
+
         $fieldMap = [];
         foreach ($fields as $field) {
             $fieldMap[$field['field_name']] = $field['id'];
@@ -77,9 +86,18 @@ class ApiFieldService {
     /**
      * Save metadata for a file within a specific groupfolder (API-safe).
      * Translates field_name → field_id and handles array values.
+     *
+     * Value format contract for `date` fields:
+     *   - field_options.includeTime = false → value MUST match YYYY-MM-DD
+     *   - field_options.includeTime = true  → value MUST match YYYY-MM-DDTHH:mm:ss
+     *     (floating ISO 8601 — no `Z`, no timezone offset)
+     *
+     * @throws ApiValidationException if any date value fails the format contract.
      */
     public function saveGroupfolderFileMetadata(int $groupfolderId, int $fileId, array $metadata): void {
         $fields = $this->fieldService->getFieldsByScope('groupfolder');
+        $this->validateMetadataValues($metadata, $fields);
+
         $fieldMap = [];
         foreach ($fields as $field) {
             $fieldMap[$field['field_name']] = $field['id'];
@@ -92,6 +110,124 @@ class ApiFieldService {
                 }
                 $this->fieldService->saveGroupfolderFileFieldValue($groupfolderId, $fileId, $fieldMap[$fieldName], (string)$value, $fieldName);
             }
+        }
+    }
+
+    // ========================================
+    // Validation helpers (external API contract)
+    // ========================================
+
+    /**
+     * Normalise the `field_options` payload submitted to the field-create/update
+     * endpoints. For `date` fields, casts incoming `includeTime` to a real bool
+     * (the param can arrive as `"1"`, `"true"`, `1`, true, …) and rejects any
+     * other keys. For other field types this is a no-op.
+     *
+     * Returns the normalised value to store. Throws ApiValidationException
+     * if the shape is invalid for a `date` field.
+     *
+     * @param string $fieldType   The `field_type` being created/updated
+     * @param mixed  $fieldOptions Raw `field_options` from the request
+     * @return mixed Normalised field_options
+     * @throws ApiValidationException
+     */
+    public function normaliseFieldDefinitionOptions(string $fieldType, $fieldOptions) {
+        if ($fieldType !== 'date') {
+            return $fieldOptions;
+        }
+
+        // Empty payload is fine — defaults to date-only.
+        if ($fieldOptions === null || $fieldOptions === '' || $fieldOptions === []) {
+            return ['includeTime' => false];
+        }
+
+        if (!is_array($fieldOptions)) {
+            throw new ApiValidationException([
+                'field_options' => 'For date fields, field_options must be an object like {"includeTime": true}.',
+            ]);
+        }
+
+        // Reject list-shape (associative-only for date fields).
+        $isList = array_keys($fieldOptions) === range(0, count($fieldOptions) - 1);
+        if ($isList) {
+            throw new ApiValidationException([
+                'field_options' => 'For date fields, field_options must be an object like {"includeTime": true}, not a list.',
+            ]);
+        }
+
+        $unknown = array_diff(array_keys($fieldOptions), ['includeTime']);
+        if (!empty($unknown)) {
+            throw new ApiValidationException([
+                'field_options' => 'Unknown keys for date field_options: ' . implode(', ', $unknown)
+                    . '. Only "includeTime" is supported.',
+            ]);
+        }
+
+        $raw = $fieldOptions['includeTime'] ?? false;
+        $includeTime = filter_var($raw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        if ($includeTime === null) {
+            throw new ApiValidationException([
+                'field_options' => '"includeTime" must be a boolean (true/false).',
+            ]);
+        }
+
+        return ['includeTime' => $includeTime];
+    }
+
+    /**
+     * Validate the `metadata` payload for a write request.
+     *
+     * Currently enforces the date / datetime format contract; other field types
+     * are passed through unchanged. Pre-2.1.0 date fields (`field_options`
+     * empty/null) are treated as `includeTime = false`.
+     *
+     * All-or-nothing: throws on the first batch of errors, no partial save.
+     *
+     * @param array $metadata field_name → value (from request)
+     * @param array $fields   Field definitions (from FieldService)
+     * @throws ApiValidationException
+     */
+    public function validateMetadataValues(array $metadata, array $fields): void {
+        $fieldDefs = [];
+        foreach ($fields as $field) {
+            $fieldDefs[$field['field_name']] = $field;
+        }
+
+        $errors = [];
+        foreach ($metadata as $fieldName => $value) {
+            if (!isset($fieldDefs[$fieldName])) {
+                // Unknown field — silently skipped by the save loop, so don't error here.
+                continue;
+            }
+            $field = $fieldDefs[$fieldName];
+            if ($field['field_type'] !== 'date') {
+                continue;
+            }
+            // Empty values are allowed (clear-the-field).
+            if ($value === null || $value === '') {
+                continue;
+            }
+            if (!is_string($value)) {
+                $errors[$fieldName] = 'Date value must be a string.';
+                continue;
+            }
+
+            $opts = $field['field_options'] ?? null;
+            $includeTime = is_array($opts) && !empty($opts['includeTime']);
+
+            if ($includeTime) {
+                if (!preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/', $value)) {
+                    $errors[$fieldName] = 'Expected YYYY-MM-DDTHH:mm:ss (floating ISO 8601, no timezone).';
+                }
+            } else {
+                if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+                    $errors[$fieldName] = 'Expected YYYY-MM-DD.';
+                }
+            }
+        }
+
+        if (!empty($errors)) {
+            throw new ApiValidationException($errors);
         }
     }
 

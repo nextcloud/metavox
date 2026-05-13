@@ -814,7 +814,6 @@
   },
   "es.array.includes": {
     "android": "53",
-    "bun": "0.1.1",
     "chrome": "53",
     "chrome-android": "53",
     "deno": "1.0",
@@ -822,7 +821,6 @@
     "electron": "1.4",
     "firefox": "102",
     "firefox-android": "102",
-    "ios": "10.0",
     "node": "7.0",
     "oculus": "3.0",
     "opera": "40",
@@ -830,7 +828,6 @@
     "opera_mobile": "40",
     "quest": "3.0",
     "rhino": "1.8.0",
-    "safari": "10.0",
     "samsung": "6.0"
   },
   "es.array.index-of": {
@@ -1905,9 +1902,18 @@
     "samsung": "26.0"
   },
   "es.iterator.concat": {
+    "android": "146",
     "bun": "1.3.7",
+    "chrome": "146",
+    "chrome-android": "146",
+    "deno": "2.7.2",
+    "edge": "146",
+    "electron": "41.0",
     "firefox": "147",
-    "firefox-android": "147"
+    "firefox-android": "147",
+    "ios": "26.4",
+    "opera": "130",
+    "safari": "26.4"
   },
   "es.iterator.dispose": {
     "android": "136",
@@ -2319,12 +2325,15 @@
     "bun": "1.2.20",
     "chrome": "145",
     "chrome-android": "145",
+    "deno": "2.6.7",
     "edge": "145",
     "electron": "41.0",
     "firefox": "144",
     "firefox-android": "144",
     "ios": "26.2",
     "opera": "129",
+    "opera-android": "96",
+    "opera_mobile": "96",
     "safari": "26.2"
   },
   "es.map.get-or-insert-computed": {
@@ -2332,12 +2341,15 @@
     "bun": "1.2.20",
     "chrome": "145",
     "chrome-android": "145",
+    "deno": "2.6.7",
     "edge": "145",
     "electron": "41.0",
     "firefox": "144",
     "firefox-android": "144",
     "ios": "26.2",
     "opera": "129",
+    "opera-android": "96",
+    "opera_mobile": "96",
     "safari": "26.2"
   },
   "es.math.acosh": {
@@ -2706,10 +2718,16 @@
     "samsung": "3.4"
   },
   "es.math.sum-precise": {
+    "android": "147",
     "bun": "1.2.18",
+    "chrome": "147",
+    "chrome-android": "147",
+    "edge": "147",
+    "electron": "42.0",
     "firefox": "137",
     "firefox-android": "137",
     "ios": "26.2",
+    "opera": "131",
     "safari": "26.2"
   },
   "es.math.tanh": {
@@ -3737,7 +3755,7 @@
     "chrome": "35",
     "chrome-android": "35",
     "deno": "1.0",
-    "edge": "74",
+    "edge": "79",
     "electron": "0.20",
     "firefox": "8",
     "firefox-android": "8",
@@ -3761,7 +3779,7 @@
     "chrome": "35",
     "chrome-android": "35",
     "deno": "1.0",
-    "edge": "74",
+    "edge": "79",
     "electron": "0.20",
     "firefox": "21",
     "firefox-android": "21",
@@ -6349,12 +6367,15 @@
     "bun": "1.1.22",
     "chrome": "144",
     "chrome-android": "144",
+    "deno": "2.6.7",
     "edge": "144",
     "electron": "40.0",
     "firefox": "133",
     "firefox-android": "133",
     "ios": "18.2",
     "opera": "128",
+    "opera-android": "95",
+    "opera_mobile": "95",
     "safari": "18.2"
   },
   "es.uint8-array.to-base64": {
@@ -6448,12 +6469,15 @@
     "bun": "1.2.20",
     "chrome": "145",
     "chrome-android": "145",
+    "deno": "2.6.7",
     "edge": "145",
     "electron": "41.0",
     "firefox": "144",
     "firefox-android": "144",
     "ios": "26.2",
     "opera": "129",
+    "opera-android": "96",
+    "opera_mobile": "96",
     "safari": "26.2"
   },
   "es.weak-map.get-or-insert-computed": {
@@ -6461,12 +6485,15 @@
     "bun": "1.2.20",
     "chrome": "145",
     "chrome-android": "145",
+    "deno": "2.6.7",
     "edge": "145",
     "electron": "41.0",
     "firefox": "144",
     "firefox-android": "144",
     "ios": "26.2",
     "opera": "129",
+    "opera-android": "96",
+    "opera_mobile": "96",
     "safari": "26.2"
   },
   "es.weak-set": {
@@ -6952,9 +6979,18 @@
   "esnext.iterator.as-indexed-pairs": {},
   "esnext.iterator.chunks": {},
   "esnext.iterator.concat": {
+    "android": "146",
     "bun": "1.3.7",
+    "chrome": "146",
+    "chrome-android": "146",
+    "deno": "2.7.2",
+    "edge": "146",
+    "electron": "41.0",
     "firefox": "147",
-    "firefox-android": "147"
+    "firefox-android": "147",
+    "ios": "26.4",
+    "opera": "130",
+    "safari": "26.4"
   },
   "esnext.iterator.dispose": {
     "android": "136",
@@ -7299,12 +7335,15 @@
     "bun": "1.2.20",
     "chrome": "145",
     "chrome-android": "145",
+    "deno": "2.6.7",
     "edge": "145",
     "electron": "41.0",
     "firefox": "144",
     "firefox-android": "144",
     "ios": "26.2",
     "opera": "129",
+    "opera-android": "96",
+    "opera_mobile": "96",
     "safari": "26.2"
   },
   "esnext.map.get-or-insert-computed": {
@@ -7312,12 +7351,15 @@
     "bun": "1.2.20",
     "chrome": "145",
     "chrome-android": "145",
+    "deno": "2.6.7",
     "edge": "145",
     "electron": "41.0",
     "firefox": "144",
     "firefox-android": "144",
     "ios": "26.2",
     "opera": "129",
+    "opera-android": "96",
+    "opera_mobile": "96",
     "safari": "26.2"
   },
   "esnext.map.group-by": {
@@ -7387,10 +7429,16 @@
   "esnext.math.seeded-prng": {},
   "esnext.math.signbit": {},
   "esnext.math.sum-precise": {
+    "android": "147",
     "bun": "1.2.18",
+    "chrome": "147",
+    "chrome-android": "147",
+    "edge": "147",
+    "electron": "42.0",
     "firefox": "137",
     "firefox-android": "137",
     "ios": "26.2",
+    "opera": "131",
     "safari": "26.2"
   },
   "esnext.math.umulh": {},
@@ -8056,12 +8104,15 @@
     "bun": "1.1.22",
     "chrome": "144",
     "chrome-android": "144",
+    "deno": "2.6.7",
     "edge": "144",
     "electron": "40.0",
     "firefox": "133",
     "firefox-android": "133",
     "ios": "18.2",
     "opera": "128",
+    "opera-android": "95",
+    "opera_mobile": "95",
     "safari": "18.2"
   },
   "esnext.uint8-array.to-base64": {
@@ -8111,12 +8162,15 @@
     "bun": "1.2.20",
     "chrome": "145",
     "chrome-android": "145",
+    "deno": "2.6.7",
     "edge": "145",
     "electron": "41.0",
     "firefox": "144",
     "firefox-android": "144",
     "ios": "26.2",
     "opera": "129",
+    "opera-android": "96",
+    "opera_mobile": "96",
     "safari": "26.2"
   },
   "esnext.weak-map.get-or-insert-computed": {
@@ -8124,12 +8178,15 @@
     "bun": "1.2.20",
     "chrome": "145",
     "chrome-android": "145",
+    "deno": "2.6.7",
     "edge": "145",
     "electron": "41.0",
     "firefox": "144",
     "firefox-android": "144",
     "ios": "26.2",
     "opera": "129",
+    "opera-android": "96",
+    "opera_mobile": "96",
     "safari": "26.2"
   },
   "esnext.weak-map.upsert": {},

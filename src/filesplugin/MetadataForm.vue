@@ -45,16 +45,17 @@
 				rows="6"
 				@input="handleUpdate(field.field_name, $event.target.value)" />
 
-			<!-- Date Field -->
+			<!-- Date Field (optionally datetime-local) -->
 			<input
 				v-else-if="field.field_type === 'date'"
 				:id="`field-${field.id}`"
-				type="date"
+				:type="dateFieldIncludesTime(field) ? 'datetime-local' : 'date'"
+				:step="dateFieldIncludesTime(field) ? 1 : undefined"
 				:value="values[field.field_name] || ''"
 				:disabled="readonly"
 				:required="field.is_required"
 				class="date-input"
-				@input="handleUpdate(field.field_name, $event.target.value)" />
+				@input="handleUpdate(field.field_name, dateFieldIncludesTime(field) ? padDatetimeLocal($event.target.value) : $event.target.value)" />
 
 			<!-- Select Field -->
 			<NcSelect
@@ -175,6 +176,7 @@ import RefreshIcon from 'vue-material-design-icons/Refresh.vue'
 import UrlFieldInput from '../components/fields/UrlFieldInput.vue'
 import UserGroupFieldInput from '../components/fields/UserGroupFieldInput.vue'
 import FileLinkFieldInput from '../components/fields/FileLinkFieldInput.vue'
+import { dateFieldIncludesTime, padDatetimeLocal } from '../utils/dateField.js'
 
 export default {
 	name: 'MetadataForm',
@@ -233,6 +235,8 @@ export default {
 
 	methods: {
 		t,
+		dateFieldIncludesTime,
+		padDatetimeLocal,
 
 		formatSuggestion(field, value) {
 			if (field.field_type === 'checkbox') {
