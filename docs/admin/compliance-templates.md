@@ -124,6 +124,11 @@ The templates are a starting point. Customize them for your organization:
 
 **Available field types**: `text`, `textarea`, `number`, `date`, `select`, `multiselect`, `checkbox`, `url`, `usergroup`, `filelink`
 
+**Date fields** can optionally include a time component (`includeTime: true`
+in `field_options`) — see [Field Types → Date](../user/field-types.md#date).
+Useful for SharePoint migrations where `SPFieldDateTime.DisplayFormat = DateTime`
+columns need to round-trip lossless.
+
 ## Resources
 
 - [MetaVox GitHub](https://github.com/nextcloud/metavox)

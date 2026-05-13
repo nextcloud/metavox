@@ -53,8 +53,19 @@ A date picker for selecting dates. Optionally, the field can also capture a time
   addition to the date. Stored as a floating ISO 8601 string (no timezone), matching
   SharePoint's `SPFieldDateTime` with `DisplayFormat = DateTime`.
 
+When creating or editing a Date field in admin settings, tick **Include time component**
+to enable the time portion:
+
+![Date field with Include time component checkbox](../../screenshots/fields-datetime.png)
+
+In the file sidebar and inline grid editor, the field then renders as a datetime picker
+that captures both date and time:
+
+![Datetime input in the file sidebar](../../screenshots/fields-datetime-view.png)
+
 **SharePoint migration note:** Columns with `DisplayFormat = DateOnly` map to MetaVox
-Date fields with this option **off**; `DateTime` maps to **on**. CSV import support is
+Date fields with this option **off**; `DateTime` maps to **on**. Existing pre-2.1.0
+Date fields render as date-only — no data migration is performed. CSV import support is
 planned for a future release.
 
 ---
