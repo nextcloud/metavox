@@ -98,16 +98,20 @@
 						<li>{{ t('metavox', 'Number of metadata fields and their types') }}</li>
 						<li>{{ t('metavox', 'Number of groupfolders using MetaVox') }}</li>
 						<li>{{ t('metavox', 'Total metadata entries count') }}</li>
+						<li>{{ t('metavox', 'Total user count and active users') }}</li>
 						<li>{{ t('metavox', 'MetaVox, Nextcloud and PHP versions') }}</li>
 						<li>{{ t('metavox', 'Anonymous instance identifier (hashed URL)') }}</li>
 						<li>{{ t('metavox', 'Basic server configuration (database, OS, web server, language, timezone, country)') }}</li>
+						<li>{{ t('metavox', 'Whether your Nextcloud has an Extended Support / Enterprise subscription (a single yes/no, sourced from Nextcloud\'s public API)') }}</li>
 					</ul>
 					<h4>{{ t('metavox', 'What we never collect') }}:</h4>
 					<ul class="not-collected">
 						<li>{{ t('metavox', 'Metadata content or values') }}</li>
 						<li>{{ t('metavox', 'File names or paths') }}</li>
 						<li>{{ t('metavox', 'User names or email addresses') }}</li>
+						<li>{{ t('metavox', 'Organization name or contact email') }}</li>
 						<li>{{ t('metavox', 'Your actual server URL') }}</li>
+						<li>{{ t('metavox', 'Any personal or sensitive data') }}</li>
 					</ul>
 				</div>
 			</div>

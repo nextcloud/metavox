@@ -24,6 +24,7 @@ class TelemetryService {
     private LoggerInterface $logger;
     private IUserManager $userManager;
     private IGroupManager $groupManager;
+    private LicenseService $licenseService;
 
     public function __construct(
         IClientService $httpClient,
@@ -31,7 +32,8 @@ class TelemetryService {
         IDBConnection $db,
         LoggerInterface $logger,
         IUserManager $userManager,
-        IGroupManager $groupManager
+        IGroupManager $groupManager,
+        LicenseService $licenseService
     ) {
         $this->httpClient = $httpClient;
         $this->config = $config;
@@ -39,6 +41,7 @@ class TelemetryService {
         $this->logger = $logger;
         $this->userManager = $userManager;
         $this->groupManager = $groupManager;
+        $this->licenseService = $licenseService;
     }
 
     /**
@@ -165,9 +168,34 @@ class TelemetryService {
             'osFamily' => PHP_OS_FAMILY,
             'webServer' => $this->getWebServer(),
             'isDocker' => $this->isDocker(),
-            'organizationName' => $this->config->getAppValue(self::APP_ID, 'organization_name', ''),
-            'contactEmail' => $this->config->getAppValue(self::APP_ID, 'contact_email', ''),
+            'hasExtendedSupport' => $this->hasExtendedSupport(),
+            // Sent so the license server can verify the hasExtendedSupport claim —
+            // the boolean alone is unauthenticated and could be spoofed by anyone
+            // posting to the telemetry endpoint. The server only honors the claim
+            // when this key + the instance hash match an active license_usage row.
+            // Empty string for community instances (no license) — server treats
+            // those as 'never Enterprise' which is correct.
+            'licenseKey' => $this->licenseService->getLicenseKey(),
         ];
+    }
+
+    /**
+     * Detect whether the host Nextcloud has an Extended Support / Enterprise
+     * subscription. Uses Nextcloud's public API (OCP\Util::hasExtendedSupport,
+     * available since NC 17). Returns false on any failure so a Community
+     * instance is never reported as Enterprise.
+     */
+    private function hasExtendedSupport(): bool {
+        try {
+            if (class_exists(\OCP\Util::class) && method_exists(\OCP\Util::class, 'hasExtendedSupport')) {
+                return \OCP\Util::hasExtendedSupport();
+            }
+        } catch (\Throwable $e) {
+            $this->logger->debug('TelemetryService: hasExtendedSupport() check failed', [
+                'error' => $e->getMessage()
+            ]);
+        }
+        return false;
     }
 
     /**
