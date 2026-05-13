@@ -47,6 +47,16 @@ class FieldService {
             ?? $cacheFactory->createLocal('metavox');
     }
 
+/**
+ * Parse a field_options TEXT blob.
+ *
+ * Returns:
+ *  - Associative array for date fields, e.g. ['includeTime' => true]
+ *  - List of strings for select/multiselect fields, e.g. ['Yes', 'No']
+ *  - Empty array if NULL/empty/invalid
+ *
+ * Call sites gate on field_type before treating the return as a list.
+ */
 private function parseFieldOptions(?string $raw): array {
     if (empty($raw)) {
         return [];
@@ -207,14 +217,16 @@ public function updateField(int $id, array $fieldData): bool {
             return false;
         }
 
-        // Process field_options
-        $fieldOptions = '';
-        if (isset($fieldData['field_options'])) {
-            if (is_array($fieldData['field_options'])) {
-                $fieldOptions = implode("\n", $fieldData['field_options']);
-            } else {
-                $fieldOptions = $fieldData['field_options'];
-            }
+        // Process field_options — preserve associative-array shape (e.g. date includeTime),
+        // flatten list-shape arrays/strings (select/multiselect options) the legacy way.
+        $fieldOptionsRaw = $fieldData['field_options'] ?? '';
+        if (is_array($fieldOptionsRaw)
+            && $fieldOptionsRaw !== []
+            && array_keys($fieldOptionsRaw) !== range(0, count($fieldOptionsRaw) - 1)) {
+            $fieldOptionsJson = json_encode($fieldOptionsRaw);
+        } else {
+            $flat = is_array($fieldOptionsRaw) ? implode("\n", $fieldOptionsRaw) : (string)$fieldOptionsRaw;
+            $fieldOptionsJson = json_encode(array_values(array_filter(explode("\n", $flat), fn($v) => $v !== '')));
         }
 
         $qb = $this->db->getQueryBuilder();
@@ -223,7 +235,7 @@ public function updateField(int $id, array $fieldData): bool {
            ->set('field_label', $qb->createNamedParameter($fieldData['field_label']))
            ->set('field_type', $qb->createNamedParameter($fieldData['field_type']))
            ->set('field_description', $qb->createNamedParameter($fieldData['field_description'] ?? ''))
-           ->set('field_options', $qb->createNamedParameter(json_encode(array_filter(explode("\n", $fieldOptions)))))
+           ->set('field_options', $qb->createNamedParameter($fieldOptionsJson))
            ->set('is_required', $qb->createNamedParameter($fieldData['is_required'] ? 1 : 0, IQueryBuilder::PARAM_INT))
            ->set('sort_order', $qb->createNamedParameter($fieldData['sort_order'] ?? 0, IQueryBuilder::PARAM_INT))
            ->set('updated_at', $qb->createNamedParameter(date('Y-m-d H:i:s')))
@@ -518,13 +530,14 @@ public function getGroupfolders(string $userId, bool $adminMode = false): array 
                 $gfFolders = $folderManager->getAllFolders();
                 $folders = [];
                 foreach ($gfFolders as $gfFolder) {
+                    $groups = GroupFolderAccessor::get($gfFolder, 'groups', []);
                     $folders[] = [
-                        'id' => $gfFolder->id,
-                        'mount_point' => $gfFolder->mountPoint,
-                        'groups' => array_keys($gfFolder->groups),
-                        'quota' => $gfFolder->quota,
+                        'id' => GroupFolderAccessor::get($gfFolder, 'id'),
+                        'mount_point' => GroupFolderAccessor::get($gfFolder, 'mountPoint'),
+                        'groups' => is_array($groups) ? array_keys($groups) : [],
+                        'quota' => GroupFolderAccessor::get($gfFolder, 'quota'),
                         'size' => 0,
-                        'acl' => $gfFolder->acl,
+                        'acl' => GroupFolderAccessor::get($gfFolder, 'acl'),
                     ];
                 }
                 $this->groupfoldersCache[$cacheKey] = $folders;
@@ -535,12 +548,12 @@ public function getGroupfolders(string $userId, bool $adminMode = false): array 
             $folders = [];
             foreach ($gfFolders as $gfFolder) {
                 $folders[] = [
-                    'id' => $gfFolder->id,
-                    'mount_point' => $gfFolder->mountPoint,
+                    'id' => GroupFolderAccessor::get($gfFolder, 'id'),
+                    'mount_point' => GroupFolderAccessor::get($gfFolder, 'mountPoint'),
                     'groups' => [],
-                    'quota' => $gfFolder->quota,
+                    'quota' => GroupFolderAccessor::get($gfFolder, 'quota'),
                     'size' => 0,
-                    'acl' => $gfFolder->acl,
+                    'acl' => GroupFolderAccessor::get($gfFolder, 'acl'),
                 ];
             }
             $this->groupfoldersCache[$cacheKey] = $folders;

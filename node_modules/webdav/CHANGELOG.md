@@ -1,5 +1,11 @@
 # WebDAV-Client changelog
 
+## v5.10.0
+_2026-05-03_
+
+ * [#406](https://github.com/perry-mitchell/webdav-client/issues/406) Allow setting entity expansion limits (defaults to unlimited, again)
+ * Dependency audit fixes and upgrades
+
 ## v5.9.0
 _2026-02-04_
 

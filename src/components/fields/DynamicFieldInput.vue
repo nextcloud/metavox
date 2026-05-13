@@ -11,16 +11,17 @@
     rows="6"
     @input="$emit('update:modelValue', $event.target.value)" />
 
-  <!-- Native date input for date type -->
+  <!-- Native date input for date type (optionally datetime-local) -->
   <input
     v-else-if="type === 'date'"
     :id="inputId"
-    type="date"
+    :type="includeTime ? 'datetime-local' : 'date'"
+    :step="includeTime ? 1 : undefined"
     :value="modelValue || ''"
     :disabled="disabled"
     :required="required"
     class="date-input"
-    @input="$emit('update:modelValue', $event.target.value)" />
+    @input="onDateInput" />
 
   <!-- URL field type -->
   <UrlFieldInput
@@ -69,6 +70,7 @@ import { NcTextField, NcSelect, NcCheckboxRadioSwitch } from '@nextcloud/vue'
 import UrlFieldInput from './UrlFieldInput.vue'
 import UserGroupFieldInput from './UserGroupFieldInput.vue'
 import FileLinkFieldInput from './FileLinkFieldInput.vue'
+import { dateFieldIncludesTime, padDatetimeLocal } from '../../utils/dateField.js'
 
 export default {
   name: 'DynamicFieldInput',
@@ -112,7 +114,16 @@ export default {
     }
   },
   emits: ['update:modelValue'],
+  methods: {
+    onDateInput(event) {
+      const raw = event.target.value || ''
+      this.$emit('update:modelValue', this.includeTime ? padDatetimeLocal(raw) : raw)
+    }
+  },
   computed: {
+    includeTime() {
+      return dateFieldIncludesTime(this.field)
+    },
     fieldComponent() {
       const componentMap = {
         text: 'NcTextField',

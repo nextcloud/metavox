@@ -50,12 +50,12 @@ public function getAccessibleGroupfolders(string $userId): array {
             $folders = [];
             foreach ($gfFolders as $gfFolder) {
                 $folders[] = [
-                    'id' => $gfFolder->id,
-                    'mount_point' => $gfFolder->mountPoint,
+                    'id' => GroupFolderAccessor::get($gfFolder, 'id'),
+                    'mount_point' => GroupFolderAccessor::get($gfFolder, 'mountPoint'),
                     'groups' => [],
-                    'quota' => $gfFolder->quota,
+                    'quota' => GroupFolderAccessor::get($gfFolder, 'quota'),
                     'size' => 0,
-                    'acl' => $gfFolder->acl,
+                    'acl' => GroupFolderAccessor::get($gfFolder, 'acl'),
                 ];
             }
 

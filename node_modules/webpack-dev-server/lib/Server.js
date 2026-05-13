@@ -2019,6 +2019,14 @@ class Server {
           return;
         }
 
+        // Block cross-origin resource loading when Sec-Fetch-* headers are absent (HTTP origins)
+        if (
+          this.options.allowedHosts !== "all" &&
+          !this.isUserCORSWildcardEnabled()
+        ) {
+          res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+        }
+
         next();
       },
     });
@@ -3182,6 +3190,53 @@ class Server {
     }
 
     return false;
+  }
+
+  /**
+   * @private
+   * @returns {boolean} true when the user has configured a wildcard
+   * Access-Control-Allow-Origin header (opting into fully open cross-origin access)
+   */
+  isUserCORSWildcardEnabled() {
+    const { headers } = this.options;
+
+    if (!headers) {
+      return false;
+    }
+
+    if (typeof headers === "function") {
+      return false;
+    }
+
+    /**
+     * @param {string | string[]} value header value
+     * @returns {boolean} true when value is the "*" wildcard
+     */
+    const isWildcard = (value) => {
+      if (typeof value === "string") {
+        return value.trim() === "*";
+      }
+
+      if (Array.isArray(value)) {
+        return value.length === 1 && isWildcard(value[0]);
+      }
+
+      return false;
+    };
+
+    if (Array.isArray(headers)) {
+      return headers.some(
+        (header) =>
+          header.key.toLowerCase() === "access-control-allow-origin" &&
+          isWildcard(header.value),
+      );
+    }
+
+    return Object.entries(headers).some(
+      ([key, value]) =>
+        key.toLowerCase() === "access-control-allow-origin" &&
+        isWildcard(value),
+    );
   }
 
   /**

@@ -5,6 +5,29 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2.6.0 - 2026-04-16
+### Notes
+#### Deprecations
+`Axios.CancelToken` is now deprecated, this was deprecated by upstream Axios since 0.22.0.
+Please migrate to the native `AbortController` API using the `signal` attribute within the Axios request configuration.
+
+#### Behavior changes
+This package now only contains Javascript module (ESM) files, meaning the CommonJS files have been dropped.
+All app bundling tools we provide and support (Vite or Webpack 5+) will keep working without any changes needed. For unit tests vitest will keep working as well, for Jest you might need to adjust the `transformIgnorePatterns`.
+
+### Fixed
+* fix: fetch token using `@nextcloud/auth` which updates the token on context \([\#913](https://github.com/nextcloud-libraries/nextcloud-axios/pull/913)\)
+* fix: axios does not preserve symbols in its config \([\#916](https://github.com/nextcloud-libraries/nextcloud-axios/pull/916)\)
+
+### Changed
+* Updated development dependencies
+* build(deps): Removed dependency on `@nextcloud/router`
+* build(deps): Added dependency on `@nextcloud/auth` 2.6.0+
+* build(deps): Bump `axios` to 1.15.0
+* ci: update all workflow templates from organization template repository \([\#905](https://github.com/nextcloud-libraries/nextcloud-axios/pull/905)\)
+* chore: deprecate `Axios.CancelToken` \([\#918](https://github.com/nextcloud-libraries/nextcloud-axios/pull/918)\)
+* chore: drop cjs and migrate building to vanilla Typescript \([\#919](https://github.com/nextcloud-libraries/nextcloud-axios/pull/919)\)
+
 ## 2.5.2 - 2025-09-20
 ### Fixed
 * fix: add missing config interface typing for `reloadExpiredSession`

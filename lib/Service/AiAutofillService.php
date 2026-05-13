@@ -401,7 +401,10 @@ class AiAutofillService {
                     $desc .= 'return ONLY a number';
                     break;
                 case 'date':
-                    $desc .= 'return in YYYY-MM-DD format';
+                    $includeTime = is_array($field['field_options'] ?? null) && !empty($field['field_options']['includeTime']);
+                    $desc .= $includeTime
+                        ? 'return date AND time in YYYY-MM-DDTHH:mm:ss format (24-hour, NO timezone suffix)'
+                        : 'return in YYYY-MM-DD format';
                     break;
                 case 'select':
                 case 'dropdown':
@@ -515,7 +518,14 @@ PROMPT;
                     }
                     break;
                 case 'date':
-                    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $stringValue)) {
+                    // Accept YYYY-MM-DD (date-only) or YYYY-MM-DDTHH:mm:ss (datetime, no TZ)
+                    if (!preg_match('/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2})?$/', $stringValue)) {
+                        continue 2;
+                    }
+                    $expectsTime = is_array($fieldOptions[$fieldName] ?? null)
+                        && !empty($fieldOptions[$fieldName]['includeTime']);
+                    $hasTime = strpos($stringValue, 'T') !== false;
+                    if ($expectsTime !== $hasTime) {
                         continue 2;
                     }
                     break;

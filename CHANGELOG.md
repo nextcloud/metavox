@@ -6,6 +6,60 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [2.1.0] - 2026-05-13
+
+### Added
+- **Optional time component on Date fields** — Date field-type can now capture a time
+  alongside the date (hours/minutes/seconds). Toggled per-field via a new
+  "Include time component" checkbox in the field-definition dialog. When enabled,
+  inputs render as `datetime-local`/`NcDatetimePicker` in datetime mode and values are
+  stored as floating ISO 8601 strings (`YYYY-MM-DDTHH:mm:ss`, no `Z`). When disabled,
+  behaviour is unchanged (`YYYY-MM-DD`). Sidebar read-views, the files grid (including
+  inline double-click editing and the workflow MetadataCheck filter), and AI autofill
+  all branch on the flag. Maps 1-to-1 to SharePoint `SPFieldDateTime` —
+  `DisplayFormat=DateOnly` ⇄ off, `DisplayFormat=DateTime` ⇄ on — so SharePoint
+  migrations no longer lose the time component (resolves #65).
+
+### Fixed
+- **`updateField()` destroyed associative `field_options`** — saving an edit on a
+  field with a dict-shape `field_options` (introduced for `includeTime`) silently
+  flattened it via `implode("\n", …)` and lost the flag. `updateField()` now
+  preserves associative arrays as-is and only newline-flattens list-shape options
+  (select/multiselect). The pre-existing path in `createGroupfolderField()` was
+  already correct.
+- **Groupfolders v19+ compatibility — "No fields configured" / missing folder
+  names** — `OCA\GroupFolders\Folder\FolderManager::getFoldersForUser()` and
+  `::getAllFolders()` shifted return-shape from objects to associative arrays
+  somewhere between groupfolders v17 and v19 (and on some NC 31 distributions).
+  `UserFieldService` and `FieldService` accessed `->id`, `->mountPoint`,
+  `->quota`, `->acl`, `->groups` as object properties, which on the new shape
+  yields a PHP warning and `null` — causing the admin panel to render
+  "No fields configured" and the sidebar to show "This file is not in a team
+  folder". A new `GroupFolderAccessor::get()` helper handles both shapes
+  transparently.
+
+### Changed (external API contract)
+- **`POST/PUT /apps/metavox/api/groupfolder-fields[/{id}]`** — for `field_type=date`,
+  `field_options` now accepts an object `{"includeTime": <bool>}`. Other shapes
+  (lists, extra keys, non-bool values) return `400 Bad Request` with an
+  `error: "Validation failed"` body and a per-field `fields` map. Empty/missing
+  `field_options` normalises to `{"includeTime": false}` — matching pre-2.1.0
+  date-only behaviour. Truthy strings/ints (`"1"`, `1`, `"true"`) are accepted
+  and cast to bool. Other field types are unchanged.
+- **All metadata write endpoints** (`/file-metadata/{fileId}`,
+  `/groupfolders/{gf}/metadata`, `/groupfolders/{gf}/files/{fileId}/metadata`)
+  now validate `date` values before saving:
+   - `includeTime=false` → value MUST match `YYYY-MM-DD`
+   - `includeTime=true`  → value MUST match `YYYY-MM-DDTHH:mm:ss` (no `Z`, no offset)
+
+  Mismatches return `400 Bad Request` with `{"error": "Validation failed",
+  "fields": {"<field_name>": "<reason>"}}`. All-or-nothing: a single invalid
+  date in the batch rejects the whole request, no partial save. Empty strings
+  and `null` are allowed (clear-the-field). Other field types are passed
+  through unchanged.
+
+---
+
 ## [2.0.9] - 2026-05-13
 
 ### Changed

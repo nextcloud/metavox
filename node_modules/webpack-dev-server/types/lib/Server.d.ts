@@ -1358,6 +1358,12 @@ declare class Server<
   private isHostAllowed;
   /**
    * @private
+   * @returns {boolean} true when the user has configured a wildcard
+   * Access-Control-Allow-Origin header (opting into fully open cross-origin access)
+   */
+  private isUserCORSWildcardEnabled;
+  /**
+   * @private
    * @param {{ [key: string]: string | undefined }} headers headers
    * @param {string} headerToCheck header to check
    * @param {boolean} validateHost need to validate host

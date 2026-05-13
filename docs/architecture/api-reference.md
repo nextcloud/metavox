@@ -91,7 +91,7 @@ curl -X POST ".../api/v1/groupfolder-fields" \
 **Endpoint**: `POST /ocs/v2.php/apps/metavox/api/v1/groupfolder-fields`
 **Requires**: Nextcloud admin
 
-**Request body**:
+**Request body — select / multiselect** (list-shape `field_options`):
 ```json
 {
   "field_name": "publicatiestatus",
@@ -104,11 +104,54 @@ curl -X POST ".../api/v1/groupfolder-fields" \
 }
 ```
 
+**Request body — date** (object-shape `field_options`, since 2.1.0):
+```json
+{
+  "field_name": "meeting_start",
+  "field_label": "Meeting start",
+  "field_type": "date",
+  "field_options": { "includeTime": true },
+  "is_required": false,
+  "applies_to_groupfolder": 1
+}
+```
+
+For `field_type: "date"`, `field_options` is an **object** with a single boolean `includeTime`:
+- `false` (or omitted) → field stores `YYYY-MM-DD`
+- `true` → field stores `YYYY-MM-DDTHH:mm:ss` (floating ISO 8601, no `Z`, no timezone)
+
+See the [Date / DateTime fields](#date--datetime-fields) section below for the value-format contract on metadata writes, and the [SharePoint migration mapping](#sharepoint-migration-mapping).
+
+**Validation errors** (HTTP `400`) — returned when `field_options` for a date field has the wrong shape:
+```json
+{
+  "ocs": {
+    "meta": {"status": "failure", "statuscode": 400, "message": ""},
+    "data": {
+      "error": "Validation failed",
+      "fields": {
+        "field_options": "For date fields, field_options must be an object like {\"includeTime\": true}, not a list."
+      }
+    }
+  }
+}
+```
+
+Possible `field_options` validation messages for date fields:
+- `For date fields, field_options must be an object like {"includeTime": true}.` — non-array sent
+- `For date fields, field_options must be an object like {"includeTime": true}, not a list.` — list-shape `["x"]` sent
+- `Unknown keys for date field_options: <key>. Only "includeTime" is supported.` — extra keys in the object
+- `"includeTime" must be a boolean (true/false).` — non-bool-castable value
+
+Truthy strings (`"1"`, `"true"`) and ints (`1`) are accepted and cast to `true`; falsy variants to `false`.
+
 ### Update a field
 
 **Endpoint**: `PUT /ocs/v2.php/apps/metavox/api/v1/groupfolder-fields/{id}`
 **Requires**: Nextcloud admin
-Body: same as create.
+Body: same as create. The same `field_options` validation applies for date fields.
+
+Flipping `includeTime` on an existing field does **not** rewrite previously-stored values — they remain in their original format. Existing date-only values rendered through a now-`includeTime=true` field are parsed as local midnight; existing datetime values rendered through a now-`includeTime=false` field display only the date portion.
 
 ### Delete a field
 
@@ -177,7 +220,27 @@ Accepts a partial metadata object — only the fields included are updated. Requ
 {
   "metadata": {
     "file_gf_publicatiestatus": "Gesloten",
-    "file_gf_verantwoordelijke": "a.jansen"
+    "file_gf_verantwoordelijke": "a.jansen",
+    "file_gf_meeting_start": "2026-05-13T14:30:00",
+    "file_gf_publication_date": "2026-04-15"
+  }
+}
+```
+
+**Date / datetime values** (since 2.1.0) — see [Date / DateTime fields](#date--datetime-fields). Per-field format depends on the field's `field_options.includeTime` flag and is validated server-side. Empty string and `null` are always allowed (clear the value).
+
+**Validation errors** (HTTP `400`) — all-or-nothing: a single invalid date in the batch rejects the whole request, no partial save:
+```json
+{
+  "ocs": {
+    "meta": {"status": "failure", "statuscode": 400, "message": ""},
+    "data": {
+      "error": "Validation failed",
+      "fields": {
+        "file_gf_meeting_start": "Expected YYYY-MM-DDTHH:mm:ss (floating ISO 8601, no timezone).",
+        "file_gf_publication_date": "Expected YYYY-MM-DD."
+      }
+    }
   }
 }
 ```
@@ -210,7 +273,7 @@ Same as single file metadata, but scoped to a groupfolder context.
 
 **Endpoint**: `POST /ocs/v2.php/apps/metavox/api/v1/groupfolders/{groupfolderId}/files/{fileId}/metadata`
 
-Same as single file save, but scoped to a groupfolder context. Supports `unlock` and `unlock_field` parameters to atomically save and release a cell lock.
+Same as single file save, but scoped to a groupfolder context. Supports `unlock` and `unlock_field` parameters to atomically save and release a cell lock. The same date-value validation applies — see [Date / DateTime fields](#date--datetime-fields).
 
 ---
 
@@ -231,6 +294,76 @@ Returns folder-level metadata (not per-file).
 ### Save groupfolder metadata
 
 **Endpoint**: `POST /ocs/v2.php/apps/metavox/api/v1/groupfolders/{groupfolderId}/metadata`
+
+Same payload shape and date-value validation as the file-metadata save endpoints — see [Date / DateTime fields](#date--datetime-fields).
+
+---
+
+## Date / DateTime fields
+
+> Added in 2.1.0 — resolves SharePoint migration data loss (#65).
+
+A single `field_type: "date"` covers both date-only and date+time use cases, controlled by the `field_options.includeTime` flag.
+
+### Field-definition shape
+
+| `includeTime` | Stored value format | Description |
+|---|---|---|
+| `false` (default) | `YYYY-MM-DD` | Date-only (legacy MetaVox behaviour) |
+| `true` | `YYYY-MM-DDTHH:mm:ss` | Floating ISO 8601 — no `Z`, no timezone offset |
+
+`field_options` is an **object** for date fields (not a list, as it is for select/multiselect):
+```json
+{ "includeTime": true }
+```
+
+Pre-2.1.0 date fields with `field_options = null` or `[]` are treated as `includeTime = false`. When such a field is updated via the API without explicitly setting `field_options`, it normalises to `{"includeTime": false}` on save.
+
+### Value-format contract (writes)
+
+When saving metadata via any of the three write endpoints, date values are validated server-side:
+
+| Field's `includeTime` | Accepted regex | Example |
+|---|---|---|
+| `false` | `^\d{4}-\d{2}-\d{2}$` | `"2026-04-15"` |
+| `true` | `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$` | `"2026-04-15T14:30:00"` |
+
+Empty string `""` and JSON `null` are always allowed (clears the value).
+
+**Floating semantics — no timezone conversion.** MetaVox never adds, strips, or converts timezones. A value of `"2026-04-15T14:30:00"` means "14:30 wherever the reader is" — same wall-clock everywhere. This matches SharePoint's behaviour for `SPFieldDateTime` columns that omit the `Z`.
+
+**Rejected forms** (return `400`):
+- `"2026-04-15T14:30:00Z"` — explicit UTC suffix
+- `"2026-04-15T14:30:00+02:00"` — explicit offset
+- `"2026-04-15T14:30"` — missing seconds
+- `"2026-04-15 14:30:00"` — space instead of `T`
+- `"15/04/2026"` — locale-formatted dates
+- Any cross-format mismatch (date-only value for `includeTime=true` field, or vice versa)
+
+### SharePoint migration mapping
+
+| SharePoint `SPFieldDateTime.DisplayFormat` | MetaVox |
+|---|---|
+| `DateOnly` (0) | `field_type: "date"`, `field_options: {"includeTime": false}` |
+| `DateTime` (1) | `field_type: "date"`, `field_options: {"includeTime": true}` |
+
+CSV importer support for SharePoint datetime columns is planned for a future release.
+
+### Read path
+
+`GET` endpoints return the stored value verbatim — no formatting, no timezone conversion:
+```json
+{
+  "ocs": {
+    "data": {
+      "file_gf_meeting_start": "2026-05-13T14:30:00",
+      "file_gf_publication_date": "2026-04-15"
+    }
+  }
+}
+```
+
+Lexicographic sort works correctly across both formats because ISO 8601 sorts chronologically by string comparison. No code-side adjustment needed when mixing date-only and datetime values in the same query.
 
 ---
 

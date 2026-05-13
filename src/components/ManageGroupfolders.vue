@@ -335,13 +335,14 @@
                 label="label"
                 @update:model-value="handleMultiSelectChange(field.field_name, $event)" />
               
-              <!-- Date input -->
+              <!-- Date input (optionally datetime-local) -->
               <input
                 v-else-if="field.field_type === 'date'"
                 :id="'field-' + field.id"
-                type="date"
+                :type="dateFieldIncludesTime(field) ? 'datetime-local' : 'date'"
+                :step="dateFieldIncludesTime(field) ? 1 : undefined"
                 :value="getFieldValue(field)"
-                @input="updateMetadataValue(field, $event.target.value)"
+                @input="updateMetadataValue(field, dateFieldIncludesTime(field) ? padDatetimeLocal($event.target.value) : $event.target.value)"
                 :required="field.is_required"
                 class="field-input date-input" />
               
@@ -406,6 +407,7 @@
 <script>
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
+import { dateFieldIncludesTime, padDatetimeLocal } from '../utils/dateField.js'
 
 // Simple notification helpers using OC.Notification
 const showSuccess = (message) => {
@@ -542,6 +544,8 @@ export default {
   },
   
   methods: {
+    dateFieldIncludesTime,
+    padDatetimeLocal,
     async loadGroupfoldersWithFieldCounts() {
       this.loading = true
       try {

@@ -166,6 +166,19 @@
             </NcCheckboxRadioSwitch>
           </div>
 
+          <!-- Include time component (date fields only) -->
+          <div v-if="formData.type === 'date'" class="form-row">
+            <NcCheckboxRadioSwitch
+              :model-value="formData.includeTime"
+              @update:model-value="formData.includeTime = $event"
+              type="checkbox">
+              {{ t('metavox', 'Include time component') }}
+            </NcCheckboxRadioSwitch>
+            <p class="helper-text">
+              {{ t('metavox', 'When enabled, this field stores both date and time (e.g. meetings, deadlines).') }}
+            </p>
+          </div>
+
           <!-- Options for select/multiselect fields -->
           <div v-if="showOptionsField" class="form-row">
             <label class="field-label">{{ t('metavox', 'Dropdown Options') }}</label>
@@ -390,7 +403,20 @@
               {{ t('metavox', 'Required field') }}
             </NcCheckboxRadioSwitch>
           </div>
-          
+
+          <!-- Include time component (date fields only) -->
+          <div v-if="(editingField.field_type || editingField.type) === 'date'" class="form-row">
+            <NcCheckboxRadioSwitch
+              :model-value="editData.includeTime"
+              @update:model-value="editData.includeTime = $event"
+              type="checkbox">
+              {{ t('metavox', 'Include time component') }}
+            </NcCheckboxRadioSwitch>
+            <p class="helper-text">
+              {{ t('metavox', 'When enabled, this field stores both date and time (e.g. meetings, deadlines).') }}
+            </p>
+          </div>
+
           <!-- Edit Options for select/multiselect fields -->
           <div v-if="(editingField.field_type || editingField.type) === 'select' || (editingField.field_type || editingField.type) === 'multiselect'" class="form-row">
             <label class="field-label">{{ t('metavox', 'Dropdown Options') }}</label>
@@ -602,18 +628,20 @@ export default {
         type: 'text',
         description: '',
         required: false,
+        includeTime: false,
         options: []
       },
-      
+
       // Selected field type object for NcSelect
       selectedFieldType: null,
-      
+
       // Edit data
       editData: {
         name: '',
         label: '',
         description: '',
         required: false,
+        includeTime: false,
         options: []
       }
     }
@@ -883,10 +911,12 @@ export default {
         field_type: this.formData.type,
         field_description: String(this.formData.description || '').trim(),
         is_required: this.formData.required ? 1 : 0,
-        field_options: this.formData.options
-          .filter(o => String(o.value || '').trim().length > 0)
-          .map(o => String(o.value).trim())
-          .join('\n'),
+        field_options: this.formData.type === 'date'
+          ? { includeTime: !!this.formData.includeTime }
+          : this.formData.options
+              .filter(o => String(o.value || '').trim().length > 0)
+              .map(o => String(o.value).trim())
+              .join('\n'),
         sort_order: 0,
         applies_to_groupfolder: 1
       }
@@ -938,33 +968,38 @@ export default {
     
     editField(field) {
       this.editingField = field
+      const rawOpts = field.field_options || field.options
       this.editData = {
         name: field.field_name || field.name,
         label: field.field_label || this.getDisplayName(field),
         description: field.field_description || field.description || '',
         required: !!(field.is_required || field.required),
-        options: this.parseFieldOptions(field.field_options || field.options)
+        includeTime: !!(rawOpts && typeof rawOpts === 'object' && !Array.isArray(rawOpts) && rawOpts.includeTime),
+        options: this.parseFieldOptions(rawOpts)
       }
     },
-    
+
     async saveEdit() {
       if (!this.editingField || !this.isEditFormValid) return
-      
+
       this.saving = true
-      
+
       // Prepare the updated field data
+      const fieldType = this.editingField.field_type || this.editingField.type
       const fieldData = {
         field_name: String(this.editData.name || '').trim(),
         field_label: String(this.editData.label || '').trim(),
-        field_type: this.editingField.field_type || this.editingField.type,
+        field_type: fieldType,
         field_description: String(this.editData.description || '').trim(),
         is_required: this.editData.required ? 1 : 0,
-        field_options: this.editData.options
-          ? this.editData.options
-              .filter(o => String(o.value || '').trim().length > 0)
-              .map(o => String(o.value).trim())
-              .join('\n')
-          : ''
+        field_options: fieldType === 'date'
+          ? { includeTime: !!this.editData.includeTime }
+          : (this.editData.options
+              ? this.editData.options
+                  .filter(o => String(o.value || '').trim().length > 0)
+                  .map(o => String(o.value).trim())
+                  .join('\n')
+              : '')
       }
       
       // Add gf_ prefix if missing
@@ -998,6 +1033,7 @@ export default {
         label: '',
         description: '',
         required: false,
+        includeTime: false,
         options: []
       }
     },
@@ -1033,6 +1069,7 @@ export default {
         type: 'text',
         description: '',
         required: false,
+        includeTime: false,
         options: []
       }
       this.selectedFieldType = this.selectOptions.find(opt => opt.id === 'text')
@@ -1088,6 +1125,8 @@ export default {
     
     formatFieldOptions(options) {
       if (!options) return ''
+      // Date dict (e.g. {includeTime:true}) is not a renderable list.
+      if (typeof options === 'object' && !Array.isArray(options)) return ''
       if (Array.isArray(options)) {
         return options.map(o => o.value || o).join(', ')
       }

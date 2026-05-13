@@ -6,6 +6,7 @@
  */
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
+import { dateFieldIncludesTime, padDatetimeLocal } from '../utils/dateField.js'
 
 // Operators per field type
 const OPERATORS_BY_TYPE = {
@@ -220,10 +221,11 @@ export default {
 					}),
 				])
 			} else if (field.type === 'date') {
+				const withTime = dateFieldIncludesTime(field)
 				valueEl = h('input', {
-					attrs: { type: 'date' },
+					attrs: withTime ? { type: 'datetime-local', step: '1' } : { type: 'date' },
 					domProps: { value: this.checkValue },
-					on: { change(e) { self.checkValue = e.target.value; self.updateValue() } },
+					on: { change(e) { self.checkValue = withTime ? padDatetimeLocal(e.target.value) : e.target.value; self.updateValue() } },
 				})
 			} else if (field.type === 'number') {
 				valueEl = h('input', {

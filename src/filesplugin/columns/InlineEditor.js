@@ -14,6 +14,7 @@ import { parseFieldOptions, formatValue } from './ColumnUtils.js'
 import { permissionCache, metadataCache, getActiveGroupfolderId } from './MetaVoxState.js'
 import { translate } from '@nextcloud/l10n'
 import { pushUndo } from './UndoSupport.js'
+import { dateFieldIncludesTime, padDatetimeLocal } from '../../utils/dateField.js'
 
 // ── Module-level state ─────────────────────────────────────────
 
@@ -264,20 +265,21 @@ export async function openInlineEditor(td, config) {
 		}
 
 		case 'date': {
+			const withTime = dateFieldIncludesTime(config)
 			editor = document.createElement('input')
-			editor.type = 'date'
+			editor.type = withTime ? 'datetime-local' : 'date'
+			if (withTime) editor.step = '1'
 			editor.className = 'metavox-inline-editor metavox-inline-date'
 			editor.value = currentValue || ''
-			editor.addEventListener('change', () => {
-				saveSingleField(fileId, fieldName, editor.value, { unlock: true })
+			const commit = () => {
+				const v = withTime ? padDatetimeLocal(editor.value) : editor.value
+				saveSingleField(fileId, fieldName, v, { unlock: true })
 				closeInlineEditor(false)
-			})
+			}
+			editor.addEventListener('change', commit)
 			editor.addEventListener('keydown', (e) => {
 				if (e.key === 'Escape') closeInlineEditor(true)
-				if (e.key === 'Enter') {
-					saveSingleField(fileId, fieldName, editor.value, { unlock: true })
-					closeInlineEditor(false)
-				}
+				if (e.key === 'Enter') commit()
 			})
 			break
 		}
