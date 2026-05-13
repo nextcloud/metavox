@@ -58,6 +58,11 @@ With Flow integration, you can create rules like:
 | `before` | Date is before the given value |
 | `after` | Date is after the given value |
 
+The condition value picker switches automatically: date-only fields use a
+`date` input, fields with **Include time component** enabled use a
+`datetime-local` input. Comparisons are performed lexicographically on the
+stored ISO 8601 string, which is chronologically correct for both formats.
+
 #### Number Fields
 
 | Operator | Description |

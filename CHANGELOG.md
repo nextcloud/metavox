@@ -37,6 +37,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   "No fields configured" and the sidebar to show "This file is not in a team
   folder". A new `GroupFolderAccessor::get()` helper handles both shapes
   transparently.
+- **`admin.js` bundle rebuilt against complete `@nextcloud/axios` runtime** —
+  the initial 2.1.0 bundle was compiled against an incomplete
+  `node_modules/@nextcloud/axios/dist/` (only `index.d.ts` present, runtime
+  files missing). At runtime the admin form's `axios.post()` aborted
+  immediately with `AxiosError: Request aborted`, so the "Add Field" save
+  button hung on "Saving…" and no field was persisted. Rebuilt against the
+  full `@nextcloud/axios` 2.6.0 distribution. Other bundles
+  (`filesplugin.js`, `user.js`, `metavox-flow.js`) were already correct.
 
 ### Changed (external API contract)
 - **`POST/PUT /apps/metavox/api/groupfolder-fields[/{id}]`** — for `field_type=date`,
