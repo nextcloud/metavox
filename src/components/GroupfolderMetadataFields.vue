@@ -923,13 +923,13 @@ export default {
       
       try {
         const response = await axios.post(generateUrl('/apps/metavox/api/groupfolder-fields'), fieldData)
-        
+
         // Invalideer cache omdat er een nieuw field is
         this.invalidateUsageCountsCache()
-        
+
         // Reload fields to ensure consistency
         await this.loadFields()
-        
+
         this.resetForm()
         this.showAddForm = false
         showSuccess(this.t('metavox', 'Field "{name}" added successfully', { name: fieldLabel }))
