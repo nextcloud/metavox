@@ -1,85 +1,26 @@
 <template>
 	<div class="support-settings">
-		<!-- Section 1: About MetaVox -->
+		<!-- Section 1: About MetaVox + CTA -->
 		<div class="settings-section">
 			<h2>{{ t('metavox', 'Support MetaVox') }}</h2>
 			<p class="settings-section-desc">
-				{{ t('metavox', 'MetaVox is free and open source (AGPL-3.0). You can use all features without a subscription — no limits, no restrictions, no catch.') }}
+				{{ t('metavox', 'MetaVox is free and open source (AGPL-3.0). All features work without a subscription. If MetaVox is valuable to your organization, a subscription supports active development and gives you guaranteed Nextcloud compatibility and email support.') }}
 			</p>
-			<p class="settings-section-desc">
-				{{ t('metavox', 'If MetaVox is valuable to your organization, consider subscribing. Your subscription funds active development, guaranteed Nextcloud compatibility, and email support.') }}
+			<p class="settings-section-desc subscription-includes">
+				{{ t('metavox', 'A subscription includes: guaranteed Nextcloud compatibility, email support, priority bug fixes, and active development.') }}
 			</p>
-		</div>
-
-		<!-- Section 2: What's included -->
-		<div class="settings-section">
-			<h2>{{ t('metavox', 'What a subscription includes') }}</h2>
-
-			<div class="includes-list">
-				<div class="includes-item">
-					<span class="includes-check">&#x2705;</span>
-					<div class="includes-text">
-						<span class="includes-label">{{ t('metavox', 'Guaranteed compatibility') }}</span>
-						<span class="includes-desc">{{ t('metavox', 'Tested with every new Nextcloud release') }}</span>
-					</div>
-				</div>
-				<div class="includes-item">
-					<span class="includes-check">&#x2705;</span>
-					<div class="includes-text">
-						<span class="includes-label">{{ t('metavox', 'Email support') }}</span>
-						<span class="includes-desc">{{ t('metavox', 'Direct support from the developers') }}</span>
-					</div>
-				</div>
-				<div class="includes-item">
-					<span class="includes-check">&#x2705;</span>
-					<div class="includes-text">
-						<span class="includes-label">{{ t('metavox', 'Priority bug fixes') }}</span>
-						<span class="includes-desc">{{ t('metavox', 'Your issues get priority attention') }}</span>
-					</div>
-				</div>
-				<div class="includes-item">
-					<span class="includes-check">&#x2705;</span>
-					<div class="includes-text">
-						<span class="includes-label">{{ t('metavox', 'Active development') }}</span>
-						<span class="includes-desc">{{ t('metavox', 'New features and improvements') }}</span>
-					</div>
-				</div>
+			<div class="cta-block">
+				<NcButton type="primary"
+					:href="pricingUrl"
+					target="_blank"
+					rel="noopener noreferrer">
+					{{ t('metavox', 'View pricing & plans') }}
+				</NcButton>
+				<p class="cta-contact">
+					{{ t('metavox', 'Questions?') }}
+					<a href="mailto:info@voxcloud.nl">info@voxcloud.nl</a>
+				</p>
 			</div>
-		</div>
-
-		<!-- Section 3: Pricing -->
-		<div class="settings-section">
-			<h2>{{ t('metavox', 'Pricing') }}</h2>
-
-			<div class="pricing-table">
-				<div class="pricing-row">
-					<span class="pricing-tier">{{ t('metavox', '1–50 users') }}</span>
-					<span class="pricing-price">{{ t('metavox', '€49/year') }}</span>
-				</div>
-				<div class="pricing-row">
-					<span class="pricing-tier">{{ t('metavox', '51–250 users') }}</span>
-					<span class="pricing-price">{{ t('metavox', '€149/year') }}</span>
-				</div>
-				<div class="pricing-row">
-					<span class="pricing-tier">{{ t('metavox', '251–1000 users') }}</span>
-					<span class="pricing-price">{{ t('metavox', '€349/year') }}</span>
-				</div>
-				<div class="pricing-row">
-					<span class="pricing-tier">{{ t('metavox', '1000+ users') }}</span>
-					<span class="pricing-price">{{ t('metavox', 'Contact us') }}</span>
-				</div>
-			</div>
-
-			<p class="pricing-note">
-				{{ t('metavox', 'That\'s less than €1 per week for the smallest tier.') }}
-			</p>
-
-			<NcButton type="primary"
-				:href="pricingUrl"
-				target="_blank"
-				rel="noopener noreferrer">
-				{{ t('metavox', 'View pricing & subscribe') }}
-			</NcButton>
 		</div>
 
 		<!-- Section 4: Your installation -->
@@ -119,38 +60,6 @@
 			</NcNoteCard>
 		</div>
 
-		<!-- Section 5: Your organization -->
-		<div class="settings-section">
-			<div class="contact-fields">
-				<h2>{{ t('metavox', 'Your organization (optional)') }}</h2>
-				<p class="field-desc">{{ t('metavox', 'These details help us reach you if needed. They are never shared.') }}</p>
-
-				<div class="field-row">
-					<label for="organization-name">{{ t('metavox', 'Organization name') }}</label>
-					<input id="organization-name"
-						v-model="organizationName"
-						type="text"
-						:placeholder="t('metavox', 'e.g. Acme Corporation')"
-						class="contact-input">
-				</div>
-
-				<div class="field-row">
-					<label for="contact-email">{{ t('metavox', 'Contact email') }}</label>
-					<input id="contact-email"
-						v-model="contactEmail"
-						type="email"
-						:placeholder="t('metavox', 'e.g. admin@example.com')"
-						class="contact-input">
-				</div>
-
-				<NcButton type="primary"
-					:disabled="savingContact"
-					@click="saveContactInfo">
-					{{ savingContact ? t('metavox', 'Saving...') : t('metavox', 'Save') }}
-				</NcButton>
-			</div>
-		</div>
-
 		<!-- Section 6: Subscription key -->
 		<div class="settings-section">
 			<h2>{{ t('metavox', 'Subscription key') }}</h2>
@@ -175,20 +84,6 @@
 					@click="removeLicenseKey">
 					{{ t('metavox', 'Remove subscription key') }}
 				</NcButton>
-			</div>
-		</div>
-
-		<!-- Section 7: Contact -->
-		<div class="settings-section">
-			<div class="contact-info-block">
-				<p>
-					{{ t('metavox', 'Learn more about MetaVox') }}:
-					<a href="https://voxcloud.nl" target="_blank" rel="noopener noreferrer">voxcloud.nl</a>
-				</p>
-				<p>
-					{{ t('metavox', 'Questions or feedback?') }}
-					<a href="mailto:info@voxcloud.nl">info@voxcloud.nl</a>
-				</p>
 			</div>
 		</div>
 
@@ -218,9 +113,6 @@ export default {
 			licenseKey: '',
 			savingLicense: false,
 			_userEditedLicenseKey: false,
-			organizationName: '',
-			contactEmail: '',
-			savingContact: false,
 			message: '',
 			messageType: 'success',
 		}
@@ -234,23 +126,10 @@ export default {
 	},
 
 	mounted() {
-		this.loadStatus()
 		this.loadLicenseStats()
 	},
 
 	methods: {
-		async loadStatus() {
-			try {
-				const settingsRes = await axios.get(generateUrl('/apps/metavox/api/settings'))
-				if (settingsRes.data.success) {
-					this.organizationName = settingsRes.data.settings.organization_name || ''
-					this.contactEmail = settingsRes.data.settings.contact_email || ''
-				}
-			} catch (error) {
-				console.error('Failed to load settings:', error)
-			}
-		},
-
 		async loadLicenseStats() {
 			try {
 				const response = await axios.get(generateUrl('/apps/metavox/api/license/stats'))
@@ -319,22 +198,6 @@ export default {
 			}
 		},
 
-		async saveContactInfo() {
-			this.savingContact = true
-			try {
-				await axios.post(generateUrl('/apps/metavox/api/settings'), {
-					organization_name: this.organizationName,
-					contact_email: this.contactEmail,
-				})
-				this.showMessage(this.t('metavox', 'Contact information saved.'), 'success')
-			} catch (error) {
-				console.error('Failed to save contact info:', error)
-				this.showMessage(this.t('metavox', 'Failed to save contact information'), 'error')
-			} finally {
-				this.savingContact = false
-			}
-		},
-
 		showMessage(text, type) {
 			this.message = text
 			this.messageType = type
@@ -391,76 +254,34 @@ export default {
 	margin-bottom: 20px;
 }
 
-/* What's included list */
-.includes-list {
-	display: flex;
-	flex-direction: column;
-	gap: 12px;
-	margin-bottom: 24px;
-}
-
-.includes-item {
-	display: flex;
-	align-items: flex-start;
-	gap: 12px;
-	padding: 12px 20px;
-	background: var(--color-background-hover);
-	border-radius: var(--border-radius-large);
-}
-
-.includes-check {
-	font-size: 1.2em;
-	flex-shrink: 0;
-}
-
-.includes-text {
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-}
-
-.includes-label {
-	font-weight: 600;
-	color: var(--color-main-text);
-}
-
-.includes-desc {
+/* CTA block (about + view-pricing button) */
+.subscription-includes {
 	font-size: 13px;
 	color: var(--color-text-maxcontrast);
 }
 
-/* Pricing table */
-.pricing-table {
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-	margin-bottom: 16px;
-}
-
-.pricing-row {
+.cta-block {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	padding: 12px 20px;
-	background: var(--color-background-hover);
-	border-radius: var(--border-radius-large);
+	gap: 16px;
+	flex-wrap: wrap;
+	margin-top: 8px;
 }
 
-.pricing-tier {
-	font-weight: 500;
-	color: var(--color-main-text);
-}
-
-.pricing-price {
-	font-size: 16px;
-	font-weight: 700;
-	color: var(--color-primary);
-}
-
-.pricing-note {
+.cta-contact {
+	margin: 0;
 	color: var(--color-text-maxcontrast);
-	margin-bottom: 16px;
 	font-size: 14px;
+
+	a {
+		color: var(--color-primary-element);
+		font-weight: 500;
+		text-decoration: none;
+
+		&:hover {
+			text-decoration: underline;
+		}
+	}
 }
 
 /* Stats overview */
@@ -499,47 +320,6 @@ export default {
 	font-size: 24px;
 	font-weight: 700;
 	color: var(--color-primary);
-}
-
-/* Contact info block */
-.contact-info-block {
-	margin-bottom: 20px;
-	padding: 16px 20px;
-	background: var(--color-background-hover);
-	border-radius: var(--border-radius-large);
-
-	p {
-		margin: 0 0 8px 0;
-		line-height: 1.5;
-
-		&:last-child {
-			margin-bottom: 0;
-		}
-	}
-
-	a {
-		color: var(--color-primary-element);
-		font-weight: 500;
-		text-decoration: none;
-
-		&:hover {
-			text-decoration: underline;
-		}
-	}
-}
-
-.contact-fields {
-	h2 {
-		margin: 0 0 8px 0;
-		font-size: 20px;
-		font-weight: bold;
-	}
-
-	.field-desc {
-		font-size: 13px;
-		color: var(--color-text-maxcontrast);
-		margin-bottom: 16px;
-	}
 }
 
 .field-row {

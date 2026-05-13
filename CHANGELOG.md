@@ -6,6 +6,18 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [2.0.9] - 2026-05-13
+
+### Changed
+- **Pricing UI moved to website** — the admin Support tab no longer hardcodes pricing tiers, the "What a subscription includes" checklist, or the standalone contact block. A single "View pricing & plans" button now links to `voxcloud.nl/pricing/#metavox`, where pricing is maintained out-of-band from app releases (no more App Store review cycle for a price change). Aligns with the same move in IntraVox 1.3.1 and FormVox 1.2.1.
+- **Telemetry now includes `hasExtendedSupport`** — a single yes/no flag sourced from `OCP\Util::hasExtendedSupport()` (Nextcloud's public API, available since NC 17), with a safe-false fallback so a Community instance is never reported as Enterprise on error. The license key is sent alongside so the license server can cross-check the claim against an active subscription — the boolean alone is unauthenticated and could otherwise be spoofed. Required for the Nextcloud ISV partnership where bundled-license customers need automatic recognition.
+- **Anonymous Usage Statistics disclosure is now complete** — the "What we collect" list now mentions total user counts, active users, and the Extended Support flag. The "What we never collect" list now explicitly includes organization name and contact email.
+
+### Removed
+- **Organization name + contact email inputs** — removed from the admin Support tab and from the telemetry payload. Existing values stored in `app_config` are left untouched (no migration) but are no longer read or sent. Cleanest privacy story: no PII flows to the license server, period. (Stored values still appear in the legacy `instanceName` field of the license-usage call as an empty string for new installs, which the server accepts.)
+
+---
+
 ## [2.0.8] - 2026-05-03
 
 ### Fixed
