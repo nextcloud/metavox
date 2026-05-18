@@ -6,6 +6,31 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [2.2.0] - 2026-05-18
+
+### Added
+- **Nextcloud 34 support** — `max-version` in `appinfo/info.xml` bumped to 34,
+  description updated. Tested against 34.0.0 RC1 on `next.voxcloud.nl`.
+
+### Fixed
+- **NC34 boot failure** — `\OC::$server->getRequest()` and
+  `\OC::$server->getUserSession()` were removed in NC34, causing every request
+  to log `Could not boot metavox: Call to undefined method`. Replaced both
+  call-sites in `lib/AppInfo/Application.php` with the PSR-11 container
+  pattern: `\OC::$server->get(IRequest::class)` and
+  `\OC::$server->get(IUserSession::class)`. Backwards-compatible with NC31+.
+- **NC34 service-method removals (round 2)** — beyond the boot-fix in
+  Application.php, seven additional call-sites were patched that would silently
+  fail on NC34 once their code paths run:
+  `\OC::$server->getConfig()` (6×), `getAppManager()` (1×),
+  `getDatabaseConnection()` (1×). Affected features: backup/restore
+  (BackupController), AI metadata-autofill (AiAutofillService), the daily
+  backup background job (MetadataBackupJob), and the fresh-install schema
+  migration (Version010000Date20241201000000). Fixes use constructor DI where
+  possible (`IConfig`, `IAppManager`) and PSR-11 container lookup in the
+  migration (no DI available in SimpleMigrationStep). Backwards-compatible
+  with NC31+.
+
 ## [2.1.0] - 2026-05-13
 
 ### Added

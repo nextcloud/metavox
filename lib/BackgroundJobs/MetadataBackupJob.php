@@ -9,6 +9,7 @@ use OCP\BackgroundJob\TimedJob;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\Files\IAppData;
 use OCP\Files\NotFoundException;
+use OCP\IConfig;
 use OCP\IDBConnection;
 use Psr\Log\LoggerInterface;
 
@@ -29,6 +30,7 @@ class MetadataBackupJob extends TimedJob {
         ITimeFactory $time,
         private readonly IDBConnection $db,
         private readonly IAppData $appData,
+        private readonly IConfig $config,
         private readonly LoggerInterface $logger,
     ) {
         parent::__construct($time);
@@ -135,8 +137,8 @@ class MetadataBackupJob extends TimedJob {
             $this->appData->newFolder('backups');
         }
 
-        $dataDir = \OC::$server->getConfig()->getSystemValue('datadirectory');
-        $instanceId = \OC::$server->getConfig()->getSystemValue('instanceid');
+        $dataDir = $this->config->getSystemValue('datadirectory');
+        $instanceId = $this->config->getSystemValue('instanceid');
         $backupDir = $dataDir . '/appdata_' . $instanceId . '/metavox/backups';
 
         if (!is_dir($backupDir)) {

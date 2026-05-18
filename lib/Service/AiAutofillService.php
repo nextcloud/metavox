@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Service;
 
+use OCP\App\IAppManager;
 use OCP\Files\IRootFolder;
 use OCP\IConfig;
 use OCP\TaskProcessing\IManager as ITaskManager;
@@ -16,6 +17,7 @@ class AiAutofillService {
     private IRootFolder $rootFolder;
     private FieldService $fieldService;
     private IConfig $config;
+    private IAppManager $appManager;
     private LoggerInterface $logger;
 
     private const APP_ID = 'metavox';
@@ -30,12 +32,14 @@ class AiAutofillService {
         IRootFolder $rootFolder,
         FieldService $fieldService,
         IConfig $config,
+        IAppManager $appManager,
         LoggerInterface $logger
     ) {
         $this->taskManager = $taskManager;
         $this->rootFolder = $rootFolder;
         $this->fieldService = $fieldService;
         $this->config = $config;
+        $this->appManager = $appManager;
         $this->logger = $logger;
     }
 
@@ -243,7 +247,7 @@ class AiAutofillService {
         try {
             // Dynamically resolve the assistant app path
             try {
-                $assistantPath = \OC::$server->getAppManager()->getAppPath('assistant');
+                $assistantPath = $this->appManager->getAppPath('assistant');
             } catch (\Exception $e) {
                 $this->logger->debug('MetaVox AI: Assistant app not installed, cannot parse file');
                 return '';
