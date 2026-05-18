@@ -21,6 +21,8 @@ use OCP\AppFramework\Bootstrap\IRegistrationContext;
 use OCP\Files\Cache\CacheEntryRemovedEvent;
 use OCP\Files\Events\Node\NodeCopiedEvent;
 use OCP\Files\Events\Node\NodeCreatedEvent;
+use OCP\IRequest;
+use OCP\IUserSession;
 use OCP\WorkflowEngine\Events\RegisterChecksEvent;
 
 class Application extends App implements IBootstrap {
@@ -54,7 +56,8 @@ class Application extends App implements IBootstrap {
         // Icon styling handled by NC via app.svg (#000) and app-dark.svg (#fff)
 
         // Load Files app integration only when needed
-        $request = \OC::$server->getRequest();
+        // NC34 removed \OC::$server->getRequest() — use container lookup instead.
+        $request = \OC::$server->get(IRequest::class);
         $requestUri = $request->getRequestUri();
 
         // Also check pathInfo for reverse proxy setups with subpaths
@@ -78,7 +81,7 @@ class Application extends App implements IBootstrap {
 
             // Inline init data for the current groupfolder so the JS has everything at startup
             try {
-                $user = \OC::$server->getUserSession()->getUser();
+                $user = \OC::$server->get(IUserSession::class)->getUser();
                 if ($user) {
                     $dir = $_GET['dir'] ?? '';
                     $userId = $user->getUID();

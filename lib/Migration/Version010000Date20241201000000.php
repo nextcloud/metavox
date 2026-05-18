@@ -5,6 +5,8 @@ namespace OCA\MetaVox\Migration;
 
 use Closure;
 use OCP\DB\ISchemaWrapper;
+use OCP\IConfig;
+use OCP\IDBConnection;
 use OCP\Migration\IOutput;
 use OCP\Migration\SimpleMigrationStep;
 
@@ -90,13 +92,13 @@ class Version010000Date20241201000000 extends SimpleMigrationStep {
     }
 
     public function postSchemaChange(IOutput $output, Closure $schemaClosure, array $options): void {
-        $connection = \OC::$server->getDatabaseConnection();
+        $connection = \OC::$server->get(IDBConnection::class);
 
         // Add FULLTEXT index for MySQL after table creation
         if ($connection->getDatabasePlatform() instanceof \Doctrine\DBAL\Platforms\MySqlPlatform) {
             try {
                 // Get the actual table name with prefix (NC32+ compatible)
-                $tablePrefix = \OC::$server->getConfig()->getSystemValue('dbtableprefix', 'oc_');
+                $tablePrefix = \OC::$server->get(IConfig::class)->getSystemValue('dbtableprefix', 'oc_');
                 $tableName = $tablePrefix . 'metavox_search_index';
 
                 // Check if FULLTEXT index already exists

@@ -11,6 +11,7 @@ use OCP\Files\IAppData;
 use OCP\Files\NotFoundException;
 use OCP\ICacheFactory;
 use OCP\ICache;
+use OCP\IConfig;
 use OCP\IDBConnection;
 use OCP\IRequest;
 use Psr\Log\LoggerInterface;
@@ -31,6 +32,7 @@ class BackupController extends Controller {
         IRequest $request,
         private readonly IDBConnection $db,
         private readonly IAppData $appData,
+        private readonly IConfig $config,
         private readonly LoggerInterface $logger,
         ICacheFactory $cacheFactory,
     ) {
@@ -390,7 +392,7 @@ class BackupController extends Controller {
         $platform = $this->db->getDatabasePlatform();
         $isPostgres = $platform instanceof \Doctrine\DBAL\Platforms\PostgreSQLPlatform;
         $q = $isPostgres ? '"' : '`';
-        $prefix = \OC::$server->getConfig()->getSystemValue('dbtableprefix', 'oc_');
+        $prefix = $this->config->getSystemValue('dbtableprefix', 'oc_');
 
         // TRUNCATE tables
         foreach (self::TABLES as $table) {
@@ -567,7 +569,7 @@ class BackupController extends Controller {
         if (empty($batch) || empty($columns)) return;
 
         $platform = $this->db->getDatabasePlatform();
-        $prefix = \OC::$server->getConfig()->getSystemValue('dbtableprefix', 'oc_');
+        $prefix = $this->config->getSystemValue('dbtableprefix', 'oc_');
         $fullTable = $prefix . $table;
         $q = ($platform instanceof \Doctrine\DBAL\Platforms\PostgreSQLPlatform) ? '"' : '`';
 
@@ -616,8 +618,8 @@ class BackupController extends Controller {
             $this->appData->newFolder('backups');
         }
 
-        $dataDir = \OC::$server->getConfig()->getSystemValue('datadirectory');
-        $instanceId = \OC::$server->getConfig()->getSystemValue('instanceid');
+        $dataDir = $this->config->getSystemValue('datadirectory');
+        $instanceId = $this->config->getSystemValue('instanceid');
         $dir = $dataDir . '/appdata_' . $instanceId . '/metavox/backups';
 
         if (!is_dir($dir)) {
