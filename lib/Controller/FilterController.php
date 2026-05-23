@@ -77,6 +77,11 @@ class FilterController extends BaseController {
     /**
      * Get distinct filter values for all fields in one request.
      * Returns { field_name: [value1, value2, ...], ... }
+     *
+     * For select/multiselect/dropdown/checkbox fields the options come from the
+     * field configuration (so combined multiselect values like "Doris;#Wieke"
+     * don't leak through as if they were a single option). Free-text fields
+     * fall back to DB DISTINCT.
      */
     #[NoAdminRequired]
     public function getAllFilterValues(int $groupfolderId): JSONResponse {
@@ -100,7 +105,37 @@ class FilterController extends BaseController {
                 $fileIds = array_map('intval', array_filter(explode(',', $fileIdsParam), fn($id) => is_numeric($id) && intval($id) > 0));
             }
 
-            $values = $this->filterService->getAllDistinctFieldValues($groupfolderId, $fieldNamesArray, $fileIds);
+            $fields = $this->fieldService->getAssignedFieldsWithDataForGroupfolder($groupfolderId);
+            $optionFields = [];
+            $dbFieldNames = [];
+            foreach ($fields as $field) {
+                $name = $field['field_name'] ?? '';
+                if (empty($name)) continue;
+                if (!empty($fieldNamesArray) && !in_array($name, $fieldNamesArray)) continue;
+
+                $type = $field['field_type'] ?? '';
+                if (in_array($type, ['select', 'multiselect', 'multi_select', 'dropdown', 'checkbox'])) {
+                    if ($type === 'checkbox') {
+                        $optionFields[$name] = ['1', '0'];
+                    } else {
+                        $options = $field['field_options'] ?? [];
+                        if (is_array($options) && !empty($options)) {
+                            $optionFields[$name] = array_values($options);
+                        } else {
+                            $dbFieldNames[] = $name;
+                        }
+                    }
+                } else {
+                    $dbFieldNames[] = $name;
+                }
+            }
+
+            $dbValues = [];
+            if (!empty($dbFieldNames)) {
+                $dbValues = $this->filterService->getAllDistinctFieldValues($groupfolderId, $dbFieldNames, $fileIds);
+            }
+
+            $values = array_merge($optionFields, $dbValues);
             $response = new JSONResponse($values, Http::STATUS_OK);
             $response->addHeader('Cache-Control', 'private, max-age=60');
             return $response;

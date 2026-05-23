@@ -6,6 +6,21 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [2.2.1] - 2026-05-23
+
+### Fixed
+- **Multiselect filter options leaked combined values** — the internal filter
+  endpoint (`FilterController::getAllFilterValues`, used by the Files-app
+  sidebar) called `getAllDistinctFieldValues()` directly for every field
+  including multiselect ones. Because multiselect values are stored as
+  `;#`-delimited strings, the filter dropdown surfaced combined entries like
+  `"Doris Dekker;#Wieke Dekker"` as if they were a single option, instead of
+  showing the configured options. Aligned the controller with its OCS
+  counterpart (`ApiFilterController::getAllFilterValues`) so that
+  `select`/`multiselect`/`dropdown`/`checkbox` fields source their dropdown
+  values from the field configuration (`field_options`) and only free-text
+  fields fall back to DB DISTINCT.
+
 ## [2.2.0] - 2026-05-18
 
 ### Added
