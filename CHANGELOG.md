@@ -14,7 +14,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   sidebar) called `getAllDistinctFieldValues()` directly for every field
   including multiselect ones. Because multiselect values are stored as
   `;#`-delimited strings, the filter dropdown surfaced combined entries like
-  `"Doris Dekker;#Wieke Dekker"` as if they were a single option, instead of
+  `"Option A;#Option B"` as if they were a single option, instead of
   showing the configured options. Aligned the controller with its OCS
   counterpart (`ApiFilterController::getAllFilterValues`) so that
   `select`/`multiselect`/`dropdown`/`checkbox` fields source their dropdown
