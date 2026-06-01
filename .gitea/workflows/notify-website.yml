@@ -1,0 +1,27 @@
+# Triggered when /docs/ (or README) changes in this app repo.
+# Sends a repository_dispatch event to VoxCloud/website, which rebuilds and
+# redeploys voxcloud.nl/docs with the latest content.
+
+name: Notify VoxCloud website on docs change
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'docs/**'
+      - 'README.md'
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send repository_dispatch to VoxCloud/website
+        env:
+          TOKEN: ${{ secrets.WEBSITE_DISPATCH_TOKEN }}
+        run: |
+          curl -fsS -X POST \
+            -H "Authorization: token $TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"event_type":"docs-updated","client_payload":{"source":"${{ gitea.repository }}","ref":"${{ gitea.ref }}","sha":"${{ gitea.sha }}"}}' \
+            https://gitea.rikdekker.nl/api/v1/repos/VoxCloud/website/dispatches
+          echo "Dispatch sent for ${{ gitea.repository }}@${{ gitea.sha }}"
