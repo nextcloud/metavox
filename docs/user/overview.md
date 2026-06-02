@@ -37,7 +37,11 @@ You'll see two types of metadata:
 
 You can also edit metadata directly in the file list by double-clicking a cell. An inline editor opens for the field type (text input, dropdown, date picker, etc.).
 
-![Inline editing](../../screenshots/inline-editing.gif)
+![Inline editor opened on a cell](../../screenshots/inline-editor.png)
+
+In motion:
+
+![Inline editing in action](../../screenshots/inline-editing.gif)
 
 ## Editing Metadata
 

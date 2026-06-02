@@ -2,6 +2,8 @@
 
 MetaVox supports real-time metadata synchronization between users via Nextcloud's `notify_push` app. When one user edits metadata, all other users viewing the same teamfolder see the change instantly. Additionally, cell locking prevents concurrent edits on the same field.
 
+![Two users collaborating in the same metadata columns — changes appear instantly on the other side](../../screenshots/columns-collaboration.png)
+
 ## Prerequisites
 
 - **Nextcloud notify_push** app installed and configured

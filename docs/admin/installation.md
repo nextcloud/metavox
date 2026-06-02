@@ -78,6 +78,10 @@ After installation:
 
 ![Team folder metadata setup](../../screenshots/Manage%20team%20metadata.png)
 
+Once configured, the team folder metadata fields appear directly in the Nextcloud sidebar when someone selects the team folder — admins see an editable panel, end users see a read-only view (depending on configuration).
+
+![Team folder metadata in the Nextcloud sidebar](../../screenshots/Teamfolder%20metadata.png)
+
 ### Setting Up Document Metadata
 
 Document metadata fields are configured similarly but apply to individual files rather than the whole folder.
