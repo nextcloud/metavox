@@ -1,5 +1,7 @@
 # MetaVox Documentation
 
+![MetaVox v1.0.0 — metadata columns in the Nextcloud Files app](../screenshots/MetaVox%20v1.0.0.png)
+
 Welcome to the MetaVox documentation. MetaVox is a Nextcloud app that adds structured metadata to documents in Team folders — enabling classification, compliance tracking, and searchability without changing your files.
 
 ## Quick Navigation
