@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\AppInfo;
 
+use OCA\MetaVox\Listener\ApplyDefaultsListener;
 use OCA\MetaVox\Listener\CacheCleanupListener;
 use OCA\MetaVox\Listener\FileCopyListener;
 use OCA\MetaVox\Listener\RegisterFlowChecksListener;
 use OCA\MetaVox\Search\MetadataSearchProvider;
+use OCA\MetaVox\Service\DefaultsRequestCounter;
 use OCA\MetaVox\Service\FieldService;
 use OCA\MetaVox\Service\FilterService;
 use OCA\MetaVox\Service\PermissionService;
@@ -36,15 +38,32 @@ class Application extends App implements IBootstrap {
         // Register search provider
         $context->registerSearchProvider(MetadataSearchProvider::class);
 
-        // Register event listeners for file copy
+        // Register event listeners for file copy. FileCopyListener only handles
+        // NodeCopiedEvent (it early-returns on anything else), so it is NOT
+        // registered for NodeCreatedEvent — that would just waste a DI
+        // instantiation per upload. New-file defaults are handled below.
         $context->registerEventListener(NodeCopiedEvent::class, FileCopyListener::class);
-        $context->registerEventListener(NodeCreatedEvent::class, FileCopyListener::class);
+
+        // Apply per-folder default values to newly created files (fast-path).
+        // DiscoverMissingDefaultsJob remains the source of truth; this only
+        // reduces latency for normal uploads.
+        $context->registerEventListener(NodeCreatedEvent::class, ApplyDefaultsListener::class);
+
+        // Shared per-request counter that throttles the defaults fast-path on
+        // bulk uploads. Must be a singleton so all listener invocations in one
+        // request share the same count.
+        $context->registerService(DefaultsRequestCounter::class, function () {
+            return new DefaultsRequestCounter();
+        });
 
         // Clean up metadata when files are removed from filecache (trash emptied, etc.)
         $context->registerEventListener(CacheEntryRemovedEvent::class, CacheCleanupListener::class);
 
         // Register Flow (Workflow) checks for metadata-based conditions
         $context->registerEventListener(RegisterChecksEvent::class, RegisterFlowChecksListener::class);
+
+        // The occ command (metavox:apply-defaults) is registered via
+        // appinfo/commands.php — IRegistrationContext has no registerCommand().
     }
 
     public function boot(IBootContext $context): void {
