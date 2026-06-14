@@ -181,15 +181,121 @@
                     <h5>{{ t('metavox', 'File Metadata Fields') }}</h5>
                     <p class="section-description">{{ t('metavox', 'These fields can be set on individual files') }}</p>
                     <div class="checkbox-group">
-                      <NcCheckboxRadioSwitch
+                      <div
                         v-for="field in getFilteredFileFields(groupfolder.id)"
                         :key="`file-${field.id}-${groupfolder.id}`"
-                        :model-value="isFieldAssigned(groupfolder.id, field.id)"
-                        @update:model-value="updateFieldAssignment(groupfolder.id, field.id, $event)"
-                        type="checkbox">
-                        {{ field.field_label }}
-                        <span class="field-type-label">({{ field.field_type }})</span>
-                      </NcCheckboxRadioSwitch>
+                        class="file-field-row">
+                        <NcCheckboxRadioSwitch
+                          :model-value="isFieldAssigned(groupfolder.id, field.id)"
+                          @update:model-value="updateFieldAssignment(groupfolder.id, field.id, $event)"
+                          type="checkbox">
+                          {{ field.field_label }}
+                          <span class="field-type-label">({{ field.field_type }})</span>
+                        </NcCheckboxRadioSwitch>
+
+                        <!-- Default value input (only when the field is assigned) -->
+                        <div v-if="isFieldAssigned(groupfolder.id, field.id)" class="default-value-input">
+                          <label :for="`default-${groupfolder.id}-${field.id}`" class="default-value-label">
+                            {{ t('metavox', 'Default value') }}
+                          </label>
+
+                          <!-- Select default -->
+                          <NcSelect
+                            v-if="field.field_type === 'select'"
+                            :id="`default-${groupfolder.id}-${field.id}`"
+                            :model-value="getDefaultValue(groupfolder.id, field)"
+                            :options="getFieldOptions(field)"
+                            :placeholder="t('metavox', 'Choose an option...')"
+                            class="field-input select-field"
+                            :clearable="true"
+                            :reduce="option => option.value"
+                            label="label"
+                            @update:model-value="setDefaultValue(groupfolder.id, field, $event)" />
+
+                          <!-- MultiSelect default -->
+                          <NcSelect
+                            v-else-if="field.field_type === 'multiselect'"
+                            :id="`default-${groupfolder.id}-${field.id}`"
+                            :model-value="getMultiSelectDefaultValue(groupfolder.id, field)"
+                            :options="getFieldOptions(field)"
+                            :multiple="true"
+                            :placeholder="t('metavox', 'Choose options...')"
+                            class="field-input select-field"
+                            :clearable="true"
+                            :reduce="option => option.value"
+                            label="label"
+                            @update:model-value="setMultiSelectDefaultValue(groupfolder.id, field, $event)" />
+
+                          <!-- Textarea default -->
+                          <textarea
+                            v-else-if="field.field_type === 'textarea'"
+                            :id="`default-${groupfolder.id}-${field.id}`"
+                            :value="getDefaultValue(groupfolder.id, field)"
+                            @input="setDefaultValue(groupfolder.id, field, $event.target.value)"
+                            :placeholder="field.field_label"
+                            class="field-input textarea-input"
+                            rows="2"></textarea>
+
+                          <!-- Date default (optionally datetime-local) -->
+                          <input
+                            v-else-if="field.field_type === 'date'"
+                            :id="`default-${groupfolder.id}-${field.id}`"
+                            :type="dateFieldIncludesTime(field) ? 'datetime-local' : 'date'"
+                            :step="dateFieldIncludesTime(field) ? 1 : undefined"
+                            :value="getDefaultValue(groupfolder.id, field)"
+                            @input="setDefaultValue(groupfolder.id, field, dateFieldIncludesTime(field) ? padDatetimeLocal($event.target.value) : $event.target.value)"
+                            class="field-input date-input" />
+
+                          <!-- Number default -->
+                          <input
+                            v-else-if="field.field_type === 'number'"
+                            :id="`default-${groupfolder.id}-${field.id}`"
+                            type="number"
+                            :value="getDefaultValue(groupfolder.id, field)"
+                            @input="setDefaultValue(groupfolder.id, field, $event.target.value)"
+                            class="field-input number-input" />
+
+                          <!-- Checkbox default -->
+                          <NcCheckboxRadioSwitch
+                            v-else-if="field.field_type === 'checkbox'"
+                            :id="`default-${groupfolder.id}-${field.id}`"
+                            :model-value="isDefaultCheckboxChecked(groupfolder.id, field)"
+                            @update:model-value="setDefaultValue(groupfolder.id, field, $event ? '1' : '0')"
+                            type="checkbox">
+                            {{ t('metavox', 'Default value') }}
+                          </NcCheckboxRadioSwitch>
+
+                          <!-- Text / url / fallback default -->
+                          <NcTextField
+                            v-else
+                            :id="`default-${groupfolder.id}-${field.id}`"
+                            :model-value="getDefaultValue(groupfolder.id, field)"
+                            @update:model-value="setDefaultValue(groupfolder.id, field, $event)"
+                            :label="t('metavox', 'Default value')"
+                            :placeholder="field.field_label"
+                            class="field-input" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Apply defaults now -->
+                    <div class="apply-defaults-section">
+                      <p class="section-description">{{ t('metavox', 'Apply the configured default values to existing files in this team folder that do not yet have a value for these fields.') }}</p>
+                      <div class="apply-defaults-actions">
+                        <NcButton
+                          type="secondary"
+                          :disabled="defaultsStatus[groupfolder.id] === 'running'"
+                          @click="triggerDefaults(groupfolder.id)">
+                          <template #icon>
+                            <div v-if="defaultsStatus[groupfolder.id] === 'running'" class="icon-loading-small"></div>
+                            <PlayIcon v-else :size="20" />
+                          </template>
+                          {{ t('metavox', 'Apply defaults now') }}
+                        </NcButton>
+                        <span class="apply-defaults-status">
+                          {{ defaultsStatus[groupfolder.id] === 'running' ? t('metavox', 'Applying defaults…') : t('metavox', 'Idle') }}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -437,6 +543,7 @@ import EditIcon from 'vue-material-design-icons/Pencil.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
 import ContentSaveIcon from 'vue-material-design-icons/ContentSave.vue'
 import MagnifyIcon from 'vue-material-design-icons/Magnify.vue'
+import PlayIcon from 'vue-material-design-icons/Play.vue'
 
 export default {
   name: 'ManageGroupfolders',
@@ -452,6 +559,7 @@ export default {
     CogIcon,
     ContentSaveIcon,
     MagnifyIcon,
+    PlayIcon,
   },
   
   data() {
@@ -494,7 +602,14 @@ export default {
       selectKey: 0,
 
       // Cache for field options
-      fieldOptionsCache: new Map()
+      fieldOptionsCache: new Map(),
+
+      // Per-folder, per-file-field default values: { [groupfolderId]: { [fieldId]: value } }
+      fileFieldDefaults: {},
+      // Per-folder backfill state: { [groupfolderId]: 'idle' | 'running' }
+      defaultsStatus: {},
+      // Per-folder polling timers for the defaults backfill status
+      defaultsPollTimers: {}
     }
   },
   
@@ -542,6 +657,13 @@ export default {
     await this.loadAllFields()
     await this.loadGroupfoldersWithFieldCounts()
   },
+
+  beforeUnmount() {
+    // Clean up any running defaults-status polling timers
+    Object.keys(this.defaultsPollTimers).forEach(id => {
+      this.stopDefaultsPolling(id)
+    })
+  },
   
   methods: {
     dateFieldIncludesTime,
@@ -576,6 +698,8 @@ export default {
           this.tempAssignedFields[gf.id] = []
           this.fieldSearchQuery[gf.id] = ''
           this.fieldTypeFilter[gf.id] = 'all'
+          this.fileFieldDefaults[gf.id] = {}
+          this.defaultsStatus[gf.id] = 'idle'
         }
       })
 
@@ -596,6 +720,17 @@ export default {
           console.error(`Failed to load fields for groupfolder ${gf.id}:`, error)
           this.assignedFields[gf.id] = []
           this.tempAssignedFields[gf.id] = []
+        }
+
+        // Load configured default values for file fields
+        try {
+          const defaultsResponse = await axios.get(
+            generateUrl(`/apps/metavox/api/groupfolders/${gf.id}/defaults`)
+          )
+          this.fileFieldDefaults[gf.id] = (defaultsResponse.data && defaultsResponse.data.defaults) || {}
+        } catch (error) {
+          console.error(`Failed to load defaults for groupfolder ${gf.id}:`, error)
+          this.fileFieldDefaults[gf.id] = {}
         }
       }
     },
@@ -852,6 +987,24 @@ export default {
         // Update the actual assigned fields after successful save
         this.assignedFields[groupfolderId] = [...this.tempAssignedFields[groupfolderId]]
 
+        // Persist default values for assigned file fields only
+        const assignedIds = this.tempAssignedFields[groupfolderId] || []
+        const folderDefaults = this.fileFieldDefaults[groupfolderId] || {}
+        const defaultPromises = this.fileMetadataFields
+          .filter(field => assignedIds.includes(field.id))
+          .map(field => {
+            const raw = folderDefaults[field.id]
+            const value = (raw === undefined || raw === '') ? null : raw
+            return axios.post(
+              generateUrl(`/apps/metavox/api/groupfolders/${groupfolderId}/defaults`),
+              { fieldId: field.id, value }
+            ).catch(error => {
+              console.error(`Failed to save default for field ${field.id}:`, error)
+              showError(this.t('metavox', 'Failed to save default value for {field}', { field: field.field_label }))
+            })
+          })
+        await Promise.all(defaultPromises)
+
         showSuccess(this.t('metavox', 'Field configuration saved successfully'))
         this.expandedFields[groupfolderId] = false
       } catch (error) {
@@ -886,6 +1039,8 @@ export default {
       // Reset temp fields to actual assigned fields when canceling
       this.tempAssignedFields[groupfolderId] = [...this.assignedFields[groupfolderId]]
       this.expandedFields[groupfolderId] = false
+      // Stop polling the defaults status for this folder
+      this.stopDefaultsPolling(groupfolderId)
     },
     
     getGroupfolderFields(groupfolderId) {
@@ -954,7 +1109,88 @@ export default {
 
       return formattedOptions
     },
-    
+
+    getDefaultValue(groupfolderId, field) {
+      const folderDefaults = this.fileFieldDefaults[groupfolderId] || {}
+      const value = folderDefaults[field.id]
+      return value !== undefined && value !== null ? value : ''
+    },
+
+    setDefaultValue(groupfolderId, field, value) {
+      if (!this.fileFieldDefaults[groupfolderId]) {
+        this.fileFieldDefaults[groupfolderId] = {}
+      }
+      this.fileFieldDefaults[groupfolderId][field.id] = value
+    },
+
+    getMultiSelectDefaultValue(groupfolderId, field) {
+      const value = this.getDefaultValue(groupfolderId, field)
+      if (!value) {
+        return []
+      }
+      return String(value).split(';#').filter(v => v.trim())
+    },
+
+    setMultiSelectDefaultValue(groupfolderId, field, values) {
+      const joinedValue = Array.isArray(values) ? values.join(';#') : ''
+      this.setDefaultValue(groupfolderId, field, joinedValue)
+    },
+
+    isDefaultCheckboxChecked(groupfolderId, field) {
+      const value = this.getDefaultValue(groupfolderId, field)
+      return value === '1' || value === 'true' || value === true || value === 1
+    },
+
+    async triggerDefaults(groupfolderId) {
+      // Fire and forget — the backfill runs server-side, we poll for status
+      axios.post(
+        generateUrl(`/apps/metavox/api/groupfolders/${groupfolderId}/defaults/trigger`)
+      ).catch(error => {
+        console.error('Failed to trigger defaults backfill:', error)
+        showError(this.t('metavox', 'Failed to apply defaults'))
+      })
+
+      // Optimistically show running state and start polling
+      this.defaultsStatus[groupfolderId] = 'running'
+      this.startDefaultsPolling(groupfolderId)
+    },
+
+    startDefaultsPolling(groupfolderId) {
+      this.stopDefaultsPolling(groupfolderId)
+      this.defaultsPollTimers[groupfolderId] = setInterval(
+        () => this.pollDefaultsStatus(groupfolderId),
+        2000
+      )
+    },
+
+    stopDefaultsPolling(groupfolderId) {
+      if (this.defaultsPollTimers[groupfolderId]) {
+        clearInterval(this.defaultsPollTimers[groupfolderId])
+        this.defaultsPollTimers[groupfolderId] = null
+      }
+    },
+
+    async pollDefaultsStatus(groupfolderId) {
+      try {
+        const response = await axios.get(
+          generateUrl(`/apps/metavox/api/groupfolders/${groupfolderId}/defaults/status`)
+        )
+        const state = (response.data && response.data.state) || 'idle'
+
+        if (state === 'running') {
+          this.defaultsStatus[groupfolderId] = 'running'
+        } else {
+          // idle — backfill finished
+          this.defaultsStatus[groupfolderId] = 'idle'
+          this.stopDefaultsPolling(groupfolderId)
+        }
+      } catch (error) {
+        // Status endpoint unavailable — stop polling
+        this.defaultsStatus[groupfolderId] = 'idle'
+        this.stopDefaultsPolling(groupfolderId)
+      }
+    },
+
     filterFieldsForConfiguration(fields, groupfolderId) {
       let filtered = [...fields]
       
@@ -1420,6 +1656,47 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.file-field-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.default-value-input {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 8px 28px;
+  padding: 10px 12px;
+  background: var(--color-background-hover);
+  border-radius: var(--border-radius);
+  border-left: 3px solid var(--color-primary-element-light, var(--color-primary-light));
+}
+
+.default-value-label {
+  font-weight: 500;
+  color: var(--color-text-lighter);
+  font-size: 12px;
+}
+
+.apply-defaults-section {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid var(--color-border);
+}
+
+.apply-defaults-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.apply-defaults-status {
+  color: var(--color-text-lighter);
+  font-size: 0.9em;
 }
 
 .field-type-label {

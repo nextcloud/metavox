@@ -40,6 +40,12 @@ return [
         ['name' => 'field#getGroupfolderAssignedFields', 'url' => '/api/groupfolders/{groupfolderId}/fields', 'verb' => 'GET'],
         ['name' => 'field#setGroupfolderFields', 'url' => '/api/groupfolders/{groupfolderId}/fields', 'verb' => 'POST'],
 
+        // Per-folder default value routes
+        ['name' => 'defaults#getDefaults', 'url' => '/api/groupfolders/{groupfolderId}/defaults', 'verb' => 'GET'],
+        ['name' => 'defaults#setDefault', 'url' => '/api/groupfolders/{groupfolderId}/defaults', 'verb' => 'POST'],
+        ['name' => 'defaults#trigger', 'url' => '/api/groupfolders/{groupfolderId}/defaults/trigger', 'verb' => 'POST'],
+        ['name' => 'defaults#status', 'url' => '/api/groupfolders/{groupfolderId}/defaults/status', 'verb' => 'GET'],
+
         // User routes (for personal settings)
         ['name' => 'user_field#getAccessibleGroupfolders', 'url' => '/api/user/groupfolders', 'verb' => 'GET'],
         ['name' => 'user_field#getGroupfolderFields', 'url' => '/api/user/groupfolders/{groupfolderId}/fields', 'verb' => 'GET'],

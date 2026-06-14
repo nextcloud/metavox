@@ -10,6 +10,12 @@ use Psr\Log\LoggerInterface;
 
 class SearchIndexService {
 
+    /** Files per upsert chunk in the bulk index path. */
+    private const INDEX_UPSERT_CHUNK = 250;
+
+    /** File ids per IN(...) clause when batch-fetching, to stay under param limits. */
+    private const QUERY_IN_CHUNK = 500;
+
     private IDBConnection $db;
     private ICacheFactory $cacheFactory;
     private LoggerInterface $logger;
@@ -217,7 +223,7 @@ private function searchFromIndex(string $searchTerm, string $userId): array {
         try {
             // Get file metadata
             $metadata = $this->getFileMetadata($fileId);
-            
+
             if (empty($metadata)) {
                 $this->deleteFileFromIndex($fileId);
                 return;
@@ -229,21 +235,104 @@ private function searchFromIndex(string $searchTerm, string $userId): array {
                 return;
             }
 
-            $searchContent = [];
-            $fieldData = [];
-            
-            foreach ($metadata as $field) {
-                if ($field['value']) {
-                    $searchContent[] = $field['value'];
-                    $fieldData[$field['field_name']] = $field['value'];
-                }
-            }
+            $payload = $this->buildIndexPayload($metadata);
 
-            $this->upsertSearchIndex($fileId, $fileInfo['user_id'], $fileInfo['storage_id'], 
-                                   implode(' ', $searchContent), json_encode($fieldData));
+            $this->upsertSearchIndex($fileId, $fileInfo['user_id'], $fileInfo['storage_id'],
+                                   $payload['search_content'], $payload['field_data']);
 
         } catch (\Exception $e) {
             $this->logger->error('MetaVox: index update failed', ['exception' => $e, 'fileId' => $fileId]);
+        }
+    }
+
+    /**
+     * Build the search-index payload (search_content + field_data) for a file's
+     * metadata. Single source of truth for index *content*, shared by the
+     * per-file path (updateFileIndex) and the bulk path (bulkUpdateFileIndex)
+     * so the two can never diverge in what they index. Pure — no I/O.
+     *
+     * @param array<array{field_name: string, value: mixed}> $metadata
+     * @return array{search_content: string, field_data: string}
+     */
+    public function buildIndexPayload(array $metadata): array {
+        $searchContent = [];
+        $fieldData = [];
+
+        foreach ($metadata as $field) {
+            // Keep '0' / 'false' etc.: only skip null and empty string. Using a
+            // plain truthiness test here would drop legitimate zero values.
+            if ($field['value'] !== null && (string)$field['value'] !== '') {
+                $searchContent[] = $field['value'];
+                $fieldData[$field['field_name']] = $field['value'];
+            }
+        }
+
+        return [
+            'search_content' => implode(' ', $searchContent),
+            'field_data' => json_encode($fieldData),
+        ];
+    }
+
+    /**
+     * Bulk-update the search index for many files in a single set-based pass.
+     *
+     * Used by the defaults backfill: the per-file updateFileIndex does 3+ round
+     * trips per file (metadata, file info, upsert) which does not scale to
+     * millions of files. This fetches metadata and file info for the whole set
+     * in two queries, builds payloads via the shared buildIndexPayload, and
+     * upserts in chunks with a single cache clear at the end.
+     *
+     * Files with no metadata are skipped here (not deleted) — the backfill only
+     * ever adds rows, so a file reaching this method always has at least the
+     * just-written defaults.
+     *
+     * @param int[] $fileIds
+     */
+    public function bulkUpdateFileIndex(array $fileIds): void {
+        if (empty($fileIds)) {
+            return;
+        }
+
+        try {
+            $metadataByFile = $this->getMetadataForFiles($fileIds);
+            $infoByFile = $this->getFileInfoForFiles($fileIds);
+
+            // Assemble all index rows first, then write them set-based. Each row
+            // is [fileId, userId, storageId, searchContent, fieldData].
+            $rows = [];
+            $touchedUsers = [];
+            foreach ($fileIds as $fileId) {
+                $metadata = $metadataByFile[$fileId] ?? [];
+                $info = $infoByFile[$fileId] ?? null;
+                if (empty($metadata) || $info === null || !$info['user_id']) {
+                    continue;
+                }
+                $payload = $this->buildIndexPayload($metadata);
+                $rows[] = [
+                    (int)$fileId,
+                    (string)$info['user_id'],
+                    (int)$info['storage_id'],
+                    strtolower($payload['search_content']),
+                    $payload['field_data'],
+                ];
+                $touchedUsers[$info['user_id']] = true;
+            }
+
+            // One multi-row upsert per chunk instead of SELECT+write per file.
+            foreach (array_chunk($rows, self::INDEX_UPSERT_CHUNK) as $chunk) {
+                $this->bulkUpsertSearchIndex($chunk);
+            }
+
+            // Single cache clear per affected user instead of per file.
+            $cache = $this->cacheFactory->createDistributed('metavox_search');
+            foreach (array_keys($touchedUsers) as $userId) {
+                $cache->clear("metavox_search_{$userId}_");
+            }
+        } catch (\Exception $e) {
+            $this->logger->error('MetaVox: bulk index update failed', [
+                'exception' => $e,
+                'count' => \count($fileIds),
+            ]);
         }
     }
 
@@ -258,7 +347,9 @@ private function getFileMetadata(int $fileId): array {
 
     $result = $qb->executeQuery();
     while ($row = $result->fetch()) {
-        if (!empty(trim($row['field_value']))) {
+        // Skip only null/empty — keep '0' (empty(trim('0')) is true and would
+        // wrongly drop unchecked-checkbox / numeric-zero values).
+        if ($row['field_value'] !== null && (string)$row['field_value'] !== '') {
             $metadata[] = [
                 'field_name' => $row['field_name'],
                 'value' => $row['field_value']
@@ -313,10 +404,23 @@ private function upsertSearchIndex(int $fileId, ?string $userId, int $storageId,
         return;
     }
 
-    // Store search content in lowercase for case-insensitive search
-    $normalizedSearchContent = strtolower($searchContent);
+    $this->upsertSearchIndexRow($fileId, $userId, $storageId, $searchContent, $fieldData);
 
-        // Check if exists
+    // Clear cache for this user
+    $cache = $this->cacheFactory->createDistributed('metavox_search');
+    $cache->clear("metavox_search_{$userId}_");
+}
+
+    /**
+     * Write a single search-index row (insert or update) without clearing the
+     * cache. Shared by the per-file path (upsertSearchIndex, which clears cache
+     * once after) and the bulk path (bulkUpdateFileIndex, which clears once per
+     * user at the end). Keeps the write logic identical across both.
+     */
+    private function upsertSearchIndexRow(int $fileId, string $userId, int $storageId, string $searchContent, string $fieldData): void {
+        // Store search content in lowercase for case-insensitive search
+        $normalizedSearchContent = strtolower($searchContent);
+
         $qb = $this->db->getQueryBuilder();
         $qb->select('id')
            ->from('metavox_search_index')
@@ -327,32 +431,147 @@ private function upsertSearchIndex(int $fileId, ?string $userId, int $storageId,
         $existingId = $result->fetchOne();
         $result->closeCursor();
 
-if ($existingId) {
-        $qb = $this->db->getQueryBuilder();
-        $qb->update('metavox_search_index')
-           ->set('search_content', $qb->createNamedParameter($normalizedSearchContent))
-           ->set('field_data', $qb->createNamedParameter($fieldData))
-           ->set('updated_at', $qb->createNamedParameter(date('Y-m-d H:i:s')))
-           ->where($qb->expr()->eq('id', $qb->createNamedParameter($existingId)));
-        $qb->executeStatement();
-    } else {
-        $qb = $this->db->getQueryBuilder();
-        $qb->insert('metavox_search_index')
-           ->values([
-               'file_id' => $qb->createNamedParameter($fileId),
-               'user_id' => $qb->createNamedParameter($userId),
-               'storage_id' => $qb->createNamedParameter($storageId),
-               'search_content' => $qb->createNamedParameter($normalizedSearchContent),
-               'field_data' => $qb->createNamedParameter($fieldData),
-               'updated_at' => $qb->createNamedParameter(date('Y-m-d H:i:s'))
-           ]);
-        $qb->executeStatement();
+        if ($existingId) {
+            $qb = $this->db->getQueryBuilder();
+            $qb->update('metavox_search_index')
+               ->set('search_content', $qb->createNamedParameter($normalizedSearchContent))
+               ->set('field_data', $qb->createNamedParameter($fieldData))
+               ->set('updated_at', $qb->createNamedParameter(date('Y-m-d H:i:s')))
+               ->where($qb->expr()->eq('id', $qb->createNamedParameter($existingId)));
+            $qb->executeStatement();
+        } else {
+            $qb = $this->db->getQueryBuilder();
+            $qb->insert('metavox_search_index')
+               ->values([
+                   'file_id' => $qb->createNamedParameter($fileId),
+                   'user_id' => $qb->createNamedParameter($userId),
+                   'storage_id' => $qb->createNamedParameter($storageId),
+                   'search_content' => $qb->createNamedParameter($normalizedSearchContent),
+                   'field_data' => $qb->createNamedParameter($fieldData),
+                   'updated_at' => $qb->createNamedParameter(date('Y-m-d H:i:s'))
+               ]);
+            $qb->executeStatement();
+        }
     }
 
+    /**
+     * Set-based upsert of many search-index rows in a single statement.
+     *
+     * Relies on the UNIQUE(file_id, user_id) index (migration 0020) so the
+     * dialect-specific ON CONFLICT / ON DUPLICATE KEY UPDATE is atomic and
+     * concurrency-safe — no SELECT-then-write race. Replaces ~2 round-trips per
+     * file with one statement per chunk.
+     *
+     * @param array<array{0:int,1:string,2:int,3:string,4:string}> $rows
+     *   each row: [fileId, userId, storageId, normalizedSearchContent, fieldData]
+     */
+    private function bulkUpsertSearchIndex(array $rows): void {
+        if (empty($rows)) {
+            return;
+        }
 
-        // Clear cache for this user
-        $cache = $this->cacheFactory->createDistributed('metavox_search');
-        $cache->clear("metavox_search_{$userId}_");
+        $isMysql = $this->db->getDatabasePlatform() instanceof \Doctrine\DBAL\Platforms\MySqlPlatform;
+        $now = date('Y-m-d H:i:s');
+        $sql = $this->buildSearchUpsertSql(\count($rows), $isMysql);
+
+        $params = [];
+        foreach ($rows as [$fileId, $userId, $storageId, $searchContent, $fieldData]) {
+            array_push($params, $fileId, $userId, $storageId, $searchContent, $fieldData, $now);
+        }
+
+        $this->db->executeStatement($sql, $params);
+    }
+
+    /**
+     * Build the dialect-specific multi-row upsert for metavox_search_index.
+     * Pure builder so it can be unit-tested for both dialects. On conflict the
+     * row is refreshed (DO UPDATE) — unlike defaults, re-indexing should reflect
+     * the latest metadata.
+     */
+    public function buildSearchUpsertSql(int $rowCount, bool $isMysql): string {
+        $placeholders = implode(', ', array_fill(0, $rowCount, '(?, ?, ?, ?, ?, ?)'));
+        $head = "INSERT INTO *PREFIX*metavox_search_index "
+              . "(file_id, user_id, storage_id, search_content, field_data, updated_at) "
+              . "VALUES $placeholders ";
+
+        if ($isMysql) {
+            return $head . "ON DUPLICATE KEY UPDATE "
+                 . "search_content = VALUES(search_content), "
+                 . "field_data = VALUES(field_data), "
+                 . "updated_at = VALUES(updated_at)";
+        }
+
+        return $head . "ON CONFLICT (file_id, user_id) DO UPDATE SET "
+             . "search_content = EXCLUDED.search_content, "
+             . "field_data = EXCLUDED.field_data, "
+             . "updated_at = EXCLUDED.updated_at";
+    }
+
+    /**
+     * Fetch metadata for many files at once, grouped by file id and shaped
+     * exactly like getFileMetadata (empty values skipped).
+     *
+     * @param int[] $fileIds
+     * @return array<int, array<array{field_name: string, value: string}>>
+     */
+    private function getMetadataForFiles(array $fileIds): array {
+        $byFile = [];
+        foreach (array_chunk($fileIds, self::QUERY_IN_CHUNK) as $chunk) {
+            $qb = $this->db->getQueryBuilder();
+            $qb->select('file_id', 'field_name', 'field_value')
+               ->from('metavox_file_gf_meta')
+               ->where($qb->expr()->in('file_id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));
+
+            $result = $qb->executeQuery();
+            while ($row = $result->fetch()) {
+                // Skip only null/empty — keep '0' (see getFileMetadata).
+                if ($row['field_value'] !== null && (string)$row['field_value'] !== '') {
+                    $byFile[(int)$row['file_id']][] = [
+                        'field_name' => $row['field_name'],
+                        'value' => $row['field_value'],
+                    ];
+                }
+            }
+            $result->closeCursor();
+        }
+        return $byFile;
+    }
+
+    /**
+     * Fetch storage/user info for many files at once, shaped like getFileInfo.
+     *
+     * @param int[] $fileIds
+     * @return array<int, array{storage_id: int, user_id: ?string}>
+     */
+    private function getFileInfoForFiles(array $fileIds): array {
+        $byFile = [];
+        $storageOwnerCache = [];
+        foreach (array_chunk($fileIds, self::QUERY_IN_CHUNK) as $chunk) {
+            $qb = $this->db->getQueryBuilder();
+            $qb->select('f.fileid', 'f.storage', 'm.user_id')
+               ->from('filecache', 'f')
+               ->leftJoin('f', 'mounts', 'm', 'f.storage = m.storage_id')
+               ->where($qb->expr()->in('f.fileid', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));
+
+            $result = $qb->executeQuery();
+            while ($row = $result->fetch()) {
+                $storageId = (int)$row['storage'];
+                $userId = $row['user_id'];
+                if (!$userId) {
+                    // Resolve home:: storage owner once per storage.
+                    if (!array_key_exists($storageId, $storageOwnerCache)) {
+                        $storageOwnerCache[$storageId] = $this->getUserFromStorage($storageId);
+                    }
+                    $userId = $storageOwnerCache[$storageId];
+                }
+                $byFile[(int)$row['fileid']] = [
+                    'storage_id' => $storageId,
+                    'user_id' => $userId,
+                ];
+            }
+            $result->closeCursor();
+        }
+        return $byFile;
     }
 
     private function deleteFileFromIndex(int $fileId): void {

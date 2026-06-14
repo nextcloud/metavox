@@ -49,6 +49,9 @@ Supports **Nextcloud 31, 32, 33, and 34** with automatic feature detection.
         <php min-version="8.1"/>
         <nextcloud min-version="31" max-version="34"/>
     </dependencies>
+    <commands>
+        <command>OCA\MetaVox\Command\ApplyDefaults</command>
+    </commands>
     <settings>
         <admin>OCA\MetaVox\Settings\Admin</admin>
         <admin-section>OCA\MetaVox\Settings\AdminSection</admin-section>
@@ -60,5 +63,6 @@ Supports **Nextcloud 31, 32, 33, and 34** with automatic feature detection.
         <job>OCA\MetaVox\BackgroundJobs\LicenseUsageJob</job>
         <job>OCA\MetaVox\BackgroundJobs\CleanupDeletedMetadata</job>
         <job>OCA\MetaVox\BackgroundJobs\MetadataBackupJob</job>
+        <job>OCA\MetaVox\BackgroundJobs\DiscoverMissingDefaultsJob</job>
 </background-jobs>
 </info>
