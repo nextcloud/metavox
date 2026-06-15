@@ -74,6 +74,11 @@ class Application extends App implements IBootstrap {
 
         // Icon styling handled by NC via app.svg (#000) and app-dark.svg (#fff)
 
+        // Unified Search filter chip: the search bar exists on every page, not
+        // just the Files app, so this bundle loads globally. It self-guards if
+        // window.OCA.UnifiedSearch is unavailable.
+        \OCP\Util::addScript('metavox', 'metavox-search');
+
         // Load Files app integration only when needed
         // NC34 removed \OC::$server->getRequest() — use container lookup instead.
         $request = \OC::$server->get(IRequest::class);

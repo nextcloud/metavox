@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Search;
 
+use OCA\MetaVox\Service\PermissionService;
 use OCA\MetaVox\Service\SearchIndexService;
 use OCP\Files\IRootFolder;
 use OCP\Files\Node;
@@ -11,16 +12,28 @@ use OCP\IDBConnection;
 use OCP\IL10N;
 use OCP\IURLGenerator;
 use OCP\IUser;
+use OCP\Search\FilterDefinition;
+use OCP\Search\IFilteringProvider;
 use OCP\Search\IProvider;
 use OCP\Search\ISearchQuery;
 use OCP\Search\SearchResult;
 use OCP\Search\SearchResultEntry;
 use Psr\Log\LoggerInterface;
 
-class MetadataSearchProvider implements IProvider {
+/**
+ * IFilteringProvider (and FilterDefinition / IFilter) are @since NC 28, so they
+ * exist across the whole supported range (NC 31-34) — safe to implement at the
+ * class level. NC renders the native filter chip and forwards the typed filter
+ * value to search() via getFilters().
+ */
+class MetadataSearchProvider implements IProvider, IFilteringProvider {
     private const MIN_SEARCH_LENGTH = 3;
     private const PREVIEW_SIZE = 32;
     private const MAX_SUBLINE_FIELDS = 3;
+
+    /** Unified-search filter names (query-string params and chip ids). */
+    private const FILTER_FIELD = 'metavox_field';
+    private const FILTER_GROUPFOLDER = 'metavox_groupfolder';
 
     /** @var array<string, string>|null Cached field labels */
     private ?array $fieldLabelsCache = null;
@@ -29,6 +42,7 @@ class MetadataSearchProvider implements IProvider {
         private readonly IL10N $l10n,
         private readonly IURLGenerator $urlGenerator,
         private readonly SearchIndexService $searchIndexService,
+        private readonly PermissionService $permissionService,
         private readonly IRootFolder $rootFolder,
         private readonly IDBConnection $db,
         private readonly LoggerInterface $logger
@@ -47,18 +61,59 @@ class MetadataSearchProvider implements IProvider {
         return 60;
     }
 
-    public function search(IUser $user, ISearchQuery $query): SearchResult {
-        $searchTerm = $query->getTerm();
+    /**
+     * Filters this provider understands. 'term' is the built-in free-text
+     * filter; the metavox_* ones carry the structured metadata filter.
+     */
+    public function getSupportedFilters(): array {
+        return ['term', self::FILTER_FIELD, self::FILTER_GROUPFOLDER];
+    }
 
-        if (strlen($searchTerm) < self::MIN_SEARCH_LENGTH) {
+    public function getAlternateIds(): array {
+        return [];
+    }
+
+    /**
+     * Custom filter definitions. The name is what NC uses both as the query
+     * param and the advanced inline "name:value" syntax. metavox_field carries
+     * the "field:value" expression; metavox_groupfolder scopes it.
+     */
+    public function getCustomFilters(): array {
+        return [
+            new FilterDefinition(self::FILTER_FIELD, FilterDefinition::TYPE_STRING, false),
+            new FilterDefinition(self::FILTER_GROUPFOLDER, FilterDefinition::TYPE_INT, false),
+        ];
+    }
+
+    public function search(IUser $user, ISearchQuery $query): SearchResult {
+        $userId = $user->getUID();
+
+        // A structured filter (chip / query-string) takes precedence over the
+        // free-text term. The filter value carries a "field:value" string and,
+        // optionally, a groupfolder scope.
+        [$filterExpr, $groupfolderId] = $this->readFilters($query);
+
+        // The effective search expression: the explicit filter if present,
+        // otherwise the typed term.
+        $searchExpr = $filterExpr ?? $query->getTerm();
+
+        if ($searchExpr === null || strlen($searchExpr) < self::MIN_SEARCH_LENGTH) {
             return SearchResult::complete($this->l10n->t('Metadata'), []);
         }
 
+        // If a groupfolder scope is requested, the user must be allowed to view
+        // metadata in it; otherwise drop the scope to a safe, unscoped search
+        // (per-result verifyFileAccess still gates every emitted file).
+        if ($groupfolderId !== null
+            && !$this->permissionService->hasPermission($userId, PermissionService::PERM_VIEW_METADATA, $groupfolderId)) {
+            $groupfolderId = null;
+        }
+
         $results = [];
-        $userFolder = $this->rootFolder->getUserFolder($user->getUID());
+        $userFolder = $this->rootFolder->getUserFolder($userId);
 
         try {
-            $files = $this->performSearch($searchTerm, $user->getUID());
+            $files = $this->performSearch($searchExpr, $userId, $groupfolderId);
             $fieldLabels = $this->getFieldLabels();
 
             foreach ($files as $file) {
@@ -70,7 +125,7 @@ class MetadataSearchProvider implements IProvider {
         } catch (\Exception $e) {
             $this->logger->error('MetaVox search error', [
                 'exception' => $e,
-                'search_term' => $searchTerm,
+                'search_term' => $searchExpr,
                 'app' => 'metavox'
             ]);
         }
@@ -79,17 +134,82 @@ class MetadataSearchProvider implements IProvider {
     }
 
     /**
+     * Read the structured metadata filters. Now that we implement
+     * IFilteringProvider, NC forwards our registered filters here. Wrapped in
+     * try/catch so a malformed filter can never break search — it just falls
+     * back to the plain term path. Returns [fieldExpr|null, groupfolderId|null].
+     *
+     * @return array{0: ?string, 1: ?int}
+     */
+    private function readFilters(ISearchQuery $query): array {
+        $fieldExpr = null;
+        $groupfolderId = null;
+
+        try {
+            $fieldFilter = $query->getFilter(self::FILTER_FIELD);
+            if ($fieldFilter !== null) {
+                $val = $fieldFilter->get();
+                if (is_string($val) && $val !== '') {
+                    $fieldExpr = $val;
+                }
+            }
+
+            $gfFilter = $query->getFilter(self::FILTER_GROUPFOLDER);
+            if ($gfFilter !== null) {
+                $gfVal = $gfFilter->get();
+                if (is_numeric($gfVal)) {
+                    $groupfolderId = (int)$gfVal;
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->logger->debug('MetaVox: filter read skipped', ['exception' => $e]);
+        }
+
+        return [$fieldExpr, $groupfolderId];
+    }
+
+    /**
      * Perform search based on search term format
      *
      * @return array<array{id: int, name: string, metadata: array}>
      */
-    private function performSearch(string $searchTerm, string $userId): array {
-        // Check for field-specific search (e.g., "author:john")
-        if (preg_match('/^(\w+):\s*(.+)$/', $searchTerm, $matches)) {
-            return $this->searchIndexService->searchByFieldValue($matches[1], $matches[2], $userId);
+    private function performSearch(string $searchTerm, string $userId, ?int $groupfolderId = null): array {
+        // Field-specific search via the shared "field:value" parser.
+        $parsed = self::parseFieldFilter($searchTerm);
+        if ($parsed !== null) {
+            return $this->searchIndexService->searchByFieldValue(
+                $parsed['field'],
+                $parsed['value'],
+                $userId,
+                $groupfolderId
+            );
         }
 
         return $this->searchIndexService->searchFilesByMetadata($searchTerm, $userId);
+    }
+
+    /**
+     * Parse a "field:value" filter expression. Single source of truth for the
+     * inline search syntax, the query-string form (?metavox_field=author:rik)
+     * and the search-bar filter chip — they all funnel through here.
+     *
+     * Pure and static so it can be unit-tested without a DB or NC runtime.
+     *
+     * Field names are snake_case (metavox_gf_fields.field_name), so \w suffices.
+     * The colon splits on the FIRST occurrence, so values may contain colons
+     * (e.g. "url:http://example.com" → field "url", value "http://example.com").
+     *
+     * @return array{field: string, value: string}|null null when not a field filter
+     */
+    public static function parseFieldFilter(string $raw): ?array {
+        if (preg_match('/^(\w+):\s*(.+)$/s', $raw, $matches) !== 1) {
+            return null;
+        }
+        $value = trim($matches[2]);
+        if ($value === '') {
+            return null;
+        }
+        return ['field' => $matches[1], 'value' => $value];
     }
 
     /**
