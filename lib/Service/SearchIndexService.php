@@ -50,41 +50,112 @@ class SearchIndexService {
         }
     }
 
-    public function searchByFieldValue(string $fieldName, string $fieldValue, string $userId): array {
+    /**
+     * Find files where a specific metadata field has an exact value.
+     *
+     * Filters against the authoritative metavox_file_gf_meta table (not a JSON
+     * substring on the search index), so "status:open" no longer also matches
+     * "open-but-stale" and a value cannot collide across fields. When
+     * $groupfolderId is given, results are scoped to that groupfolder — the
+     * same field name can carry different values per folder, and this also
+     * prevents leaking matches across folders the caller did not intend.
+     *
+     * Permission is still enforced per result by the provider
+     * (verifyFileAccess); this scoping narrows the candidate set up front.
+     *
+     * @return array<array{id: int, name: string, path: string, metadata: array}>
+     */
+    public function searchByFieldValue(string $fieldName, string $fieldValue, string $userId, ?int $groupfolderId = null): array {
+        // $userId is kept for signature stability; access control is enforced by
+        // the caller (MetadataSearchProvider: permission gate + verifyFileAccess).
+        unset($userId);
         try {
             $qb = $this->db->getQueryBuilder();
-            // CHANGED: Remove user_id filter, permission check happens in SearchProvider
-            // Convert to lowercase to match stored lowercase data
-            $qb->select('si.file_id', 'si.field_data', 'f.name', 'f.path')
-               ->from('metavox_search_index', 'si')
-               ->innerJoin('si', 'filecache', 'f', 'si.file_id = f.fileid')
-               ->where($qb->expr()->like(
-                   'si.field_data',
-                   $qb->createNamedParameter('%"' . strtolower($this->db->escapeLikeParameter($fieldName)) . '":"' . strtolower($this->db->escapeLikeParameter($fieldValue)) . '%')
-               ))
-               ->setMaxResults(100)  // Increased limit since we filter later
+            // f.mtime is in the select list because Postgres requires ORDER BY
+            // expressions to appear in SELECT when DISTINCT is used. (file_id is
+            // already unique per (file, field) row here, so DISTINCT mainly
+            // guards against duplicate index rows.)
+            $qb->selectDistinct('m.file_id')
+               ->addSelect('f.name', 'f.path', 'f.mtime')
+               ->from('metavox_file_gf_meta', 'm')
+               ->innerJoin('m', 'filecache', 'f', 'm.file_id = f.fileid')
+               ->where($qb->expr()->eq('m.field_name', $qb->createNamedParameter($fieldName)))
+               ->setMaxResults(100)
                ->orderBy('f.mtime', 'DESC');
+
+            // A file matches each requested token if its stored value either
+            // equals the token exactly (single-value field) OR contains it as a
+            // ';#'-delimited element (multiselect field). Multiple tokens are
+            // AND-ed: the file must satisfy every selected option.
+            $tokens = $this->splitMultiselectTokens($fieldValue);
+            foreach ($tokens as $token) {
+                $qb->andWhere($qb->expr()->orX(
+                    $qb->expr()->eq('m.field_value', $qb->createNamedParameter($token)),
+                    $qb->expr()->like(
+                        $this->delimitedFieldValueExpr($qb),
+                        $qb->createNamedParameter(
+                            '%;#' . $this->db->escapeLikeParameter($token) . ';#%'
+                        )
+                    )
+                ));
+            }
+
+            if ($groupfolderId !== null) {
+                $qb->andWhere($qb->expr()->eq('m.groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)));
+            }
 
             $result = $qb->executeQuery();
             $files = [];
-            
             while ($row = $result->fetch()) {
                 $files[] = [
                     'id' => (int)$row['file_id'],
                     'name' => $row['name'],
                     'path' => $row['path'],
-                    'metadata' => json_decode($row['field_data'] ?: '{}', true)
+                    'metadata' => [$fieldName => $fieldValue],
                 ];
             }
             $result->closeCursor();
 
             return $files;
-            
+
         } catch (\Exception $e) {
             $this->logger->error('MetaVox: field search failed', ['exception' => $e, 'fieldName' => $fieldName]);
             return [];
         }
     }
+
+    /**
+     * Split a (possibly multiselect) value on the ';#' separator the app uses
+     * to join multiple options. Returns a single-element array for plain values.
+     *
+     * @return string[]
+     */
+    private function splitMultiselectTokens(string $value): array {
+        if (strpos($value, ';#') === false) {
+            return [$value];
+        }
+        return array_values(array_filter(
+            array_map('trim', explode(';#', $value)),
+            static fn(string $t): bool => $t !== ''
+        ));
+    }
+
+    /**
+     * SQL expression that wraps m.field_value in leading/trailing ';#' so a
+     * single delimiter-bounded LIKE ('%;#token;#%') matches a token anywhere in
+     * the stored set — including the first and last positions, which a bare
+     * "%;#token;#%" against the unwrapped value would miss. Uses the DB's
+     * concat function for portability across MySQL/Postgres/SQLite.
+     */
+    private function delimitedFieldValueExpr(IQueryBuilder $qb) {
+        // Returns an IQueryFunction (not a plain string); like() accepts it and
+        // it renders to CONCAT(';#', m.field_value, ';#') per dialect.
+        return $qb->func()->concat(
+            $qb->createNamedParameter(';#'),
+            $qb->func()->concat('m.field_value', $qb->createNamedParameter(';#'))
+        );
+    }
+
     private function performMetadataSearch(string $searchTerm, string $userId): array {
         $qb = $this->db->getQueryBuilder();
         
