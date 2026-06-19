@@ -8,6 +8,7 @@ use OCA\MetaVox\AppInfo\Application;
 use OCA\MetaVox\BackgroundJobs\DiscoverMissingDefaultsJob;
 use OCA\MetaVox\Service\DefaultsService;
 use OCA\MetaVox\Service\FieldService;
+use OCA\MetaVox\Service\FileReferenceService;
 use OCA\MetaVox\Service\PermissionService;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
@@ -40,6 +41,7 @@ class DefaultsController extends BaseController {
         IUserSession $userSession,
         IRootFolder $rootFolder,
         private readonly DefaultsService $defaultsService,
+        private readonly FileReferenceService $fileReferenceService,
         private readonly IJobList $jobList,
         private readonly IConfig $config,
         private readonly LoggerInterface $logger,
@@ -86,6 +88,33 @@ class DefaultsController extends BaseController {
 
         if ($fieldId <= 0) {
             return new JSONResponse(['error' => 'fieldId is required'], Http::STATUS_BAD_REQUEST);
+        }
+
+        // For file-link defaults the picker yields a bare path; resolve it to the
+        // canonical "<fileid>:path" form (and dedup) before validating/storing,
+        // exactly like a normal file-link value save.
+        if ($value !== null && $value !== '') {
+            $field = $this->fieldService->getFieldById($fieldId);
+            if ($field !== null && ($field['field_type'] ?? '') === 'filelink') {
+                $resolved = [];
+                foreach (FileReferenceService::parseValue($value) as $token) {
+                    if ($token['fileId'] === null) {
+                        $id = $this->fileReferenceService->resolvePathToFileId($token['path'], $user->getUID());
+                        if ($id !== null) {
+                            $token['fileId'] = $id;
+                        }
+                    }
+                    $resolved[] = $token;
+                }
+                $value = FileReferenceService::joinTokens(FileReferenceService::dedupeTokens($resolved));
+            }
+        }
+
+        // Validate the default against the field type (date format, option
+        // membership, numeric, user exists, file-link resolvable, …).
+        $validationError = $this->fieldService->validateDefaultValue($fieldId, $value);
+        if ($validationError !== null) {
+            return new JSONResponse(['error' => $validationError], Http::STATUS_BAD_REQUEST);
         }
 
         $ok = $this->defaultsService->setFieldDefault($groupfolderId, $fieldId, $value);

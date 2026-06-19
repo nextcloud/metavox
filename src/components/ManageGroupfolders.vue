@@ -194,7 +194,7 @@
                         </NcCheckboxRadioSwitch>
 
                         <!-- Default value input (only when the field is assigned) -->
-                        <div v-if="isFieldAssigned(groupfolder.id, field.id)" class="default-value-input">
+                        <div v-if="isFieldAssigned(groupfolder.id, field.id)" class="default-value-input" :class="`dv--${field.field_type}`">
                           <label :for="`default-${groupfolder.id}-${field.id}`" class="default-value-label">
                             {{ t('metavox', 'Default value') }}
                           </label>
@@ -265,7 +265,34 @@
                             {{ t('metavox', 'Default value') }}
                           </NcCheckboxRadioSwitch>
 
-                          <!-- Text / url / fallback default -->
+                          <!-- URL default -->
+                          <UrlFieldInput
+                            v-else-if="field.field_type === 'url'"
+                            :model-value="getDefaultValue(groupfolder.id, field)"
+                            :field="field"
+                            :input-id="`default-${groupfolder.id}-${field.id}`"
+                            class="field-input"
+                            @input="setDefaultValue(groupfolder.id, field, $event)" />
+
+                          <!-- User default -->
+                          <UserGroupFieldInput
+                            v-else-if="field.field_type === 'user'"
+                            :model-value="getDefaultValue(groupfolder.id, field)"
+                            :field="field"
+                            :input-id="`default-${groupfolder.id}-${field.id}`"
+                            class="field-input"
+                            @input="setDefaultValue(groupfolder.id, field, $event)" />
+
+                          <!-- File link default (one or more files) -->
+                          <FileLinkFieldInput
+                            v-else-if="field.field_type === 'filelink'"
+                            :model-value="getDefaultValue(groupfolder.id, field)"
+                            :field="field"
+                            :input-id="`default-${groupfolder.id}-${field.id}`"
+                            class="field-input"
+                            @input="setDefaultValue(groupfolder.id, field, $event)" />
+
+                          <!-- Text / fallback default -->
                           <NcTextField
                             v-else
                             :id="`default-${groupfolder.id}-${field.id}`"
@@ -544,6 +571,9 @@ import CogIcon from 'vue-material-design-icons/Cog.vue'
 import ContentSaveIcon from 'vue-material-design-icons/ContentSave.vue'
 import MagnifyIcon from 'vue-material-design-icons/Magnify.vue'
 import PlayIcon from 'vue-material-design-icons/Play.vue'
+import UrlFieldInput from './fields/UrlFieldInput.vue'
+import UserGroupFieldInput from './fields/UserGroupFieldInput.vue'
+import FileLinkFieldInput from './fields/FileLinkFieldInput.vue'
 
 export default {
   name: 'ManageGroupfolders',
@@ -560,6 +590,9 @@ export default {
     ContentSaveIcon,
     MagnifyIcon,
     PlayIcon,
+    UrlFieldInput,
+    UserGroupFieldInput,
+    FileLinkFieldInput,
   },
   
   data() {
@@ -1516,8 +1549,44 @@ export default {
 }
 
 .field-input {
-  width: 100% !important;
+  width: 100%;
+  max-width: 480px;
   min-height: 44px;
+}
+
+/* Default-value input width matched to the field type. Inputs stay responsive
+   (width:100%) but are capped so a year/date isn't absurdly wide. */
+.dv--number .field-input,
+.dv--number .number-input {
+  max-width: 120px;
+}
+
+.dv--date .field-input,
+.dv--date .date-input {
+  max-width: 220px;
+}
+
+.dv--select .field-input,
+.dv--multiselect .field-input,
+.dv--user .field-input {
+  max-width: 320px;
+}
+
+.dv--text .field-input,
+.dv--url .field-input,
+.dv--filelink .field-input {
+  max-width: 480px;
+}
+
+.dv--textarea .field-input,
+.dv--textarea .textarea-input {
+  max-width: 100%;
+}
+
+/* Checkbox default: just the switch, no wide box. */
+.dv--checkbox .field-input {
+  max-width: none;
+  min-height: 0;
 }
 
 /* Native input styling for consistency */

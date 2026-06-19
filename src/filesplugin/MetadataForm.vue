@@ -112,11 +112,12 @@
 				:input-id="`field-${field.id}`"
 				@input="handleUpdate(field.field_name, $event)" />
 
-			<!-- File Link Field -->
+			<!-- File Link Field (one or more files) -->
 			<FileLinkFieldInput
 				v-else-if="field.field_type === 'filelink'"
 				:model-value="values[field.field_name] || ''"
 				:field="field"
+				:resolved="field.resolved || []"
 				:disabled="readonly"
 				:input-id="`field-${field.id}`"
 				@input="handleUpdate(field.field_name, $event)" />

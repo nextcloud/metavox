@@ -156,7 +156,18 @@ class Application extends App implements IBootstrap {
                                     $fileIds = array_map(fn($n) => $n->getId(), $children);
                                     if (!empty($fileIds) && count($fileIds) <= 100) {
                                         $filterService = \OC::$server->get(FilterService::class);
-                                        $gfData['directory_metadata'] = $filterService->getDirectoryMetadata($fileIds, $groupfolderId);
+                                        $directoryMetadata = $filterService->getDirectoryMetadata($fileIds, $groupfolderId);
+                                        $gfData['directory_metadata'] = $directoryMetadata;
+
+                                        // Resolve current names for any file-link references so
+                                        // the grid shows live names without per-cell API calls.
+                                        // Map: fileid => current display name. JS falls back to
+                                        // the cached path when an id is absent (stale / no access).
+                                        $gfData['filelink_resolved'] = $this->resolveFilelinkNames(
+                                            $directoryMetadata,
+                                            $gfData['fields'] ?? [],
+                                            $userId
+                                        );
                                     }
                                 }
                             } catch (\Exception $e) {
@@ -176,5 +187,59 @@ class Application extends App implements IBootstrap {
                 // Silently fail — JS will fall back to API call
             }
         }
+    }
+
+    /**
+     * Build a fileid => current-name map for every file-link reference in the
+     * prefetched directory metadata, so the grid renders live names without a
+     * round-trip per cell. Returns an empty array on any failure (the JS falls
+     * back to the cached path baked into the stored value).
+     *
+     * @param array<int, array<string, string>> $directoryMetadata fileId => [field => value]
+     * @param array<int, array<string, mixed>>  $fields            assigned file fields
+     * @return array<int, string> referenced fileId => current display name
+     */
+    private function resolveFilelinkNames(array $directoryMetadata, array $fields, string $userId): array {
+        // Which assigned fields are file-link types?
+        $filelinkFieldNames = [];
+        foreach ($fields as $field) {
+            if (in_array($field['field_type'] ?? '', \OCA\MetaVox\Service\FileReferenceService::FILELINK_TYPES, true)) {
+                $filelinkFieldNames[(string)$field['field_name']] = true;
+            }
+        }
+        if (empty($filelinkFieldNames)) {
+            return [];
+        }
+
+        // Collect referenced fileids from those columns' values.
+        $referencedIds = [];
+        foreach ($directoryMetadata as $fields_) {
+            foreach ($fields_ as $fieldName => $value) {
+                if (!isset($filelinkFieldNames[$fieldName]) || $value === null || $value === '') {
+                    continue;
+                }
+                foreach (\OCA\MetaVox\Service\FileReferenceService::parseValue((string)$value) as $token) {
+                    if ($token['fileId'] !== null) {
+                        $referencedIds[] = $token['fileId'];
+                    }
+                }
+            }
+        }
+        if (empty($referencedIds)) {
+            return [];
+        }
+
+        try {
+            $refService = \OC::$server->get(\OCA\MetaVox\Service\FileReferenceService::class);
+            $resolved = $refService->resolveMany($referencedIds, $userId);
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        $map = [];
+        foreach ($resolved as $id => $info) {
+            $map[$id] = $info['name'];
+        }
+        return $map;
     }
 }

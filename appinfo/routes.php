@@ -30,6 +30,7 @@ return [
         // Groupfolder file metadata routes (individual files within groupfolders)
         ['name' => 'field#getGroupfolderFileMetadata', 'url' => '/api/groupfolders/{groupfolderId}/files/{fileId}/metadata', 'verb' => 'GET'],
         ['name' => 'field#saveGroupfolderFileMetadata', 'url' => '/api/groupfolders/{groupfolderId}/files/{fileId}/metadata', 'verb' => 'POST'],
+        ['name' => 'field#getFileBacklinks', 'url' => '/api/groupfolders/{groupfolderId}/files/{fileId}/backlinks', 'verb' => 'GET'],
 
         // Bulk file metadata routes
         ['name' => 'field#saveBulkFileMetadata', 'url' => '/api/files/bulk-metadata', 'verb' => 'POST'],
