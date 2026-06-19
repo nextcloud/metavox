@@ -149,6 +149,126 @@ public function getFieldById(int $id): ?array {
     }
 }
 
+/**
+ * Validate a default value against a field's type. Returns an error message
+ * (string) when invalid, or null when the value is acceptable.
+ *
+ * filelink is validated structurally here (must be canonical "<id>:path");
+ * the controller resolves bare picker paths to ids before calling this, so a
+ * filelink default that still lacks an id is genuinely unresolvable.
+ *
+ * @param ?string $value null or '' clears the default and is always allowed.
+ */
+public function validateDefaultValue(int $fieldId, ?string $value): ?string {
+    $field = $this->getFieldById($fieldId);
+    if ($field === null) {
+        return 'Field not found';
+    }
+    return self::validateDefaultValueForType(
+        (string)($field['field_type'] ?? 'text'),
+        $value,
+        $field['field_options'] ?? [],
+        fn(string $uid): bool => $this->userManager->userExists($uid)
+    );
+}
+
+/**
+ * Pure per-type validation of a default value (no DB). Returns an error
+ * message or null. Separated so it can be unit-tested directly.
+ *
+ * @param mixed    $options     field_options array
+ * @param callable $userExists  fn(string $uid): bool — injected so the
+ *                              `user` check stays DB-free in tests.
+ */
+public static function validateDefaultValueForType(string $type, ?string $value, $options, callable $userExists): ?string {
+    // Clearing a default is always allowed.
+    if ($value === null || $value === '') {
+        return null;
+    }
+
+    switch ($type) {
+        case 'date':
+            $includeTime = is_array($options) && !empty($options['includeTime']);
+            $pattern = $includeTime
+                ? '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/'
+                : '/^\d{4}-\d{2}-\d{2}$/';
+            if (!preg_match($pattern, $value)) {
+                return $includeTime
+                    ? 'Expected date/time as YYYY-MM-DDTHH:mm:ss'
+                    : 'Expected date as YYYY-MM-DD';
+            }
+            return null;
+
+        case 'number':
+            return is_numeric($value) ? null : 'Default must be a number';
+
+        case 'checkbox':
+            return in_array($value, ['0', '1'], true) ? null : 'Default must be 0 or 1';
+
+        case 'select': {
+            $allowed = self::optionValueList($options);
+            return in_array($value, $allowed, true) ? null : 'Default is not one of the field options';
+        }
+
+        case 'multiselect': {
+            $allowed = self::optionValueList($options);
+            foreach (explode(';#', $value) as $token) {
+                $token = trim($token);
+                if ($token === '') {
+                    continue;
+                }
+                if (!in_array($token, $allowed, true)) {
+                    return 'Default contains an option that is not configured: ' . $token;
+                }
+            }
+            return null;
+        }
+
+        case 'user':
+            return $userExists($value) ? null : 'User does not exist: ' . $value;
+
+        case 'filelink': {
+            // Each token must carry a numeric fileid (controller already
+            // resolved picker paths). A bare path here means unresolvable.
+            foreach (\OCA\MetaVox\Service\FileReferenceService::parseValue($value) as $token) {
+                if ($token['fileId'] === null) {
+                    return 'File link default could not be resolved to a file';
+                }
+            }
+            return null;
+        }
+
+        // text, textarea, url and anything else: free-form.
+        default:
+            return null;
+    }
+}
+
+/**
+ * Normalise a field_options blob to the list of option VALUE strings, for
+ * select/multiselect membership checks. Handles both a flat list
+ * (["A","B"]) and the {value,label} object shape.
+ *
+ * @param mixed $options
+ * @return string[]
+ */
+private static function optionValueList($options): array {
+    if (!is_array($options)) {
+        return [];
+    }
+    $values = [];
+    foreach ($options as $opt) {
+        if (is_array($opt)) {
+            if (isset($opt['value'])) {
+                $values[] = (string)$opt['value'];
+            }
+        } else {
+            $values[] = (string)$opt;
+        }
+    }
+    return $values;
+}
+
 public function getFieldsByScope(string $scope = 'global'): array {
     // Return from cache if available
     if (isset($this->fieldsByScopeCache[$scope])) {

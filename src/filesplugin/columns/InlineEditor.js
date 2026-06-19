@@ -11,7 +11,8 @@ import { generateUrl } from '@nextcloud/router'
 import { MARKER_CLASS } from './ColumnStyles.js'
 import { saveSingleField, saveBulkFields } from './MetaVoxAPI.js'
 import { parseFieldOptions, formatValue } from './ColumnUtils.js'
-import { permissionCache, metadataCache, getActiveGroupfolderId } from './MetaVoxState.js'
+import { permissionCache, metadataCache, getActiveGroupfolderId, getFilelinkName } from './MetaVoxState.js'
+import { parseValue, joinTokens, displayName } from '../../components/fields/filelinkUtils.js'
 import { translate } from '@nextcloud/l10n'
 import { pushUndo } from './UndoSupport.js'
 import { dateFieldIncludesTime, padDatetimeLocal } from '../../utils/dateField.js'
@@ -471,25 +472,52 @@ export async function openInlineEditor(td, config) {
 		}
 
 		case 'filelink': {
-			// File picker — open NC file picker dialog, save selected path
+			// File picker — open NC file picker, append selected path. The backend
+			// normalises a bare path to "<fileid>:path" on save. A File Link field
+			// holds one or more files; "Add file" appends, "Clear" empties.
 			const container = document.createElement('div')
 			container.className = 'metavox-inline-editor metavox-inline-filelink'
 
-			const pathDisplay = document.createElement('span')
-			pathDisplay.className = 'metavox-filelink-path'
-			pathDisplay.textContent = currentValue ? currentValue.split('/').pop() : translate('metavox', 'No file selected')
-			container.appendChild(pathDisplay)
+			const fileTokens = parseValue(currentValue)
+
+			// Existing references (open by fileid when available).
+			fileTokens.forEach((token) => {
+				const name = displayName(token, { [token.fileId]: getFilelinkName(token.fileId) })
+
+				const openBtn = document.createElement('a')
+				openBtn.className = 'metavox-filelink-open'
+				openBtn.textContent = name
+				openBtn.title = token.path || name
+				openBtn.target = '_blank'
+				openBtn.rel = 'noopener noreferrer'
+				if (token.fileId != null) {
+					openBtn.href = generateUrl('/f/{fileId}', { fileId: token.fileId })
+				} else {
+					const dir = token.path.substring(0, token.path.lastIndexOf('/'))
+					openBtn.href = generateUrl('/apps/files/?dir={dir}&openfile={file}', { dir, file: token.path })
+				}
+				container.appendChild(openBtn)
+			})
+
+			if (fileTokens.length === 0) {
+				const pathDisplay = document.createElement('span')
+				pathDisplay.className = 'metavox-filelink-path'
+				pathDisplay.textContent = translate('metavox', 'No files selected')
+				container.appendChild(pathDisplay)
+			}
 
 			const browseBtn = document.createElement('button')
 			browseBtn.className = 'metavox-filelink-browse'
-			browseBtn.textContent = translate('metavox', 'Browse')
+			browseBtn.textContent = translate('metavox', 'Add file')
 			browseBtn.addEventListener('click', () => {
 				if (typeof OC !== 'undefined' && OC.dialogs) {
 					OC.dialogs.filepicker(
 						translate('metavox', 'Select a file or folder'),
 						(path) => {
 							if (path) {
-								saveSingleField(fileId, fieldName, path, { unlock: true })
+								// Append the picked file to the existing set.
+								const newValue = joinTokens([...fileTokens, { fileId: null, path }])
+								saveSingleField(fileId, fieldName, newValue, { unlock: true })
 								closeInlineEditor(false)
 							}
 						},
@@ -502,17 +530,7 @@ export async function openInlineEditor(td, config) {
 			})
 			container.appendChild(browseBtn)
 
-			if (currentValue) {
-				const openBtn = document.createElement('a')
-				openBtn.className = 'metavox-filelink-open'
-				openBtn.textContent = '↗'
-				openBtn.title = translate('metavox', 'Open file')
-				openBtn.target = '_blank'
-				openBtn.rel = 'noopener noreferrer'
-				const dir = currentValue.substring(0, currentValue.lastIndexOf('/'))
-				openBtn.href = generateUrl('/apps/files/?dir={dir}&openfile={file}', { dir, file: currentValue })
-				container.appendChild(openBtn)
-
+			if (fileTokens.length > 0) {
 				const clearBtn = document.createElement('button')
 				clearBtn.className = 'metavox-filelink-clear'
 				clearBtn.textContent = '✕'

@@ -1091,7 +1091,8 @@ async saveEdit() {
         date: 'CalendarIcon',
         select: 'MenuDownIcon',
         multiselect: 'MenuDownIcon',
-        checkbox: 'CheckboxIcon'
+        checkbox: 'CheckboxIcon',
+        filelink: 'FileIcon'
       }
       return icons[type] || 'TextIcon'
     },
