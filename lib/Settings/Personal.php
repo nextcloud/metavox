@@ -44,11 +44,9 @@ class Personal implements ISettings {
             return true;
         }
 
-        // Check if user has manage_fields permission
-        return $this->permissionService->hasPermission(
-            $userId,
-            PermissionService::PERM_MANAGE_FIELDS
-        );
+        // Show the page if the user can manage fields on ANY team folder
+        // (folder-specific grant counts, not just a global one).
+        return $this->permissionService->hasManageFieldsOnAnyFolder($userId);
     }
 
     public function getForm() {
@@ -60,11 +58,8 @@ class Personal implements ISettings {
 
         $user = $this->userSession->getUser();
 
-        // Check if user has manage_fields permission
-        $hasPermission = $this->permissionService->hasPermission(
-            $user->getUID(),
-            PermissionService::PERM_MANAGE_FIELDS
-        );
+        // Has manage_fields somewhere (folder-specific or global) — drives the UI.
+        $hasPermission = $this->permissionService->hasManageFieldsOnAnyFolder($user->getUID());
 
         // Load JavaScript and CSS
         \OCP\Util::addScript('metavox', 'user');
