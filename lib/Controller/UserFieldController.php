@@ -44,8 +44,24 @@ class UserFieldController extends BaseController {
             $user = $this->requireUser();
             if ($user instanceof JSONResponse) return $user;
 
-            $groupfolders = $this->userFieldService->getAccessibleGroupfolders($user->getUID());
-            return new JSONResponse($groupfolders);
+            $userId = $user->getUID();
+            $groupfolders = $this->userFieldService->getAccessibleGroupfolders($userId);
+
+            // Annotate each folder with whether this user may manage its fields,
+            // and return only the manageable ones — the Personal settings page
+            // is for configuring fields/defaults, not browsing every membership.
+            $manageable = [];
+            foreach ($groupfolders as $folder) {
+                $gfId = (int)($folder['id'] ?? 0);
+                if ($gfId <= 0) {
+                    continue;
+                }
+                if ($this->permissionService->hasPermission($userId, PermissionService::PERM_MANAGE_FIELDS, $gfId)) {
+                    $folder['can_manage'] = true;
+                    $manageable[] = $folder;
+                }
+            }
+            return new JSONResponse($manageable);
         } catch (\Exception $e) {
             $this->logger->error('MetaVox: getAccessibleGroupfolders error', ['exception' => $e]);
             return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
