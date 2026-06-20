@@ -179,22 +179,13 @@ export default {
     },
     addFile() {
       this.error = ''
-      // The picker returns a path; the backend resolves it to "<id>:path" on
-      // save (and dedups on fileid). Append as a bare-path token (fileId null).
+      // Standard Nextcloud file picker.
       OC.dialogs.filepicker(
         this.t('metavox', 'Select a file or folder'),
         (path) => {
-          if (!path) return
-          // Client-side guard: don't add the same path twice (immediate
-          // feedback via a toast). The server is the source of truth and also
-          // dedups on the resolved fileid (catches same file via another path).
-          if (this.tokens.some((t) => t.path === path)) {
-            showWarning(this.t('metavox', 'This file is already linked'))
-            return
+          if (path) {
+            this.addPath(path)
           }
-          const next = this.tokens.slice()
-          next.push({ fileId: null, path })
-          this.emit(next)
         },
         false, // multiselect
         this.mimetypes.length > 0 ? this.mimetypes : undefined,
@@ -203,6 +194,18 @@ export default {
         '/',
         { allowDirectoryChooser: this.selectionType !== 'files' }
       )
+    },
+    addPath(path) {
+      // Client-side guard: don't add the same path twice (immediate feedback
+      // via a toast). The server is the source of truth and also dedups on the
+      // resolved fileid (catches the same file via a different path).
+      if (this.tokens.some((t) => t.path === path)) {
+        showWarning(this.t('metavox', 'This file is already linked'))
+        return
+      }
+      const next = this.tokens.slice()
+      next.push({ fileId: null, path })
+      this.emit(next)
     },
     openFile(token) {
       // Prefer opening by fileid (robust to renames/moves). NC's canonical
