@@ -121,7 +121,7 @@
                   <p>{{ t('metavox', 'No fields available. Create some fields first in the field management tabs.') }}</p>
                 </div>
                 
-                <form v-else @submit.prevent="saveFieldsConfiguration(groupfolder.id)" class="fields-config-form">
+                <div v-else class="fields-config-form">
                   <!-- Search for Fields -->
                   <div class="field-search-section">
                     <NcTextField
@@ -342,8 +342,9 @@
                   <div class="form-actions">
                     <NcButton
                       type="primary"
-                      native-type="submit"
-                      :disabled="savingFields[groupfolder.id]">
+                      native-type="button"
+                      :disabled="savingFields[groupfolder.id]"
+                      @click="saveFieldsConfiguration(groupfolder.id)">
                       <template #icon>
                         <div v-if="savingFields[groupfolder.id]" class="icon-loading-small"></div>
                         <ContentSaveIcon v-else :size="20" />
@@ -356,7 +357,7 @@
                       {{ t('metavox', 'Cancel') }}
                     </NcButton>
                   </div>
-                </form>
+                </div>
 
               </div>
             </div>
@@ -1007,7 +1008,7 @@ export default {
       }
     },
     
-    async saveFieldsConfiguration(groupfolderId) {
+    async saveFieldsConfiguration(groupfolderId, { keepOpen = false } = {}) {
       this.savingFields[groupfolderId] = true
 
       try {
@@ -1039,12 +1040,16 @@ export default {
         await Promise.all(defaultPromises)
 
         showSuccess(this.t('metavox', 'Field configuration saved successfully'))
-        this.expandedFields[groupfolderId] = false
+        // Keep the panel open when saving as part of "Apply defaults now".
+        if (!keepOpen) {
+          this.expandedFields[groupfolderId] = false
+        }
       } catch (error) {
         console.error('Failed to save field configuration:', error)
         showError(this.t('metavox', 'Failed to save field configuration'))
         // Reset temp fields to actual assigned fields on error
         this.tempAssignedFields[groupfolderId] = [...this.assignedFields[groupfolderId]]
+        throw error // let triggerDefaults know the save failed
       } finally {
         this.savingFields[groupfolderId] = false
       }
@@ -1175,25 +1180,47 @@ export default {
     },
 
     async triggerDefaults(groupfolderId) {
-      // Fire and forget — the backfill runs server-side, we poll for status
-      axios.post(
-        generateUrl(`/apps/metavox/api/groupfolders/${groupfolderId}/defaults/trigger`)
-      ).catch(error => {
+      // Persist the current field config + defaults FIRST, so "Apply defaults
+      // now" always works on the latest values (no need to remember to save).
+      this.defaultsStatus[groupfolderId] = 'running'
+      try {
+        await this.saveFieldsConfiguration(groupfolderId, { keepOpen: true })
+      } catch (error) {
+        this.defaultsStatus[groupfolderId] = 'idle'
+        return // save failed; saveFieldsConfiguration already showed the error
+      }
+
+      // Trigger the server-side backfill, then poll for status.
+      try {
+        await axios.post(
+          generateUrl(`/apps/metavox/api/groupfolders/${groupfolderId}/defaults/trigger`)
+        )
+      } catch (error) {
         console.error('Failed to trigger defaults backfill:', error)
         showError(this.t('metavox', 'Failed to apply defaults'))
-      })
+        this.defaultsStatus[groupfolderId] = 'idle'
+        return
+      }
 
-      // Optimistically show running state and start polling
-      this.defaultsStatus[groupfolderId] = 'running'
       this.startDefaultsPolling(groupfolderId)
     },
 
     startDefaultsPolling(groupfolderId) {
       this.stopDefaultsPolling(groupfolderId)
-      this.defaultsPollTimers[groupfolderId] = setInterval(
-        () => this.pollDefaultsStatus(groupfolderId),
-        2000
-      )
+      // Safety cap: the backfill is processed by background cron. If cron is not
+      // running (or the folder is huge) the status would otherwise spin forever.
+      // Stop polling after ~2 minutes and report back to idle.
+      const startedAt = Date.now()
+      const MAX_POLL_MS = 120000
+      this.defaultsPollTimers[groupfolderId] = setInterval(() => {
+        if (Date.now() - startedAt > MAX_POLL_MS) {
+          this.defaultsStatus[groupfolderId] = 'idle'
+          this.stopDefaultsPolling(groupfolderId)
+          showError(this.t('metavox', 'Applying defaults is taking longer than expected. It will continue in the background.'))
+          return
+        }
+        this.pollDefaultsStatus(groupfolderId)
+      }, 2000)
     },
 
     stopDefaultsPolling(groupfolderId) {

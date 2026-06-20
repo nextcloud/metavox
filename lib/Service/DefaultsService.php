@@ -204,18 +204,24 @@ class DefaultsService {
 
         $qb = $this->db->getQueryBuilder();
 
-        // NC's IExpressionBuilder has no notExists(); build the correlated
-        // NOT EXISTS as a raw SQL fragment. The subquery's parameters are bound
-        // through THIS query builder (buildMissingSubquery uses $qb to create
-        // its named parameters), so getSQL() yields the right placeholders.
-        $notExistsSql = 'NOT EXISTS (' . $this->buildMissingSubquery($qb, $groupfolderId, $defaultFieldNames)->getSQL() . ')';
+        // A file is "missing defaults" when it lacks a metadata row for AT LEAST
+        // ONE of the default fields — not just when it has none. A correlated
+        // COUNT of how many of the default fields this file already has, compared
+        // to the total number of default fields, captures that. (A plain
+        // NOT EXISTS would treat a file that has one default field as fully done
+        // and never apply the remaining defaults — the bug this replaces.)
+        // The subquery's params are created on THIS builder so getSQL() yields
+        // the right placeholders; NC's IExpressionBuilder has no exists()/lt-on-
+        // subquery helpers, so this is a raw SQL fragment via createFunction().
+        $missingSql = '(' . $this->buildMissingSubquery($qb, $groupfolderId, $defaultFieldNames)->getSQL() . ') < '
+            . $qb->createNamedParameter(count($defaultFieldNames), IQueryBuilder::PARAM_INT);
 
         $qb->selectDistinct('fc.fileid')
            ->from('filecache', 'fc')
            ->where($qb->expr()->gt('fc.fileid', $qb->createNamedParameter($afterFileId, IQueryBuilder::PARAM_INT)))
            ->andWhere($qb->expr()->in('fc.storage', $qb->createNamedParameter($storageIds, IQueryBuilder::PARAM_INT_ARRAY)))
            ->andWhere($qb->expr()->like('fc.path', $qb->createNamedParameter('files/%')))
-           ->andWhere($qb->createFunction($notExistsSql))
+           ->andWhere($qb->createFunction($missingSql))
            ->orderBy('fc.fileid', 'ASC')
            ->setMaxResults($limit);
 
@@ -285,13 +291,15 @@ class DefaultsService {
     private array $storageIdsCache = [];
 
     /**
-     * NOT EXISTS subquery: a metadata row already covering one of the default
-     * fields for this file in this groupfolder. If such a row exists, the file
-     * is not "missing" that default and is skipped.
+     * Correlated subquery: how many of the default fields this file ALREADY has
+     * a metadata row for, in this groupfolder. The caller compares this count to
+     * the total number of default fields; a file with fewer is missing at least
+     * one default. The unique key (file_id, groupfolder_id, field_name) means
+     * each default field is counted at most once.
      */
     private function buildMissingSubquery(IQueryBuilder $parent, int $groupfolderId, array $defaultFieldNames): IQueryBuilder {
         $sub = $this->db->getQueryBuilder();
-        $sub->select($sub->createFunction('1'))
+        $sub->select($sub->createFunction('COUNT(*)'))
             ->from('metavox_file_gf_meta', 'm')
             ->where($sub->expr()->eq('m.file_id', 'fc.fileid'))
             ->andWhere($sub->expr()->eq('m.groupfolder_id', $parent->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)))
