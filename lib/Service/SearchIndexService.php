@@ -65,23 +65,45 @@ class SearchIndexService {
      *
      * @return array<array{id: int, name: string, path: string, metadata: array}>
      */
-    public function searchByFieldValue(string $fieldName, string $fieldValue, string $userId, ?int $groupfolderId = null): array {
-        // $userId is kept for signature stability; access control is enforced by
-        // the caller (MetadataSearchProvider: permission gate + verifyFileAccess).
+    /**
+     * @param int[]|null $allowedGroupfolderIds When given, restrict matches to
+     *   these groupfolders (the user's accessible folders) BEFORE the result
+     *   cap, so inaccessible files can't fill the 100 slots and push accessible
+     *   matches out. null = no folder restriction (e.g. admin sees everything);
+     *   verifyFileAccess in the provider remains the final per-file ACL.
+     */
+    public function searchByFieldValue(string $fieldName, string $fieldValue, string $userId, ?int $groupfolderId = null, ?array $allowedGroupfolderIds = null): array {
+        // $userId is accepted for signature stability / future use; access is
+        // scoped via $allowedGroupfolderIds and finalised by the caller.
         unset($userId);
+        // Explicit empty list = "user has access to no folders" → no results.
+        // (null = no restriction, e.g. admin.) This distinction matters: an
+        // empty IN() must mean nothing-matches, not everything-matches.
+        if ($allowedGroupfolderIds === []) {
+            return [];
+        }
         try {
             $qb = $this->db->getQueryBuilder();
             // f.mtime is in the select list because Postgres requires ORDER BY
             // expressions to appear in SELECT when DISTINCT is used. (file_id is
             // already unique per (file, field) row here, so DISTINCT mainly
-            // guards against duplicate index rows.)
+            // guards against duplicate index rows.) m.groupfolder_id is returned
+            // so the provider can apply per-field view permissions per folder.
             $qb->selectDistinct('m.file_id')
-               ->addSelect('f.name', 'f.path', 'f.mtime')
+               ->addSelect('f.name', 'f.path', 'f.mtime', 'm.groupfolder_id')
                ->from('metavox_file_gf_meta', 'm')
                ->innerJoin('m', 'filecache', 'f', 'm.file_id = f.fileid')
                ->where($qb->expr()->eq('m.field_name', $qb->createNamedParameter($fieldName)))
                ->setMaxResults(100)
                ->orderBy('f.mtime', 'DESC');
+
+            // Restrict to the user's accessible groupfolders before the cap.
+            // Guard against an empty list becoming "IN ()" (which matches
+            // nothing unintentionally): only apply when non-empty.
+            if ($allowedGroupfolderIds !== null && $allowedGroupfolderIds !== []) {
+                $qb->andWhere($qb->expr()->in('m.groupfolder_id',
+                    $qb->createNamedParameter($allowedGroupfolderIds, IQueryBuilder::PARAM_INT_ARRAY)));
+            }
 
             // A file matches each requested token if its stored value either
             // equals the token exactly (single-value field) OR contains it as a
@@ -111,6 +133,7 @@ class SearchIndexService {
                     'id' => (int)$row['file_id'],
                     'name' => $row['name'],
                     'path' => $row['path'],
+                    'groupfolder_id' => (int)$row['groupfolder_id'],
                     'metadata' => [$fieldName => $fieldValue],
                 ];
             }
@@ -120,6 +143,69 @@ class SearchIndexService {
 
         } catch (\Exception $e) {
             $this->logger->error('MetaVox: field search failed', ['exception' => $e, 'fieldName' => $fieldName]);
+            return [];
+        }
+    }
+
+    /**
+     * Distinct values that would actually yield search results for one field
+     * inside one groupfolder.
+     *
+     * Powers the "filter by existing value" suggestions in the unified-search
+     * filter picker: the user picks from values that really occur, so filtering
+     * never lands on an empty result set. To guarantee that, this mirrors the
+     * actual search (searchByFieldValue): it INNER JOINs filecache, so values
+     * whose only files have been deleted/uncached (orphaned metadata rows) are
+     * not offered. Multiselect values (';#'-joined) are exploded into their
+     * individual options, so each option appears once. Sorted and capped (top-N)
+     * — this is suggestion UX, not an exhaustive index.
+     *
+     * Per-user file access is still enforced at search time (verifyFileAccess);
+     * the filecache join here removes the bulk of would-be-empty values without
+     * a per-row permission check.
+     *
+     * @return string[]
+     */
+    public function getDistinctFieldValues(string $fieldName, int $groupfolderId, int $limit = 50): array {
+        try {
+            $qb = $this->db->getQueryBuilder();
+            // INNER JOIN filecache so only values attached to a still-existing
+            // file are returned — matching what searchByFieldValue can actually
+            // find. Without this, orphaned metadata rows surface values that
+            // filter to zero results.
+            $qb->selectDistinct('m.field_value')
+               ->from('metavox_file_gf_meta', 'm')
+               ->innerJoin('m', 'filecache', 'f', 'm.file_id = f.fileid')
+               ->where($qb->expr()->eq('m.field_name', $qb->createNamedParameter($fieldName)))
+               ->andWhere($qb->expr()->eq('m.groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)))
+               ->andWhere($qb->expr()->isNotNull('m.field_value'))
+               ->andWhere($qb->expr()->neq('m.field_value', $qb->createNamedParameter('')))
+               // Over-fetch a little before exploding multiselect rows so the
+               // final unique-token set can still reach the requested limit.
+               ->setMaxResults($limit * 4);
+
+            $result = $qb->executeQuery();
+            $values = [];
+            while ($row = $result->fetch()) {
+                foreach ($this->splitMultiselectTokens((string)$row['field_value']) as $token) {
+                    $values[$token] = true; // de-dup across rows and multiselect tokens
+                    if (count($values) >= $limit) {
+                        break 2;
+                    }
+                }
+            }
+            $result->closeCursor();
+
+            $list = array_keys($values);
+            sort($list, SORT_NATURAL | SORT_FLAG_CASE);
+            return $list;
+
+        } catch (\Exception $e) {
+            $this->logger->error('MetaVox: distinct field values failed', [
+                'exception' => $e,
+                'fieldName' => $fieldName,
+                'groupfolderId' => $groupfolderId,
+            ]);
             return [];
         }
     }
@@ -190,6 +276,11 @@ private function searchFromIndex(string $searchTerm, string $userId): array {
         }
     }
     
+    // NOTE: free-text results are scoped per-result by verifyFileAccess in the
+    // provider (the metavox_search_index has no groupfolder_id to filter on, and
+    // storage/mounts scoping proved unreliable for groupfolders). Only the
+    // field-search path (searchByFieldValue) is folder-scoped in SQL, where the
+    // groupfolder_id is available.
     if ($useFulltext) {
         // MySQL with working FULLTEXT
         $qb->select('si.file_id', 'si.field_data', 'f.name', 'f.path')
@@ -259,7 +350,9 @@ private function searchFromIndex(string $searchTerm, string $userId): array {
 
     private function getUserStorageIds(string $userId): array {
         $qb = $this->db->getQueryBuilder();
-        $qb->select('DISTINCT s.numeric_id')
+        // selectDistinct() — NOT select('DISTINCT s.numeric_id'), which the
+        // QueryBuilder quotes as one bogus column name and throws (SQLSTATE 42S22).
+        $qb->selectDistinct('s.numeric_id')
            ->from('storages', 's')
            ->leftJoin('s', 'mounts', 'm', 's.numeric_id = m.storage_id')
            ->where($qb->expr()->orX(

@@ -24,8 +24,11 @@ const FILTER_ID = 'metavox_metadata'
 const APP_ID = 'metavox'
 
 // NC renders the filter icon as <img src={icon}>, so it must be a URL, not a
-// CSS class. Use the app's own metadata.svg.
-const FILTER_ICON = imagePath('metavox', 'metadata.svg')
+// CSS class. Use the dedicated single-color filter mark (metadata-filter.svg):
+// the MetaVox mark with its document lines tapering like a funnel, drawn as
+// evenodd cutouts (no contrast-dependent strokes) so it stays legible at ~16px
+// in every theme and reads as "filter" — distinct from the plain app mark.
+const FILTER_ICON = imagePath('metavox', 'metadata-filter.svg')
 
 // Guard so the filter is registered at most once, even if this bundle is
 // evaluated more than once in a session (SPA navigation, double include).
@@ -52,9 +55,10 @@ function registerMetaVoxFilter() {
 			// searchFrom ?? id). It MUST be the provider id, not the app id —
 			// using the app id 'metavox' yields "Provider metavox is unknown" (500).
 			searchFrom: FILTER_ID,
-			// "Metadata filter" distinguishes the chip from the search provider,
-			// whose own listing reads "File Metadata" / "Bestandsmetadata".
-			label: t('Metadata filter'),
+			// Pairs with the provider "MetaVox" while making the role explicit:
+			// the trailing "…" signals this entry opens a chooser (NC action
+			// convention), distinguishing it from the plain "MetaVox" location.
+			label: t('MetaVox · Filter by field…'),
 			icon: FILTER_ICON,
 			callback: () => {
 				// Open the picker; it resolves with the selection (or null when

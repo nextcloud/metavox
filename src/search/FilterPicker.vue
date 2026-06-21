@@ -15,6 +15,7 @@
 					label="mount_point"
 					:placeholder="t('Select a team folder')"
 					:loading="loadingFolders"
+					:searchable="false"
 					@update:model-value="onFolderChange" />
 			</div>
 
@@ -27,13 +28,33 @@
 					label="field_label"
 					:placeholder="t('Select a field')"
 					:loading="loadingFields"
+					:searchable="false"
 					:no-options="t('No filterable fields in this folder')"
 					@update:model-value="onFieldChange" />
 			</div>
 
 			<div v-if="selectedField" class="picker-field">
 				<label class="picker-field__label" for="mv-filter-value">{{ t('Value') }}</label>
+				<!-- Value step is driven by the values that ACTUALLY occur for this
+				     field in this folder, so a chosen filter can never land on an
+				     empty result set. text/url/number stay taggable (pick a known
+				     value or type a new one); select/multiselect offer only the
+				     occurring values (not every defined option). date/checkbox/
+				     user/file keep their specialised DynamicFieldInput picker. -->
+				<NcSelect
+					v-if="useValueSuggestions"
+					input-id="mv-filter-value"
+					v-model="value"
+					:options="valueSuggestions"
+					:multiple="isMultiselect"
+					:taggable="suggestionsTaggable"
+					:searchable="suggestionsTaggable"
+					:create-option="(v) => v"
+					:placeholder="t('Select a value')"
+					:loading="loadingValues"
+					:no-options="loadingValues ? t('Loading...') : t('No matching values in this folder')" />
 				<DynamicFieldInput
+					v-else
 					id="mv-filter-value"
 					v-model="value"
 					:type="selectedField.field_type"
@@ -62,6 +83,11 @@ import { NcModal, NcSelect, NcButton } from '@nextcloud/vue'
 import MetadataIcon from 'vue-material-design-icons/Tag.vue'
 import DynamicFieldInput from '../components/fields/DynamicFieldInput.vue'
 
+// Field types whose stored value can't be filtered meaningfully by value.
+// File-link values are opaque "<fileid>:<path>" tokens (path goes stale on
+// rename), so exact matching is pointless — hide them from the picker.
+const UNFILTERABLE_TYPES = ['filelink', 'file']
+
 export default {
 	name: 'FilterPicker',
 	components: { NcModal, NcSelect, NcButton, MetadataIcon, DynamicFieldInput },
@@ -75,12 +101,30 @@ export default {
 			value: '',
 			loadingFolders: false,
 			loadingFields: false,
+			valueSuggestions: [],
+			loadingValues: false,
 		}
 	},
 	computed: {
 		isMultiselect() {
 			const t = this.selectedField?.field_type
 			return t === 'multiselect' || t === 'multi_select'
+		},
+		// Fields whose value step is driven by the values occurring in the
+		// folder. Includes select/multiselect so we only offer options that are
+		// actually used (never a defined-but-unused option → empty results).
+		// date/checkbox/user/file keep their specialised DynamicFieldInput.
+		useValueSuggestions() {
+			const t = this.selectedField?.field_type
+			return t === 'text' || t === 'textarea' || t === 'number' || t === 'url'
+				|| t === 'select' || t === 'multiselect' || t === 'multi_select'
+		},
+		// Free-text types may still introduce a new value by typing; select-style
+		// fields must pick from the values that exist (typing a new one is
+		// meaningless and would filter to nothing).
+		suggestionsTaggable() {
+			const t = this.selectedField?.field_type
+			return t === 'text' || t === 'textarea' || t === 'number' || t === 'url'
 		},
 		// Raw value array (for multiselect) normalized to a token list.
 		valueTokens() {
@@ -134,6 +178,28 @@ export default {
 			// Reset the value when the field changes so a stale value from a
 			// previous (differently-typed) field can't leak through.
 			this.value = ''
+			this.valueSuggestions = []
+			if (this.useValueSuggestions) {
+				this.loadFieldValues()
+			}
+		},
+		async loadFieldValues() {
+			if (!this.selectedFolder || !this.selectedField) {
+				return
+			}
+			this.loadingValues = true
+			try {
+				const gfId = this.selectedFolder.id
+				const res = await axios.get(
+					generateUrl(`/apps/metavox/api/user/groupfolders/${gfId}/field-values`),
+					{ params: { field: this.selectedField.field_name } },
+				)
+				this.valueSuggestions = (res.data && res.data.values) || []
+			} catch (e) {
+				this.valueSuggestions = []
+			} finally {
+				this.loadingValues = false
+			}
 		},
 		async onFolderChange() {
 			this.selectedField = null
@@ -156,6 +222,9 @@ export default {
 					.filter((f) => assignedIds.has(Number(f.id)))
 					// Only file fields can be filtered per file.
 					.filter((f) => (f.applies_to_groupfolder ?? 0) === 0)
+					// File-link values are opaque "<fileid>:<path>" tokens — not
+					// meaningfully filterable by value, so don't offer them.
+					.filter((f) => !UNFILTERABLE_TYPES.includes(f.field_type))
 			} catch (e) {
 				this.fields = []
 			} finally {
