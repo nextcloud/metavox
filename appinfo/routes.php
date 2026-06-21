@@ -50,6 +50,7 @@ return [
         // User routes (for personal settings)
         ['name' => 'user_field#getAccessibleGroupfolders', 'url' => '/api/user/groupfolders', 'verb' => 'GET'],
         ['name' => 'user_field#getGroupfolderFields', 'url' => '/api/user/groupfolders/{groupfolderId}/fields', 'verb' => 'GET'],
+        ['name' => 'user_field#getFieldValues', 'url' => '/api/user/groupfolders/{groupfolderId}/field-values', 'verb' => 'GET'],
         ['name' => 'user_field#getAllGroupfolderFields', 'url' => '/api/user/groupfolder-fields', 'verb' => 'GET'],
         ['name' => 'user_field#getGroupfolderMetadata', 'url' => '/api/user/groupfolders/{groupfolderId}/metadata', 'verb' => 'GET'],
         ['name' => 'user_field#saveGroupfolderMetadata', 'url' => '/api/user/groupfolders/{groupfolderId}/metadata', 'verb' => 'POST'],

@@ -6,6 +6,7 @@ namespace OCA\MetaVox\Controller;
 
 use OCA\MetaVox\Service\FieldService;
 use OCA\MetaVox\Service\PermissionService;
+use OCA\MetaVox\Service\SearchIndexService;
 use OCA\MetaVox\Service\UserFieldService;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
@@ -18,6 +19,7 @@ use Psr\Log\LoggerInterface;
 class UserFieldController extends BaseController {
 
     private UserFieldService $userFieldService;
+    private SearchIndexService $searchIndexService;
     private LoggerInterface $logger;
 
     public function __construct(
@@ -26,12 +28,14 @@ class UserFieldController extends BaseController {
         UserFieldService $userFieldService,
         FieldService $fieldService,
         PermissionService $permissionService,
+        SearchIndexService $searchIndexService,
         IUserSession $userSession,
         IRootFolder $rootFolder,
         LoggerInterface $logger
     ) {
         parent::__construct($appName, $request, $userSession, $permissionService, $fieldService, $rootFolder);
         $this->userFieldService = $userFieldService;
+        $this->searchIndexService = $searchIndexService;
         $this->logger = $logger;
     }
 
@@ -80,6 +84,32 @@ class UserFieldController extends BaseController {
 
             $fields = $this->userFieldService->getGroupfolderFields($groupfolderId);
             return new JSONResponse($fields);
+        } catch (\Exception $e) {
+            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Distinct values stored for a field within a groupfolder.
+     *
+     * Feeds the unified-search filter picker so the user can pick an existing
+     * value instead of typing one. Per-folder access gated like the sibling
+     * read endpoints; the field name comes as a query param.
+     */
+    #[NoAdminRequired]
+    public function getFieldValues(int $groupfolderId): JSONResponse {
+        try {
+            $user = $this->requireUser();
+            if ($user instanceof JSONResponse) return $user;
+            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
+
+            $fieldName = (string)$this->request->getParam('field', '');
+            if ($fieldName === '') {
+                return new JSONResponse(['values' => []]);
+            }
+
+            $values = $this->searchIndexService->getDistinctFieldValues($fieldName, $groupfolderId);
+            return new JSONResponse(['values' => $values]);
         } catch (\Exception $e) {
             return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
