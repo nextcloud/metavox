@@ -6,11 +6,32 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [2.2.0] - 2026-05-18
+## [2.2.0] - 2026-06-21
 
 ### Added
 - **Nextcloud 34 support** — `max-version` in `appinfo/info.xml` bumped to 34,
-  description updated. Tested against 34.0.0 RC1 on `next.voxcloud.nl`.
+  description updated. Tested against NC 34.0.0 on `dev.rikdekker.nl`.
+- **Per-folder default values for file metadata fields** — set a default value
+  per assigned field per Team folder; new files get it automatically (via a
+  `NodeCreatedEvent` listener) and existing files are back-filled by a
+  background discovery + queued-apply job (idempotent). Type-correct default
+  inputs for every field type (text, number, date/datetime, select,
+  multiselect, checkbox, url, user, file link). Configurable from **Admin
+  settings** and — for non-admins with the per-folder `manage_fields`
+  permission — from **Personal settings**.
+- **Unified search integration** — a dedicated "MetaVox" search provider
+  (`IProvider` + `IFilteringProvider`) plus a "MetaVox · Filter by field"
+  action in the search bar. Pick Team folder → field → value (suggested from the
+  values that actually occur in that folder), or type `field:value` inline.
+  Results are scoped to the folders the user can access, show the matching field
+  first in the subline, and respect per-field view permissions. Theme-aware
+  app/result icons.
+- **File Link fields: multiple files + stable references** — a File Link field
+  can now reference several files; each reference is stored by file id so it
+  survives renames/moves, with the path kept only for display. Add/remove files,
+  duplicate links are rejected, open a linked file directly, and a
+  "Referenced by" backlink view shows which items link to the current file.
+  Legacy single-path values keep working ([#73](https://github.com/nextcloud/metavox/issues/73)).
 
 ### Fixed
 - **NC34 boot failure** — `\OC::$server->getRequest()` and
