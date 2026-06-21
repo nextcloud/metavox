@@ -417,6 +417,21 @@ OC.L10N.register(
     "{count} filters" : "{count} Filter",
     "{count} folders" : "{count} Ordner",
     "— No sorting —" : "— Keine Sortierung —",
-    "— no sorting —" : "— keine Sortierung —"
+    "— no sorting —" : "— keine Sortierung —",
+    "Failed to save default value for {field}" : "Standardwert für {field} konnte nicht gespeichert werden",
+    "Failed to apply defaults" : "Standardwerte konnten nicht angewendet werden",
+    "Applying defaults is taking longer than expected. It will continue in the background." : "Das Anwenden der Standardwerte dauert länger als erwartet. Es wird im Hintergrund fortgesetzt.",
+    "Apply filter" : "Filter anwenden",
+    "Files matching all selected options are shown." : "Es werden Dateien angezeigt, die allen ausgewählten Optionen entsprechen.",
+    "Filter by metadata" : "Nach Metadaten filtern",
+    "MetaVox · Filter by field…" : "MetaVox · Nach Feld filtern…",
+    "Metadata filter" : "Metadaten-Filter",
+    "No filterable fields in this folder" : "Keine filterbaren Felder in diesem Ordner",
+    "No matching values in this folder" : "Keine passenden Werte in diesem Ordner",
+    "Select a field" : "Feld auswählen",
+    "Select a team folder" : "Team-Ordner auswählen",
+    "Select a value" : "Wert auswählen",
+    "Team folder" : "Team-Ordner",
+    "Value" : "Wert"
 },
 "nplurals=2; plural=(n != 1);");

@@ -216,7 +216,6 @@
         "Filter by metadata": "Filteren op metadata",
         "Team folder": "Teammap",
         "Select a team folder": "Kies een teammap",
-        "Field": "Veld",
         "Select a field": "Kies een veld",
         "No filterable fields in this folder": "Geen filterbare velden in deze map",
         "Value": "Waarde",
@@ -429,7 +428,10 @@
         "{count} filters": "{count} filters",
         "{count} folders": "{count} mappen",
         "— No sorting —": "— Geen sortering —",
-        "— no sorting —": "— geen sortering —"
+        "— no sorting —": "— geen sortering —",
+        "Failed to save default value for {field}": "Opslaan van standaardwaarde voor {field} mislukt",
+        "Failed to apply defaults": "Toepassen van standaardwaarden mislukt",
+        "Applying defaults is taking longer than expected. It will continue in the background.": "Het toepassen van standaardwaarden duurt langer dan verwacht. Het gaat door op de achtergrond."
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

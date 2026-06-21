@@ -216,7 +216,6 @@
         "Filter by metadata": "Filter by metadata",
         "Team folder": "Team folder",
         "Select a team folder": "Select a team folder",
-        "Field": "Field",
         "Select a field": "Select a field",
         "No filterable fields in this folder": "No filterable fields in this folder",
         "Value": "Value",
@@ -429,6 +428,9 @@
         "{count} filters": "{count} filters",
         "{count} folders": "{count} folders",
         "— No sorting —": "— No sorting —",
-        "— no sorting —": "— no sorting —"
+        "— no sorting —": "— no sorting —",
+        "Failed to save default value for {field}": "Failed to save default value for {field}",
+        "Failed to apply defaults": "Failed to apply defaults",
+        "Applying defaults is taking longer than expected. It will continue in the background.": "Applying defaults is taking longer than expected. It will continue in the background."
     }
 }

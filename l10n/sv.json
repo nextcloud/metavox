@@ -416,6 +416,21 @@
         "{count} filters": "{count} filter",
         "{count} folders": "{count} mappar",
         "— No sorting —": "— Ingen sortering —",
-        "— no sorting —": "— ingen sortering —"
+        "— no sorting —": "— ingen sortering —",
+        "Failed to save default value for {field}": "Det gick inte att spara standardvärdet för {field}",
+        "Failed to apply defaults": "Det gick inte att tillämpa standardvärden",
+        "Applying defaults is taking longer than expected. It will continue in the background.": "Att tillämpa standardvärden tar längre tid än väntat. Det fortsätter i bakgrunden.",
+        "Apply filter": "Tillämpa filter",
+        "Files matching all selected options are shown.": "Filer som matchar alla valda alternativ visas.",
+        "Filter by metadata": "Filtrera efter metadata",
+        "MetaVox · Filter by field…": "MetaVox · Filtrera efter fält…",
+        "Metadata filter": "Metadatafilter",
+        "No filterable fields in this folder": "Inga filtrerbara fält i den här mappen",
+        "No matching values in this folder": "Inga matchande värden i den här mappen",
+        "Select a field": "Välj ett fält",
+        "Select a team folder": "Välj en teammapp",
+        "Select a value": "Välj ett värde",
+        "Team folder": "Teammapp",
+        "Value": "Värde"
     }
 }
