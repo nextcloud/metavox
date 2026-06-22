@@ -16,6 +16,14 @@ class SearchIndexService {
     /** File ids per IN(...) clause when batch-fetching, to stay under param limits. */
     private const QUERY_IN_CHUNK = 500;
 
+    /**
+     * Cap on the number of groupfolder ids put in the admin field-search IN()
+     * list. Bounds the param count on instances with very many folders; an
+     * admin field-search hitting more folders than this than degrades to a
+     * partial (still index-using) result rather than an unbounded scan.
+     */
+    private const ADMIN_FIELD_SCAN_FOLDER_CAP = 1000;
+
     private IDBConnection $db;
     private ICacheFactory $cacheFactory;
     private LoggerInterface $logger;
@@ -82,6 +90,19 @@ class SearchIndexService {
         if ($allowedGroupfolderIds === []) {
             return [];
         }
+
+        // Admins arrive with null (no folder restriction). Left as-is the query
+        // has no groupfolder_id predicate and can't use the (groupfolder_id,
+        // field_name, field_value) index → a scan over every row for this field.
+        // Replace null with the (capped) set of folders that actually contain
+        // this field, which is small and engages the index. The cap bounds the
+        // IN() list so it can't explode on a 10k-folder instance.
+        if ($allowedGroupfolderIds === null) {
+            $allowedGroupfolderIds = $this->getGroupfolderIdsForField($fieldName, self::ADMIN_FIELD_SCAN_FOLDER_CAP);
+            if ($allowedGroupfolderIds === []) {
+                return [];
+            }
+        }
         try {
             $qb = $this->db->getQueryBuilder();
             // f.mtime is in the select list because Postgres requires ORDER BY
@@ -143,6 +164,34 @@ class SearchIndexService {
 
         } catch (\Exception $e) {
             $this->logger->error('MetaVox: field search failed', ['exception' => $e, 'fieldName' => $fieldName]);
+            return [];
+        }
+    }
+
+    /**
+     * Groupfolder ids that contain at least one row for $fieldName, capped.
+     * Used to give an admin field-search a bounded, index-friendly IN() list
+     * instead of an unscoped full scan. Cheap: the (groupfolder_id, field_name,
+     * field_value) index serves the DISTINCT on field_name.
+     *
+     * @return int[]
+     */
+    private function getGroupfolderIdsForField(string $fieldName, int $cap): array {
+        try {
+            $qb = $this->db->getQueryBuilder();
+            $qb->selectDistinct('groupfolder_id')
+               ->from('metavox_file_gf_meta')
+               ->where($qb->expr()->eq('field_name', $qb->createNamedParameter($fieldName)))
+               ->setMaxResults($cap);
+            $result = $qb->executeQuery();
+            $ids = [];
+            while ($row = $result->fetch()) {
+                $ids[] = (int)$row['groupfolder_id'];
+            }
+            $result->closeCursor();
+            return $ids;
+        } catch (\Exception $e) {
+            $this->logger->error('MetaVox: folder-ids-for-field lookup failed', ['exception' => $e, 'fieldName' => $fieldName]);
             return [];
         }
     }
