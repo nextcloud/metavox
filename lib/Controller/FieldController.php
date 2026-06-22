@@ -362,7 +362,7 @@ class FieldController extends BaseController {
      * linked twice makes no sense. Dedup is keyed on the resolved fileid, with
      * unresolvable bare paths deduped on their path string.
      */
-    private function normalizeFilelinkValue(string $value, string $fieldType, string $userId): string {
+    private function normalizeFilelinkValue(string $value, string $fieldType, string $userId, ?int $groupfolderId = null): string {
         if ($value === '' || !in_array($fieldType, FileReferenceService::FILELINK_TYPES, true)) {
             return $value;
         }
@@ -374,6 +374,15 @@ class FieldController extends BaseController {
                 $id = $this->fileReferenceService->resolvePathToFileId($token['path'], $userId);
                 if ($id !== null) {
                     $token['fileId'] = $id;
+                }
+            }
+            // Enforce that the link target lives in THIS team folder. A target
+            // outside it would be invisible to other folder members and is
+            // confusing — drop such tokens rather than storing a dangling ref.
+            if ($groupfolderId !== null) {
+                if ($token['fileId'] === null
+                    || !$this->fileReferenceService->isFileInGroupfolder($token['fileId'], $groupfolderId)) {
+                    continue;
                 }
             }
             $resolved[] = $token;
@@ -392,7 +401,11 @@ class FieldController extends BaseController {
             if ($user instanceof JSONResponse) return $user;
             if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
 
-            $backlinks = $this->fileReferenceService->getBacklinks($fileId, $user->getUID());
+            // Scope backlinks to the authorized groupfolder. This both engages
+            // the (groupfolder_id, ...) index instead of a full-table LIKE scan
+            // and prevents probing backlinks of files outside this folder
+            // (the {fileId} path segment is otherwise unvalidated — IDOR).
+            $backlinks = $this->fileReferenceService->getBacklinks($fileId, $user->getUID(), $groupfolderId);
             return new JSONResponse($backlinks);
         } catch (\Exception $e) {
             return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
@@ -418,7 +431,7 @@ class FieldController extends BaseController {
 
             foreach ($metadata as $fieldName => $value) {
                 if (isset($fieldMap[$fieldName])) {
-                    $value = $this->normalizeFilelinkValue((string)$value, $typeMap[$fieldName] ?? '', $user->getUID());
+                    $value = $this->normalizeFilelinkValue((string)$value, $typeMap[$fieldName] ?? '', $user->getUID(), $groupfolderId);
                     $this->fieldService->saveGroupfolderFileFieldValue($groupfolderId, $fileId, $fieldMap[$fieldName], $value, $fieldName);
                 }
             }
@@ -510,7 +523,7 @@ class FieldController extends BaseController {
                                 continue;
                             }
                         }
-                        $normalized = $this->normalizeFilelinkValue((string)$value, $typeMap[$fieldName] ?? '', $userId);
+                        $normalized = $this->normalizeFilelinkValue((string)$value, $typeMap[$fieldName] ?? '', $userId, $groupfolderId);
                         $this->fieldService->saveGroupfolderFileFieldValue(
                             $groupfolderId, (int)$fileId, $fieldMap[$fieldName], $normalized, $fieldName
                         );

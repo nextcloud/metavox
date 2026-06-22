@@ -167,6 +167,18 @@ class SearchIndexService {
      * @return string[]
      */
     public function getDistinctFieldValues(string $fieldName, int $groupfolderId, int $limit = 50): array {
+        // These values feed a suggestion picker and tolerate staleness, so cache
+        // for 5 min keyed by (groupfolder, field). Without this the DISTINCT +
+        // filecache JOIN re-scans the whole (groupfolder, field) partition on
+        // every picker open — expensive for low-cardinality fields in large
+        // folders, where the LIMIT never early-stops.
+        $cache = $this->cacheFactory->createDistributed('metavox_search');
+        $cacheKey = "distinct_{$groupfolderId}_" . md5($fieldName) . "_{$limit}";
+        $cached = $cache->get($cacheKey);
+        if (is_array($cached)) {
+            return $cached;
+        }
+
         try {
             $qb = $this->db->getQueryBuilder();
             // INNER JOIN filecache so only values attached to a still-existing
@@ -198,6 +210,7 @@ class SearchIndexService {
 
             $list = array_keys($values);
             sort($list, SORT_NATURAL | SORT_FLAG_CASE);
+            $cache->set($cacheKey, $list, 300);
             return $list;
 
         } catch (\Exception $e) {
@@ -276,17 +289,19 @@ private function searchFromIndex(string $searchTerm, string $userId): array {
         }
     }
     
-    // NOTE: free-text results are scoped per-result by verifyFileAccess in the
-    // provider (the metavox_search_index has no groupfolder_id to filter on, and
-    // storage/mounts scoping proved unreliable for groupfolders). Only the
-    // field-search path (searchByFieldValue) is folder-scoped in SQL, where the
-    // groupfolder_id is available.
+    // Scope to the searcher's own indexed rows via si.user_id (one row per
+    // mounted user, indexed by metavox_search_user_storage). The search index
+    // has no groupfolder_id, so without this the top-50-by-mtime can be filled
+    // with files the user can't access — verifyFileAccess then drops them,
+    // starving real matches beyond the cap. verifyFileAccess in the provider
+    // still gates every emitted entry; this just narrows to the right view.
     if ($useFulltext) {
         // MySQL with working FULLTEXT
         $qb->select('si.file_id', 'si.field_data', 'f.name', 'f.path')
            ->from('metavox_search_index', 'si')
            ->innerJoin('si', 'filecache', 'f', 'si.file_id = f.fileid')
            ->where('MATCH(si.search_content) AGAINST (:search IN BOOLEAN MODE)')
+           ->andWhere($qb->expr()->eq('si.user_id', $qb->createNamedParameter($userId)))
            ->setParameter('search', "+{$searchTerm}*")
            ->setMaxResults(50)
            ->orderBy('f.mtime', 'DESC');
@@ -296,6 +311,7 @@ private function searchFromIndex(string $searchTerm, string $userId): array {
            ->from('metavox_search_index', 'si')
            ->innerJoin('si', 'filecache', 'f', 'si.file_id = f.fileid')
            ->where($qb->expr()->like('si.search_content', $qb->createNamedParameter('%' . strtolower($this->db->escapeLikeParameter($searchTerm)) . '%')))
+           ->andWhere($qb->expr()->eq('si.user_id', $qb->createNamedParameter($userId)))
            ->setMaxResults(50)
            ->orderBy('f.mtime', 'DESC');
     }
