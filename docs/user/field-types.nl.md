@@ -59,11 +59,11 @@ Een datumkiezer voor het selecteren van datums. Optioneel met een tijd-component
 
 Bij het aanmaken of bewerken van een Datum-veld in de admin-instellingen, vink **Tijd-component meenemen** aan om het tijdgedeelte in te schakelen:
 
-![Datum-veld met "Tijd-component meenemen" checkbox](../screenshots/fields-datetime.png)
+![Datum-veld met "Tijd-component meenemen" checkbox](../../screenshots/fields-datetime.png)
 
 In de bestandszijbalk en inline-grid-editor toont het veld dan een datetime-picker:
 
-![Datetime-input in de bestandszijbalk](../screenshots/fields-datetime-view.png)
+![Datetime-input in de bestandszijbalk](../../screenshots/fields-datetime-view.png)
 
 **SharePoint-migratie-notitie**: kolommen met `DisplayFormat = DateOnly` mappen naar MetaVox Datum-velden met deze optie **uit**; `DateTime` mapt naar **aan**. Bestaande pre-2.1.0 Datum-velden tonen alleen-datum — er wordt geen data-migratie uitgevoerd. CSV-import-ondersteuning is gepland voor een toekomstige release.
 
@@ -118,7 +118,7 @@ Een URL-veld met validatie en een klikbare externe-link-knop.
 - URL-format-validatie
 - Klik op de knop om de link in een nieuw tabblad te openen
 
-![URL-veld](../screenshots/Fields-URL.png)
+![URL-veld](../../screenshots/Fields-URL.png)
 
 ---
 
@@ -134,24 +134,28 @@ Selecteer een Nextcloud-gebruiker uit een doorzoekbare dropdown. Toont gebruiker
 - Toont gebruikers-avatar en weergavenaam
 - Integreert met de Nextcloud-gebruikersdatabase
 
-![Gebruiker-picker-veld](../screenshots/Fields-User.png)
+![Gebruiker-picker-veld](../../screenshots/Fields-User.png)
 
 ---
 
 ### Bestand-link
 
-Blader en link naar bestanden of mappen binnen Nextcloud via de native file-picker.
+Blader en link naar één of meer bestanden of mappen binnen Nextcloud via de native file-picker.
 
 **Use cases**: gerelateerde documenten, bron-bestanden, bijlagen, ouder-documenten
 
 **Features**:
 
 - Native Nextcloud-file-picker-integratie
-- Kan linken naar bestanden of mappen
-- Toont het pad van het gelinkte bestand
-- Klik om naar het gelinkte bestand te navigeren
+- **Meerdere bestanden per veld** — gebruik **Bestand toevoegen** om meerdere bestanden te koppelen; verwijder er een met de **×**-knop
+- Koppelingen worden opgeslagen op **bestands-ID**, zodat een verwijzing blijft werken nadat het doelbestand hernoemd of verplaatst is
+- Hetzelfde bestand kan niet twee keer worden toegevoegd (duplicaten worden geweigerd)
+- Klik op een gekoppeld bestand om het te openen
+- **Referenced by** — op een gekoppeld bestand zie je welke items ernaar verwijzen (backlinks)
 
-![Bestand-link-veld](../screenshots/Fields-FileLink.png)
+![Bestand-link-veld met meerdere gekoppelde bestanden](../../screenshots/fields-filelink-multiselect.png)
+
+> Enkelvoudige koppelingen uit oudere versies blijven ongewijzigd werken; je kunt er op elk moment meer bestanden aan toevoegen.
 
 ---
 
@@ -167,6 +171,31 @@ Bij het aanmaken van een veld in de admin-instellingen kun je configureren:
 | **Beschrijving** | Help-tekst getoond onder het veld |
 | **Verplicht** | Of het veld moet worden ingevuld |
 | **Opties** | Voor Select en Multi-select velden: komma-gescheiden lijst van keuzes |
+
+---
+
+## Standaardwaarden
+
+Elke Team folder kan zijn toegewezen bestandsvelden een **standaardwaarde** geven. Nieuwe
+bestanden in die folder krijgen de standaardwaarden automatisch, en bestaande bestanden
+zonder waarde worden op de achtergrond bijgewerkt — zo beginnen de documenten van een
+folder consistent geclassificeerd, zonder handmatig invoerwerk.
+
+Standaardwaarden worden **per Team folder** ingesteld, met een type-correcte invoer voor
+elk veldtype (tekst, getal, datum/tijd, dropdown, multi-select, checkbox, URL, gebruiker,
+bestand-link):
+
+![Standaardwaarden per veld instellen op een Team folder](../../screenshots/manage-teamfolders-defaultvalue.png)
+
+- Vink een veld aan en voer de standaardwaarde in bij het **Default value**-invoerveld dat verschijnt.
+- Laat het veld leeg om een standaardwaarde te wissen.
+- Gebruik na het opslaan **Apply defaults now** om bestaande bestanden direct bij te werken
+  (anders past een achtergrondtaak ze binnen enkele minuten toe).
+
+**Wie kan standaardwaarden instellen:** beheerders (voor elke folder) en gebruikers met de
+per-folder-rechten **Velden beheren** (`manage_fields`). Die laatsten configureren velden en
+standaardwaarden voor hun folder via **Instellingen → Persoonlijk → MetaVox**, waar alleen de
+folders staan die zij mogen beheren. Zie [Rechten](../admin/permissions.md).
 
 ---
 

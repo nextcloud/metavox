@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\MetaVox\Listener;
 
 use OCA\MetaVox\Service\FieldService;
+use OCA\MetaVox\Service\GroupfolderResolver;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventListener;
@@ -19,6 +20,7 @@ class FileCopyListener implements IEventListener {
     public function __construct(
         private readonly FieldService $fieldService,
         private readonly IDBConnection $db,
+        private readonly GroupfolderResolver $groupfolderResolver,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -43,8 +45,8 @@ class FileCopyListener implements IEventListener {
     }
 
     private function handleFileCopy(Node $source, Node $target): void {
-        $sourceGroupfolderId = $this->getGroupfolderId($source);
-        $targetGroupfolderId = $this->getGroupfolderId($target);
+        $sourceGroupfolderId = $this->groupfolderResolver->getGroupfolderId($source);
+        $targetGroupfolderId = $this->groupfolderResolver->getGroupfolderId($target);
 
         // Only copy metadata within the same groupfolder to avoid orphaned metadata
         if (!$sourceGroupfolderId || !$targetGroupfolderId || $sourceGroupfolderId !== $targetGroupfolderId) {
@@ -102,8 +104,8 @@ class FileCopyListener implements IEventListener {
      * Copy metadata for a node only if source and target are in the same groupfolder.
      */
     private function copyNodeMetadataIfSameGroupfolder(Node $source, Node $target): int {
-        $sourceGroupfolderId = $this->getGroupfolderId($source);
-        $targetGroupfolderId = $this->getGroupfolderId($target);
+        $sourceGroupfolderId = $this->groupfolderResolver->getGroupfolderId($source);
+        $targetGroupfolderId = $this->groupfolderResolver->getGroupfolderId($target);
 
         if (!$sourceGroupfolderId || !$targetGroupfolderId || $sourceGroupfolderId !== $targetGroupfolderId) {
             return 0;
@@ -171,36 +173,6 @@ class FileCopyListener implements IEventListener {
         return null;
     }
 
-    private function getGroupfolderId(Node $node): ?int {
-        try {
-            $path = $node->getPath();
-
-            $qb = $this->db->getQueryBuilder();
-            $qb->select('folder_id', 'mount_point')
-               ->from('group_folders')
-               ->orderBy('folder_id');
-
-            $result = $qb->executeQuery();
-            while ($row = $result->fetch()) {
-                if (str_contains($path, '/' . $row['mount_point'] . '/')) {
-                    $result->closeCursor();
-                    return (int)$row['folder_id'];
-                }
-            }
-            $result->closeCursor();
-
-            // Fallback: internal storage patterns
-            if (preg_match('/\/__groupfolders\/(\d+)\//', $path, $matches)) {
-                return (int)$matches[1];
-            }
-
-            return null;
-        } catch (\Exception $e) {
-            $this->logger->warning('MetaVox: Groupfolder detection error', ['exception' => $e]);
-            return null;
-        }
-    }
-
     /**
      * Copy metadata from one file to another within the same groupfolder.
      */
@@ -219,7 +191,10 @@ class FileCopyListener implements IEventListener {
             $result = $qb->executeQuery();
             $sourceMetadata = [];
             while ($row = $result->fetch()) {
-                if (!empty(trim($row['field_value'])) && $row['field_value'] !== 'null') {
+                // The SQL above already excludes NULL, '' and the literal 'null'.
+                // Guard only against those here — NOT with empty(), which would
+                // wrongly drop legitimate '0' values (unchecked checkbox, numeric zero).
+                if ($row['field_value'] !== null && $row['field_value'] !== '' && $row['field_value'] !== 'null') {
                     $sourceMetadata[] = $row;
                 }
             }

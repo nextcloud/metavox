@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\AppInfo;
 
+use OCA\MetaVox\Listener\ApplyDefaultsListener;
 use OCA\MetaVox\Listener\CacheCleanupListener;
 use OCA\MetaVox\Listener\FileCopyListener;
 use OCA\MetaVox\Listener\RegisterFlowChecksListener;
 use OCA\MetaVox\Search\MetadataSearchProvider;
+use OCA\MetaVox\Service\DefaultsRequestCounter;
 use OCA\MetaVox\Service\FieldService;
 use OCA\MetaVox\Service\FilterService;
 use OCA\MetaVox\Service\PermissionService;
@@ -36,15 +38,32 @@ class Application extends App implements IBootstrap {
         // Register search provider
         $context->registerSearchProvider(MetadataSearchProvider::class);
 
-        // Register event listeners for file copy
+        // Register event listeners for file copy. FileCopyListener only handles
+        // NodeCopiedEvent (it early-returns on anything else), so it is NOT
+        // registered for NodeCreatedEvent — that would just waste a DI
+        // instantiation per upload. New-file defaults are handled below.
         $context->registerEventListener(NodeCopiedEvent::class, FileCopyListener::class);
-        $context->registerEventListener(NodeCreatedEvent::class, FileCopyListener::class);
+
+        // Apply per-folder default values to newly created files (fast-path).
+        // DiscoverMissingDefaultsJob remains the source of truth; this only
+        // reduces latency for normal uploads.
+        $context->registerEventListener(NodeCreatedEvent::class, ApplyDefaultsListener::class);
+
+        // Shared per-request counter that throttles the defaults fast-path on
+        // bulk uploads. Must be a singleton so all listener invocations in one
+        // request share the same count.
+        $context->registerService(DefaultsRequestCounter::class, function () {
+            return new DefaultsRequestCounter();
+        });
 
         // Clean up metadata when files are removed from filecache (trash emptied, etc.)
         $context->registerEventListener(CacheEntryRemovedEvent::class, CacheCleanupListener::class);
 
         // Register Flow (Workflow) checks for metadata-based conditions
         $context->registerEventListener(RegisterChecksEvent::class, RegisterFlowChecksListener::class);
+
+        // The occ command (metavox:apply-defaults) is registered via
+        // appinfo/commands.php — IRegistrationContext has no registerCommand().
     }
 
     public function boot(IBootContext $context): void {
@@ -54,6 +73,11 @@ class Application extends App implements IBootstrap {
         }
 
         // Icon styling handled by NC via app.svg (#000) and app-dark.svg (#fff)
+
+        // Unified Search filter chip: the search bar exists on every page, not
+        // just the Files app, so this bundle loads globally. It self-guards if
+        // window.OCA.UnifiedSearch is unavailable.
+        \OCP\Util::addScript('metavox', 'metavox-search');
 
         // Load Files app integration only when needed
         // NC34 removed \OC::$server->getRequest() — use container lookup instead.
@@ -132,7 +156,18 @@ class Application extends App implements IBootstrap {
                                     $fileIds = array_map(fn($n) => $n->getId(), $children);
                                     if (!empty($fileIds) && count($fileIds) <= 100) {
                                         $filterService = \OC::$server->get(FilterService::class);
-                                        $gfData['directory_metadata'] = $filterService->getDirectoryMetadata($fileIds, $groupfolderId);
+                                        $directoryMetadata = $filterService->getDirectoryMetadata($fileIds, $groupfolderId);
+                                        $gfData['directory_metadata'] = $directoryMetadata;
+
+                                        // Resolve current names for any file-link references so
+                                        // the grid shows live names without per-cell API calls.
+                                        // Map: fileid => current display name. JS falls back to
+                                        // the cached path when an id is absent (stale / no access).
+                                        $gfData['filelink_resolved'] = $this->resolveFilelinkNames(
+                                            $directoryMetadata,
+                                            $gfData['fields'] ?? [],
+                                            $userId
+                                        );
                                     }
                                 }
                             } catch (\Exception $e) {
@@ -152,5 +187,59 @@ class Application extends App implements IBootstrap {
                 // Silently fail — JS will fall back to API call
             }
         }
+    }
+
+    /**
+     * Build a fileid => current-name map for every file-link reference in the
+     * prefetched directory metadata, so the grid renders live names without a
+     * round-trip per cell. Returns an empty array on any failure (the JS falls
+     * back to the cached path baked into the stored value).
+     *
+     * @param array<int, array<string, string>> $directoryMetadata fileId => [field => value]
+     * @param array<int, array<string, mixed>>  $fields            assigned file fields
+     * @return array<int, string> referenced fileId => current display name
+     */
+    private function resolveFilelinkNames(array $directoryMetadata, array $fields, string $userId): array {
+        // Which assigned fields are file-link types?
+        $filelinkFieldNames = [];
+        foreach ($fields as $field) {
+            if (in_array($field['field_type'] ?? '', \OCA\MetaVox\Service\FileReferenceService::FILELINK_TYPES, true)) {
+                $filelinkFieldNames[(string)$field['field_name']] = true;
+            }
+        }
+        if (empty($filelinkFieldNames)) {
+            return [];
+        }
+
+        // Collect referenced fileids from those columns' values.
+        $referencedIds = [];
+        foreach ($directoryMetadata as $fields_) {
+            foreach ($fields_ as $fieldName => $value) {
+                if (!isset($filelinkFieldNames[$fieldName]) || $value === null || $value === '') {
+                    continue;
+                }
+                foreach (\OCA\MetaVox\Service\FileReferenceService::parseValue((string)$value) as $token) {
+                    if ($token['fileId'] !== null) {
+                        $referencedIds[] = $token['fileId'];
+                    }
+                }
+            }
+        }
+        if (empty($referencedIds)) {
+            return [];
+        }
+
+        try {
+            $refService = \OC::$server->get(\OCA\MetaVox\Service\FileReferenceService::class);
+            $resolved = $refService->resolveMany($referencedIds, $userId);
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        $map = [];
+        foreach ($resolved as $id => $info) {
+            $map[$id] = $info['name'];
+        }
+        return $map;
     }
 }

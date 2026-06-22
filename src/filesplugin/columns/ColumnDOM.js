@@ -6,7 +6,8 @@
 
 import { generateUrl } from '@nextcloud/router'
 import { MARKER_CLASS, HEADER_MARKER, RESIZE_HANDLE } from './ColumnStyles.js'
-import { getActiveColumnConfigs, metadataCache, getCachedActionsWidth, setCachedActionsWidth } from './MetaVoxState.js'
+import { getActiveColumnConfigs, metadataCache, getCachedActionsWidth, setCachedActionsWidth, getFilelinkName } from './MetaVoxState.js'
+import { parseValue, displayName } from '../../components/fields/filelinkUtils.js'
 import { formatValue, getColWidth } from './ColumnUtils.js'
 import { getFilterInstance } from './MetadataFilter.js'
 
@@ -293,24 +294,37 @@ export function setCellValue(td, value, config) {
 		const wrapper = document.createElement('span')
 		wrapper.className = 'metavox-cell-filelink'
 
-		const text = document.createElement('span')
-		text.className = 'metavox-cell-filelink-text'
-		text.textContent = value.split('/').pop() || value
-		wrapper.appendChild(text)
+		const tokens = parseValue(value)
+		const titles = []
+		tokens.forEach((token, idx) => {
+			if (idx > 0) {
+				const sep = document.createElement('span')
+				sep.className = 'metavox-cell-filelink-sep'
+				sep.textContent = ', '
+				wrapper.appendChild(sep)
+			}
 
-		const link = document.createElement('a')
-		link.className = 'metavox-cell-link-btn'
-		const dir = value.substring(0, value.lastIndexOf('/'))
-		link.href = generateUrl('/apps/files/?dir={dir}&openfile={file}', { dir, file: value })
-		link.target = '_blank'
-		link.rel = 'noopener noreferrer'
-		link.textContent = '↗'
-		link.title = value
-		link.addEventListener('click', (e) => e.stopPropagation())
-		wrapper.appendChild(link)
+			const name = displayName(token, { [token.fileId]: getFilelinkName(token.fileId) })
+			titles.push(token.path || name)
+
+			const link = document.createElement('a')
+			link.className = 'metavox-cell-filelink-text metavox-cell-link-btn'
+			link.target = '_blank'
+			link.rel = 'noopener noreferrer'
+			link.textContent = name
+			link.title = token.path || name
+			if (token.fileId != null) {
+				link.href = generateUrl('/f/{fileId}', { fileId: token.fileId })
+			} else {
+				const dir = token.path.substring(0, token.path.lastIndexOf('/'))
+				link.href = generateUrl('/apps/files/?dir={dir}&openfile={file}', { dir, file: token.path })
+			}
+			link.addEventListener('click', (e) => e.stopPropagation())
+			wrapper.appendChild(link)
+		})
 
 		td.appendChild(wrapper)
-		td.title = value
+		td.title = titles.join(', ')
 		break
 	}
 	default: {

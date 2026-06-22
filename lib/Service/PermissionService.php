@@ -176,6 +176,50 @@ class PermissionService {
     }
 
     /**
+     * Does this user have manage_fields on AT LEAST ONE folder (folder-specific
+     * OR global)? Used to decide whether to surface the Personal settings page:
+     * a user who can manage fields on a single team folder should see it, not
+     * only users with a global grant. Admins always qualify.
+     */
+    public function hasManageFieldsOnAnyFolder(string $userId): bool {
+        if ($this->groupManager->isAdmin($userId)) {
+            return true;
+        }
+
+        // User-specific manage_fields rows (any groupfolder_id, incl. NULL).
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('id')
+           ->from('metavox_permissions')
+           ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+           ->andWhere($qb->expr()->eq('permission_type', $qb->createNamedParameter(self::PERM_MANAGE_FIELDS)))
+           ->setMaxResults(1);
+        $result = $qb->executeQuery();
+        $found = (bool)$result->fetchOne();
+        $result->closeCursor();
+        if ($found) {
+            return true;
+        }
+
+        // Group-based manage_fields rows.
+        $userGroups = $this->groupManager->getUserGroupIds($this->userManager->get($userId));
+        if (empty($userGroups)) {
+            return false;
+        }
+
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('id')
+           ->from('metavox_permissions')
+           ->where($qb->expr()->in('group_id', $qb->createNamedParameter($userGroups, IQueryBuilder::PARAM_STR_ARRAY)))
+           ->andWhere($qb->expr()->eq('permission_type', $qb->createNamedParameter(self::PERM_MANAGE_FIELDS)))
+           ->setMaxResults(1);
+        $result = $qb->executeQuery();
+        $found = (bool)$result->fetchOne();
+        $result->closeCursor();
+
+        return $found;
+    }
+
+    /**
      * Grant permission to user
      */
     public function grantUserPermission(

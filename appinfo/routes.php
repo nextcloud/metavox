@@ -30,6 +30,7 @@ return [
         // Groupfolder file metadata routes (individual files within groupfolders)
         ['name' => 'field#getGroupfolderFileMetadata', 'url' => '/api/groupfolders/{groupfolderId}/files/{fileId}/metadata', 'verb' => 'GET'],
         ['name' => 'field#saveGroupfolderFileMetadata', 'url' => '/api/groupfolders/{groupfolderId}/files/{fileId}/metadata', 'verb' => 'POST'],
+        ['name' => 'field#getFileBacklinks', 'url' => '/api/groupfolders/{groupfolderId}/files/{fileId}/backlinks', 'verb' => 'GET'],
 
         // Bulk file metadata routes
         ['name' => 'field#saveBulkFileMetadata', 'url' => '/api/files/bulk-metadata', 'verb' => 'POST'],
@@ -40,9 +41,16 @@ return [
         ['name' => 'field#getGroupfolderAssignedFields', 'url' => '/api/groupfolders/{groupfolderId}/fields', 'verb' => 'GET'],
         ['name' => 'field#setGroupfolderFields', 'url' => '/api/groupfolders/{groupfolderId}/fields', 'verb' => 'POST'],
 
+        // Per-folder default value routes
+        ['name' => 'defaults#getDefaults', 'url' => '/api/groupfolders/{groupfolderId}/defaults', 'verb' => 'GET'],
+        ['name' => 'defaults#setDefault', 'url' => '/api/groupfolders/{groupfolderId}/defaults', 'verb' => 'POST'],
+        ['name' => 'defaults#trigger', 'url' => '/api/groupfolders/{groupfolderId}/defaults/trigger', 'verb' => 'POST'],
+        ['name' => 'defaults#status', 'url' => '/api/groupfolders/{groupfolderId}/defaults/status', 'verb' => 'GET'],
+
         // User routes (for personal settings)
         ['name' => 'user_field#getAccessibleGroupfolders', 'url' => '/api/user/groupfolders', 'verb' => 'GET'],
         ['name' => 'user_field#getGroupfolderFields', 'url' => '/api/user/groupfolders/{groupfolderId}/fields', 'verb' => 'GET'],
+        ['name' => 'user_field#getFieldValues', 'url' => '/api/user/groupfolders/{groupfolderId}/field-values', 'verb' => 'GET'],
         ['name' => 'user_field#getAllGroupfolderFields', 'url' => '/api/user/groupfolder-fields', 'verb' => 'GET'],
         ['name' => 'user_field#getGroupfolderMetadata', 'url' => '/api/user/groupfolders/{groupfolderId}/metadata', 'verb' => 'GET'],
         ['name' => 'user_field#saveGroupfolderMetadata', 'url' => '/api/user/groupfolders/{groupfolderId}/metadata', 'verb' => 'POST'],

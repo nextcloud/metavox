@@ -16,6 +16,11 @@ node_modules
 *.log
 *.tar.gz
 
+# PHP / tests
+vendor/
+.phpunit.cache/
+.phpunit.result.cache
+
 # Signing
 *.key
 

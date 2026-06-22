@@ -199,14 +199,13 @@ class TelemetryService {
     }
 
     /**
-     * Get hashed instance URL for anonymous identification
+     * Get hashed instance URL for anonymous identification.
+     * Delegates to LicenseService so the telemetry instanceHash is byte-for-byte
+     * identical to license_usage.instance_url_hash — required for the license
+     * server's enterprise-claim validation join.
      */
     private function getInstanceUrlHash(): string {
-        $instanceUrl = $this->config->getSystemValue('overwrite.cli.url', '');
-        if (empty($instanceUrl)) {
-            $instanceUrl = $this->config->getSystemValue('trusted_domains', ['localhost'])[0] ?? 'localhost';
-        }
-        return hash('sha256', strtolower(rtrim($instanceUrl, '/')));
+        return $this->licenseService->getInstanceUrlHash();
     }
 
     /**
