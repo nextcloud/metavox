@@ -143,6 +143,7 @@ OC.L10N.register(
     "Referenced by" : "Gerefereerd door",
     "Add file" : "Bestand toevoegen",
     "This file is already linked" : "Dit bestand is al gekoppeld",
+    "You can only link files inside this team folder" : "Je kunt alleen bestanden in deze teammap koppelen",
     "Default" : "Standaard",
     "No files selected" : "Geen bestanden geselecteerd",
     "Remove" : "Verwijderen",
