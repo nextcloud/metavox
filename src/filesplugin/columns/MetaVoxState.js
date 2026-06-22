@@ -146,3 +146,18 @@ export function setMetavoxGroupfolders(v) { window._metavoxGroupfolders = v }
 
 export function getMetavoxAllGfData() { return window._metavoxAllGfData }
 export function setMetavoxAllGfData(v) { window._metavoxAllGfData = v }
+
+// ── File-link resolved names ─────────────────────────────────────────
+// Map: referenced fileId -> current display name, server-resolved so the grid
+// shows live names for "File Link" cells without per-cell API calls. Cells
+// fall back to the cached path baked into the stored value when a name is
+// absent (stale reference, no access, or API fallback path).
+/** @type {Map<number, string>} */
+const _filelinkResolvedNames = new Map()
+export function getFilelinkName(fileId) { return _filelinkResolvedNames.get(Number(fileId)) }
+export function mergeFilelinkNames(map) {
+	if (!map) return
+	for (const [id, name] of Object.entries(map)) {
+		if (name) _filelinkResolvedNames.set(Number(id), name)
+	}
+}

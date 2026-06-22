@@ -250,7 +250,10 @@ export default {
 	border-bottom: 1px solid var(--color-border);
 	margin-bottom: 20px;
 	display: flex;
-	gap: 10px;
+	/* Wrap to a second row instead of overflowing off-screen when all tabs
+	   don't fit. Small row-gap keeps wrapped rows from touching. */
+	flex-wrap: wrap;
+	gap: 4px 10px;
 }
 
 .tab-button {

@@ -47,9 +47,11 @@ Bekijk het [Architectuur-overzicht](architecture/overview.md) om te begrijpen:
 |---------|--------------|
 | **Team folder-metadata** | Velden gedefinieerd per Team folder, zichtbaar op alle documenten (read-only op documentniveau) |
 | **Documentmetadata** | Velden specifiek voor individuele documenten, bewerkbaar door gebruikers met schrijfrechten |
-| **Veldtypen** | Tekst, getal, datum, dropdown, multi-select, checkbox, URL, user-picker, file-link |
+| **Veldtypen** | Tekst, getal, datum, dropdown, multi-select, checkbox, URL, user-picker, file-link (meerdere bestanden per veld) |
+| **Standaardwaarden** | Per-folder standaardwaarden die op nieuwe én bestaande bestanden worden toegepast voor consistente classificatie |
 | **Weergaven** | Voor-gedefinieerde combinaties van kolommen, filters en sortering; geconfigureerd per Team folder door beheerders |
 | **Kolomconfig** | Bepaalt welke metadata-velden als kolommen verschijnen in de bestandenlijst en in welke volgorde |
+| **Geünificeerd zoeken** | Bestanden vinden op hun metadata via Nextcloud-zoeken, inclusief een veld/waarde-filter |
 
 ## Volgende stappen
 

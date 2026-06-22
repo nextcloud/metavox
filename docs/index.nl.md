@@ -1,6 +1,6 @@
 # MetaVox documentatie
 
-![MetaVox v1.0.0 — metadata-kolommen in de Nextcloud Files-app](screenshots/MetaVox%20v1.0.0.png)
+![MetaVox v1.0.0 — metadata-kolommen in de Nextcloud Files-app](../screenshots/MetaVox%20v1.0.0.png)
 
 Welkom bij de MetaVox-documentatie. MetaVox is een Nextcloud-app die gestructureerde metadata toevoegt aan documenten in Team folders — voor classificatie, compliance-tracking en doorzoekbaarheid, zonder je bestanden te veranderen.
 
@@ -11,7 +11,8 @@ Welkom bij de MetaVox-documentatie. MetaVox is een Nextcloud-app die gestructure
 Leer hoe je metadata in je dagelijkse workflow gebruikt.
 
 - [Overzicht](user/overview.md) — Wat is MetaVox en waarom gebruiken
-- [Veldtypen](user/field-types.md) — Verschillende metadata-veldtypen
+- [Veldtypen](user/field-types.md) — Verschillende metadata-veldtypen (incl. standaardwaarden)
+- [Zoeken](user/search.md) — Bestanden vinden op metadata via Geünificeerd zoeken
 - [Weergaven](user/views.md) — Switch tussen voor-gedefinieerde kolom-, filter- en sorteer-combinaties
 - [Bulk-bewerken](user/bulk-editing.md) — Metadata bewerken voor meerdere bestanden tegelijk
 - [Data exporteren](user/exporting-data.md) — Metadata exporteren naar CSV

@@ -117,6 +117,24 @@
 				<div v-else-if="itemFields.length === 0" class="info-container">
 					<p>{{ itemType === 'Folder' ? t('metavox', 'No folder metadata fields are configured for items in this Team folder. Contact your administrator to set up metadata fields.') : t('metavox', 'No file metadata fields are configured for items in this Team folder. Contact your administrator to set up metadata fields.') }}</p>
 				</div>
+
+				<!-- Referenced by (backlinks) -->
+				<div v-if="backlinks.length > 0" class="metadata-section backlinks-section">
+					<h3>{{ t('metavox', 'Referenced by') }}</h3>
+					<ul class="backlinks-list">
+						<li v-for="link in backlinks" :key="`${link.referringFileId}-${link.fieldName}`" class="backlink-item">
+							<a class="backlink-link"
+								:href="fileUrl(link.referringFileId)"
+								target="_blank"
+								rel="noopener noreferrer"
+								:title="link.referringFilePath">
+								<FileIcon :size="16" />
+								<span class="backlink-name">{{ link.referringFileName }}</span>
+							</a>
+							<span class="backlink-field">{{ link.fieldLabel }}</span>
+						</li>
+					</ul>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -131,6 +149,7 @@ import axios from '@nextcloud/axios'
 import ContentSaveIcon from 'vue-material-design-icons/ContentSave.vue'
 import LoadingIcon from 'vue-material-design-icons/Loading.vue'
 import CreationIcon from 'vue-material-design-icons/Creation.vue'
+import FileIcon from 'vue-material-design-icons/File.vue'
 
 import MetadataForm from './MetadataForm.vue'
 
@@ -143,6 +162,7 @@ export default {
 		ContentSaveIcon,
 		LoadingIcon,
 		CreationIcon,
+		FileIcon,
 		MetadataForm,
 	},
 
@@ -194,6 +214,7 @@ export default {
 			aiSuggestions: {},
 			aiError: null,
 			regeneratingField: null,
+			backlinks: [],
 		}
 	},
 
@@ -362,6 +383,9 @@ export default {
 				this.metadata = metadataMap
 				this.originalMetadata = { ...metadataMap }
 				this.selectKey++ // Force re-render of select components
+
+				// Load "Referenced by" backlinks (non-blocking)
+				this.loadBacklinks()
 			} catch (error) {
 				// Ignore cancelled requests
 				if (axios.isCancel(error)) {
@@ -373,6 +397,29 @@ export default {
 				this.loading = false
 				this.loadCancelToken = null
 			}
+		},
+
+		async loadBacklinks() {
+			this.backlinks = []
+			const fileId = this.currentFileInfo?.id
+			if (!this.groupfolderId || !fileId) {
+				return
+			}
+			try {
+				const url = generateUrl(
+					'/apps/metavox/api/groupfolders/{gfId}/files/{fileId}/backlinks',
+					{ gfId: this.groupfolderId, fileId },
+				)
+				const resp = await axios.get(url)
+				this.backlinks = Array.isArray(resp.data) ? resp.data : []
+			} catch (error) {
+				// Backlinks are a nice-to-have; never block the sidebar on them.
+				this.backlinks = []
+			}
+		},
+
+		fileUrl(fileId) {
+			return generateUrl('/f/{fileId}', { fileId })
 		},
 
 		async detectGroupfolder() {
@@ -609,6 +656,13 @@ export default {
 				window.dispatchEvent(new CustomEvent('metavox:metadata:saved', {
 					detail: { fileId: this.currentFileInfo.id, metadata: { ...this.metadata } },
 				}))
+
+				// File-link values are normalised + deduped server-side (and get
+				// resolved current names), so reload to reflect the canonical
+				// stored value when the form contains a filelink field.
+				if (this.itemFields.some((f) => f.field_type === 'filelink')) {
+					this.loadMetadata()
+				}
 			} catch (error) {
 				console.error('Error saving metadata:', error)
 				this.error = error.response?.data?.error || this.t('metavox', 'Failed to save metadata')
@@ -987,5 +1041,52 @@ export default {
 		opacity: 1;
 		transform: translateY(0);
 	}
+}
+
+.backlinks-section {
+	margin-top: 16px;
+}
+
+.backlinks-list {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.backlink-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 4px 8px;
+	border-radius: var(--border-radius);
+}
+
+.backlink-item:hover {
+	background-color: var(--color-background-hover);
+}
+
+.backlink-link {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	overflow: hidden;
+	color: var(--color-main-text);
+}
+
+.backlink-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.backlink-link:hover .backlink-name {
+	text-decoration: underline;
+}
+
+.backlink-field {
+	flex-shrink: 0;
+	color: var(--color-text-maxcontrast);
+	font-size: 0.85em;
 }
 </style>

@@ -11,7 +11,8 @@ Welcome to the MetaVox documentation. MetaVox is a Nextcloud app that adds struc
 Learn how to work with metadata in your daily workflow.
 
 - [Overview](user/overview.md) - What is MetaVox and why use it
-- [Field Types](user/field-types.md) - Understanding different metadata field types
+- [Field Types](user/field-types.md) - Understanding different metadata field types (incl. default values)
+- [Searching Metadata](user/search.md) - Find files by metadata via Unified Search
 - [Views](user/views.md) - Switch between predefined column, filter, and sort combinations
 - [Bulk Editing](user/bulk-editing.md) - Edit metadata for multiple files at once
 - [Exporting Data](user/exporting-data.md) - Export metadata to CSV

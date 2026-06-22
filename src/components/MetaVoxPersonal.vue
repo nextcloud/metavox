@@ -121,7 +121,7 @@
                   <p>{{ t('metavox', 'No fields available. Contact your administrator to create metadata fields.') }}</p>
                 </div>
                 
-                <form v-else @submit.prevent="saveFieldsConfiguration(groupfolder.id)" class="fields-config-form">
+                <div v-else class="fields-config-form">
                   <!-- Search for Fields -->
                   <div class="field-search-section">
                     <NcTextField
@@ -181,15 +181,26 @@
                     <h5>{{ t('metavox', 'File Metadata Fields') }}</h5>
                     <p class="section-description">{{ t('metavox', 'These fields can be set on individual files') }}</p>
                     <div class="checkbox-group">
-                      <NcCheckboxRadioSwitch
+                      <div
                         v-for="field in getFilteredFileFields(groupfolder.id)"
                         :key="`file-${field.id}-${groupfolder.id}`"
-                        :model-value="isFieldAssigned(groupfolder.id, field.id)"
-                        @update:model-value="updateFieldAssignment(groupfolder.id, field.id, $event)"
-                        type="checkbox">
-                        {{ field.field_label }}
-                        <span class="field-type-label">({{ field.field_type }})</span>
-                      </NcCheckboxRadioSwitch>
+                        class="file-field-row">
+                        <NcCheckboxRadioSwitch
+                          :model-value="isFieldAssigned(groupfolder.id, field.id)"
+                          @update:model-value="updateFieldAssignment(groupfolder.id, field.id, $event)"
+                          type="checkbox">
+                          {{ field.field_label }}
+                          <span class="field-type-label">({{ field.field_type }})</span>
+                        </NcCheckboxRadioSwitch>
+
+                        <!-- Default value (only when the field is assigned) -->
+                        <DefaultValueInput
+                          v-if="isFieldAssigned(groupfolder.id, field.id)"
+                          :field="field"
+                          :input-id="`default-${groupfolder.id}-${field.id}`"
+                          :model-value="getDefaultValue(groupfolder.id, field)"
+                          @update:model-value="setDefaultValue(groupfolder.id, field, $event)" />
+                      </div>
                     </div>
                   </div>
 
@@ -206,11 +217,32 @@
                     </p>
                   </div>
 
+                  <!-- Apply defaults now -->
+                  <div class="apply-defaults-section">
+                    <p class="section-description">{{ t('metavox', 'Apply the configured default values to existing files in this team folder that do not yet have a value for these fields.') }}</p>
+                    <div class="apply-defaults-actions">
+                      <NcButton
+                        type="secondary"
+                        :disabled="defaultsStatus[groupfolder.id] === 'running'"
+                        @click="triggerDefaults(groupfolder.id)">
+                        <template #icon>
+                          <div v-if="defaultsStatus[groupfolder.id] === 'running'" class="icon-loading-small"></div>
+                          <PlayIcon v-else :size="20" />
+                        </template>
+                        {{ t('metavox', 'Apply defaults now') }}
+                      </NcButton>
+                      <span class="apply-defaults-status">
+                        {{ defaultsStatus[groupfolder.id] === 'running' ? t('metavox', 'Applying defaults…') : t('metavox', 'Idle') }}
+                      </span>
+                    </div>
+                  </div>
+
                   <div class="form-actions">
                     <NcButton
                       type="primary"
-                      native-type="submit"
-                      :disabled="savingFields[groupfolder.id]">
+                      native-type="button"
+                      :disabled="savingFields[groupfolder.id]"
+                      @click="saveFieldsConfiguration(groupfolder.id)">
                       <template #icon>
                         <div v-if="savingFields[groupfolder.id]" class="icon-loading-small"></div>
                         <ContentSaveIcon v-else :size="20" />
@@ -223,7 +255,7 @@
                       {{ t('metavox', 'Cancel') }}
                     </NcButton>
                   </div>
-                </form>
+                </div>
 
               </div>
             </div>
@@ -416,9 +448,14 @@ import EditIcon from 'vue-material-design-icons/Pencil.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
 import ContentSaveIcon from 'vue-material-design-icons/ContentSave.vue'
 import MagnifyIcon from 'vue-material-design-icons/Magnify.vue'
+import PlayIcon from 'vue-material-design-icons/Play.vue'
+import DefaultValueInput from './fields/DefaultValueInput.vue'
+import defaultValuesMixin from './mixins/defaultValuesMixin.js'
 
 export default {
   name: 'MetaVoxUser',
+
+  mixins: [defaultValuesMixin],
 
   components: {
     NcButton,
@@ -431,6 +468,8 @@ export default {
     CogIcon,
     ContentSaveIcon,
     MagnifyIcon,
+    PlayIcon,
+    DefaultValueInput,
   },
   
   data() {
@@ -534,7 +573,7 @@ async loadAccessibleGroupfolders() {
           this.fieldTypeFilter[gf.id] = 'all'
         })
         
-        // Pre-load assigned fields for all groupfolders
+        // Pre-load assigned fields + configured defaults for all groupfolders
         for (const gf of this.accessibleGroupfolders) {
           try {
             const response = await axios.get(
@@ -548,6 +587,8 @@ async loadAccessibleGroupfolders() {
             this.assignedFields[gf.id] = []
             this.tempAssignedFields[gf.id] = []
           }
+          // Default values for file fields (shared mixin).
+          await this.loadFolderDefaults(gf.id)
         }
       } catch (error) {
         console.error('Failed to load groupfolders:', error)
@@ -581,25 +622,44 @@ async loadAccessibleGroupfolders() {
       this.expandedFields[groupfolderId] = false
     },
     
-    async saveFieldsConfiguration(groupfolderId) {
+    // --- defaultValuesMixin host contract ---
+    getAssignedFieldIds(groupfolderId) {
+      return this.tempAssignedFields[groupfolderId] || []
+    },
+    getFileFields() {
+      return this.fileMetadataFields
+    },
+    persistFieldConfig(groupfolderId) {
+      // Save assignment + defaults, keep the panel open (called by the mixin
+      // before applying defaults).
+      return this.saveFieldsConfiguration(groupfolderId, { keepOpen: true })
+    },
+
+    async saveFieldsConfiguration(groupfolderId, { keepOpen = false } = {}) {
       this.savingFields[groupfolderId] = true
-      
+
       try {
         await axios.post(
           generateUrl(`/apps/metavox/api/groupfolders/${groupfolderId}/fields`),
           { field_ids: this.tempAssignedFields[groupfolderId] }
         )
-        
+
         // Update the actual assigned fields after successful save
         this.assignedFields[groupfolderId] = [...this.tempAssignedFields[groupfolderId]]
-        
+
+        // Persist default values for assigned file fields (shared mixin).
+        await this.saveFolderDefaults(groupfolderId)
+
         showSuccess(this.t('metavox', 'Field configuration saved successfully'))
-        this.expandedFields[groupfolderId] = false
+        if (!keepOpen) {
+          this.expandedFields[groupfolderId] = false
+        }
       } catch (error) {
         console.error('Failed to save field configuration:', error)
         showError(this.t('metavox', 'Failed to save field configuration'))
         // Reset temp fields to actual assigned fields on error
         this.tempAssignedFields[groupfolderId] = [...this.assignedFields[groupfolderId]]
+        throw error
       } finally {
         this.savingFields[groupfolderId] = false
       }

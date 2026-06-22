@@ -1,46 +1,36 @@
 <template>
   <div class="file-link-field-wrapper">
-    <div class="file-input-container">
-      <NcTextField
-        :id="inputId"
-        :model-value="displayPath"
-        :disabled="true"
-        :placeholder="placeholder || t('metavox', 'No file selected')"
-        class="file-path-input" />
-      <NcButton
-        :disabled="disabled"
-        type="secondary"
-        @click="openFilePicker">
-        <template #icon>
-          <FolderIcon :size="20" />
-        </template>
-        {{ t('metavox', 'Browse') }}
-      </NcButton>
-      <NcButton
-        v-if="modelValue"
-        :disabled="disabled"
-        type="tertiary"
-        @click="clearSelection"
-        :title="t('metavox', 'Clear selection')">
-        <template #icon>
-          <CloseIcon :size="20" />
-        </template>
-      </NcButton>
-    </div>
+    <ul v-if="tokens.length" class="file-link-list">
+      <li v-for="(token, index) in tokens" :key="index" class="file-link-row">
+        <component :is="iconFor(token)" :size="20" class="row-icon" @click="openFile(token)" />
+        <span class="row-name" :title="token.path || nameFor(token)" @click="openFile(token)">{{ nameFor(token) }}</span>
+        <NcButton
+          type="tertiary"
+          :disabled="disabled"
+          :aria-label="t('metavox', 'Remove')"
+          :title="t('metavox', 'Remove')"
+          @click="removeAt(index)">
+          <template #icon>
+            <CloseIcon :size="16" />
+          </template>
+        </NcButton>
+      </li>
+    </ul>
+    <p v-else class="file-link-empty">
+      {{ placeholder || t('metavox', 'No files selected') }}
+    </p>
 
-    <!-- File info display -->
-    <div v-if="modelValue && fileInfo" class="file-info">
-      <div class="file-preview" @click="openFile">
-        <component :is="getFileIcon(fileInfo.mimetype)" :size="32" class="file-icon" />
-        <div class="file-details">
-          <span class="file-name">{{ fileInfo.name }}</span>
-          <span class="file-path">{{ fileInfo.path }}</span>
-        </div>
-        <OpenInNew :size="16" class="open-icon" />
-      </div>
-    </div>
+    <NcButton
+      :id="inputId"
+      :disabled="disabled"
+      type="secondary"
+      @click="addFile">
+      <template #icon>
+        <PlusIcon :size="20" />
+      </template>
+      {{ t('metavox', 'Add file') }}
+    </NcButton>
 
-    <!-- Error message -->
     <p v-if="error" class="file-error">
       {{ error }}
     </p>
@@ -48,10 +38,9 @@
 </template>
 
 <script>
-import { NcTextField, NcButton } from '@nextcloud/vue'
-import FolderIcon from 'vue-material-design-icons/Folder.vue'
+import { NcButton } from '@nextcloud/vue'
+import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import CloseIcon from 'vue-material-design-icons/Close.vue'
-import OpenInNew from 'vue-material-design-icons/OpenInNew.vue'
 import FileIcon from 'vue-material-design-icons/File.vue'
 import FileDocumentIcon from 'vue-material-design-icons/FileDocument.vue'
 import FileImageIcon from 'vue-material-design-icons/FileImage.vue'
@@ -59,25 +48,23 @@ import FilePdfBoxIcon from 'vue-material-design-icons/FilePdfBox.vue'
 import FileVideoIcon from 'vue-material-design-icons/FileVideo.vue'
 import FileMusicIcon from 'vue-material-design-icons/FileMusic.vue'
 import FileCodeIcon from 'vue-material-design-icons/FileCode.vue'
-import FolderOpenIcon from 'vue-material-design-icons/FolderOpen.vue'
 import { generateUrl } from '@nextcloud/router'
+import { showWarning } from '@nextcloud/dialogs'
+import { parseValue, joinTokens, displayName } from './filelinkUtils.js'
 
 export default {
   name: 'FileLinkFieldInput',
   components: {
-    NcTextField,
     NcButton,
-    FolderIcon,
+    PlusIcon,
     CloseIcon,
-    OpenInNew,
     FileIcon,
     FileDocumentIcon,
     FileImageIcon,
     FilePdfBoxIcon,
     FileVideoIcon,
     FileMusicIcon,
-    FileCodeIcon,
-    FolderOpenIcon
+    FileCodeIcon
   },
   props: {
     modelValue: {
@@ -113,141 +100,151 @@ export default {
     mimetypes: {
       type: Array,
       default: () => []
+    },
+    // Team-folder root path (relative to the user's home, e.g. "/Projects").
+    // When set, the picker opens here and links are constrained to this folder:
+    // choosing a file outside it is rejected with a toast. Empty = no folder
+    // context (e.g. the per-folder default editor) → picker opens at home and
+    // the server-side team-folder validation remains the sole guard.
+    basePath: {
+      type: String,
+      default: ''
+    },
+    // Server-resolved current info: [{ fileId, name, path, exists }].
+    // Used to show live names after the target was renamed/moved.
+    resolved: {
+      type: Array,
+      default: () => []
     }
   },
   emits: ['update:modelValue', 'input'],
   data() {
     return {
-      fileInfo: null,
       error: ''
     }
   },
   computed: {
-    displayPath() {
-      if (!this.modelValue) return ''
-      // Extract filename from path
-      const parts = this.modelValue.split('/')
-      return parts[parts.length - 1] || this.modelValue
-    }
-  },
-  watch: {
-    modelValue: {
-      immediate: true,
-      handler(newValue) {
-        if (newValue) {
-          this.parseFileInfo(newValue)
-        } else {
-          this.fileInfo = null
+    // The stored value is one or more "<id>:path" tokens joined with ';#'.
+    // A single legacy/single value is simply a one-element list.
+    tokens() {
+      return parseValue(this.modelValue)
+    },
+    // fileId => current name, from the server-resolved payload.
+    resolvedNames() {
+      const map = {}
+      for (const info of (this.resolved || [])) {
+        if (info && info.fileId != null && info.name) {
+          map[info.fileId] = info.name
         }
       }
+      return map
     }
   },
   methods: {
     t(app, text) {
       return window.t ? window.t(app, text) : text
     },
-    parseFileInfo(path) {
-      // Parse the stored value to extract file info
-      // Format: "fileId:path" or just "path"
-      const parts = path.split('/')
-      const name = parts[parts.length - 1] || path
-
-      this.fileInfo = {
-        path: path,
-        name: name,
-        mimetype: this.guessMimetype(name)
-      }
+    nameFor(token) {
+      return displayName(token, this.resolvedNames)
     },
     guessMimetype(filename) {
-      const ext = filename.split('.').pop()?.toLowerCase()
+      const ext = (filename || '').split('.').pop()?.toLowerCase()
       const mimetypes = {
-        // Images
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'png': 'image/png',
-        'gif': 'image/gif',
-        'svg': 'image/svg+xml',
-        'webp': 'image/webp',
-        // Documents
-        'pdf': 'application/pdf',
-        'doc': 'application/msword',
-        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'xls': 'application/vnd.ms-excel',
-        'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'ppt': 'application/vnd.ms-powerpoint',
-        'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-        'txt': 'text/plain',
-        'md': 'text/markdown',
-        // Media
-        'mp4': 'video/mp4',
-        'webm': 'video/webm',
-        'mp3': 'audio/mpeg',
-        'wav': 'audio/wav',
-        // Code
-        'js': 'text/javascript',
-        'ts': 'text/typescript',
-        'json': 'application/json',
-        'html': 'text/html',
-        'css': 'text/css',
-        'php': 'text/php',
-        'py': 'text/python'
+        jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif',
+        svg: 'image/svg+xml', webp: 'image/webp',
+        pdf: 'application/pdf',
+        doc: 'application/msword',
+        docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        xls: 'application/vnd.ms-excel',
+        xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ppt: 'application/vnd.ms-powerpoint',
+        pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        txt: 'text/plain', md: 'text/markdown',
+        mp4: 'video/mp4', webm: 'video/webm', mp3: 'audio/mpeg', wav: 'audio/wav',
+        js: 'text/javascript', ts: 'text/typescript', json: 'application/json',
+        html: 'text/html', css: 'text/css', php: 'text/php', py: 'text/python'
       }
       return mimetypes[ext] || 'application/octet-stream'
     },
-    getFileIcon(mimetype) {
-      if (!mimetype) return 'FileIcon'
-
+    iconFor(token) {
+      const mimetype = this.guessMimetype(this.nameFor(token))
       if (mimetype.startsWith('image/')) return 'FileImageIcon'
       if (mimetype === 'application/pdf') return 'FilePdfBoxIcon'
       if (mimetype.startsWith('video/')) return 'FileVideoIcon'
       if (mimetype.startsWith('audio/')) return 'FileMusicIcon'
       if (mimetype.startsWith('text/') || mimetype.includes('document')) return 'FileDocumentIcon'
       if (mimetype.includes('javascript') || mimetype.includes('json') || mimetype.includes('code')) return 'FileCodeIcon'
-      if (mimetype === 'httpd/unix-directory') return 'FolderOpenIcon'
-
       return 'FileIcon'
     },
-    openFilePicker() {
+    emit(tokens) {
+      const value = joinTokens(tokens)
+      this.$emit('update:modelValue', value)
+      this.$emit('input', value)
+    },
+    removeAt(index) {
+      const next = this.tokens.slice()
+      next.splice(index, 1)
+      this.emit(next)
+    },
+    addFile() {
       this.error = ''
-
-      // Determine picker type
-      let pickerType = OC.dialogs.FILEPICKER_TYPE_CHOOSE
-
-      if (this.selectionType === 'folders') {
-        pickerType = OC.dialogs.FILEPICKER_TYPE_CHOOSE
-      }
-
-      // Use Nextcloud's built-in file picker
+      // Open the picker inside the team folder when we know it, so the user
+      // starts in the right place. The NC picker still allows navigating up,
+      // so addPath() enforces the boundary on selection.
+      const startPath = this.basePath && this.basePath !== '' ? this.basePath : '/'
       OC.dialogs.filepicker(
         this.t('metavox', 'Select a file or folder'),
         (path) => {
           if (path) {
-            this.$emit('update:modelValue', path)
-            this.$emit('input', path)
+            this.addPath(path)
           }
         },
         false, // multiselect
-        this.mimetypes.length > 0 ? this.mimetypes : undefined, // mimetypes filter
+        this.mimetypes.length > 0 ? this.mimetypes : undefined,
         true, // modal
-        pickerType,
-        '/', // start path
-        {
-          allowDirectoryChooser: this.selectionType !== 'files'
-        }
+        OC.dialogs.FILEPICKER_TYPE_CHOOSE,
+        startPath,
+        { allowDirectoryChooser: this.selectionType !== 'files' }
       )
     },
-    clearSelection() {
-      this.$emit('update:modelValue', '')
-      this.$emit('input', '')
-      this.fileInfo = null
+    // Whether a picked path lies within the configured team folder.
+    isWithinBase(path) {
+      if (!this.basePath || this.basePath === '') {
+        return true // no folder context → don't block client-side
+      }
+      const base = this.basePath.replace(/\/+$/, '')
+      return path === base || path.startsWith(base + '/')
     },
-    openFile() {
-      if (!this.modelValue) return
-
-      // Open the file in Nextcloud Files app
+    addPath(path) {
+      // Enforce the team-folder boundary with immediate feedback. The backend
+      // also drops out-of-folder tokens, but a toast is clearer than a link
+      // that silently disappears on save.
+      if (!this.isWithinBase(path)) {
+        showWarning(this.t('metavox', 'You can only link files inside this team folder'))
+        return
+      }
+      // Don't add the same path twice. The server also dedups on the resolved
+      // fileid (catches the same file via a different path).
+      if (this.tokens.some((t) => t.path === path)) {
+        showWarning(this.t('metavox', 'This file is already linked'))
+        return
+      }
+      const next = this.tokens.slice()
+      next.push({ fileId: null, path })
+      this.emit(next)
+    },
+    openFile(token) {
+      // Prefer opening by fileid (robust to renames/moves). NC's canonical
+      // "open file by id" route is /f/{fileid} (the same link share emails use);
+      // fall back to the legacy dir+openfile form when there is no id.
+      if (token.fileId != null) {
+        window.open(generateUrl('/f/{fileId}', { fileId: token.fileId }), '_blank')
+        return
+      }
+      if (!token.path) return
       const filesUrl = generateUrl('/apps/files/?dir={dir}&openfile={file}', {
-        dir: this.modelValue.substring(0, this.modelValue.lastIndexOf('/')),
-        file: this.modelValue
+        dir: token.path.substring(0, token.path.lastIndexOf('/')),
+        file: token.path
       })
       window.open(filesUrl, '_blank')
     }
@@ -262,75 +259,44 @@ export default {
   gap: 8px;
 }
 
-.file-input-container {
+.file-link-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.file-link-row {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.file-path-input {
-  flex: 1;
-}
-
-.file-path-input :deep(.input-field__input) {
+  padding: 4px 8px;
+  border-radius: var(--border-radius);
   background-color: var(--color-background-hover);
 }
 
-.file-info {
-  margin-top: 4px;
-}
-
-.file-preview {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  background: var(--color-background-hover);
-  border-radius: var(--border-radius-large);
+.row-icon,
+.row-name {
   cursor: pointer;
-  transition: background-color 0.2s ease;
 }
 
-.file-preview:hover {
-  background: var(--color-primary-element-light);
-}
-
-.file-icon {
-  color: var(--color-primary-element);
-  flex-shrink: 0;
-}
-
-.file-details {
-  display: flex;
-  flex-direction: column;
+.row-name {
   flex: 1;
-  min-width: 0;
-}
-
-.file-name {
-  font-weight: 600;
-  color: var(--color-main-text);
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.file-path {
-  font-size: 12px;
-  color: var(--color-text-maxcontrast);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.open-icon {
+.row-name:hover {
+  text-decoration: underline;
+}
+
+.file-link-empty {
   color: var(--color-text-maxcontrast);
-  flex-shrink: 0;
+  font-size: 0.9em;
 }
 
 .file-error {
-  font-size: 12px;
   color: var(--color-error);
-  margin: 0;
+  font-size: 0.85em;
 }
 </style>

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\MetaVox\Controller;
 
 use OCA\MetaVox\Service\FieldService;
+use OCA\MetaVox\Service\FileReferenceService;
 use OCA\MetaVox\Service\LockService;
 use OCA\MetaVox\Service\PermissionService;
 use OCA\MetaVox\Service\PushService;
@@ -25,6 +26,7 @@ class FieldController extends BaseController {
     private IGroupManager $groupManager;
     private LockService $lockService;
     private PushService $pushService;
+    private FileReferenceService $fileReferenceService;
     private LoggerInterface $logger;
 
     public function __construct(
@@ -38,6 +40,7 @@ class FieldController extends BaseController {
         IRootFolder $rootFolder,
         LockService $lockService,
         PushService $pushService,
+        FileReferenceService $fileReferenceService,
         LoggerInterface $logger
     ) {
         parent::__construct($appName, $request, $userSession, $permissionService, $fieldService, $rootFolder);
@@ -45,6 +48,7 @@ class FieldController extends BaseController {
         $this->groupManager = $groupManager;
         $this->lockService = $lockService;
         $this->pushService = $pushService;
+        $this->fileReferenceService = $fileReferenceService;
         $this->logger = $logger;
     }
 
@@ -293,7 +297,124 @@ class FieldController extends BaseController {
             if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
 
             $metadata = $this->fieldService->getGroupfolderFileMetadata($groupfolderId, $fileId);
+            $metadata = $this->enrichFilelinkMetadata($metadata, $user->getUID());
             return new JSONResponse($metadata);
+        } catch (\Exception $e) {
+            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Attach a `resolved` array to every filelink field so the
+     * frontend shows the file's CURRENT name even after it has been renamed or
+     * moved. The raw stored `value` ("<id>:<path>") is left unchanged.
+     *
+     * @param array<int, array<string, mixed>> $metadata
+     * @return array<int, array<string, mixed>>
+     */
+    private function enrichFilelinkMetadata(array $metadata, string $userId): array {
+        // Collect all referenced fileids in one pass for a single batch resolve.
+        $fileIds = [];
+        foreach ($metadata as $field) {
+            if (!in_array($field['field_type'] ?? '', FileReferenceService::FILELINK_TYPES, true)) {
+                continue;
+            }
+            foreach (FileReferenceService::parseValue((string)($field['value'] ?? '')) as $token) {
+                if ($token['fileId'] !== null) {
+                    $fileIds[] = $token['fileId'];
+                }
+            }
+        }
+        if (empty($fileIds)) {
+            return $metadata;
+        }
+        $resolved = $this->fileReferenceService->resolveMany($fileIds, $userId);
+
+        foreach ($metadata as &$field) {
+            if (!in_array($field['field_type'] ?? '', FileReferenceService::FILELINK_TYPES, true)) {
+                continue;
+            }
+            $items = [];
+            foreach (FileReferenceService::parseValue((string)($field['value'] ?? '')) as $token) {
+                $info = ($token['fileId'] !== null) ? ($resolved[$token['fileId']] ?? null) : null;
+                if ($info === null) {
+                    // Target unresolved for THIS user — either truly gone or not
+                    // accessible to them. Don't echo the stored (possibly
+                    // manager-resolved) name/path/id: that would disclose a file
+                    // they can't see. Emit a neutral placeholder instead.
+                    $items[] = ['fileId' => null, 'name' => null, 'path' => null, 'exists' => false];
+                    continue;
+                }
+                $items[] = [
+                    'fileId' => $token['fileId'],
+                    'name' => $info['name'],
+                    'path' => $info['path'],
+                    'exists' => true,
+                ];
+            }
+            $field['resolved'] = $items;
+        }
+        unset($field);
+
+        return $metadata;
+    }
+
+    /**
+     * Normalize an incoming filelink value (one or more ';#'-joined tokens) to the canonical
+     * "<fileid>:<path>" form. Tokens that already carry a fileid are left
+     * untouched (a cheap no-op when the frontend already sends ids); bare paths
+     * (e.g. straight from the file picker) are resolved to a fileid. A path
+     * that can't be resolved is kept as-is so nothing is lost.
+     *
+     * Duplicate references are dropped (first occurrence wins): the same file
+     * linked twice makes no sense. Dedup is keyed on the resolved fileid, with
+     * unresolvable bare paths deduped on their path string.
+     */
+    private function normalizeFilelinkValue(string $value, string $fieldType, string $userId, ?int $groupfolderId = null): string {
+        if ($value === '' || !in_array($fieldType, FileReferenceService::FILELINK_TYPES, true)) {
+            return $value;
+        }
+        // Resolve every bare path (from the picker) to its fileid, then dedup
+        // on fileid so the same file can't be linked twice.
+        $resolved = [];
+        foreach (FileReferenceService::parseValue($value) as $token) {
+            if ($token['fileId'] === null) {
+                $id = $this->fileReferenceService->resolvePathToFileId($token['path'], $userId);
+                if ($id !== null) {
+                    $token['fileId'] = $id;
+                }
+            }
+            // Enforce that the link target lives in THIS team folder. A target
+            // outside it would be invisible to other folder members and is
+            // confusing — drop such tokens rather than storing a dangling ref.
+            if ($groupfolderId !== null) {
+                if ($token['fileId'] === null
+                    || !$this->fileReferenceService->isFileInGroupfolder($token['fileId'], $groupfolderId)) {
+                    continue;
+                }
+            }
+            $resolved[] = $token;
+        }
+        return FileReferenceService::joinTokens(FileReferenceService::dedupeTokens($resolved));
+    }
+
+    /**
+     * List the files that reference this file through a File Link field
+     * ("Referenced by" / backlinks). See issue #73.
+     */
+    #[NoAdminRequired]
+    public function getFileBacklinks(int $groupfolderId, int $fileId): JSONResponse {
+        try {
+            $user = $this->requireUser();
+            if ($user instanceof JSONResponse) return $user;
+            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
+
+            // Scope backlinks to the authorized groupfolder. This both engages
+            // the (groupfolder_id, ...) index instead of a full-table LIKE scan
+            // and prevents probing backlinks of files outside this folder
+            // (the {fileId} path segment is otherwise unvalidated — IDOR).
+            $backlinks = $this->fileReferenceService->getBacklinks($fileId, $user->getUID(), $groupfolderId);
+            return new JSONResponse($backlinks);
         } catch (\Exception $e) {
             return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
@@ -310,13 +431,16 @@ class FieldController extends BaseController {
 
             $fields = $this->fieldService->getFieldsByScope('groupfolder');
             $fieldMap = [];
+            $typeMap = [];
             foreach ($fields as $field) {
                 $fieldMap[$field['field_name']] = $field['id'];
+                $typeMap[$field['field_name']] = $field['field_type'] ?? '';
             }
 
             foreach ($metadata as $fieldName => $value) {
                 if (isset($fieldMap[$fieldName])) {
-                    $this->fieldService->saveGroupfolderFileFieldValue($groupfolderId, $fileId, $fieldMap[$fieldName], (string)$value, $fieldName);
+                    $value = $this->normalizeFilelinkValue((string)$value, $typeMap[$fieldName] ?? '', $user->getUID(), $groupfolderId);
+                    $this->fieldService->saveGroupfolderFileFieldValue($groupfolderId, $fileId, $fieldMap[$fieldName], $value, $fieldName);
                 }
             }
 
@@ -358,8 +482,10 @@ class FieldController extends BaseController {
             $userFolder = $this->rootFolder->getUserFolder($userId);
             $fields = $this->fieldService->getFieldsByScope('groupfolder');
             $fieldMap = [];
+            $typeMap = [];
             foreach ($fields as $field) {
                 $fieldMap[$field['field_name']] = $field['id'];
+                $typeMap[$field['field_name']] = $field['field_type'] ?? '';
             }
 
             $successCount = 0;
@@ -405,8 +531,9 @@ class FieldController extends BaseController {
                                 continue;
                             }
                         }
+                        $normalized = $this->normalizeFilelinkValue((string)$value, $typeMap[$fieldName] ?? '', $userId, $groupfolderId);
                         $this->fieldService->saveGroupfolderFileFieldValue(
-                            $groupfolderId, (int)$fileId, $fieldMap[$fieldName], (string)$value, $fieldName
+                            $groupfolderId, (int)$fileId, $fieldMap[$fieldName], $normalized, $fieldName
                         );
                     }
 

@@ -121,7 +121,7 @@
                   <p>{{ t('metavox', 'No fields available. Create some fields first in the field management tabs.') }}</p>
                 </div>
                 
-                <form v-else @submit.prevent="saveFieldsConfiguration(groupfolder.id)" class="fields-config-form">
+                <div v-else class="fields-config-form">
                   <!-- Search for Fields -->
                   <div class="field-search-section">
                     <NcTextField
@@ -181,15 +181,46 @@
                     <h5>{{ t('metavox', 'File Metadata Fields') }}</h5>
                     <p class="section-description">{{ t('metavox', 'These fields can be set on individual files') }}</p>
                     <div class="checkbox-group">
-                      <NcCheckboxRadioSwitch
+                      <div
                         v-for="field in getFilteredFileFields(groupfolder.id)"
                         :key="`file-${field.id}-${groupfolder.id}`"
-                        :model-value="isFieldAssigned(groupfolder.id, field.id)"
-                        @update:model-value="updateFieldAssignment(groupfolder.id, field.id, $event)"
-                        type="checkbox">
-                        {{ field.field_label }}
-                        <span class="field-type-label">({{ field.field_type }})</span>
-                      </NcCheckboxRadioSwitch>
+                        class="file-field-row">
+                        <NcCheckboxRadioSwitch
+                          :model-value="isFieldAssigned(groupfolder.id, field.id)"
+                          @update:model-value="updateFieldAssignment(groupfolder.id, field.id, $event)"
+                          type="checkbox">
+                          {{ field.field_label }}
+                          <span class="field-type-label">({{ field.field_type }})</span>
+                        </NcCheckboxRadioSwitch>
+
+                        <!-- Default value input (only when the field is assigned) -->
+                        <DefaultValueInput
+                          v-if="isFieldAssigned(groupfolder.id, field.id)"
+                          :field="field"
+                          :input-id="`default-${groupfolder.id}-${field.id}`"
+                          :model-value="getDefaultValue(groupfolder.id, field)"
+                          @update:model-value="setDefaultValue(groupfolder.id, field, $event)" />
+                      </div>
+                    </div>
+
+                    <!-- Apply defaults now -->
+                    <div class="apply-defaults-section">
+                      <p class="section-description">{{ t('metavox', 'Apply the configured default values to existing files in this team folder that do not yet have a value for these fields.') }}</p>
+                      <div class="apply-defaults-actions">
+                        <NcButton
+                          type="secondary"
+                          :disabled="defaultsStatus[groupfolder.id] === 'running'"
+                          @click="triggerDefaults(groupfolder.id)">
+                          <template #icon>
+                            <div v-if="defaultsStatus[groupfolder.id] === 'running'" class="icon-loading-small"></div>
+                            <PlayIcon v-else :size="20" />
+                          </template>
+                          {{ t('metavox', 'Apply defaults now') }}
+                        </NcButton>
+                        <span class="apply-defaults-status">
+                          {{ defaultsStatus[groupfolder.id] === 'running' ? t('metavox', 'Applying defaults…') : t('metavox', 'Idle') }}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -209,8 +240,9 @@
                   <div class="form-actions">
                     <NcButton
                       type="primary"
-                      native-type="submit"
-                      :disabled="savingFields[groupfolder.id]">
+                      native-type="button"
+                      :disabled="savingFields[groupfolder.id]"
+                      @click="saveFieldsConfiguration(groupfolder.id)">
                       <template #icon>
                         <div v-if="savingFields[groupfolder.id]" class="icon-loading-small"></div>
                         <ContentSaveIcon v-else :size="20" />
@@ -223,7 +255,7 @@
                       {{ t('metavox', 'Cancel') }}
                     </NcButton>
                   </div>
-                </form>
+                </div>
 
               </div>
             </div>
@@ -437,9 +469,14 @@ import EditIcon from 'vue-material-design-icons/Pencil.vue'
 import CogIcon from 'vue-material-design-icons/Cog.vue'
 import ContentSaveIcon from 'vue-material-design-icons/ContentSave.vue'
 import MagnifyIcon from 'vue-material-design-icons/Magnify.vue'
+import PlayIcon from 'vue-material-design-icons/Play.vue'
+import DefaultValueInput from './fields/DefaultValueInput.vue'
+import defaultValuesMixin from './mixins/defaultValuesMixin.js'
 
 export default {
   name: 'ManageGroupfolders',
+
+  mixins: [defaultValuesMixin],
 
   components: {
     NcButton,
@@ -452,6 +489,8 @@ export default {
     CogIcon,
     ContentSaveIcon,
     MagnifyIcon,
+    PlayIcon,
+    DefaultValueInput,
   },
   
   data() {
@@ -494,7 +533,10 @@ export default {
       selectKey: 0,
 
       // Cache for field options
-      fieldOptionsCache: new Map()
+      fieldOptionsCache: new Map(),
+
+      // Default-value state (fileFieldDefaults / defaultsStatus /
+      // defaultsPollTimers) comes from defaultValuesMixin.
     }
   },
   
@@ -542,7 +584,9 @@ export default {
     await this.loadAllFields()
     await this.loadGroupfoldersWithFieldCounts()
   },
-  
+
+  // Poll-timer cleanup is handled by defaultValuesMixin.beforeUnmount().
+
   methods: {
     dateFieldIncludesTime,
     padDatetimeLocal,
@@ -576,6 +620,8 @@ export default {
           this.tempAssignedFields[gf.id] = []
           this.fieldSearchQuery[gf.id] = ''
           this.fieldTypeFilter[gf.id] = 'all'
+          this.fileFieldDefaults[gf.id] = {}
+          this.defaultsStatus[gf.id] = 'idle'
         }
       })
 
@@ -597,6 +643,9 @@ export default {
           this.assignedFields[gf.id] = []
           this.tempAssignedFields[gf.id] = []
         }
+
+        // Load configured default values for file fields (shared mixin).
+        await this.loadFolderDefaults(gf.id)
       }
     },
 
@@ -839,7 +888,7 @@ export default {
       }
     },
     
-    async saveFieldsConfiguration(groupfolderId) {
+    async saveFieldsConfiguration(groupfolderId, { keepOpen = false } = {}) {
       this.savingFields[groupfolderId] = true
 
       try {
@@ -852,13 +901,20 @@ export default {
         // Update the actual assigned fields after successful save
         this.assignedFields[groupfolderId] = [...this.tempAssignedFields[groupfolderId]]
 
+        // Persist default values for assigned file fields (shared mixin).
+        await this.saveFolderDefaults(groupfolderId)
+
         showSuccess(this.t('metavox', 'Field configuration saved successfully'))
-        this.expandedFields[groupfolderId] = false
+        // Keep the panel open when saving as part of "Apply defaults now".
+        if (!keepOpen) {
+          this.expandedFields[groupfolderId] = false
+        }
       } catch (error) {
         console.error('Failed to save field configuration:', error)
         showError(this.t('metavox', 'Failed to save field configuration'))
         // Reset temp fields to actual assigned fields on error
         this.tempAssignedFields[groupfolderId] = [...this.assignedFields[groupfolderId]]
+        throw error // let triggerDefaults know the save failed
       } finally {
         this.savingFields[groupfolderId] = false
       }
@@ -886,6 +942,8 @@ export default {
       // Reset temp fields to actual assigned fields when canceling
       this.tempAssignedFields[groupfolderId] = [...this.assignedFields[groupfolderId]]
       this.expandedFields[groupfolderId] = false
+      // Stop polling the defaults status for this folder
+      this.stopDefaultsPolling(groupfolderId)
     },
     
     getGroupfolderFields(groupfolderId) {
@@ -954,7 +1012,20 @@ export default {
 
       return formattedOptions
     },
-    
+
+    // --- defaultValuesMixin host contract ---
+    getAssignedFieldIds(groupfolderId) {
+      return this.tempAssignedFields[groupfolderId] || []
+    },
+    getFileFields() {
+      return this.fileMetadataFields
+    },
+    persistFieldConfig(groupfolderId) {
+      // Save the field assignment + defaults but keep the panel open (the mixin
+      // calls this before applying defaults).
+      return this.saveFieldsConfiguration(groupfolderId, { keepOpen: true })
+    },
+
     filterFieldsForConfiguration(fields, groupfolderId) {
       let filtered = [...fields]
       
@@ -1280,8 +1351,44 @@ export default {
 }
 
 .field-input {
-  width: 100% !important;
+  width: 100%;
+  max-width: 480px;
   min-height: 44px;
+}
+
+/* Default-value input width matched to the field type. Inputs stay responsive
+   (width:100%) but are capped so a year/date isn't absurdly wide. */
+.dv--number .field-input,
+.dv--number .number-input {
+  max-width: 120px;
+}
+
+.dv--date .field-input,
+.dv--date .date-input {
+  max-width: 220px;
+}
+
+.dv--select .field-input,
+.dv--multiselect .field-input,
+.dv--user .field-input {
+  max-width: 320px;
+}
+
+.dv--text .field-input,
+.dv--url .field-input,
+.dv--filelink .field-input {
+  max-width: 480px;
+}
+
+.dv--textarea .field-input,
+.dv--textarea .textarea-input {
+  max-width: 100%;
+}
+
+/* Checkbox default: just the switch, no wide box. */
+.dv--checkbox .field-input {
+  max-width: none;
+  min-height: 0;
 }
 
 /* Native input styling for consistency */
@@ -1420,6 +1527,47 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.file-field-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.default-value-input {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 8px 28px;
+  padding: 10px 12px;
+  background: var(--color-background-hover);
+  border-radius: var(--border-radius);
+  border-left: 3px solid var(--color-primary-element-light, var(--color-primary-light));
+}
+
+.default-value-label {
+  font-weight: 500;
+  color: var(--color-text-lighter);
+  font-size: 12px;
+}
+
+.apply-defaults-section {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid var(--color-border);
+}
+
+.apply-defaults-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.apply-defaults-status {
+  color: var(--color-text-lighter);
+  font-size: 0.9em;
 }
 
 .field-type-label {

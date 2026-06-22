@@ -39,6 +39,7 @@ import {
 	getViewCleared,
 	setViewCleared,
 	permissionCache,
+	mergeFilelinkNames,
 } from './MetaVoxState.js'
 
 import { formatValue, getColWidth } from './ColumnUtils.js'
@@ -429,6 +430,7 @@ function scheduleInjection() {
 		// Use cached data if available (inline or background prefetch)
 		const cached = getMetavoxAllGfData()?.[gfId]
 		if (cached) {
+			mergeFilelinkNames(cached.filelink_resolved)
 			return {
 				gfId,
 				fields: cached.fields || [],
