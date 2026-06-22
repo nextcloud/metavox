@@ -133,17 +133,21 @@ Select a Nextcloud user from a searchable dropdown. Shows user avatars.
 ---
 
 ### File Link
-Browse and link to files or folders within Nextcloud using the native file picker.
+Browse and link to one or more files or folders within Nextcloud using the native file picker.
 
 **Use cases:** Related documents, source files, attachments, parent documents
 
 **Features:**
 - Native Nextcloud file picker integration
-- Can link to files or folders
-- Shows linked file path
-- Click to navigate to linked file
+- **Multiple files per field** — use **Add file** to link several files; remove any with the **×** button
+- Links are stored by **file ID**, so a reference keeps working after the target file is renamed or moved
+- The same file can't be added twice (duplicates are rejected)
+- Click a linked file to open it
+- **Referenced by** — on a linked file you can see which items reference it (backlinks)
 
-![File Link Field](../../screenshots/Fields-FileLink.png)
+![File Link field with multiple linked files](../../screenshots/fields-filelink-multiselect.png)
+
+> Single-file links created with older versions keep working unchanged; you can add more files to them at any time.
 
 ---
 
@@ -159,6 +163,31 @@ When creating a field in the admin settings, you can configure:
 | **Description** | Help text shown below the field |
 | **Required** | Whether the field must be filled in |
 | **Options** | For Select and Multi-select fields: comma-separated list of choices |
+
+---
+
+## Default Values
+
+Each Team folder can give its assigned file fields a **default value**. New files in
+that folder automatically receive the defaults, and existing files without a value
+are back-filled in the background — so a folder's documents start out consistently
+classified without manual data entry.
+
+Defaults are configured **per Team folder**, with a type-correct input for every
+field type (text, number, date/time, dropdown, multi-select, checkbox, URL, user,
+file link):
+
+![Setting default values per field on a Team folder](../../screenshots/manage-teamfolders-defaultvalue.png)
+
+- Tick a field and enter its default in the **Default value** input that appears.
+- Leave the input empty to clear a default.
+- After saving, use **Apply defaults now** to back-fill existing files immediately
+  (otherwise a background job applies them within a few minutes).
+
+**Who can set defaults:** administrators (for any folder) and users who have the
+per-folder **Manage fields** permission. The latter configure fields and defaults
+for their folder from **Settings → Personal → MetaVox**, which lists only the
+folders they may manage. See [Permissions](../admin/permissions.md).
 
 ---
 

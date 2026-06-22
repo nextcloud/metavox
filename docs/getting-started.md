@@ -45,9 +45,11 @@ Review the [Architecture Overview](architecture/overview.md) to understand:
 |---------|-------------|
 | **Team Folder Metadata** | Fields defined per Team folder, visible on all documents (read-only at document level) |
 | **Document Metadata** | Fields specific to individual documents, editable by users with write access |
-| **Field Types** | Text, number, date, dropdown, multi-select, checkbox, URL, user picker, file link |
+| **Field Types** | Text, number, date, dropdown, multi-select, checkbox, URL, user picker, file link (multiple files per field) |
+| **Default Values** | Per-folder defaults applied to new and existing files for consistent classification |
 | **Views** | Predefined combinations of columns, filters, and sort order; configured per Team folder by admins |
 | **Column Config** | Controls which metadata fields appear as columns in the file list and in what order |
+| **Unified Search** | Find files by their metadata via Nextcloud search, including a field/value filter |
 
 ## Next Steps
 
