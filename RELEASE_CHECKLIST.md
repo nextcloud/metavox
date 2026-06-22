@@ -55,7 +55,7 @@ Follow this checklist for every release to the Nextcloud App Store.
 
 ## 2. Translations (l10n/)
 
-Supported languages: **NL, DE, FR, SV** (source: EN)
+Supported languages: **NL, DE, FR, SV** (source: EN) — all four kept at key-parity with EN.
 
 ### i18n anti-patterns (must avoid)
 
@@ -88,22 +88,22 @@ Supported languages: **NL, DE, FR, SV** (source: EN)
   for s in sorted(missing): print(f'  - {s}')
   "
   ```
-- [ ] Verify NL and DE have identical keys:
+- [ ] Verify all translations have keys identical to the EN source:
   ```bash
   python3 -c "
   import json
-  nl = set(json.load(open('l10n/nl.json'))['translations'].keys())
-  de = set(json.load(open('l10n/de.json'))['translations'].keys())
-  print(f'NL: {len(nl)}, DE: {len(de)}')
-  print('In sync ✓' if nl == de else f'Mismatch: {len(nl ^ de)} diff')
+  en = set(json.load(open('l10n/en.json'))['translations'].keys())
+  for lang in ['nl', 'de', 'fr', 'sv']:
+      ks = set(json.load(open(f'l10n/{lang}.json'))['translations'].keys())
+      print(f'{lang}: {len(ks)}', 'in sync ✓' if ks == en else f'MISMATCH ({len(ks ^ en)} diff)')
   "
   ```
 - [ ] Validate JSON syntax in all translation files
-- [ ] Regenerate `.js` translation files from JSON:
+- [ ] Regenerate `.js` translation files from JSON (**all four languages** — fr/sv included):
   ```bash
   python3 -c "
   import json
-  for lang in ['nl', 'de']:
+  for lang in ['nl', 'de', 'fr', 'sv']:
       data = json.load(open(f'l10n/{lang}.json'))
       items = list(data['translations'].items())
       lines = ['OC.L10N.register(', '    \"metavox\",', '    {']
@@ -140,12 +140,11 @@ Supported languages: **NL, DE, FR, SV** (source: EN)
 
 ---
 
-## 4. API & OpenAPI Documentation
+## 4. API & Routes
 
-- [ ] If `openapi.json` is declared in `info.xml`, verify the file exists and is up-to-date
-- [ ] If not maintaining OpenAPI spec, remove the `<openapi>` line from `info.xml`
-- [ ] Verify all 82 routes in `appinfo/routes.php` are functional
-- [ ] Check that route changes require version bump (NC caches routes!)
+- [ ] **No OpenAPI spec is maintained** — `info.xml` has no `<openapi>` declaration, so there's nothing to verify here. If one is ever added, also ship the `openapi.json` file.
+- [ ] Verify the routes in `appinfo/routes.php` are functional (currently **~92** web + OCS entries — `grep -cE "'name'\s*=>" appinfo/routes.php`)
+- [ ] Remember: route changes require a version bump (NC caches routes — needs `app:disable` + `app:enable`, see §6)
 
 ---
 
@@ -154,8 +153,8 @@ Supported languages: **NL, DE, FR, SV** (source: EN)
 - [ ] Regenerate l10n JS files (see Section 2)
 - [ ] Run `npm run build` without errors
   - Bundle size warnings for filesplugin/admin/user are normal (large app)
-- [ ] Test core functionalities on 3dev:
-  - [ ] Metadata columns in file list (NC32 and NC33)
+- [ ] Test core functionalities on a dev server (default `deploy.sh` → Hetzner `nc-dev`, NC33; use `next` for NC34):
+  - [ ] Metadata columns in file list (verify on NC33 + NC34)
   - [ ] Inline cell editing (all field types: text, number, date, dropdown, multi-select, checkbox, URL, user, filelink)
   - [ ] Cell locking and real-time sync via notify_push
   - [ ] Views: create, edit, delete, switch, default view
@@ -170,7 +169,7 @@ Supported languages: **NL, DE, FR, SV** (source: EN)
   - [ ] Fill handle and undo support
   - [ ] Lock badge with username
 - [ ] Check browser console for errors
-- [ ] Test with different Nextcloud versions (NC31, NC32, NC33)
+- [ ] Test with different Nextcloud versions (NC31–NC34)
 
 ### Server Dependencies:
 - [ ] Verify notify_push is installed and working (for real-time sync)
@@ -183,16 +182,14 @@ Supported languages: **NL, DE, FR, SV** (source: EN)
 
 - [ ] Check `appinfo/info.xml`:
   ```xml
-  <nextcloud min-version="31" max-version="33"/>
-  ```
-- [ ] Add PHP requirement if missing:
-  ```xml
+  <nextcloud min-version="31" max-version="34"/>
   <php min-version="8.1"/>
   ```
-- [ ] Test on all supported Nextcloud versions:
+- [ ] Test on all supported Nextcloud versions (31–34):
   - NC31 — basic compatibility
   - NC32 — DOM-based sorting fallback, filter registration with try/catch
   - NC33 — scoped globals for sidebar/bulk action registration
+  - NC34 — PSR-11 container pattern (removed `\OC::$server->getRequest()`/`getUserSession()`/`getConfig()` convenience methods); see `internal-docs/nc34-compat-plan.md`
 - [ ] Verify version bump triggers route cache refresh (`app:disable` + `app:enable`)
 
 ---
@@ -221,11 +218,12 @@ Required files in tarball:
 - [ ] All changes committed
 - [ ] No uncommitted changes: `git status`
 - [ ] Sensitive files not tracked: `git ls-files | grep -iE '\.(key|crt|pem|env)$'`
-- [ ] Push to both remotes:
+- [ ] Push to both remotes — **GitHub MUST go through `push-to-github.sh`** (strips `internal-docs/`, `deploy.sh` and everything in `.gitignore-github`; never `git push github` directly):
   ```bash
-  git push origin main --tags   # Gitea
-  git push github main --tags   # GitHub
+  git push origin main --tags    # Gitea (primary, full repo)
+  ./push-to-github.sh main       # GitHub (public mirror, internal files stripped)
   ```
+  Note: `push-to-github.sh` pushes the **branch only**, not tags — the GitHub tag/asset is created by `gh release create` in §9.6.
 
 ---
 
@@ -268,27 +266,25 @@ tar -tzf metavox-X.Y.Z.tar.gz | grep 'src/' | wc -l
 ### 9.3 Push & Tag
 
 ```bash
-git push origin main --tags    # Gitea (primary)
-git push github main --tags    # GitHub (mirror)
+git push origin main --tags    # Gitea (primary, full repo incl. internal-docs/ + deploy.sh)
+./push-to-github.sh main       # GitHub (public mirror — strips internal files; branch only, no tags)
 ```
+
+⚠️ **Never run `git push github` directly** — it would leak `internal-docs/` and `deploy.sh`. The GitHub tag is created via the release in §9.6.
 
 ### 9.4 Deploy to Test Server
 
+`deploy.sh` handles tarball + extract + chown + `occ upgrade` + app:disable/enable per target.
+Run `./deploy.sh` (or `--help`) — default target is **Hetzner `nc-dev`**, not SURF.
+
 ```bash
-bash deploy.sh
-# Deploys to 3dev (145.38.188.218) automatically
+./deploy.sh            # default → Hetzner nc-dev container (NC33, dev.rikdekker.nl)
+./deploy.sh next       # Hetzner nc-next container (NC34 prerelease, next.voxcloud.nl)
+./deploy.sh 3dev       # SURF bare-metal 3dev (145.38.188.218)
+./deploy.sh 1dev       # SURF bare-metal 1dev (145.38.193.235)
 ```
 
-For other servers:
-```bash
-# NC33 (primary test)
-scp metavox-X.Y.Z.tar.gz sditmeijer2@145.38.194.10:/tmp/
-ssh sditmeijer2@145.38.194.10 "sudo tar -xzf /tmp/metavox-X.Y.Z.tar.gz -C /var/www/nextcloud/apps/ && sudo chown -R www-data:www-data /var/www/nextcloud/apps/metavox && sudo -u www-data php /var/www/nextcloud/occ app:disable metavox && sudo -u www-data php /var/www/nextcloud/occ app:enable metavox"
-
-# NC32
-scp metavox-X.Y.Z.tar.gz sditmeijer@145.38.184.76:/tmp/
-ssh sditmeijer@145.38.184.76 "sudo tar -xzf /tmp/metavox-X.Y.Z.tar.gz -C /var/www/nextcloud/apps/ && sudo chown -R www-data:www-data /var/www/nextcloud/apps/metavox && sudo -u www-data php /var/www/nextcloud/occ app:disable metavox && sudo -u www-data php /var/www/nextcloud/occ app:enable metavox"
-```
+Always smoke-test the **NC34** target (`next`) for any release that touches NC-version-gated code paths.
 
 ### 9.5 Generate Signature (for App Store)
 
@@ -356,18 +352,21 @@ HTTP 200 = success. Alternatively, upload manually at https://apps.nextcloud.com
 
 - [ ] Previous release tarball available
 - [ ] Rollback tag exists: `v1.8.3-pre-merge` (pre v2.0.0 state)
-- [ ] Test servers (3dev, NC33, NC32) available for emergencies
-- [ ] Server backup stored at `/tmp/metavox.backup.*` after deploy
+- [ ] Dev servers available for emergencies (Hetzner `nc-dev`/`nc-next`, SURF `1dev`/`3dev`)
+- [ ] Server backup stored at `/tmp/metavox.backup.*` after deploy (created by `deploy.sh`)
 - [ ] Rollback commands:
   ```bash
   # Git rollback
   git checkout v<previous-tag>
 
-  # Server rollback (3dev)
-  ssh rdekker@145.38.188.218 'sudo rm -rf /var/www/nextcloud/apps/metavox && sudo mv /tmp/metavox.backup.YYYYMMDD_HHMMSS /var/www/nextcloud/apps/metavox'
+  # Re-deploy the previous tag's tarball with deploy.sh, OR restore the on-server backup.
+  # Example — restore backup on Hetzner nc-dev (docker):
+  ssh -i ~/.ssh/hetzner_ed25519 <hetzner-host> \
+    "docker exec nc-dev bash -c 'rm -rf /var/www/html/custom_apps/metavox && mv /tmp/metavox.backup.YYYYMMDD_HHMMSS /var/www/html/custom_apps/metavox'"
 
-  # Re-enable after rollback (routes cache)
-  ssh rdekker@145.38.188.218 'sudo -u www-data php /var/www/nextcloud/occ app:disable metavox && sudo -u www-data php /var/www/nextcloud/occ app:enable metavox'
+  # Re-enable after rollback (routes cache) — adjust occ path per container
+  ssh -i ~/.ssh/hetzner_ed25519 <hetzner-host> \
+    "docker exec -u www-data nc-dev php occ app:disable metavox && docker exec -u www-data nc-dev php occ app:enable metavox"
   ```
 
 ---
@@ -386,12 +385,12 @@ git tag -a vX.Y.Z -m "Release vX.Y.Z - [Label]"
 
 # 3. Push
 git push origin main --tags    # Gitea
-git push github main --tags    # GitHub
+./push-to-github.sh main       # GitHub (strips internal files; branch only)
 
 # 4. Tarball (see section 9.1)
 
 # 5. Deploy & test
-bash deploy.sh
+./deploy.sh           # default: Hetzner nc-dev (NC33); ./deploy.sh next for NC34
 
 # 6. Sign & upload (see sections 9.5-9.7)
 ```
@@ -401,16 +400,17 @@ bash deploy.sh
 ## Notes
 
 - **App ID:** `metavox`
-- **Nextcloud versions:** 31, 32, 33
+- **Nextcloud versions:** 31, 32, 33, 34
 - **PHP version:** >= 8.1
-- **Supported languages:** NL, DE (source: EN)
+- **Supported languages:** NL, DE, FR, SV (source: EN)
 - **Server dependencies:** Redis (optional, for locking/presence/push), notify_push (optional, for real-time sync)
 - **App Store:** https://apps.nextcloud.com
-- **Gitea:** https://gitea.rikdekker.nl/rik/MetaVox (primary)
-- **GitHub:** https://github.com/nextcloud/metavox (mirror, releases)
+- **Gitea:** https://gitea.rikdekker.nl/rik/MetaVox (primary, full repo)
+- **GitHub:** https://github.com/nextcloud/metavox (public mirror — push via `./push-to-github.sh`, never directly)
 - **Signing key:** `metavox.key` in project root (NOT in git!)
+- **Deploy:** `./deploy.sh` → Hetzner `nc-dev` (default); `next` → `nc-next` NC34; `1dev`/`3dev` → SURF
 - **Route changes require version bump** — NC caches routes, needs `app:disable` + `app:enable`
 
 ---
 
-*Last updated: March 2026*
+*Last updated: June 2026 (NC34 support; FR/SV translations; ~92 routes; Hetzner nc-dev/nc-next deploy targets; GitHub via push-to-github.sh)*
