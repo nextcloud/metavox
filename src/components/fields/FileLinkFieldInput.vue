@@ -101,6 +101,15 @@ export default {
       type: Array,
       default: () => []
     },
+    // Team-folder root path (relative to the user's home, e.g. "/Projects").
+    // When set, the picker opens here and links are constrained to this folder:
+    // choosing a file outside it is rejected with a toast. Empty = no folder
+    // context (e.g. the per-folder default editor) → picker opens at home and
+    // the server-side team-folder validation remains the sole guard.
+    basePath: {
+      type: String,
+      default: ''
+    },
     // Server-resolved current info: [{ fileId, name, path, exists }].
     // Used to show live names after the target was renamed/moved.
     resolved: {
@@ -179,7 +188,10 @@ export default {
     },
     addFile() {
       this.error = ''
-      // Standard Nextcloud file picker.
+      // Open the picker inside the team folder when we know it, so the user
+      // starts in the right place. The NC picker still allows navigating up,
+      // so addPath() enforces the boundary on selection.
+      const startPath = this.basePath && this.basePath !== '' ? this.basePath : '/'
       OC.dialogs.filepicker(
         this.t('metavox', 'Select a file or folder'),
         (path) => {
@@ -191,14 +203,28 @@ export default {
         this.mimetypes.length > 0 ? this.mimetypes : undefined,
         true, // modal
         OC.dialogs.FILEPICKER_TYPE_CHOOSE,
-        '/',
+        startPath,
         { allowDirectoryChooser: this.selectionType !== 'files' }
       )
     },
+    // Whether a picked path lies within the configured team folder.
+    isWithinBase(path) {
+      if (!this.basePath || this.basePath === '') {
+        return true // no folder context → don't block client-side
+      }
+      const base = this.basePath.replace(/\/+$/, '')
+      return path === base || path.startsWith(base + '/')
+    },
     addPath(path) {
-      // Client-side guard: don't add the same path twice (immediate feedback
-      // via a toast). The server is the source of truth and also dedups on the
-      // resolved fileid (catches the same file via a different path).
+      // Enforce the team-folder boundary with immediate feedback. The backend
+      // also drops out-of-folder tokens, but a toast is clearer than a link
+      // that silently disappears on save.
+      if (!this.isWithinBase(path)) {
+        showWarning(this.t('metavox', 'You can only link files inside this team folder'))
+        return
+      }
+      // Don't add the same path twice. The server also dedups on the resolved
+      // fileid (catches the same file via a different path).
       if (this.tokens.some((t) => t.path === path)) {
         showWarning(this.t('metavox', 'This file is already linked'))
         return

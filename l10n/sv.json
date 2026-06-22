@@ -142,6 +142,7 @@
         "Referenced by": "Refererad av",
         "Add file": "Lägg till fil",
         "This file is already linked": "Den här filen är redan länkad",
+        "You can only link files inside this team folder": "Du kan bara länka filer i den här teammappen",
         "Default": "Standard",
         "No files selected": "Inga filer valda",
         "Remove": "Ta bort",

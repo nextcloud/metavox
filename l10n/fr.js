@@ -143,6 +143,7 @@ OC.L10N.register(
     "Referenced by" : "Référencé par",
     "Add file" : "Ajouter un fichier",
     "This file is already linked" : "Ce fichier est déjà lié",
+    "You can only link files inside this team folder" : "Vous ne pouvez lier que des fichiers dans ce dossier d’équipe",
     "Default" : "Par défaut",
     "No files selected" : "Aucun fichier sélectionné",
     "Remove" : "Supprimer",

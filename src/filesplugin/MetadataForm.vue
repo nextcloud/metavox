@@ -118,6 +118,7 @@
 				:model-value="values[field.field_name] || ''"
 				:field="field"
 				:resolved="field.resolved || []"
+				:base-path="fileLinkBasePath"
 				:disabled="readonly"
 				:input-id="`field-${field.id}`"
 				@input="handleUpdate(field.field_name, $event)" />
@@ -178,6 +179,7 @@ import UrlFieldInput from '../components/fields/UrlFieldInput.vue'
 import UserGroupFieldInput from '../components/fields/UserGroupFieldInput.vue'
 import FileLinkFieldInput from '../components/fields/FileLinkFieldInput.vue'
 import { dateFieldIncludesTime, padDatetimeLocal } from '../utils/dateField.js'
+import { getActiveGroupfolderId, getMetavoxGroupfolders } from './columns/MetaVoxState.js'
 
 export default {
 	name: 'MetadataForm',
@@ -233,6 +235,19 @@ export default {
 	},
 
 	emits: ['update', 'accept-suggestion', 'dismiss-suggestion', 'regenerate-suggestion'],
+
+	computed: {
+		// Team-folder root path for File Link pickers: "/<mount_point>" of the
+		// active groupfolder, so the picker opens there and links are constrained
+		// to this folder. Empty when the folder can't be resolved (the server
+		// still validates the boundary regardless).
+		fileLinkBasePath() {
+			const gfId = getActiveGroupfolderId()
+			const groupfolders = getMetavoxGroupfolders() || []
+			const gf = groupfolders.find((g) => Number(g.id) === Number(gfId))
+			return gf && gf.mount_point ? '/' + String(gf.mount_point).replace(/^\/+/, '') : ''
+		},
+	},
 
 	methods: {
 		t,
