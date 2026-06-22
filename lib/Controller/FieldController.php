@@ -337,11 +337,19 @@ class FieldController extends BaseController {
             $items = [];
             foreach (FileReferenceService::parseValue((string)($field['value'] ?? '')) as $token) {
                 $info = ($token['fileId'] !== null) ? ($resolved[$token['fileId']] ?? null) : null;
+                if ($info === null) {
+                    // Target unresolved for THIS user — either truly gone or not
+                    // accessible to them. Don't echo the stored (possibly
+                    // manager-resolved) name/path/id: that would disclose a file
+                    // they can't see. Emit a neutral placeholder instead.
+                    $items[] = ['fileId' => null, 'name' => null, 'path' => null, 'exists' => false];
+                    continue;
+                }
                 $items[] = [
                     'fileId' => $token['fileId'],
-                    'name' => $info['name'] ?? basename($token['path']),
-                    'path' => $info['path'] ?? $token['path'],
-                    'exists' => $info !== null,
+                    'name' => $info['name'],
+                    'path' => $info['path'],
+                    'exists' => true,
                 ];
             }
             $field['resolved'] = $items;
