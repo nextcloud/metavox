@@ -43,6 +43,12 @@ class FileReferenceService {
     /** Field types whose values are "<fileid>:<path>" references. */
     public const FILELINK_TYPES = ['filelink'];
 
+    /**
+     * Hard cap on backlink candidate rows scanned/returned. Bounds both the DB
+     * work and the PHP-side fetchAll/verify even if the folder scope is wide.
+     */
+    public const BACKLINK_SCAN_LIMIT = 500;
+
     /** @var array<int, int[]> request-scoped cache of gfId => storage numeric ids */
     private array $storageIdsCache = [];
 
@@ -302,13 +308,13 @@ class FileReferenceService {
      *     fieldName: string, fieldLabel: string
      * }>
      */
-    public function getBacklinks(int $targetFileId, string $userId): array {
+    public function getBacklinks(int $targetFileId, string $userId, ?int $groupfolderId = null): array {
         if ($targetFileId <= 0) {
             return [];
         }
 
         $qb = $this->db->getQueryBuilder();
-        $this->buildBacklinkSql($qb, $targetFileId);
+        $this->buildBacklinkSql($qb, $targetFileId, $groupfolderId);
 
         $result = $qb->executeQuery();
         $rows = $result->fetchAll();
@@ -363,8 +369,14 @@ class FileReferenceService {
      * a ':'-terminated token, joined to the field definition for the label.
      *
      * Exposed for unit testing the SQL shape across DB dialects.
+     *
+     * When $groupfolderId is given, the query is scoped to that folder. This is
+     * essential at scale: without it the value matching is a leading-wildcard
+     * LIKE with no usable index → a full scan of metavox_file_gf_meta (100M+
+     * rows). The groupfolder_id predicate engages the (groupfolder_id, ...)
+     * composite index, and a result cap bounds the candidate set either way.
      */
-    public function buildBacklinkSql(IQueryBuilder $qb, int $targetFileId): IQueryBuilder {
+    public function buildBacklinkSql(IQueryBuilder $qb, int $targetFileId, ?int $groupfolderId = null): IQueryBuilder {
         $idPattern = $this->db->escapeLikeParameter((string)$targetFileId);
 
         $qb->select('m.file_id', 'm.groupfolder_id', 'm.field_name', 'm.field_value', 'f.field_label')
@@ -376,7 +388,12 @@ class FileReferenceService {
                $qb->expr()->like('m.field_value', $qb->createNamedParameter($idPattern . ':%')),
                // any later token: "...;#<id>:..."
                $qb->expr()->like('m.field_value', $qb->createNamedParameter('%' . self::MULTI_DELIM . $idPattern . ':%'))
-           ));
+           ))
+           ->setMaxResults(self::BACKLINK_SCAN_LIMIT);
+
+        if ($groupfolderId !== null) {
+            $qb->andWhere($qb->expr()->eq('m.groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)));
+        }
         return $qb;
     }
 
@@ -391,6 +408,33 @@ class FileReferenceService {
      *
      * @return int[]
      */
+    /**
+     * Whether a fileid lives inside the given groupfolder. Used to reject
+     * file-link targets picked from outside the team folder — those would point
+     * at files other folder members can't see, which is confusing and leaky.
+     * Matches via the groupfolder's storage(s) and the "files/" subtree.
+     */
+    public function isFileInGroupfolder(int $fileId, int $groupfolderId): bool {
+        if ($fileId <= 0) {
+            return false;
+        }
+        $storageIds = $this->getGroupfolderStorageIds($groupfolderId);
+        if (empty($storageIds)) {
+            return false;
+        }
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('fileid')
+           ->from('filecache')
+           ->where($qb->expr()->eq('fileid', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_INT)))
+           ->andWhere($qb->expr()->in('storage', $qb->createNamedParameter($storageIds, IQueryBuilder::PARAM_INT_ARRAY)))
+           ->andWhere($qb->expr()->like('path', $qb->createNamedParameter('files/%')))
+           ->setMaxResults(1);
+        $result = $qb->executeQuery();
+        $row = $result->fetch();
+        $result->closeCursor();
+        return $row !== false;
+    }
+
     private function getGroupfolderStorageIds(int $groupfolderId): array {
         if (isset($this->storageIdsCache[$groupfolderId])) {
             return $this->storageIdsCache[$groupfolderId];
