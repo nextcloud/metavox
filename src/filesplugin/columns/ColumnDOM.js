@@ -6,7 +6,7 @@
 
 import { generateUrl } from '@nextcloud/router'
 import { MARKER_CLASS, HEADER_MARKER, RESIZE_HANDLE } from './ColumnStyles.js'
-import { getActiveColumnConfigs, metadataCache, getCachedActionsWidth, setCachedActionsWidth, getFilelinkName } from './MetaVoxState.js'
+import { getActiveColumnConfigs, metadataCache, getFilelinkName } from './MetaVoxState.js'
 import { parseValue, displayName } from '../../components/fields/filelinkUtils.js'
 import { formatValue, getColWidth } from './ColumnUtils.js'
 import { getFilterInstance } from './MetadataFilter.js'
@@ -31,49 +31,19 @@ const SORT_ICON_DESC = '<svg fill="currentColor" width="24" height="24" viewBox=
 
 export { SORT_ICON_ASC, SORT_ICON_DESC }
 
-// ── Actions width sync ─────────────────────────────────────────
-
-/**
- * Sync the header actions cell width with the data row actions cell.
- * NC33 uses display:flex on rows; the actions cell is 0px in the header
- * but ~150px in data rows, causing all columns after it to misalign.
- */
-export function _syncActionsWidth(theadTr) {
-	const hActions = theadTr.querySelector('.files-list__row-actions')
-	if (!hActions) return
-
-	if (getCachedActionsWidth() !== null) {
-		hActions.style.minWidth = getCachedActionsWidth() + 'px'
-		hActions.style.width = getCachedActionsWidth() + 'px'
-		hActions.style.flexShrink = '0'
-		return
-	}
-
-	const dataRow = document.querySelector('.files-list__table tbody tr')
-	if (!dataRow) return
-
-	const dActions = dataRow.querySelector('.files-list__row-actions')
-	if (!dActions) return
-
-	const dWidth = dActions.getBoundingClientRect().width
-	if (dWidth > 0) {
-		setCachedActionsWidth(dWidth)
-		hActions.style.minWidth = dWidth + 'px'
-		hActions.style.width = dWidth + 'px'
-		hActions.style.flexShrink = '0'
-	}
-}
-
 // ── Header columns ─────────────────────────────────────────────
+//
+// Column alignment (header ↔ data rows) is handled entirely in CSS: the actions
+// cell is pinned to one fixed width for the header and every data row (see the
+// nc32Styles block in ColumnStyles.js), so all our columns share the same x.
+// No JS baseline measurement is needed — a JS-written inline width would only
+// fight that !important CSS rule.
 
 export function injectHeaderColumns() {
 	const theadTr = document.querySelector('.files-list__table thead tr')
 	if (!theadTr) return
 
 	theadTr.querySelectorAll('.' + HEADER_MARKER).forEach(el => el.remove())
-
-	// Fix alignment: sync header actions cell width with data row actions cell
-	_syncActionsWidth(theadTr)
 
 	const headerFrag = document.createDocumentFragment()
 	for (const config of getActiveColumnConfigs()) {
@@ -143,8 +113,11 @@ export function injectHeaderColumns() {
 	}
 	theadTr.appendChild(headerFrag)
 
-	// Defer layout read to after DOM writes complete
-	requestAnimationFrame(() => updateTableMinWidth())
+	// Defer layout reads until after DOM writes, then size the table for
+	// horizontal scroll. (Alignment is CSS-only now — see ColumnStyles.js.)
+	requestAnimationFrame(() => {
+		updateTableMinWidth()
+	})
 }
 
 // ── Footer columns ─────────────────────────────────────────────

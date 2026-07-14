@@ -29,7 +29,6 @@ import {
 	setAvailableFields,
 	getPrefetchedFilterValues,
 	setPrefetchedFilterValues,
-	setCachedActionsWidth,
 	getInitialStateConsumed,
 	setInitialStateConsumed,
 	setMetavoxGroupfolders,
@@ -124,12 +123,11 @@ import { setCellValue } from './ColumnDOM.js'
  */
 function wireDependencies() {
 	// ColumnDOM needs: activeColumnConfigs (getter pattern), metadataCache,
-	// _cachedActionsWidth, formatValue, getColWidth, queueMetadataLoad,
-	// setupCellEditing, startResize, handleSort
+	// formatValue, getColWidth, queueMetadataLoad, setupCellEditing,
+	// startResize, handleSort
 	setColumnDOMDeps({
 		get activeColumnConfigs() { return getActiveColumnConfigs() },
 		metadataCache,
-		_cachedActionsWidth: null, // will be read via getter set below
 		formatValue,
 		getColWidth,
 		queueMetadataLoad,
@@ -263,7 +261,6 @@ export async function updateColumnsForCurrentFolder(prefetched = null) {
 		closeViewEditor()
 		stopRowObserver()
 		setColumnsActive(false)
-		setCachedActionsWidth(null)
 	}
 
 	if (!groupfolderId) {
@@ -276,7 +273,6 @@ export async function updateColumnsForCurrentFolder(prefetched = null) {
 		setPrefetchedFilterValues(null)
 		const _fi = getFilterInstance()
 		if (_fi) _fi.setSortState(null)
-		setCachedActionsWidth(null)
 		document.querySelector('.files-list')?.classList.remove('metavox-loading')
 		return
 	}
