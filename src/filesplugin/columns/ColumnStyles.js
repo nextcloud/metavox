@@ -29,7 +29,30 @@ export function injectColumnStyles() {
 
 	const style = document.createElement('style')
 	style.id = STYLE_ID
-	const nc32Styles = ''
+	// Actions-cell width pin (column alignment). NC rows are flexbox and
+	// .files-list__row-actions has width:auto → it sizes to its inline buttons
+	// (labelled via force-name, plus render-actions) and is therefore a
+	// DIFFERENT width per row. Because our metavox columns are appended AFTER the
+	// actions cell, each row's columns start at a different x and the skew
+	// accumulates left-to-right. Pinning one FIXED, capped width on the header +
+	// every data row makes them all identical geometry so our columns line up.
+	// A bare min-width is NOT enough: an uncapped, locale-dependent actions cell
+	// can grow past the floor and re-introduce the per-row skew — so we also cap
+	// with max-width + overflow:hidden (excess inline buttons fall back into the
+	// overflow "…" menu). Scoped to LIST mode only: in grid mode the actions cell
+	// is position:absolute (out of flow, fixed width) and must stay untouched.
+	// No media query — NC's narrow mode is a CONTAINER width (<512px), not a
+	// viewport breakpoint, so a viewport query would gate on the wrong axis.
+	const nc32Styles = `
+		.files-list:not(.files-list--grid) .files-list__row-actions {
+			width: calc(var(--default-clickable-area, 44px) * 6) !important;
+			min-width: calc(var(--default-clickable-area, 44px) * 6) !important;
+			max-width: calc(var(--default-clickable-area, 44px) * 6) !important;
+			flex: 0 0 auto !important;
+			overflow: hidden !important;
+			justify-content: start !important;
+		}
+	`
 
 	style.textContent = `
 		/* Horizontal scroll: only #app-content-vue scrolls, nav stays fixed */
