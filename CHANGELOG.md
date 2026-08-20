@@ -6,6 +6,35 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [2.2.1] - 2026-08-20
+
+### Fixed
+- **File-metadata OCS API wrote to and read from different Team folders**
+  ([#98](https://github.com/nextcloud/metavox/issues/98)). The group-folder-less
+  endpoints (`/api/v1/files/{fileId}/metadata` and the bulk read) guessed the
+  Team folder from the metadata table instead of from where the file actually
+  lives, and writes landed under a non-existent `groupfolder_id=0`. As a result
+  a value you saved could come back different (or empty), the bulk read mixed
+  rows from several — even deleted — folders with no way to tell them apart, and
+  writing to a non-existent folder silently "succeeded". These endpoints now
+  resolve the file's real Team folder from your mount (the same source of truth
+  the Files UI uses), so reads and writes always agree; the bulk read scopes
+  each file to its own folder; and writing to a folder the file isn't in returns
+  a clear error (`404` for a file outside any Team folder, `400` for a folder
+  mismatch) instead of storing the value where nothing reads it. Batch copy,
+  which never actually copied any values, is fixed as part of the same change.
+- **Metadata columns were misaligned in the Nextcloud 34 file list.** NC34
+  changed the Files-app grid layout; the metadata columns are now pinned
+  relative to the actions cell so they line up with the header again.
+
+### Changed
+- **Dependency security updates** — bumped the bundled `axios`
+  (1.16 → 1.19) and `dompurify` (3.4.11 → 3.4.14) runtime libraries via
+  `package.json` overrides to clear known DoS/XSS advisories. No behavioural
+  change; `@nextcloud/axios` itself is unchanged.
+
+---
+
 ## [2.2.0] - 2026-06-22
 
 ### Added
