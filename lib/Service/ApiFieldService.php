@@ -35,7 +35,12 @@ class ApiFieldService {
 
     /**
      * Get metadata for a single file (API-safe).
-     * Auto-detects groupfolder and delegates to the groupfolder-scoped query.
+     *
+     * @deprecated Guesses the group folder from the metadata table, which is
+     * unreliable (stale rows under folder 0 / deleted folders — issue #98). The
+     * controller now resolves the folder from the user's mount and calls
+     * getGroupfolderFileMetadata() directly. Kept only for backward
+     * compatibility; do not use for new code.
      */
     public function getFileMetadata(int $fileId): array {
         $groupfolderId = $this->detectGroupfolderIdForFile($fileId);
@@ -57,10 +62,11 @@ class ApiFieldService {
      * Save metadata for a single file (API-safe).
      * Translates field_name → field_id and handles array values.
      *
-     * Value format contract for `date` fields:
-     *   - field_options.includeTime = false → value MUST match YYYY-MM-DD
-     *   - field_options.includeTime = true  → value MUST match YYYY-MM-DDTHH:mm:ss
-     *     (floating ISO 8601 — no `Z`, no timezone offset)
+     * @deprecated Writes rows under groupfolder_id=0 (a non-existent folder), so
+     * saved values become unreadable via the folder-scoped read path — this was
+     * the core of issue #98. The controller now resolves the file's real team
+     * folder and calls saveGroupfolderFileMetadata() instead. Kept only for
+     * backward compatibility; do not use for new code.
      *
      * @throws ApiValidationException if any date value fails the format contract.
      */
@@ -233,9 +239,32 @@ class ApiFieldService {
 
     /**
      * Get metadata for multiple files (API-safe, max 100).
+     *
+     * @deprecated Folder-unaware — joins metavox_file_gf_meta by field_name only,
+     * so a file with rows in several (or deleted) group folders returns them all
+     * mixed together with no groupfolder_id to tell them apart (issue #98).
+     * Use getBulkFileMetadataScoped() with a per-file groupfolder map instead.
      */
     public function getBulkFileMetadata(array $fileIds): array {
         return $this->fieldService->getBulkFileMetadata($fileIds);
+    }
+
+    /**
+     * Bulk metadata, each file scoped to the ONE team folder it physically
+     * lives in (resolved by the controller from the user's mount). Returns the
+     * same shape as the per-file GET — { fileId: [ {field..., value}, ... ] } —
+     * so every file carries only its own folder's values, with no cross-folder
+     * mixing (issue #98).
+     *
+     * @param array<int, int> $fileGroupfolders fileId => groupfolderId
+     * @return array<int, array>
+     */
+    public function getBulkFileMetadataScoped(array $fileGroupfolders): array {
+        $out = [];
+        foreach ($fileGroupfolders as $fileId => $groupfolderId) {
+            $out[$fileId] = $this->fieldService->getGroupfolderFileMetadata((int)$groupfolderId, (int)$fileId);
+        }
+        return $out;
     }
 
     // ========================================
@@ -484,18 +513,17 @@ class ApiFieldService {
     }
 
     /**
-     * Batch copy metadata from one file to multiple files
+     * Batch copy metadata from one file to multiple files.
      *
+     * @param int $sourceGroupfolderId Team folder the source file lives in
      * @param int $sourceFileId Source file ID
-     * @param array $targetFileIds Target file IDs
+     * @param array<int, int> $targetGroupfolders targetFileId => its own groupfolderId
      * @param array|null $fieldNames Optional: specific fields to copy (null = copy all)
      * @return array Results
      */
-    public function batchCopyFileMetadata(int $sourceFileId, array $targetFileIds, ?array $fieldNames = null): array {
-        $results = [];
-
-        // Get source metadata
-        $sourceMetadata = $this->getFileMetadata($sourceFileId);
+    public function batchCopyFileMetadata(int $sourceGroupfolderId, int $sourceFileId, array $targetGroupfolders, ?array $fieldNames = null): array {
+        // Read the source values scoped to its own team folder (issue #98).
+        $sourceMetadata = $this->fieldService->getGroupfolderFileMetadata($sourceGroupfolderId, $sourceFileId);
 
         if (empty($sourceMetadata)) {
             return [
@@ -511,16 +539,23 @@ class ApiFieldService {
             });
         }
 
-        // Build updates array
+        // Build updates array. NOTE: getGroupfolderFileMetadata returns the
+        // stored value under the 'value' key (not 'field_value') — reading the
+        // wrong key here meant copies silently carried null for every field.
+        // Each update carries its own target groupfolder_id, which
+        // batchUpdateFileMetadata requires (a missing one made every copy fail).
         $updates = [];
-        foreach ($targetFileIds as $targetFileId) {
+        foreach ($targetGroupfolders as $targetFileId => $targetGroupfolderId) {
             $metadata = [];
             foreach ($sourceMetadata as $field) {
-                $metadata[$field['field_name']] = $field['field_value'];
+                if (($field['value'] ?? null) !== null && $field['value'] !== '') {
+                    $metadata[$field['field_name']] = $field['value'];
+                }
             }
 
             $updates[] = [
-                'file_id' => $targetFileId,
+                'file_id' => (int)$targetFileId,
+                'groupfolder_id' => (int)$targetGroupfolderId,
                 'metadata' => $metadata
             ];
         }

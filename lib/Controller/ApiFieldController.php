@@ -7,6 +7,7 @@ namespace OCA\MetaVox\Controller;
 use OCA\MetaVox\Service\ApiFieldService;
 use OCA\MetaVox\Service\ApiValidationException;
 use OCA\MetaVox\Service\FieldService;
+use OCA\MetaVox\Service\GroupfolderResolver;
 use OCA\MetaVox\Service\PermissionService;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\CORS;
@@ -31,9 +32,10 @@ class ApiFieldController extends BaseOCSController {
         PermissionService $permissionService,
         IUserSession $userSession,
         IRootFolder $rootFolder,
+        GroupfolderResolver $groupfolderResolver,
         LoggerInterface $logger
     ) {
-        parent::__construct($appName, $request, $userSession, $permissionService, $fieldService, $rootFolder);
+        parent::__construct($appName, $request, $userSession, $permissionService, $fieldService, $rootFolder, $groupfolderResolver);
         $this->apiFieldService = $apiFieldService;
         $this->logger = $logger;
     }
@@ -267,12 +269,16 @@ class ApiFieldController extends BaseOCSController {
                 return new DataResponse(['error' => 'Maximum 100 file IDs per request'], Http::STATUS_BAD_REQUEST);
             }
 
-            $accessibleFileIds = $this->filterAccessibleFileIds($fileIds, $user->getUID());
-            if (empty($accessibleFileIds)) {
+            // Resolve each file's OWN team folder (user-scoped). Files the user
+            // cannot see, or that are not in a team folder, drop out. Each file
+            // then returns only its own folder's values — no more cross-folder
+            // mixing of stale/foreign rows (issue #98).
+            $fileGroupfolders = $this->resolveAccessibleFileGroupfolders($fileIds, $user->getUID());
+            if (empty($fileGroupfolders)) {
                 return new DataResponse(['error' => 'No accessible files found'], Http::STATUS_FORBIDDEN);
             }
 
-            $metadata = $this->apiFieldService->getBulkFileMetadata($accessibleFileIds);
+            $metadata = $this->apiFieldService->getBulkFileMetadataScoped($fileGroupfolders);
             return new DataResponse($metadata, Http::STATUS_OK);
         } catch (\Exception $e) {
             $this->logger->error('MetaVox: getBulkFileMetadata error', ['exception' => $e]);
@@ -295,7 +301,16 @@ class ApiFieldController extends BaseOCSController {
                 return new DataResponse(['error' => 'Access denied to file'], Http::STATUS_FORBIDDEN);
             }
 
-            $metadata = $this->apiFieldService->getFileMetadata($fileId);
+            // Resolve the team folder the file physically lives in (from the
+            // user's mount — the same source of truth as the UI), instead of
+            // guessing it from the metadata table. Read and write now agree on
+            // the same folder (issue #98).
+            $groupfolderId = $this->resolveUserGroupfolderId($fileId, $user->getUID());
+            if ($groupfolderId === null) {
+                return new DataResponse(['error' => 'File is not in a team folder'], Http::STATUS_NOT_FOUND);
+            }
+
+            $metadata = $this->apiFieldService->getGroupfolderFileMetadata($groupfolderId, $fileId);
             return new DataResponse($metadata, Http::STATUS_OK);
         } catch (\Exception $e) {
             return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
@@ -317,8 +332,17 @@ class ApiFieldController extends BaseOCSController {
                 return new DataResponse(['error' => 'Access denied to file'], Http::STATUS_FORBIDDEN);
             }
 
+            // Write into the team folder the file physically lives in — NOT the
+            // old groupfolder_id=0 sink that made saved values unreadable
+            // (issue #98). A file outside any team folder has no valid scope, so
+            // we reject it explicitly instead of "saving for later".
+            $groupfolderId = $this->resolveUserGroupfolderId($fileId, $user->getUID());
+            if ($groupfolderId === null) {
+                return new DataResponse(['error' => 'File is not in a team folder'], Http::STATUS_NOT_FOUND);
+            }
+
             $metadata = $this->request->getParam('metadata', []);
-            $this->apiFieldService->saveFileMetadata($fileId, $metadata);
+            $this->apiFieldService->saveGroupfolderFileMetadata($groupfolderId, $fileId, $metadata);
 
             return new DataResponse(['success' => true], Http::STATUS_OK);
         } catch (ApiValidationException $e) {
@@ -434,6 +458,17 @@ class ApiFieldController extends BaseOCSController {
                 return new DataResponse(['error' => 'Access denied to file'], Http::STATUS_FORBIDDEN);
             }
 
+            // Reject reads scoped to a folder the file isn't physically in, so
+            // callers can't fish stale rows out of folder 0 / deleted folders
+            // (issue #98).
+            $realGroupfolderId = $this->resolveUserGroupfolderId($fileId, $user->getUID());
+            if ($realGroupfolderId !== $groupfolderId) {
+                return new DataResponse(
+                    ['error' => 'File is not in the specified team folder'],
+                    Http::STATUS_BAD_REQUEST
+                );
+            }
+
             $metadata = $this->apiFieldService->getGroupfolderFileMetadata($groupfolderId, $fileId);
             return new DataResponse($metadata, Http::STATUS_OK);
         } catch (\Exception $e) {
@@ -454,6 +489,17 @@ class ApiFieldController extends BaseOCSController {
 
             if (!$this->canUserAccessFile($fileId, $user->getUID())) {
                 return new DataResponse(['error' => 'Access denied to file'], Http::STATUS_FORBIDDEN);
+            }
+
+            // The file must physically live in the group folder being written to.
+            // Rejects writes to a non-existent folder or a folder the file isn't
+            // in — no more "saving for later" into a ghost folder (issue #98).
+            $realGroupfolderId = $this->resolveUserGroupfolderId($fileId, $user->getUID());
+            if ($realGroupfolderId !== $groupfolderId) {
+                return new DataResponse(
+                    ['error' => 'File is not in the specified team folder'],
+                    Http::STATUS_BAD_REQUEST
+                );
             }
 
             $metadata = $this->request->getParam('metadata', []);
@@ -624,12 +670,22 @@ class ApiFieldController extends BaseOCSController {
                 return new DataResponse(['error' => 'target_file_ids array is required'], Http::STATUS_BAD_REQUEST);
             }
 
-            $accessibleTargetIds = $this->filterAccessibleFileIds(array_map('intval', $targetFileIds), $userId);
-            if (empty($accessibleTargetIds)) {
-                return new DataResponse(['error' => 'No accessible target files'], Http::STATUS_FORBIDDEN);
+            // Read the source metadata from the team folder the source file
+            // actually lives in (issue #98) — not the folder-unaware lookup that
+            // could mix in stale/foreign rows.
+            $sourceGroupfolderId = $this->resolveUserGroupfolderId($sourceFileId, $userId);
+            if ($sourceGroupfolderId === null) {
+                return new DataResponse(['error' => 'Source file is not in a team folder'], Http::STATUS_NOT_FOUND);
             }
 
-            $result = $this->apiFieldService->batchCopyFileMetadata($sourceFileId, $accessibleTargetIds, $fieldNames);
+            // Resolve each target's own team folder (user-scoped). Copy only
+            // into targets the user can see AND that live in a team folder.
+            $targetGroupfolders = $this->resolveAccessibleFileGroupfolders(array_map('intval', $targetFileIds), $userId);
+            if (empty($targetGroupfolders)) {
+                return new DataResponse(['error' => 'No accessible target files in a team folder'], Http::STATUS_FORBIDDEN);
+            }
+
+            $result = $this->apiFieldService->batchCopyFileMetadata($sourceGroupfolderId, $sourceFileId, $targetGroupfolders, $fieldNames);
             return new DataResponse($result, Http::STATUS_OK);
         } catch (\Exception $e) {
             return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
