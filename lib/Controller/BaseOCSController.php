@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\MetaVox\Controller;
 
 use OCA\MetaVox\Service\FieldService;
+use OCA\MetaVox\Service\GroupfolderResolver;
 use OCA\MetaVox\Service\PermissionService;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
@@ -20,6 +21,7 @@ abstract class BaseOCSController extends OCSController {
     protected PermissionService $permissionService;
     protected FieldService $fieldService;
     protected IRootFolder $rootFolder;
+    protected GroupfolderResolver $groupfolderResolver;
 
     public function __construct(
         string $appName,
@@ -27,13 +29,40 @@ abstract class BaseOCSController extends OCSController {
         IUserSession $userSession,
         PermissionService $permissionService,
         FieldService $fieldService,
-        IRootFolder $rootFolder
+        IRootFolder $rootFolder,
+        GroupfolderResolver $groupfolderResolver
     ) {
         parent::__construct($appName, $request);
         $this->userSession = $userSession;
         $this->permissionService = $permissionService;
         $this->fieldService = $fieldService;
         $this->rootFolder = $rootFolder;
+        $this->groupfolderResolver = $groupfolderResolver;
+    }
+
+    /**
+     * Resolve the groupfolder a file physically lives in, from the USER's mount
+     * (the same source of truth the Files UI uses), or null if the user cannot
+     * see the file OR it is not inside any team folder.
+     *
+     * This is user-scoped by design: it reuses exactly the node the access
+     * check (canUserAccessFile) resolves, so it can never grant more reach than
+     * that check already allows. Callers use it instead of guessing the folder
+     * from the metadata table — a file can carry stale rows under folder 0 or
+     * deleted folders, so the table cannot answer "which folder is this file in
+     * right now" (issue #98).
+     */
+    protected function resolveUserGroupfolderId(int $fileId, string $userId): ?int {
+        try {
+            $userFolder = $this->rootFolder->getUserFolder($userId);
+            $nodes = $userFolder->getById($fileId);
+            if (empty($nodes)) {
+                return null;
+            }
+            return $this->groupfolderResolver->getGroupfolderId($nodes[0]);
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 
     /**
@@ -108,6 +137,36 @@ abstract class BaseOCSController extends OCSController {
         } catch (\Exception $e) {
             return ['accessible' => [], 'permissions' => []];
         }
+    }
+
+    /**
+     * For a set of file ids, return [fileId => groupfolderId] for those the
+     * user can access AND that physically live in a team folder. Files the user
+     * cannot see, or that are not in any team folder, are omitted. One
+     * user-scoped getById per file (GroupfolderResolver caches mount points for
+     * the request, so the folder resolution itself is pure string matching).
+     *
+     * @param int[] $fileIds
+     * @return array<int, int> fileId => groupfolderId
+     */
+    protected function resolveAccessibleFileGroupfolders(array $fileIds, string $userId): array {
+        $result = [];
+        try {
+            $userFolder = $this->rootFolder->getUserFolder($userId);
+            foreach ($fileIds as $fileId) {
+                $nodes = $userFolder->getById($fileId);
+                if (empty($nodes)) {
+                    continue;
+                }
+                $gfId = $this->groupfolderResolver->getGroupfolderId($nodes[0]);
+                if ($gfId !== null) {
+                    $result[$fileId] = $gfId;
+                }
+            }
+        } catch (\Exception $e) {
+            return [];
+        }
+        return $result;
     }
 
     /**
