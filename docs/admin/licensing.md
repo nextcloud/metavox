@@ -19,22 +19,16 @@ If MetaVox is valuable to your organization, a subscription helps keep it mainta
 
 ## Pricing
 
-Pricing is based on the number of Nextcloud users in your organization.
+VoxCloud apps are moving to a bundled offering together with Nextcloud. The
+pricing model is being finalised and is not published here.
 
-| Users | Price |
-|-------|-------|
-| 1–50 | €49/year |
-| 51–250 | €149/year |
-| 251–1000 | €349/year |
-| 1000+ | Contact us |
-
-That's less than €1 per week for the smallest tier.
-
-Visit [voxcloud.nl/pricing](https://voxcloud.nl/pricing/#metavox) for details, or contact [info@voxcloud.nl](mailto:info@voxcloud.nl).
+If you would like to know what a subscription would look like for your
+organization, see [voxcloud.nl/pricing](https://voxcloud.nl/pricing/) or contact
+[info@voxcloud.nl](mailto:info@voxcloud.nl).
 
 ## Subscription Banner
 
-Organizations with more than 50 Nextcloud users who do not have an active subscription will see a blue informational banner at the top of the MetaVox admin panel. This is a friendly reminder, not a warning — all features continue to work normally.
+Organizations with substantial MetaVox usage (more than 50 Nextcloud users, or more than 20 team folders with metadata fields) who do not have an active subscription will see a blue informational banner at the top of the MetaVox admin panel. This is a friendly reminder, not a warning — all features continue to work normally.
 
 The banner disappears when:
 - A valid subscription key is entered
