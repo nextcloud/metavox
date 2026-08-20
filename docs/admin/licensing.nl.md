@@ -17,24 +17,17 @@ Als MetaVox waardevol is voor je organisatie, helpt een abonnement het onderhoud
 | Prioriteits-bugfixes | Jouw issues krijgen voorrang |
 | Actieve ontwikkeling | Nieuwe features en verbeteringen |
 
-## Pricing
+## Prijzen
 
-Pricing is gebaseerd op het aantal Nextcloud-gebruikers in je organisatie.
+VoxCloud-apps gaan als bundel samen met Nextcloud aangeboden worden. Het
+prijsmodel wordt op dit moment afgerond en wordt hier niet gepubliceerd.
 
-| Gebruikers | Prijs |
-|------------|-------|
-| 1–50 | €49/jaar |
-| 51–250 | €149/jaar |
-| 251–1000 | €349/jaar |
-| 1000+ | Neem contact op |
-
-Dat is minder dan €1 per week voor de kleinste tier.
-
-Bezoek [voxcloud.nl/pricing](/pricing/) voor details, of mail [info@voxcloud.nl](mailto:info@voxcloud.nl).
+Wil je weten hoe een abonnement er voor jouw organisatie uitziet? Kijk op
+[voxcloud.nl/pricing](/pricing/) of mail [info@voxcloud.nl](mailto:info@voxcloud.nl).
 
 ## Abonnements-banner
 
-Organisaties met meer dan 50 Nextcloud-gebruikers zonder actief abonnement zien een blauwe informatieve banner bovenaan het MetaVox-admin-paneel. Dit is een vriendelijke herinnering, geen waarschuwing — alle features blijven normaal werken.
+Organisaties die MetaVox intensief gebruiken (meer dan 50 Nextcloud-gebruikers, of meer dan 20 teammappen met metadata-velden) en geen actief abonnement hebben, zien een blauwe informatieve banner bovenaan het MetaVox-admin-paneel. Dit is een vriendelijke herinnering, geen waarschuwing — alle features blijven normaal werken.
 
 De banner verdwijnt wanneer:
 
