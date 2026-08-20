@@ -191,11 +191,22 @@ Returns fields assigned to this groupfolder that apply to individual files (not 
 
 ## File Metadata
 
+> **Team-folder resolution (since 2.2.3).** The group-folder-less endpoints
+> (`.../files/{fileId}/metadata` and the bulk read) resolve the team folder a
+> file **physically lives in**, from your own mount — the same folder the Files
+> UI shows. Reads and writes therefore always agree on one folder. A file that
+> is not inside any team folder has no valid metadata scope and returns
+> **`404 File is not in a team folder`** instead of silently reading/writing
+> nothing. The group-folder-scoped endpoints additionally reject a mismatch
+> between the URL's `{groupfolderId}` and the file's actual folder with
+> **`400 File is not in the specified team folder`**.
+
 ### Get metadata for a single file
 
 **Endpoint**: `GET /ocs/v2.php/apps/metavox/api/v1/files/{fileId}/metadata`
 
-Returns all metadata for a file. Requires read access to the file.
+Returns all metadata for a file, scoped to the team folder it lives in. Requires
+read access to the file. Returns `404` if the file is not in a team folder.
 
 **Response**:
 ```json
@@ -213,7 +224,9 @@ Returns all metadata for a file. Requires read access to the file.
 
 **Endpoint**: `POST /ocs/v2.php/apps/metavox/api/v1/files/{fileId}/metadata`
 
-Accepts a partial metadata object — only the fields included are updated. Requires write access.
+Accepts a partial metadata object — only the fields included are updated.
+Requires write access. Writes into the team folder the file lives in; returns
+`404` if the file is not in a team folder.
 
 **Request body**:
 ```json
@@ -249,7 +262,10 @@ Accepts a partial metadata object — only the fields included are updated. Requ
 
 **Endpoint**: `GET /ocs/v2.php/apps/metavox/api/v1/files/metadata/bulk?file_ids=123,456,789`
 
-Returns metadata for up to **100 file IDs** per request. Only accessible files are returned.
+Returns metadata for up to **100 file IDs** per request. Each file is scoped to
+**its own** team folder (resolved independently), so file 123 returns folder A's
+values and file 456 returns folder B's — no cross-folder mixing. Files you
+cannot access, or that are not in any team folder, are omitted from the response.
 
 **Response**:
 ```json
@@ -267,13 +283,21 @@ Returns metadata for up to **100 file IDs** per request. Only accessible files a
 
 **Endpoint**: `GET /ocs/v2.php/apps/metavox/api/v1/groupfolders/{groupfolderId}/files/{fileId}/metadata`
 
-Same as single file metadata, but scoped to a groupfolder context.
+Same as single file metadata, but the `{groupfolderId}` must match the folder the
+file is actually in — otherwise `400 File is not in the specified team folder`
+(since 2.2.3). Use this form when you already know the folder; otherwise the
+group-folder-less endpoint resolves it for you.
 
 ### Save file metadata within a groupfolder
 
 **Endpoint**: `POST /ocs/v2.php/apps/metavox/api/v1/groupfolders/{groupfolderId}/files/{fileId}/metadata`
 
-Same as single file save, but scoped to a groupfolder context. Supports `unlock` and `unlock_field` parameters to atomically save and release a cell lock. The same date-value validation applies — see [Date / DateTime fields](#date--datetime-fields).
+Same as single file save, but the `{groupfolderId}` must match the file's actual
+folder — writing to a non-existent or mismatched folder returns `400 File is not
+in the specified team folder` (since 2.2.3), instead of silently storing the
+value under a folder nothing reads back. Supports `unlock` and `unlock_field`
+parameters to atomically save and release a cell lock. The same date-value
+validation applies — see [Date / DateTime fields](#date--datetime-fields).
 
 ---
 

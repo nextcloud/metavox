@@ -130,11 +130,6 @@ let _activeEditor = null
 export function getActiveEditor() { return _activeEditor }
 export function setActiveEditor(v) { _activeEditor = v }
 
-// ── Cached actions width ─────────────────────────────────────────────
-let _cachedActionsWidth = null
-export function getCachedActionsWidth() { return _cachedActionsWidth }
-export function setCachedActionsWidth(v) { _cachedActionsWidth = v }
-
 // ── Initial-state consumed flag ──────────────────────────────────────
 let _initialStateConsumed = false
 export function getInitialStateConsumed() { return _initialStateConsumed }

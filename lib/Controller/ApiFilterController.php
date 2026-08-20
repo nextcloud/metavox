@@ -6,6 +6,7 @@ namespace OCA\MetaVox\Controller;
 
 use OCA\MetaVox\Service\FieldService;
 use OCA\MetaVox\Service\FilterService;
+use OCA\MetaVox\Service\GroupfolderResolver;
 use OCA\MetaVox\Service\PermissionService;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\CORS;
@@ -27,9 +28,10 @@ class ApiFilterController extends BaseOCSController {
         FilterService $filterService,
         PermissionService $permissionService,
         IUserSession $userSession,
-        IRootFolder $rootFolder
+        IRootFolder $rootFolder,
+        GroupfolderResolver $groupfolderResolver
     ) {
-        parent::__construct($appName, $request, $userSession, $permissionService, $fieldService, $rootFolder);
+        parent::__construct($appName, $request, $userSession, $permissionService, $fieldService, $rootFolder, $groupfolderResolver);
         $this->filterService = $filterService;
     }
 
