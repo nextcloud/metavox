@@ -1,13 +1,15 @@
 # Triggered when /docs/ (or README) changes in this app repo.
-# Fires a workflow_dispatch on VoxCloud/website/deploy.yml, which rebuilds
-# and redeploys voxcloud.nl/docs with the latest content.
+# Fires a workflow_dispatch on voxcloud-platform/website deploy.yml, which
+# rebuilds and redeploys voxcloud.nl/docs with the latest content.
 #
-# Note: Gitea 1.25 only supports the GitHub-style workflow_dispatch endpoint
-# (/actions/workflows/<file>/dispatches). The older repository_dispatch
-# endpoint (/dispatches) returns 404 even though deploy.yml declares both
-# triggers — earlier versions of this workflow targeted that endpoint and
-# were silently failing.
-
+# Sinds de Forgejo-migratie (23-08-2026) wijst dit naar forgejo.voxcloud.nl.
+# Let op twee dingen die eerder stil misgingen:
+#
+#  1. Alleen het GitHub-stijl endpoint werkt
+#     (/actions/workflows/<file>/dispatches). Het oudere repository_dispatch
+#     (/dispatches) geeft 404, ook al declareert deploy.yml beide triggers.
+#  2. De workflow heet nu .forgejo/workflows/deploy.yml, maar het endpoint
+#     verwacht alleen de bestandsnaam — niet het pad.
 name: Notify VoxCloud website on docs change
 
 on:
@@ -21,7 +23,7 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger VoxCloud/website deploy workflow
+      - name: Trigger website deploy workflow
         env:
           TOKEN: ${{ secrets.WEBSITE_DISPATCH_TOKEN }}
         run: |
@@ -29,5 +31,5 @@ jobs:
             -H "Authorization: token $TOKEN" \
             -H "Content-Type: application/json" \
             -d '{"ref":"main","inputs":{}}' \
-            https://gitea.rikdekker.nl/api/v1/repos/VoxCloud/website/actions/workflows/deploy.yml/dispatches
-          echo "Dispatch sent for ${{ gitea.repository }}@${{ gitea.sha }}"
+            https://forgejo.voxcloud.nl/api/v1/repos/voxcloud-platform/website/actions/workflows/deploy.yml/dispatches
+          echo "Dispatch sent for ${{ github.repository }}@${{ github.sha }}"
