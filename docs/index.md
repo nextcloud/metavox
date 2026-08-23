@@ -60,3 +60,4 @@ New to MetaVox? Start with our [Getting Started Guide](getting-started.md) to le
 ## License
 
 MetaVox is licensed under the [AGPL-3.0 License](https://www.gnu.org/licenses/agpl-3.0.html).
+
