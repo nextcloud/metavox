@@ -241,7 +241,7 @@ cp -r appinfo lib l10n templates css img js "$TEMP_DIR/metavox/" && \
 cp CHANGELOG.md LICENSE README.md "$TEMP_DIR/metavox/" 2>/dev/null || true && \
 cd "$TEMP_DIR" && \
 tar -czf metavox-X.Y.Z.tar.gz metavox && \
-mv metavox-X.Y.Z.tar.gz /Users/rikdekker/Documents/Development/MetaVox/ && \
+mv metavox-X.Y.Z.tar.gz /Users/rikdekker/Documents/Development/voxcloud-apps/metavox/ && \
 rm -rf "$TEMP_DIR"
 ```
 
