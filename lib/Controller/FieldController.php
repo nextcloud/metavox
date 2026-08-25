@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\MetaVox\Controller;
 
 use OCA\MetaVox\Service\FieldService;
+use OCA\MetaVox\Service\FileMetadataChangeNotifier;
 use OCA\MetaVox\Service\FileReferenceService;
 use OCA\MetaVox\Service\LockService;
 use OCA\MetaVox\Service\PermissionService;
@@ -27,6 +28,7 @@ class FieldController extends BaseController {
     private LockService $lockService;
     private PushService $pushService;
     private FileReferenceService $fileReferenceService;
+    private FileMetadataChangeNotifier $metadataChangeNotifier;
     private LoggerInterface $logger;
 
     public function __construct(
@@ -41,6 +43,7 @@ class FieldController extends BaseController {
         LockService $lockService,
         PushService $pushService,
         FileReferenceService $fileReferenceService,
+        FileMetadataChangeNotifier $metadataChangeNotifier,
         LoggerInterface $logger
     ) {
         parent::__construct($appName, $request, $userSession, $permissionService, $fieldService, $rootFolder);
@@ -49,6 +52,7 @@ class FieldController extends BaseController {
         $this->lockService = $lockService;
         $this->pushService = $pushService;
         $this->fileReferenceService = $fileReferenceService;
+        $this->metadataChangeNotifier = $metadataChangeNotifier;
         $this->logger = $logger;
     }
 
@@ -437,11 +441,17 @@ class FieldController extends BaseController {
                 $typeMap[$field['field_name']] = $field['field_type'] ?? '';
             }
 
+            $changedFields = [];
             foreach ($metadata as $fieldName => $value) {
                 if (isset($fieldMap[$fieldName])) {
                     $value = $this->normalizeFilelinkValue((string)$value, $typeMap[$fieldName] ?? '', $user->getUID(), $groupfolderId);
                     $this->fieldService->saveGroupfolderFileFieldValue($groupfolderId, $fileId, $fieldMap[$fieldName], $value, $fieldName);
+                    $changedFields[] = $fieldName;
                 }
+            }
+
+            if (!empty($changedFields)) {
+                $this->metadataChangeNotifier->notify($fileId, $groupfolderId, 'updated', $changedFields);
             }
 
             // Combined save+unlock: release lock and push event in one request
@@ -521,6 +531,7 @@ class FieldController extends BaseController {
                         }
                     }
 
+                    $changedFields = [];
                     foreach ($metadata as $fieldName => $value) {
                         if (!isset($fieldMap[$fieldName])) {
                             continue;
@@ -535,6 +546,11 @@ class FieldController extends BaseController {
                         $this->fieldService->saveGroupfolderFileFieldValue(
                             $groupfolderId, (int)$fileId, $fieldMap[$fieldName], $normalized, $fieldName
                         );
+                        $changedFields[] = $fieldName;
+                    }
+
+                    if (!empty($changedFields)) {
+                        $this->metadataChangeNotifier->notify((int)$fileId, $groupfolderId, 'updated', $changedFields);
                     }
 
                     $successCount++;
@@ -590,6 +606,7 @@ class FieldController extends BaseController {
                     }
 
                     $this->fieldService->clearGroupfolderFileMetadata($groupfolderId, (int)$fileId);
+                    $this->metadataChangeNotifier->notify((int)$fileId, $groupfolderId, 'deleted');
                     $successCount++;
                 } catch (\Exception $e) {
                     $this->logger->error('MetaVox: clearFileMetadata error for file', ['fileId' => $fileId, 'exception' => $e]);

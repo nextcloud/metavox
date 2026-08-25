@@ -6,6 +6,27 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Added
+- **`FileMetadataChangedEvent`**, dispatched whenever a file's MetaVox metadata
+  is written or cleared through the Team-folder web UI or the OCS API
+  ([#86](https://github.com/nextcloud/metavox/issues/86)). Until now, metadata
+  changes had no equivalent to the file events Nextcloud already emits, so
+  external integrations (indexers, webhooks) had to poll the OCS API on a
+  schedule to notice a change. The event carries the file id, groupfolder id,
+  operation (`updated` or `deleted`), and the field names affected (empty when
+  the whole file's metadata was cleared at once). Both a value's first write
+  and a later write report `updated` as the storage layer performs an upsert,
+  so distinguishing "created" from "updated" would need an extra read on every
+  write; consumers that care can simply re-fetch the current value via the OCS
+  API either way. Batch writes to several files in one request (`saveBulkFileMetadata`,
+  `batchUpdateFileMetadata`, `batchDeleteFileMetadata`, and `batchCopyFileMetadata`
+  through it) dispatch one event per affected file, only after the underlying
+  transaction actually commits.
+
+---
+
 ## [2.2.1] - 2026-08-20
 
 ### Fixed
