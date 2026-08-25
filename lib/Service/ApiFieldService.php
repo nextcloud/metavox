@@ -17,15 +17,18 @@ use Psr\Log\LoggerInterface;
 class ApiFieldService {
     private IDBConnection $db;
     private FieldService $fieldService;
+    private FileMetadataChangeNotifier $metadataChangeNotifier;
     private LoggerInterface $logger;
 
     public function __construct(
         IDBConnection $db,
         FieldService $fieldService,
+        FileMetadataChangeNotifier $metadataChangeNotifier,
         LoggerInterface $logger
     ) {
         $this->db = $db;
         $this->fieldService = $fieldService;
+        $this->metadataChangeNotifier = $metadataChangeNotifier;
         $this->logger = $logger;
     }
 
@@ -109,13 +112,19 @@ class ApiFieldService {
             $fieldMap[$field['field_name']] = $field['id'];
         }
 
+        $changedFields = [];
         foreach ($metadata as $fieldName => $value) {
             if (isset($fieldMap[$fieldName])) {
                 if (is_array($value)) {
                     $value = implode(';#', $value);
                 }
                 $this->fieldService->saveGroupfolderFileFieldValue($groupfolderId, $fileId, $fieldMap[$fieldName], (string)$value, $fieldName);
+                $changedFields[] = $fieldName;
             }
+        }
+
+        if (!empty($changedFields)) {
+            $this->metadataChangeNotifier->notify($fileId, $groupfolderId, 'updated', $changedFields);
         }
     }
 
@@ -342,6 +351,12 @@ class ApiFieldService {
         $this->logger->info('ApiFieldService batch update - Available fields: ' . json_encode(array_keys($fieldMap)));
 
         $this->db->beginTransaction();
+        // Buffering events rather than dispatching them inline:
+        // a later item in this same transaction can still force a full
+        // rollback, and an event fired for a write that ends up rolled
+        // back would tell external systems about a change that never
+        // actually happened.
+        $pendingEvents = [];
 
         try {
             foreach ($updates as $update) {
@@ -369,6 +384,7 @@ class ApiFieldService {
 
                 try {
                     $fieldsUpdated = 0;
+                    $changedFields = [];
                     $this->logger->info('ApiFieldService - Processing file_id: ' . $fileId . ', groupfolder_id: ' . $groupfolderId . ', metadata fields: ' . json_encode(array_keys($metadata)));
 
                     foreach ($metadata as $fieldName => $value) {
@@ -384,9 +400,14 @@ class ApiFieldService {
                                 (string)$value
                             );
                             $fieldsUpdated++;
+                            $changedFields[] = $fieldName;
                         } else {
                             $this->logger->warning('ApiFieldService - Field not found in map: ' . $fieldName);
                         }
+                    }
+
+                    if (!empty($changedFields)) {
+                        $pendingEvents[] = [(int)$fileId, (int)$groupfolderId, $changedFields];
                     }
 
                     $results[] = [
@@ -404,6 +425,9 @@ class ApiFieldService {
             }
 
             $this->db->commit();
+            foreach ($pendingEvents as [$eventFileId, $eventGroupfolderId, $changedFields]) {
+                $this->metadataChangeNotifier->notify($eventFileId, $eventGroupfolderId, 'updated', $changedFields);
+            }
         } catch (\Exception $e) {
             $this->db->rollBack();
             $this->logger->error('Batch update failed: ' . $e->getMessage());
@@ -423,6 +447,10 @@ class ApiFieldService {
         $results = [];
 
         $this->db->beginTransaction();
+        // See batchUpdateFileMetadata(): buffered so a rollback later in the
+        // same transaction can't leave us having announced a deletion that
+        // didn't actually happen.
+        $pendingEvents = [];
 
         try {
             foreach ($deletes as $delete) {
@@ -457,6 +485,8 @@ class ApiFieldService {
                             ->andWhere($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter((int)$groupfolderId)))
                             ->executeStatement();
 
+                        $pendingEvents[] = [(int)$fileId, (int)$groupfolderId, []];
+
                         $results[] = [
                             'file_id' => $fileId,
                             'groupfolder_id' => $groupfolderId,
@@ -485,6 +515,8 @@ class ApiFieldService {
 
                         $this->db->executeStatement($sql);
 
+                        $pendingEvents[] = [(int)$fileId, (int)$groupfolderId, $fieldNames];
+
                         $results[] = [
                             'file_id' => $fileId,
                             'groupfolder_id' => $groupfolderId,
@@ -503,6 +535,9 @@ class ApiFieldService {
             }
 
             $this->db->commit();
+            foreach ($pendingEvents as [$eventFileId, $eventGroupfolderId, $fieldNames]) {
+                $this->metadataChangeNotifier->notify($eventFileId, $eventGroupfolderId, 'deleted', $fieldNames);
+            }
         } catch (\Exception $e) {
             $this->db->rollBack();
             $this->logger->error('Batch delete failed: ' . $e->getMessage());
