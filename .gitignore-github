@@ -1,4 +1,11 @@
-# Files excluded from GitHub (kept on Gitea only)
+# Files excluded from GitHub (kept on Forgejo only)
 # Used by push-to-github.sh
 internal-docs/
 deploy.sh
+push-to-github.sh
+
+# Interne release- en werkdocumentatie: bevat deploy-targets, klant-hostnames
+# en werkafspraken die niet in de publieke repo horen.
+RELEASE_CHECKLIST.md
+CLAUDE.md
+ROADMAP.md
