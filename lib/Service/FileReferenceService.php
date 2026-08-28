@@ -193,7 +193,11 @@ class FileReferenceService {
             $node = $userFolder->get($path);
             return $node->getId();
         } catch (\Throwable $e) {
-            $this->logger->debug('MetaVox: could not resolve file-link path to id', [
+            // warning, not debug: an unresolvable path means the value is stored
+            // without a fileid, so it cannot follow renames or feed backlinks.
+            // At debug level this stayed invisible while github#95 blanked
+            // people's field values.
+            $this->logger->warning('MetaVox: could not resolve file-link path to id', [
                 'path' => $path, 'user' => $userId, 'exception' => $e,
             ]);
             return null;

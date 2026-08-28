@@ -20,11 +20,28 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-// Fallback: if the OCP interfaces are not autoloadable (the stub package did
-// not register its namespace), but we are running inside a Nextcloud install,
-// use the server's own autoloaders. NC's 3rdparty autoloader provides Doctrine
-// (which OCP\DB interfaces reference), and a small OCP autoloader maps the
-// public API classes — together they satisfy everything the mocks need.
+// The nextcloud/ocp stub package ships the OCP interfaces but declares no
+// autoload section of its own, so composer never maps the OCP\ namespace and
+// every mock of an OCP interface fails with "Class or interface does not
+// exist". Register the stub directory ourselves.
+$ocpStubDir = __DIR__ . '/../vendor/nextcloud/ocp/OCP';
+if (!interface_exists(\OCP\IDBConnection::class) && is_dir($ocpStubDir)) {
+    spl_autoload_register(static function (string $class) use ($ocpStubDir): void {
+        if (strncmp($class, 'OCP\\', 4) !== 0) {
+            return;
+        }
+        $file = $ocpStubDir . '/' . str_replace('\\', '/', substr($class, 4)) . '.php';
+        if (is_file($file)) {
+            require_once $file;
+        }
+    });
+}
+
+// Fallback: if the OCP interfaces are still not autoloadable, but we are
+// running inside a Nextcloud install, use the server's own autoloaders. NC's
+// 3rdparty autoloader provides Doctrine (which OCP\DB interfaces reference),
+// and a small OCP autoloader maps the public API classes — together they
+// satisfy everything the mocks need.
 if (!interface_exists(\OCP\IDBConnection::class)) {
     foreach (['/var/www/html', __DIR__ . '/../../..'] as $ncRoot) {
         $ocpDir = $ncRoot . '/lib/public';
