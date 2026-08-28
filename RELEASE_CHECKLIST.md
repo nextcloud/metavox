@@ -445,6 +445,11 @@ EOF
 https://github.com/nextcloud/metavox/releases/download/vX.Y.Z/metavox-X.Y.Z.tar.gz
 ```
 
+> De release-note mag issues noemen die in deze versie zitten — dat is precies
+> waar hij voor is. Maar reageer nog **niet** op de issues zelf: dat gebeurt pas
+> na de App Store-upload (§9.9). Een GitHub-release is nog geen app die iemand
+> kan installeren.
+
 ### 9.7 App Store Upload
 
 Upload via the API (token stored in `Development/.claude/NextcloudApps/Keys/appstore-api-token.txt`):
@@ -462,6 +467,41 @@ curl -X POST https://apps.nextcloud.com/api/v1/apps/releases \
 HTTP 200 = success. Alternatively, upload manually at https://apps.nextcloud.com/developer/apps/releases/new.
 
 - **Note:** Regenerate signature after any tarball change!
+
+### 9.8 Is de release echt af?
+
+Een release kan halverwege blijven steken zonder dat iets faalt: gebouwd,
+getest en gedeployed, maar nooit getagd of gepubliceerd. Deze drie regels
+sluiten dat af:
+
+```bash
+V=X.Y.Z
+git rev-list -n1 "v$V" >/dev/null 2>&1 && echo "tag ok"     || echo "GEEN TAG"
+gh release view "v$V" --repo nextcloud/metavox --json assets \
+  -q '.assets[0].state' 2>/dev/null                          || echo "GEEN GITHUB RELEASE"
+curl -s -H "Accept: application/json" \
+  "https://apps.nextcloud.com/api/v1/platform/34.0.0/apps.json?t=$(date +%s)" \
+  | python3 -c "import json,sys;a=[x for x in json.load(sys.stdin) if x['id']=='metavox'][0];print('app store:',a['releases'][0]['version'])"
+```
+
+> De cache-buster (`?t=`) is nodig: zonder die parameter geeft de App Store-API
+> minutenlang de vorige versie terug, wat leest als een mislukte upload.
+
+### 9.9 Pas hierna: reageren op GitHub-issues
+
+- [ ] **Reageer pas op een issue nadat de App Store-upload bevestigd is** (§9.8
+      hierboven toont de nieuwe versie). Niet eerder — ook niet als de fix al
+      gemerged, getagd of naar dev gedeployed is.
+
+      Reden: "fixed in X.Y.Z" is voor de melder een uitnodiging om te updaten.
+      Zolang de App Store de versie nog niet serveert, kan die dat niet, en een
+      release kan alsnog stranden (afgekeurde signature, mislukte upload). Dan
+      staat er een belofte die niet waargemaakt is.
+
+- [ ] Vóór de upload mag je wél reageren met wat *gemeten* is — oorzaak,
+      reproductie, gestelde vragen — zolang je geen versie belooft.
+- [ ] Vermeld bij het sluiten het issuenummer zoals het in de CHANGELOG staat,
+      zodat melder en changelog naar hetzelfde verwijzen.
 
 ---
 
