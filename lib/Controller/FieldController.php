@@ -387,11 +387,18 @@ class FieldController extends BaseController {
             // Enforce that the link target lives in THIS team folder. A target
             // outside it would be invisible to other folder members and is
             // confusing — drop such tokens rather than storing a dangling ref.
-            if ($groupfolderId !== null) {
-                if ($token['fileId'] === null
-                    || !$this->fileReferenceService->isFileInGroupfolder($token['fileId'], $groupfolderId)) {
-                    continue;
-                }
+            //
+            // A token we could not resolve to a fileid is NOT such a target: we
+            // simply do not know where it lives. Dropping those made every save
+            // whose path the picker returned in an unexpected shape blank the
+            // whole field while still answering success (github#95). Keep them
+            // as a bare path instead — the contract this method documents — so
+            // the value survives; display and backlinks already handle a token
+            // without a fileid.
+            if ($groupfolderId !== null
+                && $token['fileId'] !== null
+                && !$this->fileReferenceService->isFileInGroupfolder($token['fileId'], $groupfolderId)) {
+                continue;
             }
             $resolved[] = $token;
         }

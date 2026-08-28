@@ -53,6 +53,130 @@ Follow this checklist for every release to the Nextcloud App Store.
 
 ---
 
+## 1a. OWASP Top 10 (2025) release gate
+
+Loop deze lijst af bij **elke** release. De checks zijn bewust *triggers*, geen
+pass/fail-gates: een hit betekent "kijk hier met je ogen naar", niet per se een bug.
+Noteer bij een genegeerde hit kort *waarom* in de PR/commit.
+
+Referentie: <https://owasp.org/Top10/2025/> · Cheat Sheets: <https://cheatsheetseries.owasp.org/>
+
+### A01 — Broken Access Control
+
+- [ ] Elke nieuwe/gewijzigde controller-methode heeft een bewuste access-attribute.
+      Geen attribute = admin-only (NC-default). Controleer dat dat ook de bedoeling was:
+  ```bash
+  grep -rn --include='*.php' -B4 'public function' lib/Controller/ \
+    | grep -E '#\[(NoAdminRequired|PublicPage|AuthorizedAdminSetting)\]|public function'
+  ```
+- [ ] Bij elke `#[NoAdminRequired]`: wordt de *ownership* van het object nog apart
+      gecheckt? Ingelogd zijn is geen autorisatie — een user mag niet via een geraden
+      `fileId`/`id` bij andermans data (IDOR).
+- [ ] Bij elke `#[PublicPage]`: is er een token/secret-check, en gebeurt die met
+      `hash_equals()` (niet `===`)?
+- [ ] Share-scope: bij wijzigingen aan share-/permissie-logica, test expliciet als
+      **anonieme** gebruiker én als user *zonder* rechten — niet alleen als eigenaar.
+
+### A02 — Security Misconfiguration
+
+- [ ] Geen debug-/verbose-output in de release-build (zie sectie 1).
+- [ ] Foutmeldingen naar de client lekken geen paden, stacktraces of SQL.
+- [ ] Nieuwe appconfig-defaults zijn *secure by default* (dicht, niet open).
+- [ ] Als de app externe content of iframes rendert: CSP-policy nog passend?
+
+### A03 — Software Supply Chain Failures *(nieuw in 2025, #3)*
+
+- [ ] `npm audit` — kritieke issues opgelost of expliciet verantwoord.
+      Upstream `@nextcloud/*` issues zijn vaak niet fixbaar; noteer dat dan.
+- [ ] Lockfile is gecommit en hoort bij deze release-build.
+- [ ] Nieuwe dependency toegevoegd sinds vorige release? Check even:
+      onderhouden, redelijk gebruikt, en de licentie past.
+  ```bash
+  git diff <vorige-tag>..HEAD -- package.json composer.json
+  ```
+
+### A04 — Cryptographic Failures
+
+- [ ] Alle nieuwe tokens/secrets via `random_bytes()` — nooit `rand()`, `uniqid()` of `md5()`.
+      (`md5()` voor cache-keys/ETags is prima; voor security niet.)
+- [ ] Alle secret-vergelijkingen via `hash_equals()`:
+  ```bash
+  grep -rn --include='*.php' -E '\$(token|secret|key|hash|signature)[A-Za-z]*\s*===' lib/
+  ```
+- [ ] Secrets staan versleuteld (`ICrypto`) opgeslagen, niet plaintext in appconfig.
+
+### A05 — Injection (incl. XSS)
+
+- [ ] **`v-html` zonder zichtbare sanitizer** — elke hit handmatig nalopen:
+  ```bash
+  grep -rn --include='*.vue' 'v-html' src/ \
+    | grep -viE 'sanitiz|dompurify|escapehtml'
+  ```
+  Regel: alles wat een *gebruiker* kan beïnvloeden (bestandsinhoud, paginatekst,
+  veldwaarden, zoek-snippets) moet door DOMPurify of `escapeHtml()` vóór het in
+  `v-html` belandt. Server-side HTML samenstellen en "vertrouwen" telt niet.
+- [ ] Geen string-interpolatie in SQL — altijd query-builder met named parameters:
+  ```bash
+  grep -rn --include='*.php' -E 'executeQuery|executeStatement' lib/ \
+    | grep -E '"[^"]*\$|\x27[^\x27]*\$'
+  ```
+- [ ] Elke `shell_exec`/`proc_open`/`exec` gebruikt `escapeshellarg()` op *elk* argument:
+  ```bash
+  grep -rn --include='*.php' -E 'shell_exec|proc_open|passthru|\bexec\(|\bsystem\(' lib/
+  ```
+
+### A06 — Insecure Design
+
+- [ ] Nieuwe feature met een security-dimensie (sharing, upload, externe API,
+      tokens)? Beschrijf in de PR kort wie wát mag en hoe dat afgedwongen wordt.
+
+### A07 — Authentication Failures
+
+- [ ] Endpoints die een wachtwoord/token accepteren hebben
+      `#[BruteForceProtection]` en `#[AnonRateLimit]`.
+- [ ] Tokens hebben een geldigheidsduur en zijn intrekbaar.
+
+### A08 — Software or Data Integrity Failures
+
+- [ ] Tarball gesigneerd met de juiste key; `.sig` gearchiveerd (zie release-sectie).
+- [ ] Build gemaakt vanaf een schone `npm ci` op het release-commit
+      (appVersion wordt in de bundle gestempeld).
+- [ ] Import-/restore-paden valideren hun input vóór verwerking.
+
+### A09 — Security Logging and Alerting Failures
+
+- [ ] Auth-fouten, permissie-weigeringen en admin-acties worden gelogd via
+      `LoggerInterface` (niet `error_log()`).
+- [ ] Logs bevatten **geen** wachtwoorden, tokens of volledige persoonsgegevens:
+  ```bash
+  grep -rn --include='*.php' -iE 'logger->[a-z]+\(.*(password|token|secret|apikey)' lib/
+  ```
+
+### A10 — Mishandling of Exceptional Conditions *(nieuw in 2025)*
+
+- [ ] Geen lege `catch {}` die een fout stil opslokt — zeker niet rond een
+      permissie- of validatie-check:
+  ```bash
+  grep -rn --include='*.php' -A2 'catch (' lib/ | grep -B1 '^\s*}' | head -20
+  ```
+- [ ] Faalt de code *dicht*? Bij een exception in een access-check moet toegang
+      geweigerd worden, niet toegestaan.
+- [ ] Een mislukte upload/import laat geen half-verwerkte staat achter.
+
+### MetaVox-specifiek
+
+- [ ] **`BackupController`**: de `TRUNCATE`/`ALTER TABLE`-statements interpoleren
+      tabelnamen. Die namen MOETEN uit de `self::TABLES`-constante blijven komen —
+      nooit uit request-input:
+  ```bash
+  grep -n 'TRUNCATE TABLE\|ALTER TABLE' lib/Controller/BackupController.php
+  ```
+- [ ] Restore-/import-endpoints zijn admin-only en valideren de payload vóór
+      het legen van tabellen (A08 + A10: geen half-gerestorede staat).
+- [ ] `composer audit` draaien.
+
+---
+
 ## 2. Translations (l10n/)
 
 Supported languages: **NL, DE, FR, SV** (source: EN) — all four kept at key-parity with EN.
@@ -209,7 +333,12 @@ Required files in tarball:
 | `templates/` | PHP templates                         |
 | Root files   | CHANGELOG.md, LICENSE, README.md      |
 
-**Exclude from tarball:** `src/`, `node_modules/`, `screenshots/`, `docs/`, `internal-docs/`, `.git/`, `*.key`, `deploy.sh`, `push-to-github.sh`, `scripts/`, `ROADMAP.md`, `CLAUDE.md`, `.tx/`, `*.tar.gz`
+**Exclude from tarball:** `src/`, `node_modules/`, `screenshots/`, `docs/`, `internal-docs/`, `.git/`, `*.key`, `deploy.sh`, `push-to-github.sh`, `scripts/`, `ROADMAP.md`, `CLAUDE.md`, `.tx/`, `*.tar.gz`, `tests/`, `vendor/`, `composer.json`, `composer.lock`, `phpunit.xml`, `.phpunit.cache/`
+
+> `composer.json`/`composer.lock` list **dev-only** dependencies (PHPUnit, the
+> `nextcloud/ocp` stubs, `doctrine/dbal`). The app has no runtime composer
+> dependencies, so neither the lockfile nor `vendor/` belongs in the tarball —
+> shipping them would make the App Store scan dev packages the app never loads.
 
 ---
 
