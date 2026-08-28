@@ -6,7 +6,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [Unreleased]
+## [2.2.2] - 2026-08-28
 
 ### Added
 
@@ -14,6 +14,17 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **File Link fields silently lost their value on save**
+  ([#95](https://github.com/nextcloud/metavox/issues/95)). Picking a file showed
+  the filename and the save reported success, but the field was empty again
+  after a reload. The team-folder boundary check introduced in 2.2.0 discarded
+  any reference whose path it could not resolve to a file id, and since the file
+  picker sends a path rather than an id, an unresolved path emptied the whole
+  field — including references that had saved correctly before. An unresolvable
+  path no longer counts as "outside this Team folder": the reference is kept as
+  a path, exactly as it was before 2.2.0. References that genuinely point
+  outside the Team folder are still refused, and a path that cannot be resolved
+  is now logged as a warning instead of passing unnoticed.
 - **Telemetry mis-detected Nextcloud Enterprise.** The subscription check read the *Extended Support* add-on rather than the subscription itself, so instances with a plain Enterprise subscription were reported as Community. It now uses `IRegistry::delegateHasValidSubscription()` (public API since NC 17). This only affects the usage figures reported back to VoxCloud; nothing in the app behaves differently.
 - **The instance identifier did not line up with the other VoxCloud apps.** Without `overwrite.cli.url` it was derived from a bare hostname where the other apps use a full URL, so the same server appeared as a different instance per app. Instances affected by this migrate themselves at the next report; nothing needs to be reconfigured.
 - **The reported user count left out LDAP and SSO accounts,** because it counted database rows rather than asking Nextcloud. Counting now goes through `callForAllUsers()`, which covers every user backend, and the report says which method was used so the licence server can tell older readings apart. Only affects reporting, not any limit enforced in the app.
