@@ -375,7 +375,6 @@ OC.L10N.register(
     "Users in selected groups will be able to manage metadata fields and views" : "Benutzer in den ausgewählten Gruppen können Metadatenfelder und Ansichten verwalten",
     "View details" : "Details anzeigen",
     "View name" : "Name der Ansicht",
-    "View pricing & plans" : "",
     "View usage" : "Nutzung anzeigen",
     "Views" : "Ansichten",
     "Visible" : "Sichtbar",
@@ -433,6 +432,8 @@ OC.L10N.register(
     "Select a team folder" : "Team-Ordner auswählen",
     "Select a value" : "Wert auswählen",
     "Team folder" : "Team-Ordner",
-    "Value" : "Wert"
+    "Value" : "Wert",
+    "Pricing details" : "Preisinformationen",
+    "View in the Nextcloud App Store" : "Im Nextcloud App Store ansehen"
 },
 "nplurals=2; plural=(n != 1);");

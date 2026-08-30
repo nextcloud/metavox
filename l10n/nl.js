@@ -387,7 +387,6 @@ OC.L10N.register(
     "Users in selected groups will be able to manage metadata fields and views" : "Gebruikers in de geselecteerde groepen kunnen metadatavelden en weergaves beheren",
     "View details" : "Details bekijken",
     "View name" : "Naam van de weergave",
-    "View pricing & plans" : "",
     "View usage" : "Gebruik bekijken",
     "Views" : "Weergaves",
     "Visible" : "Zichtbaar",
@@ -433,6 +432,8 @@ OC.L10N.register(
     "— no sorting —" : "— geen sortering —",
     "Failed to save default value for {field}" : "Opslaan van standaardwaarde voor {field} mislukt",
     "Failed to apply defaults" : "Toepassen van standaardwaarden mislukt",
-    "Applying defaults is taking longer than expected. It will continue in the background." : "Het toepassen van standaardwaarden duurt langer dan verwacht. Het gaat door op de achtergrond."
+    "Applying defaults is taking longer than expected. It will continue in the background." : "Het toepassen van standaardwaarden duurt langer dan verwacht. Het gaat door op de achtergrond.",
+    "Pricing details" : "Prijsinformatie",
+    "View in the Nextcloud App Store" : "Bekijk in de Nextcloud App Store"
 },
 "nplurals=2; plural=(n != 1);");
