@@ -432,7 +432,6 @@
         "Team folder": "Dossier d'équipe",
         "Value": "Valeur",
         "Pricing details": "Informations tarifaires",
-        "View in the Nextcloud App Store": "Voir dans le Nextcloud App Store",
         "Nextcloud Enterprise subscription detected on this instance. MetaVox subscriptions are sold through Nextcloud — contact your Nextcloud account manager or sales@nextcloud.com.": "Abonnement Nextcloud Enterprise détecté sur cette instance. Les abonnements MetaVox sont vendus via Nextcloud — contactez votre gestionnaire de compte Nextcloud ou sales@nextcloud.com.",
         "MetaVox is running for {count} users here and keeps working in full without a subscription. If your organisation gets value from it, a subscription is much appreciated — it funds the maintenance. Sold through Nextcloud: contact your account manager or sales@nextcloud.com.": "MetaVox fonctionne ici pour {count} utilisateurs et reste pleinement fonctionnel sans abonnement. Si votre organisation en tire de la valeur, un abonnement est très apprécié — il finance la maintenance. Vendu via Nextcloud : contactez votre gestionnaire de compte ou sales@nextcloud.com."
     }
