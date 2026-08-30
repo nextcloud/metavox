@@ -387,7 +387,6 @@ OC.L10N.register(
     "Users in selected groups will be able to manage metadata fields and views" : "Users in selected groups will be able to manage metadata fields and views",
     "View details" : "View details",
     "View name" : "View name",
-    "View pricing & plans" : "View pricing & plans",
     "View usage" : "View usage",
     "Views" : "Views",
     "Visible" : "Visible",
@@ -433,6 +432,8 @@ OC.L10N.register(
     "— no sorting —" : "— no sorting —",
     "Failed to save default value for {field}" : "Failed to save default value for {field}",
     "Failed to apply defaults" : "Failed to apply defaults",
-    "Applying defaults is taking longer than expected. It will continue in the background." : "Applying defaults is taking longer than expected. It will continue in the background."
+    "Applying defaults is taking longer than expected. It will continue in the background." : "Applying defaults is taking longer than expected. It will continue in the background.",
+    "Pricing details" : "Pricing details",
+    "View in the Nextcloud App Store" : "View in the Nextcloud App Store"
 },
 "nplurals=2; plural=(n != 1);");
