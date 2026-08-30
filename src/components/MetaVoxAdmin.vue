@@ -1,15 +1,18 @@
 <template>
 	<div id="metavox-admin" class="section">
-		<!-- License Warning Banner -->
-		<div v-if="licenseBanner && !bannerDismissed" :class="['license-banner', licenseBanner.type]">
+		<!-- Subscription notice. Deliberately not dismissible: the close button
+		     used to forget the choice on the next page load, which is worse than
+		     no button at all — it asks for a decision and then ignores it. The
+		     link is hidden on Support itself, where it would do nothing. -->
+		<div v-if="licenseBanner" :class="['license-banner', licenseBanner.type]">
 			<span class="license-banner-text">
 				{{ licenseBanner.message }}
-				<a v-if="licenseBanner.link" :href="licenseBanner.link" :target="licenseBanner.external ? '_blank' : null"
+				<a v-if="licenseBanner.link && activeTab !== 'support'" :href="licenseBanner.link"
+					:target="licenseBanner.external ? '_blank' : null"
 					@click.prevent="licenseBanner.external ? null : setActiveTab('support')">
 					{{ licenseBanner.linkText }}
 				</a>
 			</span>
-			<button class="license-banner-close" @click="bannerDismissed = true">&times;</button>
 		</div>
 
 		<!-- Header -->
@@ -91,6 +94,7 @@ import PermissionsManager from './PermissionsManager.vue'
 import StatisticsSettings from './StatisticsSettings.vue'
 import SupportSettings from './SupportSettings.vue'
 import BackupRestore from './BackupRestore.vue'
+import { subscriptionNudge as buildSubscriptionNudge } from '../composables/useSubscriptionNudge.js'
 
 export default {
 	name: 'MetaVoxAdmin',
@@ -115,7 +119,6 @@ export default {
 	data() {
 		return {
 			activeTab: 'groupfolder-metadata',
-			bannerDismissed: false,
 			licenseStats: null,
 			tabs: [
 				{ id: 'groupfolder-metadata', name: this.t('metavox', 'Team folder Metadata') },
@@ -139,10 +142,13 @@ export default {
 			if (hasKey && !s.licenseValid) {
 				return { type: 'info', message: this.t('metavox', 'Your MetaVox subscription key needs attention.'), linkText: this.t('metavox', 'Visit Support'), link: '#support' }
 			}
-			// No subscription + significant usage — friendly nudge
-			// >50 users (exceeds smallest tier) or >20 team folders
-			if (!hasKey && ((s.totalUsers || 0) > 50 || (s.teamFoldersWithFields || 0) > 20)) {
-				return { type: 'info', message: this.t('metavox', 'Your organization is getting great value from MetaVox! Consider a subscription to support continued development.'), linkText: this.t('metavox', 'Learn more'), link: '#support' }
+			// The subscription suggestion, shared with the Support tab so the two
+			// cannot drift apart. The old trigger fired from 50 users or 20 team
+			// folders; paid subscriptions start at 100 users in the price list, so
+			// below that there was nothing to sell and the notice arrived early.
+			const nudge = buildSubscriptionNudge(s)
+			if (nudge) {
+				return { type: 'info', message: nudge, linkText: this.t('metavox', 'Learn more'), link: '#support' }
 			}
 			return null
 		},
