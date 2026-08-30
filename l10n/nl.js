@@ -433,7 +433,6 @@ OC.L10N.register(
     "Failed to apply defaults" : "Toepassen van standaardwaarden mislukt",
     "Applying defaults is taking longer than expected. It will continue in the background." : "Het toepassen van standaardwaarden duurt langer dan verwacht. Het gaat door op de achtergrond.",
     "Pricing details" : "Prijsinformatie",
-    "View in the Nextcloud App Store" : "Bekijk in de Nextcloud App Store",
     "Nextcloud Enterprise subscription detected on this instance. MetaVox subscriptions are sold through Nextcloud — contact your Nextcloud account manager or sales@nextcloud.com." : "Nextcloud Enterprise-abonnement gedetecteerd op deze instantie. MetaVox-abonnementen worden verkocht via Nextcloud — neem contact op met je Nextcloud-accountmanager of sales@nextcloud.com.",
     "MetaVox is running for {count} users here and keeps working in full without a subscription. If your organisation gets value from it, a subscription is much appreciated — it funds the maintenance. Sold through Nextcloud: contact your account manager or sales@nextcloud.com." : "MetaVox draait hier voor {count} gebruikers en blijft volledig werken zonder abonnement. Haalt je organisatie er waarde uit, dan wordt een abonnement zeer gewaardeerd — het financiert het onderhoud. Verkocht via Nextcloud: neem contact op met je accountmanager of sales@nextcloud.com."
 },

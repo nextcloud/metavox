@@ -433,7 +433,6 @@ OC.L10N.register(
     "Team folder" : "Team-Ordner",
     "Value" : "Wert",
     "Pricing details" : "Preisinformationen",
-    "View in the Nextcloud App Store" : "Im Nextcloud App Store ansehen",
     "Nextcloud Enterprise subscription detected on this instance. MetaVox subscriptions are sold through Nextcloud — contact your Nextcloud account manager or sales@nextcloud.com." : "Nextcloud Enterprise-Abonnement auf dieser Instanz erkannt. MetaVox-Abonnements werden über Nextcloud verkauft — wenden Sie sich an Ihren Nextcloud-Kundenbetreuer oder sales@nextcloud.com.",
     "MetaVox is running for {count} users here and keeps working in full without a subscription. If your organisation gets value from it, a subscription is much appreciated — it funds the maintenance. Sold through Nextcloud: contact your account manager or sales@nextcloud.com." : "MetaVox läuft hier für {count} Benutzer und funktioniert auch ohne Abonnement vollständig. Wenn Ihre Organisation davon profitiert, ist ein Abonnement sehr willkommen — es finanziert die Wartung. Verkauf über Nextcloud: wenden Sie sich an Ihren Kundenbetreuer oder sales@nextcloud.com."
 },
