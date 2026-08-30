@@ -410,7 +410,6 @@ OC.L10N.register(
     "Your installation" : "Your installation",
     "Your installation exceeds the free tier limits." : "Your installation exceeds the free tier limits.",
     "Your installation exceeds the free tier limits. Consider a VoxCloud license for unlimited use." : "Your installation exceeds the free tier limits. Consider a VoxCloud license for unlimited use.",
-    "Your organization is getting great value from MetaVox! Consider a subscription to support continued development." : "Your organization is getting great value from MetaVox! Consider a subscription to support continued development.",
     "e.g. MVOX-XXXX-XXXX-XXXX-XXXX" : "e.g. MVOX-XXXX-XXXX-XXXX-XXXX",
     "e.g. Value 1, Value 2" : "e.g. Value 1, Value 2",
     "e.g., Author, Document Type, Status" : "e.g., Author, Document Type, Status",
@@ -434,6 +433,8 @@ OC.L10N.register(
     "Failed to apply defaults" : "Failed to apply defaults",
     "Applying defaults is taking longer than expected. It will continue in the background." : "Applying defaults is taking longer than expected. It will continue in the background.",
     "Pricing details" : "Pricing details",
-    "View in the Nextcloud App Store" : "View in the Nextcloud App Store"
+    "View in the Nextcloud App Store" : "View in the Nextcloud App Store",
+    "Nextcloud Enterprise subscription detected on this instance. MetaVox subscriptions are sold through Nextcloud — contact your Nextcloud account manager or sales@nextcloud.com." : "Nextcloud Enterprise subscription detected on this instance. MetaVox subscriptions are sold through Nextcloud — contact your Nextcloud account manager or sales@nextcloud.com.",
+    "MetaVox is running for {count} users here and keeps working in full without a subscription. If your organisation gets value from it, a subscription is much appreciated — it funds the maintenance. Sold through Nextcloud: contact your account manager or sales@nextcloud.com." : "MetaVox is running for {count} users here and keeps working in full without a subscription. If your organisation gets value from it, a subscription is much appreciated — it funds the maintenance. Sold through Nextcloud: contact your account manager or sales@nextcloud.com."
 },
 "nplurals=2; plural=(n != 1);");

@@ -9,10 +9,19 @@ use OCP\Http\Client\IClientService;
 use OCP\IConfig;
 use OCP\IDBConnection;
 use OCP\IUserManager;
+use OCP\Support\Subscription\IRegistry;
 use Psr\Log\LoggerInterface;
 
 class LicenseService {
 	private const FREE_TEAM_FOLDER_LIMIT = 20;
+	/**
+	 * Above this many users the interface suggests a support subscription.
+	 *
+	 * Not a limit and not enforced anywhere -- the app behaves identically on
+	 * either side of it. It marks where paid subscriptions begin in the price
+	 * list, so below it there is genuinely nothing to suggest.
+	 */
+	private const SUPPORT_NUDGE_USER_THRESHOLD = 100;
 	// No entries-per-folder limit — only folder count is limited in free tier
 	private const LICENSE_SERVER_URL = 'https://licenses.voxcloud.nl';
 
@@ -22,6 +31,7 @@ class LicenseService {
 		private IDBConnection $db,
 		private IUserManager $userManager,
 		private LoggerInterface $logger,
+		private ?IRegistry $subscriptionRegistry = null,
 	) {
 	}
 
@@ -279,6 +289,9 @@ class LicenseService {
 			'totalEntries' => $stats['totalEntries'],
 			'entriesPerFolder' => $stats['entriesPerFolder'],
 			'totalUsers' => $stats['totalUsers'],
+			'supportNudgeUserThreshold' => self::SUPPORT_NUDGE_USER_THRESHOLD,
+			'hasValidSubscription' => $this->hasValidSubscription(),
+			'hasExtendedSupport' => $this->hasExtendedSupport(),
 			'hasLicense' => $hasLicense,
 			'licenseValid' => $licenseValid,
 			'licenseInfo' => $licenseInfo,
@@ -411,6 +424,46 @@ class LicenseService {
 			]);
 			return 0;
 		}
+	}
+
+
+	/**
+	 * Whether the host Nextcloud has a valid Enterprise subscription.
+	 *
+	 * Asks IRegistry rather than OCP\Util::hasExtendedSupport(), which answers a
+	 * different question: that helper reports the paid Extended Support add-on, so
+	 * an ordinary Enterprise customer without it answers false and looks like
+	 * Community. It also falls back to the `extendedSupport` system config value
+	 * when the registry is missing, which an admin can set by hand.
+	 *
+	 * Mirrors TelemetryService, so the settings page and the report sent to the
+	 * licence server cannot disagree about the same instance.
+	 */
+	private function hasValidSubscription(): bool {
+		try {
+			return $this->subscriptionRegistry?->delegateHasValidSubscription() ?? false;
+		} catch (\Throwable $e) {
+			$this->logger->debug('LicenseService: delegateHasValidSubscription() check failed', [
+				'error' => $e->getMessage()
+			]);
+		}
+		return false;
+	}
+
+	/**
+	 * Whether that subscription also carries the Extended Support add-on. A strict
+	 * subset of hasValidSubscription(), reported separately so the two signals stay
+	 * distinguishable.
+	 */
+	private function hasExtendedSupport(): bool {
+		try {
+			return $this->subscriptionRegistry?->delegateHasExtendedSupport() ?? false;
+		} catch (\Throwable $e) {
+			$this->logger->debug('LicenseService: delegateHasExtendedSupport() check failed', [
+				'error' => $e->getMessage()
+			]);
+		}
+		return false;
 	}
 
 }
