@@ -23,7 +23,7 @@ MetaVox adds SharePoint-style metadata management to Nextcloud Team Folders. Def
 
 **Ideal for:** SharePoint migrations, document classification, curriculum tagging, policy management, and research annotation. Used by universities, government organizations, and enterprises.
 
-Supports **Nextcloud 31, 32, 33, and 34** with automatic feature detection.
+Supports **Nextcloud 31, 32, 33, 34, and 35** with automatic feature detection.
 </description>
     <version>2.2.2</version>
     <licence>AGPL-3.0-or-later</licence>
@@ -47,7 +47,7 @@ Supports **Nextcloud 31, 32, 33, and 34** with automatic feature detection.
     <discussion>https://github.com/nextcloud/metavox/discussions</discussion>
     <dependencies>
         <php min-version="8.1"/>
-        <nextcloud min-version="31" max-version="34"/>
+        <nextcloud min-version="31" max-version="35"/>
     </dependencies>
     <commands>
         <command>OCA\MetaVox\Command\ApplyDefaults</command>
