@@ -8,10 +8,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [2.2.3] - 2026-09-23
 
-### Added
-- **Nextcloud 35 support.** Nextcloud 31–34 remain supported.
-
 ### Changed
+- **Nextcloud 35 support.** Nextcloud 31–34 remain supported.
 - **Deprecated Nextcloud APIs replaced** (`IAppConfig`, `getDatabaseProvider()`, `getLastInsertId()`, `\OCP\Server::get()`). No migration needed.
 - **User picker results are sorted by display name.**
 - **Settings page shows a single subscription notice**, only above 100 users.
