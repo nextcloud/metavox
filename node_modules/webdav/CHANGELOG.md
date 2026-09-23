@@ -1,5 +1,13 @@
 # WebDAV-Client changelog
 
+## v5.11.0
+_2026-09-19_
+
+ * [#410](https://github.com/perry-mitchell/webdav-client/pull/410) Clark-notation prop keys for namespace disambiguation
+ * **Bugfixes**:
+   * [#413](https://github.com/perry-mitchell/webdav-client/issues/413) Remove node types from web builds
+   * [#411](https://github.com/perry-mitchell/webdav-client/pull/411) Fix `EntityDecoder` type with correct import
+
 ## v5.10.0
 _2026-05-03_
 

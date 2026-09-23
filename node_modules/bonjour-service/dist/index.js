@@ -1,51 +1,57 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.Browser = exports.Service = exports.Bonjour = void 0;
-const registry_1 = __importDefault(require("./lib/registry"));
-const mdns_server_1 = __importDefault(require("./lib/mdns-server"));
-const browser_1 = __importDefault(require("./lib/browser"));
-exports.Browser = browser_1.default;
-const service_1 = __importDefault(require("./lib/service"));
-exports.Service = service_1.default;
-class Bonjour {
-    constructor(opts = {}, errorCallback) {
-        this.server = new mdns_server_1.default(opts, errorCallback);
-        this.registry = new registry_1.default(this.server);
-    }
-    publish(opts) {
-        return this.registry.publish(opts);
-    }
-    unpublishAll(callback) {
-        return this.registry.unpublishAll(callback);
-    }
-    find(opts = null, onup) {
-        return new browser_1.default(this.server.mdns, opts, onup);
-    }
-    findOne(opts = null, timeout = 10000, callback) {
-        const browser = new browser_1.default(this.server.mdns, opts);
-        var timer;
-        browser.once('up', (service) => {
-            if (timer !== undefined)
-                clearTimeout(timer);
-            browser.stop();
-            if (callback)
-                callback(service);
-        });
-        timer = setTimeout(() => {
-            browser.stop();
-            if (callback)
-                callback(null);
-        }, timeout);
-        return browser;
-    }
-    destroy(callback) {
-        this.registry.destroy();
-        this.server.mdns.destroy(callback);
-    }
+const bonjour_1 = __importDefault(require("./lib/bonjour"));
+const imported = __importStar(require("./lib/bonjour"));
+class Bonjour extends bonjour_1.default {
 }
-exports.Bonjour = Bonjour;
-exports.default = Bonjour;
+var BonjourClass = Bonjour;
+(function (Bonjour) {
+    Bonjour.Bonjour = BonjourClass;
+    Bonjour.Service = imported.Service;
+    Bonjour.Browser = imported.Browser;
+})(Bonjour || (Bonjour = {}));
+Object.defineProperty(Bonjour, 'default', {
+    enumerable: true,
+    value: Bonjour,
+});
+module.exports.Bonjour = Bonjour;
+module.exports.Service = imported.Service;
+module.exports.Browser = imported.Browser;
+module.exports.default = Bonjour;
+module.exports = Bonjour;
 //# sourceMappingURL=index.js.map

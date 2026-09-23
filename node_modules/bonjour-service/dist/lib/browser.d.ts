@@ -9,7 +9,13 @@ export interface BrowserConfig {
     txt?: KeyValue;
 }
 export type BrowserOnUp = (service: Service) => void;
-export declare class Browser extends EventEmitter {
+export interface BrowserEvents {
+    up: [service: Service];
+    down: [service: Service];
+    'txt-update': [newService: Service, existingService: Service];
+    'srv-update': [newService: Service, existingService: Service];
+}
+export declare class Browser extends EventEmitter<BrowserEvents> {
     private mdns;
     private onresponse;
     private serviceMap;
@@ -22,9 +28,12 @@ export declare class Browser extends EventEmitter {
     start(): void;
     stop(): void;
     update(): void;
+    expire(): void;
     get services(): Service[];
     private addService;
-    private updateService;
+    private updateServiceSrv;
+    private updateServiceTxt;
+    private replaceService;
     private removeService;
     private goodbyes;
     private buildServicesFor;

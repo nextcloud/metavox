@@ -5,7 +5,7 @@
 
 "use strict";
 
-const createMappingsSerializer = require("./createMappingsSerializer");
+const { createMappingsWriter } = require("./createMappingsSerializer");
 const streamChunks = require("./streamChunks");
 
 /** @typedef {import("../Source").RawSourceMap} RawSourceMap */
@@ -32,18 +32,24 @@ const streamAndGetSourceAndMap = (
 	onName,
 ) => {
 	let code = "";
-	let mappings = "";
 	/** @type {(string | null)[]} */
 	const potentialSources = [];
 	/** @type {(string | null)[]} */
 	const potentialSourcesContent = [];
 	/** @type {(string | null)[]} */
 	const potentialNames = [];
-	const addMapping = createMappingsSerializer({ ...options, columns: true });
+	const mappingsWriter = createMappingsWriter({ ...options, columns: true });
+	const addMapping = mappingsWriter.add;
 	const finalSource = Boolean(options && options.finalSource);
+	// The caller may have passed `source: false` (getMap does), but this
+	// helper caches the source text, so the inner stream must produce it.
+	const innerOptions =
+		options && options.source === false
+			? { ...options, source: true }
+			: options;
 	const { generatedLine, generatedColumn, source } = streamChunks(
 		inputSource,
-		options,
+		innerOptions,
 		(
 			chunk,
 			generatedLine,
@@ -54,7 +60,7 @@ const streamAndGetSourceAndMap = (
 			nameIndex,
 		) => {
 			if (chunk !== undefined) code += chunk;
-			mappings += addMapping(
+			addMapping(
 				generatedLine,
 				generatedColumn,
 				sourceIndex,
@@ -94,6 +100,7 @@ const streamAndGetSourceAndMap = (
 		},
 	);
 	const resultSource = source !== undefined ? source : code;
+	const mappings = mappingsWriter.finish();
 
 	return {
 		result: {

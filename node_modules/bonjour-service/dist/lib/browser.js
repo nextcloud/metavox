@@ -56,14 +56,17 @@ class Browser extends events_1.EventEmitter {
                     self.mdns.query(answer.data, 'PTR');
                 });
             }
+            const receiveTime = Date.now();
             Object.keys(nameMap).forEach(function (name) {
                 self.goodbyes(name, packet).forEach(self.removeService.bind(self));
-                var matches = self.buildServicesFor(name, packet, self.txt, rinfo);
+                var matches = self.buildServicesFor(name, packet, self.txt, rinfo, receiveTime);
                 if (matches.length === 0)
                     return;
                 matches.forEach((service) => {
-                    if (self.serviceMap[service.fqdn]) {
-                        self.updateService(service);
+                    const existingService = self._services.find((s) => (0, dns_equal_1.default)(s.fqdn, service.fqdn));
+                    if (existingService) {
+                        self.updateServiceSrv(existingService, service);
+                        self.updateServiceTxt(existingService, service);
                         return;
                     }
                     self.addService(service);
@@ -82,6 +85,19 @@ class Browser extends events_1.EventEmitter {
     update() {
         this.mdns.query(this.name, 'PTR');
     }
+    expire() {
+        const currentTime = Date.now();
+        this._services = this._services.filter((service) => {
+            if (!service.ttl || service.lastSeen === undefined)
+                return true;
+            const expireTime = service.lastSeen + service.ttl * 1000;
+            if (expireTime < currentTime) {
+                this.emit('down', service);
+                return false;
+            }
+            return true;
+        });
+    }
     get services() {
         return this._services;
     }
@@ -92,20 +108,32 @@ class Browser extends events_1.EventEmitter {
         this.serviceMap[service.fqdn] = true;
         this.emit('up', service);
     }
-    updateService(service) {
-        var _a;
-        if ((0, equal_txt_1.default)(service.txt, ((_a = this._services.find((s) => (0, dns_equal_1.default)(s.fqdn, service.fqdn))) === null || _a === void 0 ? void 0 : _a.txt) || {}))
+    updateServiceSrv(existingService, newService) {
+        if (existingService.name !== newService.name
+            || existingService.host !== newService.host
+            || existingService.port !== newService.port
+            || existingService.type !== newService.type
+            || existingService.protocol !== newService.protocol) {
+            this.replaceService(newService);
+            this.emit('srv-update', newService, existingService);
+        }
+    }
+    updateServiceTxt(existingService, service) {
+        if ((0, equal_txt_1.default)(service.txt, (existingService === null || existingService === void 0 ? void 0 : existingService.txt) || {}))
             return;
         if (!(0, filter_service_1.default)(service, this.txtQuery)) {
             this.removeService(service.fqdn);
             return;
         }
-        this._services = this._services.map(function (s) {
+        this.replaceService(service);
+        this.emit('txt-update', service, existingService);
+    }
+    replaceService(service) {
+        this._services = this._services.map((s) => {
             if (!(0, dns_equal_1.default)(s.fqdn, service.fqdn))
                 return s;
             return service;
         });
-        this.emit('txt-update', service);
     }
     removeService(fqdn) {
         var service, index;
@@ -127,14 +155,16 @@ class Browser extends events_1.EventEmitter {
             .filter((rr) => rr.type === 'PTR' && rr.ttl === 0 && (0, dns_equal_1.default)(rr.name, name))
             .map((rr) => rr.data);
     }
-    buildServicesFor(name, packet, txt, referer) {
+    buildServicesFor(name, packet, txt, referer, receiveTime) {
         var records = packet.answers.concat(packet.additionals).filter((rr) => rr.ttl > 0);
         return records
             .filter((rr) => rr.type === 'PTR' && (0, dns_equal_1.default)(rr.name, name))
             .map((ptr) => {
             const service = {
                 addresses: [],
-                subtypes: []
+                subtypes: [],
+                ttl: ptr.ttl,
+                lastSeen: receiveTime
             };
             records.filter((rr) => {
                 return (rr.type === 'PTR' && (0, dns_equal_1.default)(rr.data, ptr.data) && rr.name.includes('._sub'));

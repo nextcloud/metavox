@@ -2,6 +2,7 @@
 
 var hasOwn = require('hasown');
 
+/** @type {(current: string, specifier: string) => boolean} */
 function specifierIncluded(current, specifier) {
 	var nodeParts = current.split('.');
 	var parts = specifier.split(' ');
@@ -9,8 +10,8 @@ function specifierIncluded(current, specifier) {
 	var versionParts = (parts.length > 1 ? parts[1] : parts[0]).split('.');
 
 	for (var i = 0; i < 3; ++i) {
-		var cur = parseInt(nodeParts[i] || 0, 10);
-		var ver = parseInt(versionParts[i] || 0, 10);
+		var cur = parseInt(nodeParts[i] || '0', 10);
+		var ver = parseInt(versionParts[i] || '0', 10);
 		if (cur === ver) {
 			continue; // eslint-disable-line no-restricted-syntax, no-continue
 		}
@@ -25,6 +26,7 @@ function specifierIncluded(current, specifier) {
 	return op === '>=';
 }
 
+/** @type {(current: string, range: string) => boolean} */
 function matchesRange(current, range) {
 	var specifiers = range.split(/ ?&& ?/);
 	if (specifiers.length === 0) {
@@ -38,6 +40,7 @@ function matchesRange(current, range) {
 	return true;
 }
 
+/** @type {(nodeVersion: string | undefined, specifierValue: Data[Module]) => boolean} */
 function versionIncluded(nodeVersion, specifierValue) {
 	if (typeof specifierValue === 'boolean') {
 		return specifierValue;
@@ -62,8 +65,12 @@ function versionIncluded(nodeVersion, specifierValue) {
 	return matchesRange(current, specifierValue);
 }
 
+/** @import { Data, Module } from '.' */
+
+/** @type {Data} */
 var data = require('./core.json');
 
+/** @type {typeof import('.')} */
 module.exports = function isCore(x, nodeVersion) {
-	return hasOwn(data, x) && versionIncluded(nodeVersion, data[x]);
+	return hasOwn(data, x) && versionIncluded(nodeVersion, data[/** @type {Module} */ (x)]);
 };

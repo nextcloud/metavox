@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkmetavox=self.webpackChunkmetavox||[]).push([[1415],{1415(e,a,s){s.r(a),s.d(a,{default:()=>t.N});var t=s(1863)}}]);

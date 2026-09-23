@@ -15,14 +15,16 @@ class Registry {
         this.server = server;
     }
     publish(config) {
-        function start(service, registry, opts) {
+        const configProbe = config.probe !== false;
+        const service = new service_1.default(config, start.bind(null, this), stop.bind(null, this));
+        function start(registry, { probe = configProbe } = {}) {
             if (service.activated)
                 return;
             service.activated = true;
             registry.services.push(service);
             if (!(service instanceof service_1.default))
                 return;
-            if (opts === null || opts === void 0 ? void 0 : opts.probe) {
+            if (probe) {
                 registry.probe(registry.server.mdns, service, (exists) => {
                     if (exists) {
                         if (service.stop !== undefined)
@@ -37,7 +39,7 @@ class Registry {
                 registry.announce(registry.server, service);
             }
         }
-        function stop(service, registry, callback) {
+        function stop(registry, callback) {
             if (!callback)
                 callback = noop;
             if (!service.activated)
@@ -49,10 +51,7 @@ class Registry {
             if (index !== -1)
                 registry.services.splice(index, 1);
         }
-        const service = new service_1.default(config);
-        service.start = start.bind(null, service, this);
-        service.stop = stop.bind(null, service, this);
-        service.start({ probe: config.probe !== false });
+        service.start();
         return service;
     }
     unpublishAll(callback) {

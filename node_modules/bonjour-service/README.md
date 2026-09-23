@@ -1,6 +1,6 @@
 # bonjour-service
-
-![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/onlxltd/bonjour-service/publish-release.yml?style=flat-square) ![npm bundle size](https://img.shields.io/bundlephobia/min/bonjour-service?style=flat-square) ![GitHub Release Date](https://img.shields.io/github/release-date/onlxltd/bonjour-service?style=flat-square) ![npm](https://img.shields.io/npm/dw/bonjour-service?color=%23888&style=flat-square) ![GitHub](https://img.shields.io/github/license/onlxltd/bonjour-service?style=flat-square) [![DeepScan grade](https://deepscan.io/api/teams/13435/projects/16430/branches/352351/badge/grade.svg?style=flat-square)](https://deepscan.io/dashboard#view=project&tid=13435&pid=16430&bid=352351)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/onlxltd/bonjour-service/build-and-test.yml?style=flat-square)
+ ![npm bundle size](https://img.shields.io/bundlephobia/min/bonjour-service?style=flat-square) ![GitHub Release Date](https://img.shields.io/github/release-date/onlxltd/bonjour-service?style=flat-square) ![npm](https://img.shields.io/npm/dw/bonjour-service?color=%23888&style=flat-square) ![GitHub](https://img.shields.io/github/license/onlxltd/bonjour-service?style=flat-square) [![DeepScan grade](https://deepscan.io/api/teams/13435/projects/16430/branches/352351/badge/grade.svg?style=flat-square)](https://deepscan.io/dashboard#view=project&tid=13435&pid=16430&bid=352351)
 
 A Bonjour/Zeroconf protocol implementation in TypeScript. Publish
 services on the local network or discover existing services using
@@ -27,7 +27,8 @@ npm install bonjour-service
 ## Usage
 
 ```js
-import { Bonjour } from 'bonjour-service'
+import Bonjour from 'bonjour-service'
+// or import { Bonjour } from 'bonjour-service'
 
 const instance = new Bonjour()
 
@@ -45,7 +46,7 @@ instance.find({ type: 'http' }, function (service) {
 ### Initializing
 
 ```js
-var instance = new Bonjour({ options }, errorCallback)
+const instance = new Bonjour({ options }, errorCallback)
 ```
 
 The `options` are optional and will be used when initializing the
@@ -57,7 +58,7 @@ crash the process. While not being strictly required, providing this is highly r
 
 ### Publishing
 
-#### `var service = bonjour.publish(options)`
+#### `const service = bonjour.publish(options)`
 
 Publishes a new service.
 
@@ -87,7 +88,7 @@ Destroy the mdns instance. Closes the udp socket.
 
 ### Browser
 
-#### `var browser = bonjour.find(options[, onup])`
+#### `const browser = bonjour.find(options[, onup])`
 
 Listen for services advertised on the network. An optional callback can
 be provided as the 2nd argument and will be added as an event listener
@@ -102,7 +103,7 @@ Options (all optional):
   module](https://github.com/watson/dns-txt) contructor. Set to `{
   binary: true }` if you want to keep the TXT records in binary
 
-#### `var browser = bonjour.findOne(options[, callback])`
+#### `const browser = bonjour.findOne(options[, callback])`
 
 Listen for and call the `callback` with the first instance of a service
 matching the `options`. If no `callback` is given, it's expected that
@@ -118,6 +119,10 @@ Emitted every time a new service is found that matches the browser.
 #### `Event: down`
 
 Emitted every time an existing service emmits a goodbye message.
+
+#### `Event: srv-update`
+
+Emitted every time an existing service does a new announcement with an updated SRV record.
 
 #### `Event: txt-update`
 
@@ -138,6 +143,10 @@ Stop looking for matching services.
 #### `browser.update()`
 
 Broadcast the query again.
+
+#### `browser.expire()`
+
+Check any services for an expired TTL and emit stop events.
 
 ### Service
 
