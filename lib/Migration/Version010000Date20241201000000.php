@@ -92,13 +92,13 @@ class Version010000Date20241201000000 extends SimpleMigrationStep {
     }
 
     public function postSchemaChange(IOutput $output, Closure $schemaClosure, array $options): void {
-        $connection = \OC::$server->get(IDBConnection::class);
+        $connection = \OCP\Server::get(IDBConnection::class);
 
         // Add FULLTEXT index for MySQL after table creation
-        if ($connection->getDatabasePlatform() instanceof \Doctrine\DBAL\Platforms\MySqlPlatform) {
+        if ($connection->getDatabaseProvider() === IDBConnection::PLATFORM_MYSQL) {
             try {
                 // Get the actual table name with prefix (NC32+ compatible)
-                $tablePrefix = \OC::$server->get(IConfig::class)->getSystemValue('dbtableprefix', 'oc_');
+                $tablePrefix = \OCP\Server::get(IConfig::class)->getSystemValue('dbtableprefix', 'oc_');
                 $tableName = $tablePrefix . 'metavox_search_index';
 
                 // Check if FULLTEXT index already exists
@@ -124,7 +124,7 @@ class Version010000Date20241201000000 extends SimpleMigrationStep {
             }
         } else {
             // For non-MySQL databases, we'll use LIKE queries instead of FULLTEXT
-            $output->info('Using LIKE-based search for ' . get_class($connection->getDatabasePlatform()));
+            $output->info('Using LIKE-based search for ' . $connection->getDatabaseProvider());
         }
     }
 }

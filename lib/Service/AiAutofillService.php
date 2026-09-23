@@ -6,7 +6,7 @@ namespace OCA\MetaVox\Service;
 
 use OCP\App\IAppManager;
 use OCP\Files\IRootFolder;
-use OCP\IConfig;
+use OCP\IAppConfig;
 use OCP\TaskProcessing\IManager as ITaskManager;
 use OCP\TaskProcessing\Task;
 use Psr\Log\LoggerInterface;
@@ -16,7 +16,7 @@ class AiAutofillService {
     private ITaskManager $taskManager;
     private IRootFolder $rootFolder;
     private FieldService $fieldService;
-    private IConfig $config;
+    private IAppConfig $appConfig;
     private IAppManager $appManager;
     private LoggerInterface $logger;
 
@@ -31,14 +31,14 @@ class AiAutofillService {
         ITaskManager $taskManager,
         IRootFolder $rootFolder,
         FieldService $fieldService,
-        IConfig $config,
+        IAppConfig $appConfig,
         IAppManager $appManager,
         LoggerInterface $logger
     ) {
         $this->taskManager = $taskManager;
         $this->rootFolder = $rootFolder;
         $this->fieldService = $fieldService;
-        $this->config = $config;
+        $this->appConfig = $appConfig;
         $this->appManager = $appManager;
         $this->logger = $logger;
     }
@@ -47,14 +47,14 @@ class AiAutofillService {
      * Check if AI is enabled by admin
      */
     public function isEnabledByAdmin(): bool {
-        return $this->config->getAppValue(self::APP_ID, 'ai_enabled', 'true') === 'true';
+        return $this->appConfig->getValueString(self::APP_ID, 'ai_enabled', 'true') === 'true';
     }
 
     /**
      * Enable or disable AI autofill
      */
     public function setEnabled(bool $enabled): void {
-        $this->config->setAppValue(self::APP_ID, 'ai_enabled', $enabled ? 'true' : 'false');
+        $this->appConfig->setValueString(self::APP_ID, 'ai_enabled', $enabled ? 'true' : 'false');
     }
 
     private const TASK_TYPES = ['core:text2text', 'core:text2text:chat'];

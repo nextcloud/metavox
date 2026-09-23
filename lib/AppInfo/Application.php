@@ -81,7 +81,7 @@ class Application extends App implements IBootstrap {
 
         // Load Files app integration only when needed
         // NC34 removed \OC::$server->getRequest() — use container lookup instead.
-        $request = \OC::$server->get(IRequest::class);
+        $request = \OCP\Server::get(IRequest::class);
         $requestUri = $request->getRequestUri();
 
         // Also check pathInfo for reverse proxy setups with subpaths
@@ -105,12 +105,12 @@ class Application extends App implements IBootstrap {
 
             // Inline init data for the current groupfolder so the JS has everything at startup
             try {
-                $user = \OC::$server->get(IUserSession::class)->getUser();
+                $user = \OCP\Server::get(IUserSession::class)->getUser();
                 if ($user) {
                     $dir = $_GET['dir'] ?? '';
                     $userId = $user->getUID();
 
-                    $userFieldService = \OC::$server->get(UserFieldService::class);
+                    $userFieldService = \OCP\Server::get(UserFieldService::class);
                     $groupfolders = $userFieldService->getAccessibleGroupfolders($userId);
 
                     $groupfolderId = null;
@@ -129,13 +129,13 @@ class Application extends App implements IBootstrap {
                     ];
 
                     if ($groupfolderId !== null) {
-                        $fieldService = \OC::$server->get(FieldService::class);
+                        $fieldService = \OCP\Server::get(FieldService::class);
 
                         // Register presence (30 min TTL)
-                        $presenceService = \OC::$server->get(PresenceService::class);
+                        $presenceService = \OCP\Server::get(PresenceService::class);
                         $presenceService->register($groupfolderId, $userId);
-                        $viewService = \OC::$server->get(ViewService::class);
-                        $permissionService = \OC::$server->get(PermissionService::class);
+                        $viewService = \OCP\Server::get(ViewService::class);
+                        $permissionService = \OCP\Server::get(PermissionService::class);
 
                         $gfData = [
                             'fields' => $fieldService->getAssignedFileFieldsForGroupfolder($groupfolderId),
@@ -148,14 +148,14 @@ class Application extends App implements IBootstrap {
                         // Prefetch directory metadata for instant cell rendering
                         if ($dir !== '') {
                             try {
-                                $rootFolder = \OC::$server->get(\OCP\Files\IRootFolder::class);
+                                $rootFolder = \OCP\Server::get(\OCP\Files\IRootFolder::class);
                                 $userFolder = $rootFolder->getUserFolder($userId);
                                 $dirNode = $userFolder->get($dir);
                                 if ($dirNode instanceof \OCP\Files\Folder) {
                                     $children = $dirNode->getDirectoryListing();
                                     $fileIds = array_map(fn($n) => $n->getId(), $children);
                                     if (!empty($fileIds) && count($fileIds) <= 100) {
-                                        $filterService = \OC::$server->get(FilterService::class);
+                                        $filterService = \OCP\Server::get(FilterService::class);
                                         $directoryMetadata = $filterService->getDirectoryMetadata($fileIds, $groupfolderId);
                                         $gfData['directory_metadata'] = $directoryMetadata;
 
@@ -230,7 +230,7 @@ class Application extends App implements IBootstrap {
         }
 
         try {
-            $refService = \OC::$server->get(\OCA\MetaVox\Service\FileReferenceService::class);
+            $refService = \OCP\Server::get(\OCA\MetaVox\Service\FileReferenceService::class);
             $resolved = $refService->resolveMany($referencedIds, $userId);
         } catch (\Throwable $e) {
             return [];

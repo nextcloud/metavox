@@ -39,7 +39,7 @@ class PushService {
         $this->cache = $cacheFactory->createDistributed('metavox_push');
 
         try {
-            $this->notifyQueue = \OC::$server->get(\OCA\NotifyPush\Queue\IQueue::class);
+            $this->notifyQueue = \OCP\Server::get(\OCA\NotifyPush\Queue\IQueue::class);
         } catch (\Exception $e) {
             // notify_push not installed
         }

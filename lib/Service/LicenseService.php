@@ -6,6 +6,7 @@ namespace OCA\MetaVox\Service;
 
 use OCA\MetaVox\AppInfo\Application;
 use OCP\Http\Client\IClientService;
+use OCP\IAppConfig;
 use OCP\IConfig;
 use OCP\IDBConnection;
 use OCP\IUserManager;
@@ -28,6 +29,7 @@ class LicenseService {
 	public function __construct(
 		private IClientService $httpClient,
 		private IConfig $config,
+		private IAppConfig $appConfig,
 		private IDBConnection $db,
 		private IUserManager $userManager,
 		private LoggerInterface $logger,
@@ -38,19 +40,19 @@ class LicenseService {
 	// --- License key management ---
 
 	public function getLicenseKey(): string {
-		return $this->config->getAppValue(Application::APP_ID, 'license_key', '');
+		return $this->appConfig->getValueString(Application::APP_ID, 'license_key', '');
 	}
 
 	public function setLicenseKey(string $key): void {
-		$this->config->setAppValue(Application::APP_ID, 'license_key', trim($key));
+		$this->appConfig->setValueString(Application::APP_ID, 'license_key', trim($key));
 		// Clear cached validation when key changes
-		$this->config->deleteAppValue(Application::APP_ID, 'license_valid');
-		$this->config->deleteAppValue(Application::APP_ID, 'license_info');
-		$this->config->deleteAppValue(Application::APP_ID, 'license_limits');
+		$this->appConfig->deleteKey(Application::APP_ID, 'license_valid');
+		$this->appConfig->deleteKey(Application::APP_ID, 'license_info');
+		$this->appConfig->deleteKey(Application::APP_ID, 'license_limits');
 	}
 
 	public function getLicenseServerUrl(): string {
-		return $this->config->getAppValue(Application::APP_ID, 'license_server_url', self::LICENSE_SERVER_URL);
+		return $this->appConfig->getValueString(Application::APP_ID, 'license_server_url', self::LICENSE_SERVER_URL);
 	}
 
 	/**
@@ -144,13 +146,13 @@ class LicenseService {
 			$data = json_decode($response->getBody(), true);
 
 			if ($data['valid'] ?? false) {
-				$this->config->setAppValue(Application::APP_ID, 'license_valid', 'true');
-				$this->config->setAppValue(Application::APP_ID, 'license_info', json_encode($data));
-				$this->config->setAppValue(Application::APP_ID, 'license_last_check', (string)time());
+				$this->appConfig->setValueString(Application::APP_ID, 'license_valid', 'true');
+				$this->appConfig->setValueString(Application::APP_ID, 'license_info', (string)json_encode($data));
+				$this->appConfig->setValueString(Application::APP_ID, 'license_last_check', (string)time());
 				return $data;
 			}
 
-			$this->config->setAppValue(Application::APP_ID, 'license_valid', 'false');
+			$this->appConfig->setValueString(Application::APP_ID, 'license_valid', 'false');
 			return $data;
 		} catch (\Exception $e) {
 			$this->logger->warning('LicenseService: Failed to validate license', [
@@ -158,10 +160,10 @@ class LicenseService {
 			]);
 
 			// Fallback to cached validation
-			$cachedValid = $this->config->getAppValue(Application::APP_ID, 'license_valid', '');
+			$cachedValid = $this->appConfig->getValueString(Application::APP_ID, 'license_valid', '');
 			if ($cachedValid === 'true') {
 				$cachedInfo = json_decode(
-					$this->config->getAppValue(Application::APP_ID, 'license_info', '{}'),
+					$this->appConfig->getValueString(Application::APP_ID, 'license_info', '{}'),
 					true
 				);
 				return array_merge($cachedInfo, ['valid' => true, 'cached' => true]);
@@ -186,7 +188,7 @@ class LicenseService {
 				'json' => [
 					'licenseKey' => $licenseKey,
 					'instanceUrlHash' => $this->getInstanceUrlHash(),
-					'instanceName' => $this->config->getAppValue(Application::APP_ID, 'organization_name', ''),
+					'instanceName' => $this->appConfig->getValueString(Application::APP_ID, 'organization_name', ''),
 					'appType' => 'metavox',
 					'currentTeamFolders' => $stats['teamFoldersWithFields'],
 					'totalMetadataEntries' => $stats['totalEntries'],
@@ -206,7 +208,7 @@ class LicenseService {
 			$data = json_decode($response->getBody(), true);
 
 			if (isset($data['limits'])) {
-				$this->config->setAppValue(Application::APP_ID, 'license_limits', json_encode($data['limits']));
+				$this->appConfig->setValueString(Application::APP_ID, 'license_limits', (string)json_encode($data['limits']));
 			}
 
 			return $data;
@@ -239,7 +241,7 @@ class LicenseService {
 
 		// Licensed: use cached limits from server or validate
 		$cachedLimits = json_decode(
-			$this->config->getAppValue(Application::APP_ID, 'license_limits', '{}'),
+			$this->appConfig->getValueString(Application::APP_ID, 'license_limits', '{}'),
 			true
 		);
 
@@ -265,10 +267,10 @@ class LicenseService {
 		$licenseValid = false;
 		$licenseInfo = [];
 		if ($hasLicense) {
-			$cachedValid = $this->config->getAppValue(Application::APP_ID, 'license_valid', '');
+			$cachedValid = $this->appConfig->getValueString(Application::APP_ID, 'license_valid', '');
 			$licenseValid = $cachedValid === 'true';
 			$licenseInfo = json_decode(
-				$this->config->getAppValue(Application::APP_ID, 'license_info', '{}'),
+				$this->appConfig->getValueString(Application::APP_ID, 'license_info', '{}'),
 				true
 			);
 		}
@@ -379,7 +381,7 @@ class LicenseService {
 	}
 
 	private function getAppVersion(): string {
-		return $this->config->getAppValue(Application::APP_ID, 'installed_version', '0.0.0');
+		return $this->appConfig->getValueString(Application::APP_ID, 'installed_version', '0.0.0');
 	}
 	/**
 	 * How the user count is taken, reported alongside it so the licence server
