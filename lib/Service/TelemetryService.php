@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace OCA\MetaVox\Service;
 
 use OCP\Http\Client\IClientService;
+use OCP\IAppConfig;
 use OCP\IConfig;
 use OCP\IDBConnection;
 use OCP\IUserManager;
@@ -21,6 +22,7 @@ class TelemetryService {
 
     private IClientService $httpClient;
     private IConfig $config;
+    private IAppConfig $appConfig;
     private IDBConnection $db;
     private LoggerInterface $logger;
     private IUserManager $userManager;
@@ -31,6 +33,7 @@ class TelemetryService {
     public function __construct(
         IClientService $httpClient,
         IConfig $config,
+        IAppConfig $appConfig,
         IDBConnection $db,
         LoggerInterface $logger,
         IUserManager $userManager,
@@ -40,6 +43,7 @@ class TelemetryService {
     ) {
         $this->httpClient = $httpClient;
         $this->config = $config;
+        $this->appConfig = $appConfig;
         $this->db = $db;
         $this->logger = $logger;
         $this->userManager = $userManager;
@@ -53,14 +57,14 @@ class TelemetryService {
      * Default is true (opt-out instead of opt-in)
      */
     public function isEnabled(): bool {
-        return $this->config->getAppValue(self::APP_ID, 'telemetry_enabled', 'true') === 'true';
+        return $this->appConfig->getValueString(self::APP_ID, 'telemetry_enabled', 'true') === 'true';
     }
 
     /**
      * Enable or disable telemetry
      */
     public function setEnabled(bool $enabled): void {
-        $this->config->setAppValue(self::APP_ID, 'telemetry_enabled', $enabled ? 'true' : 'false');
+        $this->appConfig->setValueString(self::APP_ID, 'telemetry_enabled', $enabled ? 'true' : 'false');
         $this->logger->info('TelemetryService: Telemetry ' . ($enabled ? 'enabled' : 'disabled'));
     }
 
@@ -68,7 +72,7 @@ class TelemetryService {
      * Get the telemetry server URL
      */
     public function getTelemetryUrl(): string {
-        return $this->config->getAppValue(
+        return $this->appConfig->getValueString(
             self::APP_ID,
             'telemetry_url',
             self::TELEMETRY_URL
@@ -114,7 +118,7 @@ class TelemetryService {
                 ]);
 
                 // Store last report time
-                $this->config->setAppValue(
+                $this->appConfig->setValueString(
                     self::APP_ID,
                     'telemetry_last_report',
                     (string)time()
@@ -487,7 +491,7 @@ class TelemetryService {
      * Get the MetaVox app version
      */
     private function getAppVersion(): string {
-        return $this->config->getAppValue(self::APP_ID, 'installed_version', 'unknown');
+        return $this->appConfig->getValueString(self::APP_ID, 'installed_version', 'unknown');
     }
 
     /**
@@ -501,7 +505,7 @@ class TelemetryService {
      * Get the last report timestamp
      */
     public function getLastReportTime(): ?int {
-        $time = $this->config->getAppValue(self::APP_ID, 'telemetry_last_report', '');
+        $time = $this->appConfig->getValueString(self::APP_ID, 'telemetry_last_report', '');
         return empty($time) ? null : (int)$time;
     }
 

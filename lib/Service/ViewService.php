@@ -106,7 +106,7 @@ class ViewService {
            ]);
 
         $qb->executeStatement();
-        $newId = $this->db->lastInsertId('metavox_gf_views');
+        $newId = $qb->getLastInsertId();
 
         $this->cache->remove("gf_{$gfId}_views");
         return $this->getView((int)$newId, $gfId);

@@ -163,7 +163,7 @@ class MetadataBackupJob extends TimedJob {
 
     private function getAppVersion(): string {
         try {
-            $appManager = \OC::$server->get(\OCP\App\IAppManager::class);
+            $appManager = \OCP\Server::get(\OCP\App\IAppManager::class);
             return $appManager->getAppVersion('metavox');
         } catch (\Exception) {
             return 'unknown';

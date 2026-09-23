@@ -7,7 +7,6 @@ namespace OCA\MetaVox\Listener;
 use OCA\MetaVox\Flow\MetadataCheck;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventListener;
-use OCP\IServerContainer;
 use OCP\Util;
 use OCP\WorkflowEngine\Events\RegisterChecksEvent;
 
@@ -19,7 +18,7 @@ use OCP\WorkflowEngine\Events\RegisterChecksEvent;
 class RegisterFlowChecksListener implements IEventListener {
 
     public function __construct(
-        private IServerContainer $container,
+        private MetadataCheck $metadataCheck,
     ) {
     }
 
@@ -29,8 +28,7 @@ class RegisterFlowChecksListener implements IEventListener {
         }
 
         // Register the MetaVox metadata check
-        $check = $this->container->get(MetadataCheck::class);
-        $event->registerCheck($check);
+        $event->registerCheck($this->metadataCheck);
 
         // Load the Flow UI script
         Util::addScript('metavox', 'metavox-flow');

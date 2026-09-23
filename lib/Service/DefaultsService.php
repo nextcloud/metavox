@@ -348,7 +348,7 @@ class DefaultsService {
         }
 
         $now = date('Y-m-d H:i:s');
-        $isMysql = $this->db->getDatabasePlatform() instanceof \Doctrine\DBAL\Platforms\MySqlPlatform;
+        $isMysql = $this->db->getDatabaseProvider() === IDBConnection::PLATFORM_MYSQL;
 
         // Build (fileId, fieldName, value) tuples, chunked to stay under param limits.
         $tuples = [];

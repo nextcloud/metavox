@@ -15,7 +15,7 @@ use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\BackgroundJob\IJobList;
 use OCP\Files\IRootFolder;
-use OCP\IConfig;
+use OCP\IAppConfig;
 use OCP\IRequest;
 use OCP\IUserSession;
 use Psr\Log\LoggerInterface;
@@ -43,7 +43,7 @@ class DefaultsController extends BaseController {
         private readonly DefaultsService $defaultsService,
         private readonly FileReferenceService $fileReferenceService,
         private readonly IJobList $jobList,
-        private readonly IConfig $config,
+        private readonly IAppConfig $appConfig,
         private readonly LoggerInterface $logger,
     ) {
         parent::__construct($appName, $request, $userSession, $permissionService, $fieldService, $rootFolder);
@@ -144,7 +144,7 @@ class DefaultsController extends BaseController {
 
         // Reset this folder's cursor so the next discovery run rescans from the
         // top and picks up files that the changed defaults now apply to.
-        $this->config->setAppValue(Application::APP_ID, 'defaults_cursor_gf_' . $groupfolderId, '0');
+        $this->appConfig->setValueString(Application::APP_ID, 'defaults_cursor_gf_' . $groupfolderId, '0');
 
         // Ensure a discovery run is queued. The TimedJob is registered, but
         // adding it to the job list nudges it to run on the next cron tick

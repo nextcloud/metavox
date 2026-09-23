@@ -389,8 +389,8 @@ class BackupController extends Controller {
 
     private function doRestore(string $path, bool $isGz, int $totalRows): array {
         $restored = [];
-        $platform = $this->db->getDatabasePlatform();
-        $isPostgres = $platform instanceof \Doctrine\DBAL\Platforms\PostgreSQLPlatform;
+        $dbProvider = $this->db->getDatabaseProvider();
+        $isPostgres = $dbProvider === IDBConnection::PLATFORM_POSTGRES;
         $q = $isPostgres ? '"' : '`';
         $prefix = $this->config->getSystemValue('dbtableprefix', 'oc_');
 
@@ -568,10 +568,10 @@ class BackupController extends Controller {
     private function flushBatch(string $table, array $batch, ?array $columns, array &$restored): void {
         if (empty($batch) || empty($columns)) return;
 
-        $platform = $this->db->getDatabasePlatform();
+        $dbProvider = $this->db->getDatabaseProvider();
         $prefix = $this->config->getSystemValue('dbtableprefix', 'oc_');
         $fullTable = $prefix . $table;
-        $q = ($platform instanceof \Doctrine\DBAL\Platforms\PostgreSQLPlatform) ? '"' : '`';
+        $q = ($dbProvider === IDBConnection::PLATFORM_POSTGRES) ? '"' : '`';
 
         $colList = $q . implode("{$q},{$q}", $columns) . $q;
         $rowPlaceholder = '(' . implode(',', array_fill(0, count($columns), '?')) . ')';
@@ -644,7 +644,7 @@ class BackupController extends Controller {
 
     private function getAppVersion(): string {
         try {
-            $appManager = \OC::$server->get(\OCP\App\IAppManager::class);
+            $appManager = \OCP\Server::get(\OCP\App\IAppManager::class);
             return $appManager->getAppVersion('metavox');
         } catch (\Exception) {
             return 'unknown';

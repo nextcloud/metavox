@@ -44,7 +44,7 @@ public function getAccessibleGroupfolders(string $userId): array {
 
         // Use the groupfolders app's FolderManager — handles both groups and circles/teams
         try {
-            $folderManager = \OC::$server->get(\OCA\GroupFolders\Folder\FolderManager::class);
+            $folderManager = \OCP\Server::get(\OCA\GroupFolders\Folder\FolderManager::class);
             $gfFolders = $folderManager->getFoldersForUser($user);
 
             $folders = [];
@@ -222,7 +222,7 @@ public function hasAccessToGroupfolder(string $userId, int $groupfolderId): bool
             }
             $result->closeCursor();
 
-            $platform = $this->db->getDatabasePlatform();
+            $dbProvider = $this->db->getDatabaseProvider();
             $now = date('Y-m-d H:i:s');
 
             foreach ($metadata as $fieldName => $value) {
@@ -231,7 +231,7 @@ public function hasAccessToGroupfolder(string $userId, int $groupfolderId): bool
                 }
 
                 // UPSERT: single query instead of SELECT + INSERT/UPDATE
-                if ($platform instanceof \Doctrine\DBAL\Platforms\MySqlPlatform) {
+                if ($dbProvider === IDBConnection::PLATFORM_MYSQL) {
                     $sql = "INSERT INTO *PREFIX*metavox_gf_metadata
                             (groupfolder_id, field_name, field_value, created_at, updated_at)
                             VALUES (?, ?, ?, ?, ?)

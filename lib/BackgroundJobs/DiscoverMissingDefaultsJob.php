@@ -9,7 +9,7 @@ use OCA\MetaVox\Service\DefaultsService;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\IJobList;
 use OCP\BackgroundJob\TimedJob;
-use OCP\IConfig;
+use OCP\IAppConfig;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -56,7 +56,7 @@ class DiscoverMissingDefaultsJob extends TimedJob {
         ITimeFactory $time,
         private readonly DefaultsService $defaultsService,
         private readonly IJobList $jobList,
-        private readonly IConfig $config,
+        private readonly IAppConfig $appConfig,
         private readonly LoggerInterface $logger,
     ) {
         parent::__construct($time);
@@ -161,7 +161,7 @@ class DiscoverMissingDefaultsJob extends TimedJob {
     }
 
     private function getCursor(int $groupfolderId): int {
-        return (int)$this->config->getAppValue(
+        return (int)$this->appConfig->getValueString(
             Application::APP_ID,
             self::CURSOR_CONFIG_PREFIX . $groupfolderId,
             '0'
@@ -169,7 +169,7 @@ class DiscoverMissingDefaultsJob extends TimedJob {
     }
 
     private function setCursor(int $groupfolderId, int $cursor): void {
-        $this->config->setAppValue(
+        $this->appConfig->setValueString(
             Application::APP_ID,
             self::CURSOR_CONFIG_PREFIX . $groupfolderId,
             (string)$cursor
@@ -177,7 +177,7 @@ class DiscoverMissingDefaultsJob extends TimedJob {
     }
 
     private function resetCursor(int $groupfolderId): void {
-        $this->config->setAppValue(
+        $this->appConfig->setValueString(
             Application::APP_ID,
             self::CURSOR_CONFIG_PREFIX . $groupfolderId,
             '0'

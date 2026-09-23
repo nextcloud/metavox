@@ -7,6 +7,7 @@ namespace OCA\MetaVox\BackgroundJobs;
 use OCA\MetaVox\Service\LicenseService;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\TimedJob;
+use OCP\IAppConfig;
 use OCP\IConfig;
 use Psr\Log\LoggerInterface;
 
@@ -21,6 +22,7 @@ class LicenseUsageJob extends TimedJob {
 		ITimeFactory $time,
 		private LicenseService $licenseService,
 		private IConfig $config,
+		private IAppConfig $appConfig,
 		private LoggerInterface $logger,
 	) {
 		parent::__construct($time);
@@ -52,7 +54,7 @@ class LicenseUsageJob extends TimedJob {
 			// Report usage regardless of validation result
 			$this->licenseService->updateUsage();
 
-			$this->config->setAppValue('metavox', 'license_last_sync', (string)time());
+			$this->appConfig->setValueString('metavox', 'license_last_sync', (string)time());
 		} catch (\Exception $e) {
 			$this->logger->error('LicenseUsageJob: Failed to sync license usage', [
 				'error' => $e->getMessage(),

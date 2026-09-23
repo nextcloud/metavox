@@ -321,7 +321,7 @@ private function searchFromIndex(string $searchTerm, string $userId): array {
     
     // Check if FULLTEXT index exists and database supports it reliably
     $useFulltext = false;
-    if ($this->db->getDatabasePlatform() instanceof \Doctrine\DBAL\Platforms\MySqlPlatform) {
+    if ($this->db->getDatabaseProvider() === IDBConnection::PLATFORM_MYSQL) {
         try {
             // Test if FULLTEXT index works
             $testQb = $this->db->getQueryBuilder();
@@ -699,7 +699,7 @@ private function upsertSearchIndex(int $fileId, ?string $userId, int $storageId,
             return;
         }
 
-        $isMysql = $this->db->getDatabasePlatform() instanceof \Doctrine\DBAL\Platforms\MySqlPlatform;
+        $isMysql = $this->db->getDatabaseProvider() === IDBConnection::PLATFORM_MYSQL;
         $now = date('Y-m-d H:i:s');
         $sql = $this->buildSearchUpsertSql(\count($rows), $isMysql);
 

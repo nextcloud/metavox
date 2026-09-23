@@ -444,7 +444,7 @@ private function createGroupfolderField(array $fieldData): int {
            ->values($values);
 
         $result = $qb->executeStatement();
-        $insertId = (int) $this->db->lastInsertId('metavox_gf_fields');
+        $insertId = $qb->getLastInsertId();
 
         // Clear cache after successful create
         $this->clearFieldCache();
@@ -562,10 +562,10 @@ public function saveFieldValue(int $fileId, int $fieldId, string $value): bool {
             return false;
         }
 
-        $platform = $this->db->getDatabasePlatform();
+        $dbProvider = $this->db->getDatabaseProvider();
         $now = date('Y-m-d H:i:s');
 
-        if ($platform instanceof \Doctrine\DBAL\Platforms\MySqlPlatform) {
+        if ($dbProvider === IDBConnection::PLATFORM_MYSQL) {
             $sql = "INSERT INTO *PREFIX*metavox_file_gf_meta
                     (file_id, groupfolder_id, field_name, field_value, created_at, updated_at)
                     VALUES (?, 0, ?, ?, ?, ?)
@@ -644,7 +644,7 @@ public function getGroupfolders(string $userId, bool $adminMode = false): array 
 
         // Use the groupfolders app's FolderManager — handles both groups and circles/teams
         try {
-            $folderManager = \OC::$server->get(\OCA\GroupFolders\Folder\FolderManager::class);
+            $folderManager = \OCP\Server::get(\OCA\GroupFolders\Folder\FolderManager::class);
 
             if ($adminMode) {
                 $gfFolders = $folderManager->getAllFolders();
@@ -979,9 +979,9 @@ public function saveGroupfolderFieldValue(int $groupfolderId, int $fieldId, stri
             return false;
         }
 
-        $platform = $this->db->getDatabasePlatform();
+        $dbProvider = $this->db->getDatabaseProvider();
         
-        if ($platform instanceof \Doctrine\DBAL\Platforms\MySqlPlatform) {
+        if ($dbProvider === IDBConnection::PLATFORM_MYSQL) {
             $sql = "INSERT INTO *PREFIX*metavox_gf_metadata 
                     (groupfolder_id, field_name, field_value, created_at, updated_at) 
                     VALUES (?, ?, ?, ?, ?)
@@ -1104,9 +1104,9 @@ public function saveGroupfolderFileFieldValue(int $groupfolderId, int $fileId, i
             }
         }
 
-        $platform = $this->db->getDatabasePlatform();
+        $dbProvider = $this->db->getDatabaseProvider();
         
-        if ($platform instanceof \Doctrine\DBAL\Platforms\MySqlPlatform) {
+        if ($dbProvider === IDBConnection::PLATFORM_MYSQL) {
             $sql = "INSERT INTO *PREFIX*metavox_file_gf_meta 
                     (file_id, groupfolder_id, field_name, field_value, created_at, updated_at) 
                     VALUES (?, ?, ?, ?, ?, ?)

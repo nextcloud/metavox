@@ -63,17 +63,21 @@ class FieldController extends BaseController {
             $search = $this->request->getParam('search', '');
             $limit = 25;
 
-            $users = $this->userManager->search($search, $limit);
+            // searchDisplayName() replaces the deprecated search(): same backends
+            // and pattern, but it returns the display name up front (no extra
+            // lookup per user). It returns a plain list, so dedupe on uid here to
+            // keep search()'s behaviour for a user present in several backends.
+            $users = $this->userManager->searchDisplayName($search, $limit);
             $userList = [];
 
             foreach ($users as $user) {
-                $userList[] = [
+                $userList[$user->getUID()] = [
                     'id' => $user->getUID(),
                     'displayname' => $user->getDisplayName(),
                 ];
             }
 
-            return new JSONResponse($userList);
+            return new JSONResponse(array_values($userList));
         } catch (\Exception $e) {
             return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
