@@ -25,6 +25,8 @@ export interface ServiceReferer {
     size: number;
 }
 export declare class Service extends EventEmitter {
+    start: CallableFunction;
+    stop: CallableFunction;
     name: string;
     type: string;
     protocol: 'tcp' | 'udp';
@@ -36,16 +38,17 @@ export declare class Service extends EventEmitter {
     addresses?: Array<string>;
     referer?: ServiceReferer;
     disableIPv6: boolean;
+    lastSeen?: number;
+    ttl?: number;
     probe: boolean;
     published: boolean;
     activated: boolean;
     destroyed: boolean;
-    start?: CallableFunction;
-    stop?: CallableFunction;
     private txtService;
-    constructor(config: ServiceConfig);
+    constructor(config: ServiceConfig, start: CallableFunction, stop: CallableFunction);
     records(): Array<ServiceRecord>;
     private RecordPTR;
+    private RecordServicePTR;
     private RecordSubtypePTR;
     private RecordSRV;
     private RecordTXT;

@@ -1,14 +1,14 @@
-import Browser, { BrowserConfig } from './lib/browser';
-import Service, { ServiceConfig, ServiceReferer } from './lib/service';
-export declare class Bonjour {
-    private server;
-    private registry;
-    constructor(opts?: Partial<ServiceConfig>, errorCallback?: Function | undefined);
-    publish(opts: ServiceConfig): Service;
-    unpublishAll(callback?: CallableFunction | undefined): void;
-    find(opts?: BrowserConfig | null, onup?: (service: Service) => void): Browser;
-    findOne(opts?: BrowserConfig | null, timeout?: number, callback?: CallableFunction): Browser;
-    destroy(callback?: CallableFunction): void;
+import BonjourService from './lib/bonjour';
+import * as imported from './lib/bonjour';
+declare class Bonjour extends BonjourService {
 }
-export { Service, ServiceReferer, ServiceConfig, Browser, BrowserConfig };
-export default Bonjour;
+import BonjourClass = Bonjour;
+declare namespace Bonjour {
+    export import Bonjour = BonjourClass;
+    export import Service = imported.Service;
+    export import Browser = imported.Browser;
+    export import ServiceReferer = imported.ServiceReferer;
+    export import ServiceConfig = imported.ServiceConfig;
+    export import BrowserConfig = imported.BrowserConfig;
+}
+export = Bonjour;

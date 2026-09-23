@@ -2,7 +2,7 @@ import KeyValue from './KeyValue';
 export declare class DnsTxt {
     private binary;
     constructor(opts?: KeyValue);
-    encode(data?: KeyValue): Buffer[];
+    encode(data?: KeyValue): Buffer<ArrayBuffer>[];
     decode(buffer: Buffer): KeyValue;
     decodeAll(buffer: Array<Buffer>): KeyValue;
 }

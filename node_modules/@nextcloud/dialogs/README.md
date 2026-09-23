@@ -66,6 +66,12 @@ There are several options that can be passed in as a second parameter, like the 
 showError('This is an error shown without a timeout', { timeout: -1 })
 ```
 
+Ordinary toasts (success, error, warning, info, and bare messages) use the user-configured toast timeout
+from the theming capabilities (`theming.toastTimeout`) when available, and fall back to
+`TOAST_DEFAULT_TIMEOUT` (7 seconds) otherwise.
+
+Loading toasts stay permanent until hidden manually, and undo toasts keep their fixed undo duration.
+
 A full list of available options can be found in the [documentation](https://nextcloud-libraries.github.io/nextcloud-dialogs/).
 
 ### FilePicker

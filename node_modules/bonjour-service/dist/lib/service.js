@@ -10,8 +10,10 @@ const events_1 = require("events");
 const service_types_1 = require("./service-types");
 const TLD = '.local';
 class Service extends events_1.EventEmitter {
-    constructor(config) {
+    constructor(config, start, stop) {
         super();
+        this.start = start;
+        this.stop = stop;
         this.probe = true;
         this.published = false;
         this.activated = false;
@@ -34,7 +36,12 @@ class Service extends events_1.EventEmitter {
         this.disableIPv6 = !!config.disableIPv6;
     }
     records() {
-        var records = [this.RecordPTR(this), this.RecordSRV(this), this.RecordTXT(this)];
+        var records = [
+            this.RecordPTR(this),
+            this.RecordSRV(this),
+            this.RecordTXT(this),
+            this.RecordServicePTR(this),
+        ];
         for (let subtype of this.subtypes || []) {
             records.push(this.RecordSubtypePTR(this, subtype));
         }
@@ -64,6 +71,14 @@ class Service extends events_1.EventEmitter {
             type: 'PTR',
             ttl: 28800,
             data: service.fqdn
+        };
+    }
+    RecordServicePTR(service) {
+        return {
+            name: `_services._dns-sd._udp${TLD}`,
+            type: 'PTR',
+            ttl: 120,
+            data: `${service.type}${TLD}`
         };
     }
     RecordSubtypePTR(service, subtype) {

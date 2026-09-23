@@ -7,6 +7,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 3.2.0 - 2026-09-16
+[Full Changelog](https://github.com/nextcloud-libraries/nextcloud-router/compare/v3.1.0...v3.2.0)
+
+### Added
+* feat(avatar): support guestFallback and version query params [#916](https://github.com/nextcloud-libraries/nextcloud-router/pull/916) ([Antreesy](https://github.com/Antreesy))
+
+### Fixed
+* fix: allow `generateUrl` in non-DOM environment and improve environment issues exceptions [#845](https://github.com/nextcloud-libraries/nextcloud-router/pull/845) ([ShGKme](https://github.com/ShGKme))
+
+### Changed
+* Update dependencies
+
 ## 3.1.0 - 2025-11-13
 [Full Changelog](https://github.com/nextcloud-libraries/nextcloud-router/compare/v3.0.1...v3.1.0)
 
