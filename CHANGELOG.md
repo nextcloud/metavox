@@ -6,6 +6,20 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [2.2.3] - 2026-09-23
+
+### Added
+- **Nextcloud 35 support.** Nextcloud 31–34 remain supported.
+
+### Changed
+- **Deprecated Nextcloud APIs replaced** (`IAppConfig`, `getDatabaseProvider()`, `getLastInsertId()`, `\OCP\Server::get()`). No migration needed.
+- **User picker results are sorted by display name.**
+- **Settings page shows a single subscription notice**, only above 100 users.
+- **Dependency updates**, including security fixes for `postcss`, `nanoid` and `brace-expansion`. Unused script files removed, so the app is about half the size.
+
+### Fixed
+- **App icon was invisible in the app list.**
+
 ## [2.2.2] - 2026-08-28
 
 ### Added
