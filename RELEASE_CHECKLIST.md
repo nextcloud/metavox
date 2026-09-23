@@ -276,6 +276,11 @@ Supported languages: **NL, DE, FR, SV** (source: EN) — all four kept at key-pa
 
 - [ ] Regenerate l10n JS files (see Section 2)
 - [ ] Run `npm run build` without errors
+- [ ] **Build from a clean clone of the release commit** — the working tree's `node_modules/` hides missing files:
+  ```bash
+  git clone --depth 1 --branch vX.Y.Z . /tmp/rel-check && cd /tmp/rel-check && npm ci && npm run build
+  ```
+  `node_modules` is gitignored *and* partly tracked, so `git add -A` silently skips newly added dependency files. A green build in your working copy proves nothing about the tag.
   - Bundle size warnings for filesplugin/admin/user are normal (large app)
 - [ ] Test core functionalities on a dev server (default `deploy.sh` → Hetzner `nc-dev`, NC33; use `next` for NC34):
   - [ ] Metadata columns in file list (verify on NC33 + NC34)
@@ -293,7 +298,7 @@ Supported languages: **NL, DE, FR, SV** (source: EN) — all four kept at key-pa
   - [ ] Fill handle and undo support
   - [ ] Lock badge with username
 - [ ] Check browser console for errors
-- [ ] Test with different Nextcloud versions (NC31–NC34)
+- [ ] Test with different Nextcloud versions (NC31–NC35)
 
 ### Server Dependencies:
 - [ ] Verify notify_push is installed and working (for real-time sync)
@@ -306,10 +311,10 @@ Supported languages: **NL, DE, FR, SV** (source: EN) — all four kept at key-pa
 
 - [ ] Check `appinfo/info.xml`:
   ```xml
-  <nextcloud min-version="31" max-version="34"/>
+  <nextcloud min-version="31" max-version="35"/>
   <php min-version="8.1"/>
   ```
-- [ ] Test on all supported Nextcloud versions (31–34):
+- [ ] Test on all supported Nextcloud versions (31–35):
   - NC31 — basic compatibility
   - NC32 — DOM-based sorting fallback, filter registration with try/catch
   - NC33 — scoped globals for sidebar/bulk action registration
@@ -407,7 +412,7 @@ git push origin main --tags    # Gitea (primary, full repo incl. internal-docs/ 
 Run `./deploy.sh` (or `--help`) — default target is **Hetzner `nc-dev`**, not SURF.
 
 ```bash
-./deploy.sh            # default → Hetzner nc-dev container (NC33, dev.rikdekker.nl)
+./deploy.sh            # default → Hetzner nc-dev container (NC35 as of 09-2026, dev.rikdekker.nl)
 ./deploy.sh next       # Hetzner nc-next container (NC34 prerelease, next.voxcloud.nl)
 ./deploy.sh 3dev       # SURF bare-metal 3dev (145.38.188.218)
 ./deploy.sh 1dev       # SURF bare-metal 1dev (145.38.193.235)
@@ -569,7 +574,7 @@ git push origin main --tags    # Gitea
 ## Notes
 
 - **App ID:** `metavox`
-- **Nextcloud versions:** 31, 32, 33, 34
+- **Nextcloud versions:** 31, 32, 33, 34, 35
 - **PHP version:** >= 8.1
 - **Supported languages:** NL, DE, FR, SV (source: EN)
 - **Server dependencies:** Redis (optional, for locking/presence/push), notify_push (optional, for real-time sync)

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 MetaVox is a **Nextcloud app** (app id `metavox`) that adds SharePoint-style metadata columns to Nextcloud **Team / Group Folders**. It is installed into a running Nextcloud server's `apps/` directory — it is not a standalone application. Backend is PHP (Nextcloud App Framework), frontend is Vue 3 built with webpack.
 
-Supports Nextcloud 31–34 (PHP ≥ 8.1) with runtime feature detection — code must not assume APIs that only exist in newer NC versions. See [internal-docs/nc34-compat-plan.md](internal-docs/nc34-compat-plan.md) and recent commits for the NC34 compatibility pattern (e.g. removed `\OC::$server->getRequest()` convenience methods are replaced with `\OC::$server->get(IRequest::class)`).
+Supports Nextcloud 31–35 (PHP ≥ 8.1) with runtime feature detection — code must not assume APIs that only exist in newer NC versions. See [internal-docs/nc34-compat-plan.md](internal-docs/nc34-compat-plan.md) and recent commits for the NC34 compatibility pattern (e.g. removed `\OC::$server->getRequest()` convenience methods are replaced with `\OC::$server->get(IRequest::class)`).
 
 ## Build commands
 
@@ -39,8 +39,9 @@ Bootstrap is [lib/AppInfo/Application.php](lib/AppInfo/Application.php):
 ### Database tables (no migrations create entities — they create these tables)
 - `metavox_gf_fields` — field definitions (name, label, type, options, groupfolder, required)
 - `metavox_file_gf_meta` — per-document metadata values (fileId, groupfolderId, field, value); heavily indexed for bulk lookup and filtering
-- `metavox_gf_column_config` — which fields show as columns per groupfolder, order, filterable flag
 - `metavox_gf_views` — saved views per groupfolder (column visibility/order, preset filters, sort — stored as JSON)
+
+Note: `metavox_gf_column_config` no longer exists — `Version20250101000016` drops it; per-view column config replaced it. `metavox_gf_fields` scopes a field with **`applies_to_groupfolder`** (0 = all folders), not `groupfolder_id`.
 
 Schema changes go in [lib/Migration/](lib/Migration/) as versioned `VersionXXXX` classes (Nextcloud `ISchemaMigration` convention).
 
