@@ -261,7 +261,9 @@ class DefaultsService {
      *
      * A groupfolder's storage id ends in "/__groupfolders/<gfId>/", e.g.
      * "local::/var/www/html/data/__groupfolders/1/". The data dir prefix varies
-     * per install, so we match on the suffix rather than hardcoding it. Cached
+     * per install, so we match on the suffix rather than hardcoding it. On
+     * object storage it contains "::groupfolder:<gfId>." instead, e.g.
+     * "object::store:object::groupfolder:1.amazon::bucket". Cached
      * per request.
      *
      * @return int[]
@@ -274,7 +276,10 @@ class DefaultsService {
         $qb = $this->db->getQueryBuilder();
         $qb->select('numeric_id')
            ->from('storages')
-           ->where($qb->expr()->like('id', $qb->createNamedParameter('%/__groupfolders/' . $groupfolderId . '/')));
+           ->where($qb->expr()->orX(
+               $qb->expr()->like('id', $qb->createNamedParameter('%/__groupfolders/' . $groupfolderId . '/')),
+               $qb->expr()->like('id', $qb->createNamedParameter('%::groupfolder:' . $groupfolderId . '.%')),
+           ));
 
         $result = $qb->executeQuery();
         $ids = [];

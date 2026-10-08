@@ -408,7 +408,9 @@ class FileReferenceService {
     /**
      * Resolve the storage numeric_id(s) backing a groupfolder. The storage id
      * ends in "/__groupfolders/<gfId>/"; the data-dir prefix varies per install
-     * so we match on the suffix. Cached per request. Mirrors DefaultsService.
+     * so we match on the suffix. On object storage it contains
+     * "::groupfolder:<gfId>." instead. Cached per request. Mirrors
+     * DefaultsService.
      *
      * @return int[]
      */
@@ -447,7 +449,10 @@ class FileReferenceService {
         $qb = $this->db->getQueryBuilder();
         $qb->select('numeric_id')
            ->from('storages')
-           ->where($qb->expr()->like('id', $qb->createNamedParameter('%/__groupfolders/' . $groupfolderId . '/')));
+           ->where($qb->expr()->orX(
+               $qb->expr()->like('id', $qb->createNamedParameter('%/__groupfolders/' . $groupfolderId . '/')),
+               $qb->expr()->like('id', $qb->createNamedParameter('%::groupfolder:' . $groupfolderId . '.%')),
+           ));
 
         $result = $qb->executeQuery();
         $ids = [];
