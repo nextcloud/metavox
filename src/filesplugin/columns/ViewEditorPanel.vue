@@ -2,7 +2,7 @@
 	<div class="mv-editor-panel">
 		<!-- Header -->
 		<div class="mv-editor-header">
-			<h3>{{ readonly ? t('metavox', 'View details') : (isNew ? t('metavox', 'New view') : t('metavox', 'Edit view')) }}</h3>
+			<h3>{{ dialogTitle }}</h3>
 			<NcButton type="tertiary"
 				:aria-label="t('metavox', 'Close')"
 				@click="emit('close')">
@@ -16,9 +16,9 @@
 		<div class="mv-editor-body">
 			<!-- Name row -->
 			<div class="mv-editor-row">
-				<label>{{ t('metavox', 'Name') }}</label>
+				<label>{{ t('metavox', 'Name') }}</label> <!-- TRANSLATORS Noun: label of the field that holds the name of a view -->
 				<NcTextField :model-value="editorState.name"
-					:placeholder="t('metavox', 'View name')"
+					:placeholder="namePlaceholder"
 					:disabled="readonly"
 					@update:model-value="editorState.name = $event" />
 			</div>
@@ -29,18 +29,18 @@
 					type="checkbox"
 					:disabled="readonly"
 					@update:model-value="editorState.isDefault = $event">
-					{{ t('metavox', 'Standard view') }}
+					{{ t('metavox', 'Standard view') }} <!-- TRANSLATORS Checkbox in the view editor: this view opens by default when the folder is opened -->
 				</NcCheckboxRadioSwitch>
 			</div>
 
 			<!-- Columns section -->
-			<div class="mv-editor-section-title">{{ t('metavox', 'Columns') }}</div>
+			<div class="mv-editor-section-title">{{ t('metavox', 'Columns') }}</div> <!-- TRANSLATORS Noun: heading of the column list section in the view editor -->
 
 			<div class="mv-col-header-row">
 				<span class="mv-col-drag" />
-				<span class="mv-col-name mv-col-header-label">{{ t('metavox', 'Field') }}</span>
-				<span class="mv-col-check mv-col-header-label">{{ t('metavox', 'Visible') }}</span>
-				<span class="mv-col-check mv-col-header-label">{{ t('metavox', 'Filterable') }}</span>
+				<span class="mv-col-name mv-col-header-label">{{ t('metavox', 'Field') }}</span> <!-- TRANSLATORS Noun: column header in the column list of the view editor; keep it short -->
+				<span class="mv-col-check mv-col-header-label">{{ t('metavox', 'Visible') }}</span> <!-- TRANSLATORS Adjective: column header of the checkboxes that show a column in the file list; keep it short -->
+				<span class="mv-col-check mv-col-header-label">{{ t('metavox', 'Filterable') }}</span> <!-- TRANSLATORS Adjective: column header of the checkboxes that offer a column in the filter panel; keep it short -->
 			</div>
 
 			<div ref="colList" class="mv-col-list">
@@ -53,7 +53,7 @@
 					@dragend="onDragEnd"
 					@dragover.prevent
 					@drop.prevent="!readonly && onDrop($event, index)">
-					<DragVerticalIcon :size="18" class="mv-col-drag" :class="{ 'mv-disabled': readonly }" :title="t('metavox', 'Drag to reorder')" />
+					<DragVerticalIcon :size="18" class="mv-col-drag" :class="{ 'mv-disabled': readonly }" :title="t('metavox', 'Drag to reorder')" /> <!-- TRANSLATORS Tooltip on the drag handle of a row in the column list -->
 					<span class="mv-col-name">{{ col.field_label }}</span>
 					<span class="mv-col-check">
 						<NcCheckboxRadioSwitch :model-value="col.visible"
@@ -71,7 +71,7 @@
 			</div>
 
 			<!-- Filters section -->
-			<div class="mv-editor-section-title">{{ t('metavox', 'Filters (preset values)') }}</div>
+			<div class="mv-editor-section-title">{{ t('metavox', 'Filters (preset values)') }}</div> <!-- TRANSLATORS Noun: heading of the section in the view editor where the view gets fixed filter values -->
 
 			<template v-for="col in filterableColumns" :key="col.field_id">
 				<!-- Checkbox type filter -->
@@ -92,14 +92,14 @@
 								type="checkbox"
 								:disabled="readonly"
 								@update:model-value="toggleFilterValue(col, '1')">
-								{{ t('metavox', 'Yes') }}
+								{{ t('metavox', 'Yes') }} <!-- TRANSLATORS Filter option for a checkbox field: files where the box is ticked -->
 							</NcCheckboxRadioSwitch>
 							<NcCheckboxRadioSwitch
 								:model-value="hasFilterValue(col, '0')"
 								type="checkbox"
 								:disabled="readonly"
 								@update:model-value="toggleFilterValue(col, '0')">
-								{{ t('metavox', 'No') }}
+								{{ t('metavox', 'No') }} <!-- TRANSLATORS Filter option for a checkbox field: files where the box is not ticked -->
 							</NcCheckboxRadioSwitch>
 						</div>
 					</div>
@@ -119,7 +119,7 @@
 					<div class="mv-filter-body">
 						<div class="mv-select-filter-list">
 							<div v-if="getSelectOptions(col).length === 0" class="mv-autocomplete-empty">
-								{{ t('metavox', 'No options available') }}
+								{{ t('metavox', 'No options available') }} <!-- TRANSLATORS Shown in the filter section when a dropdown field has no options to filter on -->
 							</div>
 							<NcCheckboxRadioSwitch v-for="opt in getSelectOptions(col)"
 								:key="opt"
@@ -161,7 +161,7 @@
 								ref="autocompleteInputs"
 								type="text"
 								class="mv-filter-input"
-								:placeholder="t('metavox', '+ add value')"
+								:placeholder="addValuePlaceholder"
 								:data-field-id="col.field_id"
 								@focus="onAutocompleteFocus(col, $event)"
 								@input="onAutocompleteInput(col, $event)"
@@ -183,13 +183,13 @@
 			</template>
 
 			<!-- Sort section -->
-			<div class="mv-editor-section-title">{{ t('metavox', 'Sorting') }}</div>
+			<div class="mv-editor-section-title">{{ t('metavox', 'Sorting') }}</div> <!-- TRANSLATORS Noun: heading of the sort section in the view editor -->
 			<div class="mv-sort-row">
 				<NcSelect v-model="editorState.sortField"
 					:options="sortOptions"
 					:reduce="opt => opt.id"
 					label="label"
-					:placeholder="t('metavox', '— no sorting —')"
+					:placeholder="noSortPlaceholder"
 					:clearable="!readonly"
 					:disabled="readonly"
 					input-id="mv-sort-field" />
@@ -199,14 +199,14 @@
 						type="radio"
 						name="mv_sort_order"
 						:disabled="readonly">
-						{{ t('metavox', 'Ascending') }}
+						{{ t('metavox', 'Ascending') }} <!-- TRANSLATORS Radio option for the sort direction (A to Z, oldest first) -->
 					</NcCheckboxRadioSwitch>
 					<NcCheckboxRadioSwitch v-model="editorState.sortOrder"
 						value="desc"
 						type="radio"
 						name="mv_sort_order"
 						:disabled="readonly">
-						{{ t('metavox', 'Descending') }}
+						{{ t('metavox', 'Descending') }} <!-- TRANSLATORS Radio option for the sort direction (Z to A, newest first) -->
 					</NcCheckboxRadioSwitch>
 				</div>
 			</div>
@@ -218,22 +218,22 @@
 				<NcButton v-if="!isNew"
 					type="error"
 					@click="onDelete">
-					{{ t('metavox', 'Delete') }}
+					{{ t('metavox', 'Delete') }} <!-- TRANSLATORS Verb: dialog button that deletes the view -->
 				</NcButton>
 				<div class="mv-footer-spacer" />
 				<NcButton type="secondary" @click="emit('close')">
-					{{ t('metavox', 'Cancel') }}
+					{{ t('metavox', 'Cancel') }} <!-- TRANSLATORS Verb: dialog button that closes the view editor without saving -->
 				</NcButton>
 				<NcButton type="primary"
 					:disabled="saving"
 					@click="onSave">
-					{{ saving ? t('metavox', 'Saving…') : t('metavox', 'Save') }}
+					{{ saveLabel }}
 				</NcButton>
 			</template>
 			<template v-else>
 				<div class="mv-footer-spacer" />
 				<NcButton type="secondary" @click="emit('close')">
-					{{ t('metavox', 'Close') }}
+					{{ t('metavox', 'Close') }} <!-- TRANSLATORS Verb: dialog button that closes the read-only view editor -->
 				</NcButton>
 			</template>
 		</div>
@@ -241,14 +241,14 @@
 		<!-- Delete confirmation dialog -->
 		<div v-if="showDeleteDialog" class="mv-delete-overlay" @click.self="showDeleteDialog = false">
 			<div class="mv-delete-dialog">
-				<h3>{{ t('metavox', 'Delete view') }}</h3>
+				<h3>{{ t('metavox', 'Delete view') }}</h3> <!-- TRANSLATORS Title of the confirmation dialog for deleting a view -->
 				<p>{{ deleteMessage }}</p>
 				<div class="mv-delete-actions">
 					<NcButton type="secondary" @click="showDeleteDialog = false">
-						{{ t('metavox', 'Cancel') }}
+						{{ t('metavox', 'Cancel') }} <!-- TRANSLATORS Verb: button in the confirmation dialog that keeps the view -->
 					</NcButton>
 					<NcButton type="error" @click="confirmDelete">
-						{{ t('metavox', 'Delete') }}
+						{{ t('metavox', 'Delete') }} <!-- TRANSLATORS Verb: dialog button that deletes the view -->
 					</NcButton>
 				</div>
 			</div>
@@ -259,7 +259,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { NcButton, NcCheckboxRadioSwitch, NcTextField, NcSelect } from '@nextcloud/vue'
-import { translate as t, translate } from '@nextcloud/l10n'
+import { translate as t } from '@nextcloud/l10n'
 import CloseIcon from 'vue-material-design-icons/Close.vue'
 import ChevronRightIcon from 'vue-material-design-icons/ChevronRight.vue'
 import DragVerticalIcon from 'vue-material-design-icons/DragVertical.vue'
@@ -306,6 +306,29 @@ const colList = ref(null)
 // ========================================
 
 const isNew = computed(() => !props.view)
+
+const dialogTitle = computed(() => {
+	// TRANSLATORS Title of the view editor when it only shows a view; also a menu item in the view menu
+	if (props.readonly) return t('metavox', 'View details')
+	return isNew.value
+		// TRANSLATORS Title of the view editor when it creates a new view; also a menu item in the view menu
+		? t('metavox', 'New view')
+		// TRANSLATORS Title of the view editor when it changes an existing view
+		: t('metavox', 'Edit view')
+})
+
+const saveLabel = computed(() => (saving.value
+	// TRANSLATORS Label of the save button while the view is being saved; keep it short
+	? t('metavox', 'Saving …')
+	// TRANSLATORS Verb: dialog button that saves the view
+	: t('metavox', 'Save')))
+
+// TRANSLATORS Placeholder of the field that holds the name of a view
+const namePlaceholder = t('metavox', 'View name')
+// TRANSLATORS Placeholder of the box where you type a value to filter a text or number field on; the "+" stays
+const addValuePlaceholder = t('metavox', '+ add value')
+// TRANSLATORS Placeholder of the sort field dropdown when the view does not sort
+const noSortPlaceholder = t('metavox', '— no sorting —')
 
 const supportsFilters = computed(() => {
 	const v = getNcVersion()
@@ -577,7 +600,7 @@ function onAutocompleteBlur(col, e) {
 async function onSave() {
 	const name = editorState.value.name.trim()
 	if (!name) {
-		alert(translate('metavox', 'Enter a name for the view'))
+		alert(t('metavox', 'Enter a name for the view'))
 		return
 	}
 
@@ -612,6 +635,7 @@ async function onSave() {
 const showDeleteDialog = ref(false)
 
 const deleteMessage = computed(() =>
+	// TRANSLATORS Confirmation question; {name} is the view name, e.g. "Open contracts"
 	t('metavox', 'Are you sure you want to delete the view "{name}"?', { name: props.view?.name || '' }),
 )
 

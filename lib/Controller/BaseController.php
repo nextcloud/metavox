@@ -10,9 +10,11 @@ use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\Files\IRootFolder;
+use OCP\IL10N;
 use OCP\IRequest;
 use OCP\IUser;
 use OCP\IUserSession;
+use OCP\L10N\IFactory;
 
 abstract class BaseController extends Controller {
 
@@ -20,6 +22,7 @@ abstract class BaseController extends Controller {
     protected PermissionService $permissionService;
     protected FieldService $fieldService;
     protected IRootFolder $rootFolder;
+    private ?IL10N $l10n = null;
 
     public function __construct(
         string $appName,
@@ -37,13 +40,22 @@ abstract class BaseController extends Controller {
     }
 
     /**
+     * The app's translations, for messages the UI shows. Fetched on first use,
+     * so the subclasses' constructors stay as they are.
+     */
+    protected function l10n(): IL10N {
+        return $this->l10n ??= \OCP\Server::get(IFactory::class)->get('metavox');
+    }
+
+    /**
      * Get the authenticated user or return a 401 response.
      * @return IUser|JSONResponse
      */
     protected function requireUser(): IUser|JSONResponse {
         $user = $this->userSession->getUser();
         if (!$user) {
-            return new JSONResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
+            // TRANSLATORS Error message shown to the user when the session has ended and the user must log in again
+            return new JSONResponse(['error' => $this->l10n()->t('Not logged in')], Http::STATUS_UNAUTHORIZED);
         }
         return $user;
     }
@@ -53,7 +65,8 @@ abstract class BaseController extends Controller {
      */
     protected function requireGroupfolderAccess(string $userId, int $groupfolderId): ?JSONResponse {
         if (!$this->fieldService->hasAccessToGroupfolder($userId, $groupfolderId)) {
-            return new JSONResponse(['error' => 'Access denied'], Http::STATUS_FORBIDDEN);
+            // TRANSLATORS Error message shown to the user when they may not do this action
+            return new JSONResponse(['error' => $this->l10n()->t('Access denied')], Http::STATUS_FORBIDDEN);
         }
         return null;
     }
@@ -63,7 +76,8 @@ abstract class BaseController extends Controller {
      */
     protected function requireManagePermission(string $userId, ?int $groupfolderId = null): ?JSONResponse {
         if (!$this->permissionService->hasPermission($userId, PermissionService::PERM_MANAGE_FIELDS, $groupfolderId)) {
-            return new JSONResponse(['error' => 'Manage fields permission required'], Http::STATUS_FORBIDDEN);
+            // TRANSLATORS Error message shown to the user; "Manage fields" is the name of a permission that lets someone change the metadata fields
+            return new JSONResponse(['error' => $this->l10n()->t('Manage fields permission required')], Http::STATUS_FORBIDDEN);
         }
         return null;
     }

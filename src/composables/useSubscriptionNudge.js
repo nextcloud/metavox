@@ -1,4 +1,7 @@
-import { translate as t } from '@nextcloud/l10n'
+import { translate as t, translatePlural as n } from '@nextcloud/l10n'
+import { PLAIN_TEXT } from '../utils/fieldValue.js'
+
+const SALES = 'sales@nextcloud.com'
 
 /**
  * The one subscription message an unlicensed instance sees, or null when there
@@ -31,7 +34,8 @@ export function subscriptionNudge(stats) {
 	}
 
 	if (stats.hasValidSubscription || stats.hasExtendedSupport) {
-		return t('metavox', 'Nextcloud Enterprise subscription detected on this instance. MetaVox subscriptions are sold through Nextcloud — contact your Nextcloud account manager or sales@nextcloud.com.')
+		// TRANSLATORS {email} is the Nextcloud sales email address; MetaVox is the app name, do not translate it
+		return t('metavox', 'Nextcloud Enterprise subscription detected on this instance. MetaVox subscriptions are sold through Nextcloud — contact your Nextcloud account manager or {email}.', { email: SALES }, undefined, PLAIN_TEXT)
 	}
 
 	// A missing threshold means an older backend: say nothing rather than
@@ -42,5 +46,6 @@ export function subscriptionNudge(stats) {
 		return null
 	}
 
-	return t('metavox', 'MetaVox is running for {count} users here and keeps working in full without a subscription. If your organisation gets value from it, a subscription is much appreciated — it funds the maintenance. Sold through Nextcloud: contact your account manager or sales@nextcloud.com.', { count: users })
+	// TRANSLATORS {count} is the number of accounts on this server, {email} the Nextcloud sales email address; MetaVox is the app name, do not translate it
+	return n('metavox', 'MetaVox is running for {count} account here and keeps working in full without a subscription. If your organization gets value from it, a subscription is much appreciated — it funds the maintenance. Sold through Nextcloud: contact your account manager or {email}.', 'MetaVox is running for {count} accounts here and keeps working in full without a subscription. If your organization gets value from it, a subscription is much appreciated — it funds the maintenance. Sold through Nextcloud: contact your account manager or {email}.', users, { count: users, email: SALES }, PLAIN_TEXT)
 }

@@ -43,6 +43,7 @@ class MetadataCheck implements ICheck, IFileCheck {
      * @return string Localized display name for this check
      */
     public function getDisplayName(): string {
+        // TRANSLATORS Name of the check in the Flow (workflow) rule editor; MetaVox is the app name, do not translate it
         return $this->l->t('MetaVox metadata');
     }
 
@@ -107,6 +108,7 @@ class MetadataCheck implements ICheck, IFileCheck {
     public function validateCheck($operator, $value): void {
         $config = json_decode($value, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
+            // TRANSLATORS Error message in the Flow (workflow) rule editor when the saved check cannot be read
             throw new \UnexpectedValueException($this->l->t('Invalid configuration format'));
         }
 
@@ -115,17 +117,20 @@ class MetadataCheck implements ICheck, IFileCheck {
 
         if (!in_array($actualOperator, self::VALID_OPERATORS)) {
             throw new \UnexpectedValueException(
+                // TRANSLATORS Error message in the Flow (workflow) rule editor; the operator is how the field is compared, e.g. equals, contains
                 $this->l->t('Invalid operator')
             );
         }
 
         if (empty($config['field_name'])) {
+            // TRANSLATORS Error message in the Flow (workflow) rule editor when no metadata field is chosen
             throw new \UnexpectedValueException($this->l->t('Metadata field name is required'));
         }
 
         // Value is not required for empty checks and checkbox operators
         $noValueOperators = ['empty', '!empty', 'isTrue', 'isFalse'];
         if (!in_array($actualOperator, $noValueOperators) && !isset($config['value'])) {
+            // TRANSLATORS Error message in the Flow (workflow) rule editor when the value to compare with is empty
             throw new \UnexpectedValueException($this->l->t('Comparison value is required'));
         }
     }

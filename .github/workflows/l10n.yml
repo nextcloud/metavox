@@ -1,0 +1,49 @@
+# Backstop for the l10n source-string sync guard.
+#
+# The primary defence is the prebuild guard (scripts/check-l10n-sync.js), which
+# runs on every `npm run build`. This workflow is a safety net for the case where
+# a commit reaches main without a local build (e.g. a quick edit that also touched
+# a t()/$l->t() string): it fails the CI run if l10n/.source-strings.json no
+# longer matches the code, so new strings can't silently miss the Transifex push.
+#
+# It is CHECK-ONLY on purpose — it never writes, commits or pushes. On a red run,
+# run `npm run l10n:push` locally, commit the POT + manifest, and publish to GitHub
+# via ./push-to-github.sh (the Nextcloud bot reads the POT from there). An
+# auto-commit action is deliberately avoided: the bot deletes the POT after each
+# sync, so auto-committing it would create a churn loop and collide with the bot.
+
+name: l10n source-string sync check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'lib/**'
+      - 'templates/**'
+      - 'l10n/.source-strings.json'
+      - 'scripts/extract-en-json.js'
+      - 'scripts/check-l10n-sync.js'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'lib/**'
+      - 'templates/**'
+      - 'l10n/.source-strings.json'
+      - 'scripts/extract-en-json.js'
+      - 'scripts/check-l10n-sync.js'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      # Pure Node, no dependencies to install: extract-en-json.js scans src/, lib/
+      # and templates/ with plain regexes and needs no xgettext or node_modules.
+      - name: Check l10n source strings are in sync with the manifest
+        run: node scripts/check-l10n-sync.js
+      - name: Every string reaches the Transifex bot
+        run: node --test tests/js/

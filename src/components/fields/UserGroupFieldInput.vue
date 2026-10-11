@@ -9,19 +9,19 @@
         :show-user-status="true">
         {{ selectedUser.displayname }}
       </NcUserBubble>
-      <NcButton
+      <!-- TRANSLATORS Accessible name of the pencil button that picks a different account for the field -->
+      <NcButton :aria-label="t('metavox', 'Change account')"
         v-if="!disabled"
         type="tertiary"
-        :aria-label="t('metavox', 'Change user')"
         @click="startEditing">
         <template #icon>
           <PencilIcon :size="16" />
         </template>
       </NcButton>
-      <NcButton
+      <!-- TRANSLATORS Accessible name of the button that removes the chosen account from the field -->
+      <NcButton :aria-label="t('metavox', 'Clear selection')"
         v-if="!disabled"
         type="tertiary"
-        :aria-label="t('metavox', 'Clear selection')"
         @click="clearSelection">
         <template #icon>
           <CloseIcon :size="16" />
@@ -30,7 +30,8 @@
     </div>
 
     <!-- Show select when no value or editing -->
-    <NcSelect
+    <!-- TRANSLATORS Placeholder of the account search box in the cell editor of a person field -->
+    <NcSelect :placeholder="placeholder || t('metavox', 'Type to search accounts …')"
       v-else
       :id="inputId"
       v-model="internalValue"
@@ -38,7 +39,6 @@
       :disabled="disabled"
       :loading="loading"
       :filterable="false"
-      :placeholder="placeholder || t('metavox', 'Type to search users...')"
       :multiple="multiple"
       :reduce="option => option.id"
       label="displayname"
@@ -56,13 +56,14 @@
         </div>
       </template>
       <template #no-options="{ search }">
-        {{ search.length < 2 ? t('metavox', 'Type at least 2 characters...') : t('metavox', 'No users found') }}
+        {{ noOptionsText(search) }}
       </template>
     </NcSelect>
   </div>
 </template>
 
 <script>
+import { translate } from '@nextcloud/l10n'
 import { NcSelect, NcAvatar, NcUserBubble, NcButton } from '@nextcloud/vue'
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
@@ -152,8 +153,13 @@ export default {
     }
   },
   methods: {
-    t(app, text) {
-      return window.t ? window.t(app, text) : text
+    t: translate,
+    noOptionsText(search) {
+      return search.length < 2
+        // TRANSLATORS Shown in the account search list until at least 2 characters are typed
+        ? this.t('metavox', 'Type at least 2 characters …')
+        // TRANSLATORS Shown in the account search list when no account matches the search
+        : this.t('metavox', 'No accounts found')
     },
     async loadCurrentUser(userId) {
       try {

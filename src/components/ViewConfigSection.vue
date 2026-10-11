@@ -1,8 +1,8 @@
 <template>
   <div class="view-config-section">
-    <h4>{{ t('metavox', 'Views') }}</h4>
+    <h4>{{ labels.views }}</h4>
     <p class="description">
-      {{ t('metavox', 'Create predefined filter, column and sort combinations for this team folder.') }}
+      {{ t('metavox', 'Create predefined filter, column and sort combinations for this Team folder.') }}
     </p>
 
     <div v-if="loading" class="loading-container">
@@ -21,19 +21,17 @@
             <StarIcon v-if="view.is_default" :size="16" class="default-icon" />
             <span class="view-name">{{ view.name }}</span>
             <span class="view-meta">
-              {{ t('metavox', '{count} columns', { count: (view.columns || []).length }) }}
+              {{ columnCountLabel(view) }}
             </span>
             <span class="view-meta">
-              {{ filterCount(view) === 1
-                ? t('metavox', '1 filter')
-                : t('metavox', '{count} filters', { count: filterCount(view) }) }}
+              {{ filterCountLabel(view) }}
             </span>
           </div>
           <div class="view-item-right">
             <NcButton
               v-if="!view.is_default"
               type="tertiary"
-              :aria-label="t('metavox', 'Set as default view')"
+              :aria-label="labels.setDefaultButton"
               @click="setDefaultView(view)"
             >
               <template #icon>
@@ -42,7 +40,7 @@
             </NcButton>
             <NcButton
               type="tertiary"
-              :aria-label="t('metavox', 'Edit view')"
+              :aria-label="labels.editView"
               @click="startEdit(view)"
             >
               <template #icon>
@@ -51,7 +49,7 @@
             </NcButton>
             <NcButton
               type="tertiary"
-              :aria-label="t('metavox', 'Delete view')"
+              :aria-label="labels.deleteView"
               @click="deleteView(view.id)"
             >
               <template #icon>
@@ -68,16 +66,16 @@
 
       <!-- Inline form -->
       <div v-if="showForm" class="view-form">
-        <h5>{{ editingView ? t('metavox', 'Edit view') : t('metavox', 'New view') }}</h5>
+        <h5>{{ editingView ? labels.editView : labels.newView }}</h5>
 
         <!-- Name -->
         <div class="form-row">
-          <label class="form-label">{{ t('metavox', 'Name') }} <span class="required">*</span></label>
+          <label class="form-label">{{ labels.name }} <span class="required">*</span></label>
           <input
             v-model="form.name"
             type="text"
             class="nc-input"
-            :placeholder="t('metavox', 'View name')"
+            :placeholder="labels.namePlaceholder"
           />
         </div>
 
@@ -87,13 +85,13 @@
             v-model="form.is_default"
             type="checkbox"
           >
-            {{ t('metavox', 'Set as default view') }}
+            {{ labels.setDefaultCheckbox }}
           </NcCheckboxRadioSwitch>
         </div>
 
         <!-- Columns -->
         <div class="form-section">
-          <h6>{{ t('metavox', 'Columns') }}</h6>
+          <h6>{{ labels.columns }}</h6>
           <p class="form-section-description">
             {{ t('metavox', 'Choose which columns to show and in what order.') }}
           </p>
@@ -121,7 +119,7 @@
               <div class="column-item-right">
                 <NcButton
                   type="tertiary"
-                  :aria-label="t('metavox', 'Move up')"
+                  :aria-label="labels.moveUp"
                   :disabled="index === 0"
                   @click="moveColumnUp(index)"
                 >
@@ -131,7 +129,7 @@
                 </NcButton>
                 <NcButton
                   type="tertiary"
-                  :aria-label="t('metavox', 'Move down')"
+                  :aria-label="labels.moveDown"
                   :disabled="index === form.columns.length - 1"
                   @click="moveColumnDown(index)"
                 >
@@ -146,7 +144,7 @@
 
         <!-- Filters -->
         <div class="form-section">
-          <h6>{{ t('metavox', 'Filters') }}</h6>
+          <h6>{{ labels.filters }}</h6>
           <p class="form-section-description">
             {{ t('metavox', 'Set preset filter values (comma-separated) per field.') }}
           </p>
@@ -164,7 +162,7 @@
                 v-model="form.filters[col.field_id]"
                 type="text"
                 class="nc-input"
-                :placeholder="t('metavox', 'e.g. Value 1, Value 2')"
+                :placeholder="labels.filterPlaceholder"
               />
             </div>
           </div>
@@ -172,10 +170,10 @@
 
         <!-- Sort -->
         <div class="form-section">
-          <h6>{{ t('metavox', 'Sort') }}</h6>
+          <h6>{{ labels.sort }}</h6>
           <div class="sort-row">
             <select v-model="form.sort_field" class="nc-select">
-              <option value="">{{ t('metavox', '— No sorting —') }}</option>
+              <option value="">{{ labels.noSorting }}</option>
               <option
                 v-for="col in availableColumns"
                 :key="col.field_id"
@@ -191,7 +189,7 @@
                 type="radio"
                 name="sort_order"
               >
-                {{ t('metavox', 'Ascending') }}
+                {{ labels.ascending }}
               </NcCheckboxRadioSwitch>
               <NcCheckboxRadioSwitch
                 v-model="form.sort_order"
@@ -199,7 +197,7 @@
                 type="radio"
                 name="sort_order"
               >
-                {{ t('metavox', 'Descending') }}
+                {{ labels.descending }}
               </NcCheckboxRadioSwitch>
             </div>
           </div>
@@ -213,10 +211,10 @@
         <!-- Form actions -->
         <div class="form-actions">
           <NcButton type="primary" :disabled="saving" @click="saveView">
-            {{ saving ? t('metavox', 'Saving...') : t('metavox', 'Save view') }}
+            {{ saving ? labels.saving : labels.saveView }}
           </NcButton>
           <NcButton type="secondary" @click="cancelForm">
-            {{ t('metavox', 'Cancel') }}
+            {{ labels.cancel }}
           </NcButton>
         </div>
       </div>
@@ -227,7 +225,7 @@
           <template #icon>
             <PlusIcon :size="20" />
           </template>
-          {{ t('metavox', 'Create new view') }}
+          {{ labels.createView }}
         </NcButton>
       </div>
     </div>
@@ -235,7 +233,7 @@
 </template>
 
 <script>
-import { translate as t } from '@nextcloud/l10n'
+import { translate as t, translatePlural as n } from '@nextcloud/l10n'
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 import { NcButton, NcCheckboxRadioSwitch } from '@nextcloud/vue'
@@ -292,6 +290,52 @@ export default {
     filterableColumns() {
       return this.availableColumns.filter(c => c.filterable)
     },
+    labels() {
+      return {
+        // TRANSLATORS Noun: heading of the section that lists the saved views of this Team folder
+        views: t('metavox', 'Views'),
+        // TRANSLATORS Accessible name of the star button that makes this view the default view
+        setDefaultButton: t('metavox', 'Set as default view'),
+        // TRANSLATORS Title of the view editor when it changes an existing view
+        editView: t('metavox', 'Edit view'),
+        // TRANSLATORS Verb: button in the confirmation dialog that deletes the view
+        deleteView: t('metavox', 'Delete view'),
+        // TRANSLATORS Title of the view editor when it creates a new view; also a menu item in the view menu
+        newView: t('metavox', 'New view'),
+        // TRANSLATORS Noun: label of the field that holds the name of a view
+        name: t('metavox', 'Name'),
+        // TRANSLATORS Placeholder of the field that holds the name of a view
+        namePlaceholder: t('metavox', 'View name'),
+        // TRANSLATORS Label of the checkbox that makes this view the default view
+        setDefaultCheckbox: t('metavox', 'Set as default view'),
+        // TRANSLATORS Noun: heading of the column list section in the view editor
+        columns: t('metavox', 'Columns'),
+        // TRANSLATORS Verb: menu item that moves a highlight rule one place up
+        moveUp: t('metavox', 'Move up'),
+        // TRANSLATORS Verb: menu item that moves a highlight rule one place down
+        moveDown: t('metavox', 'Move down'),
+        // TRANSLATORS Noun: heading of the filter section in the view editor
+        filters: t('metavox', 'Filters'),
+        // TRANSLATORS Placeholder of a filter value field; example values separated by commas, keep the commas
+        filterPlaceholder: t('metavox', 'e.g. Value 1, Value 2'),
+        // TRANSLATORS Noun: heading of the sort section in the view editor
+        sort: t('metavox', 'Sort'),
+        // TRANSLATORS Placeholder of the sort field dropdown when the view does not sort
+        noSorting: t('metavox', '— no sorting —'),
+        // TRANSLATORS Radio option for the sort direction (A to Z, oldest first)
+        ascending: t('metavox', 'Ascending'),
+        // TRANSLATORS Radio option for the sort direction (Z to A, newest first)
+        descending: t('metavox', 'Descending'),
+        // TRANSLATORS Label of the save button while the view is being saved; keep it short
+        saving: t('metavox', 'Saving …'),
+        // TRANSLATORS Button that saves the view; keep it short
+        saveView: t('metavox', 'Save view'),
+        // TRANSLATORS Verb: dialog button that closes the view editor without saving
+        cancel: t('metavox', 'Cancel'),
+        // TRANSLATORS Button that opens the form for a new view; keep it short
+        createView: t('metavox', 'Create new view'),
+      }
+    },
   },
 
   watch: {
@@ -305,6 +349,7 @@ export default {
 
   methods: {
     t,
+    n,
 
     emptyForm() {
       return {
@@ -320,6 +365,16 @@ export default {
     filterCount(view) {
       if (!view.filters) return 0
       return Object.values(view.filters).filter(v => v && String(v).trim() !== '').length
+    },
+
+    columnCountLabel(view) {
+      // TRANSLATORS %n is the number of columns shown in this view
+      return n('metavox', '%n column', '%n columns', (view.columns || []).length)
+    },
+
+    filterCountLabel(view) {
+      // TRANSLATORS %n is the number of preset filters in this view
+      return n('metavox', '%n filter', '%n filters', this.filterCount(view))
     },
 
     async loadViews() {
@@ -413,6 +468,7 @@ export default {
 
     async saveView() {
       if (!this.form.name.trim()) {
+        // TRANSLATORS Error shown when the name field of the view is empty
         this.formMessage = t('metavox', 'Name is required')
         this.formSuccess = false
         return
@@ -468,6 +524,7 @@ export default {
     },
 
     async deleteView(viewId) {
+      // TRANSLATORS Question in the confirmation box shown before a view is deleted
       if (!confirm(t('metavox', 'Delete this view?'))) return
       try {
         const url = generateUrl(`${this.apiBasePath}/groupfolders/${this.groupfolderId}/views/${viewId}`)
@@ -508,8 +565,6 @@ export default {
   margin: 0 0 4px 0;
   font-size: 12px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
   color: var(--color-text-maxcontrast);
 }
 

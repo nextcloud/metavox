@@ -129,29 +129,30 @@
 				:id="`field-${field.id}`"
 				:model-value="values[field.field_name] || ''"
 				:disabled="readonly"
-				:placeholder="`Unknown field type: ${field.field_type}`"
-				@update:model-value="handleUpdate(field.field_name, $event)" />
+				@update:model-value="handleUpdate(field.field_name, $event)"
+				:placeholder="t('metavox', 'Unknown field type: {type}', { type: field.field_type })" /> <!-- TRANSLATORS Placeholder of a text box for a field whose type the app does not know; {type} is the technical name of that field type -->
 
 			<!-- AI Suggestion -->
 			<div v-if="aiSuggestions[field.field_name]" class="ai-suggestion">
 				<div class="ai-suggestion-header">
 					<CreationIcon :size="16" />
+					<!-- TRANSLATORS Label above a value that AI proposes for a field; AI = artificial intelligence -->
 					<span>{{ t('metavox', 'AI suggests:') }}</span>
 				</div>
 				<div class="ai-suggestion-value">{{ formatSuggestion(field, aiSuggestions[field.field_name]) }}</div>
 				<div class="ai-suggestion-actions">
-					<NcButton type="primary" size="small" :aria-label="t('metavox', 'Accept')" :title="t('metavox', 'Accept')" @click="$emit('accept-suggestion', field.field_name, aiSuggestions[field.field_name])">
+					<NcButton type="primary" size="small" :aria-label="acceptLabel" :title="acceptLabel" @click="$emit('accept-suggestion', field.field_name, aiSuggestions[field.field_name])">
 						<template #icon>
 							<CheckIcon :size="20" />
 						</template>
 					</NcButton>
-					<NcButton type="secondary" size="small" :aria-label="t('metavox', 'Regenerate')" :title="t('metavox', 'Regenerate')" :disabled="regeneratingField === field.field_name" @click="$emit('regenerate-suggestion', field.field_name)">
+					<NcButton type="secondary" size="small" :aria-label="regenerateLabel" :title="regenerateLabel" :disabled="regeneratingField === field.field_name" @click="$emit('regenerate-suggestion', field.field_name)">
 						<template #icon>
 							<NcLoadingIcon v-if="regeneratingField === field.field_name" :size="20" />
 							<RefreshIcon v-else :size="20" />
 						</template>
 					</NcButton>
-					<NcButton type="tertiary" size="small" :aria-label="t('metavox', 'Dismiss')" :title="t('metavox', 'Dismiss')" @click="$emit('dismiss-suggestion', field.field_name)">
+					<NcButton type="tertiary" size="small" :aria-label="dismissLabel" :title="dismissLabel" @click="$emit('dismiss-suggestion', field.field_name)">
 						<template #icon>
 							<CloseIcon :size="20" />
 						</template>
@@ -247,6 +248,21 @@ export default {
 			const gf = groupfolders.find((g) => Number(g.id) === Number(gfId))
 			return gf && gf.mount_point ? '/' + String(gf.mount_point).replace(/^\/+/, '') : ''
 		},
+
+		acceptLabel() {
+			// TRANSLATORS Verb: tooltip and accessible name of the check-mark button that accepts the value AI suggests for a field; keep it short
+			return t('metavox', 'Accept')
+		},
+
+		regenerateLabel() {
+			// TRANSLATORS Verb: tooltip and accessible name of the button that asks AI for a new suggestion for a field; keep it short
+			return t('metavox', 'Regenerate')
+		},
+
+		dismissLabel() {
+			// TRANSLATORS Verb: tooltip and accessible name of the cross button that rejects the value AI suggests for a field; keep it short
+			return t('metavox', 'Dismiss')
+		},
 	},
 
 	methods: {
@@ -256,7 +272,11 @@ export default {
 
 		formatSuggestion(field, value) {
 			if (field.field_type === 'checkbox') {
-				return value === '1' ? t('metavox', 'Yes') : t('metavox', 'No')
+				return value === '1'
+					// TRANSLATORS Value of a checkbox field that is ticked, shown in cells and lists
+					? t('metavox', 'Yes')
+					// TRANSLATORS Value of a checkbox field that is not ticked, shown in cells and lists
+					: t('metavox', 'No')
 			}
 			if (field.field_type === 'multiselect' && value.includes(';#')) {
 				return value.split(';#').filter(v => v.trim()).join(', ')

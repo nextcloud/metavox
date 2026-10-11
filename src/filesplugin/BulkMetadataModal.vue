@@ -7,7 +7,8 @@
 		<div class="bulk-metadata-modal">
 			<!-- Header -->
 			<div class="modal-header">
-				<h2 class="modal-title">Edit Metadata</h2>
+				<!-- TRANSLATORS Title of the dialog that edits the metadata of the selected files -->
+				<h2 class="modal-title">{{ t('metavox', 'Edit metadata') }}</h2>
 				<div class="file-badges">
 					<span v-for="(file, i) in files.slice(0, 5)" :key="i" class="file-badge">
 						{{ file.basename }}
@@ -26,14 +27,16 @@
 						type="radio"
 						name="merge-strategy"
 						@update:model-value="mergeStrategy = 'overwrite'">
-						Overwrite existing values
+						<!-- TRANSLATORS Radio button: saving replaces values the selected files already have -->
+						{{ t('metavox', 'Overwrite existing values') }}
 					</NcCheckboxRadioSwitch>
 					<NcCheckboxRadioSwitch
 						:model-value="mergeStrategy === 'fill-empty'"
 						type="radio"
 						name="merge-strategy"
 						@update:model-value="mergeStrategy = 'fill-empty'">
-						Only fill empty fields
+						<!-- TRANSLATORS Radio button: saving only fills fields that are still empty on the selected files -->
+						{{ t('metavox', 'Only fill empty fields') }}
 					</NcCheckboxRadioSwitch>
 				</div>
 				<div v-if="fields.length > 6" class="field-search">
@@ -42,14 +45,14 @@
 						v-model="searchQuery"
 						type="text"
 						class="search-input"
-						placeholder="Search fields...">
+						:placeholder="t('metavox', 'Search fields …')"> <!-- TRANSLATORS Placeholder of the search box that filters the field list -->
 				</div>
 			</div>
 
 			<!-- Loading state -->
 			<div v-if="loading" class="loading-state">
 				<NcLoadingIcon :size="32" />
-				<p>{{ t('metavox', 'Loading metadata fields...') }}</p>
+				<p>{{ t('metavox', 'Loading metadata fields …') }}</p>
 			</div>
 
 			<!-- Metadata form -->
@@ -65,7 +68,8 @@
 
 			<!-- No fields message -->
 			<div v-else-if="fields.length > 0 && searchQuery" class="no-fields">
-				<p>No fields matching "{{ searchQuery }}"</p>
+				<!-- TRANSLATORS {query} is the text typed in the field search box, e.g. "No fields match status" -->
+				<p>{{ t('metavox', 'No fields match {query}', { query: searchQuery }) }}</p>
 			</div>
 			<div v-else class="no-fields">
 				<p>{{ t('metavox', 'No metadata fields available for these files.') }}</p>
@@ -82,7 +86,7 @@
 							<NcLoadingIcon v-if="clearing" :size="20" />
 							<DeleteIcon v-else :size="20" />
 						</template>
-						{{ clearing ? t('metavox', 'Clearing...') : t('metavox', 'Clear All') }}
+						{{ clearButtonLabel }}
 					</NcButton>
 					<NcButton
 						type="secondary"
@@ -92,11 +96,12 @@
 							<NcLoadingIcon v-if="exporting" :size="20" />
 							<DownloadIcon v-else :size="20" />
 						</template>
-						{{ exporting ? t('metavox', 'Exporting...') : t('metavox', 'Export CSV') }}
+						{{ exportButtonLabel }}
 					</NcButton>
 				</div>
 				<div class="actions-right">
 					<NcButton type="tertiary" @click="close">
+						<!-- TRANSLATORS Button that closes the dialog without saving; keep it short -->
 						{{ t('metavox', 'Cancel') }}
 					</NcButton>
 					<NcButton
@@ -106,7 +111,7 @@
 						<template #icon>
 							<NcLoadingIcon v-if="saving" :size="20" />
 						</template>
-						{{ saving ? t('metavox', 'Saving...') : t('metavox', 'Save') }}
+						{{ saveButtonLabel }}
 					</NcButton>
 				</div>
 			</div>
@@ -115,6 +120,8 @@
 </template>
 
 <script>
+import { translate, translatePlural } from '@nextcloud/l10n'
+import { errorText } from '../utils/errorText.js'
 import { NcModal, NcButton, NcCheckboxRadioSwitch, NcLoadingIcon } from '@nextcloud/vue'
 import { showSuccess, showError } from '@nextcloud/dialogs'
 import axios from '@nextcloud/axios'
@@ -184,6 +191,30 @@ export default {
 				(f.field_name || '').toLowerCase().includes(q)
 			)
 		},
+		clearButtonLabel() {
+			if (this.clearing) {
+				// TRANSLATORS Label of the clear button while the metadata is being removed; keep it short
+				return this.t('metavox', 'Clearing …')
+			}
+			// TRANSLATORS Button that removes all metadata from the selected files; keep it short
+			return this.t('metavox', 'Clear all')
+		},
+		exportButtonLabel() {
+			if (this.exporting) {
+				// TRANSLATORS Label of the export button while the export file is being made; keep it short
+				return this.t('metavox', 'Exporting …')
+			}
+			// TRANSLATORS Button that downloads the metadata of the selected files as a CSV (spreadsheet) file; keep CSV as is
+			return this.t('metavox', 'Export CSV')
+		},
+		saveButtonLabel() {
+			if (this.saving) {
+				// TRANSLATORS Label of the save button while the metadata is being saved; keep it short
+				return this.t('metavox', 'Saving …')
+			}
+			// TRANSLATORS Button that saves the metadata in the dialog; keep it short
+			return this.t('metavox', 'Save')
+		},
 	},
 
 	watch: {
@@ -198,16 +229,8 @@ export default {
 	},
 
 	methods: {
-		t(app, text, vars) {
-			if (vars) {
-				let result = window.t ? window.t(app, text) : text
-				Object.keys(vars).forEach(key => {
-					result = result.replace(`{${key}}`, vars[key])
-				})
-				return result
-			}
-			return window.t ? window.t(app, text) : text
-		},
+		t: translate,
+		n: translatePlural,
 
 		async loadFields() {
 			this.loading = true
@@ -340,12 +363,13 @@ export default {
 					mergeStrategy: this.mergeStrategy,
 				})
 
-				showSuccess(this.t('metavox', 'Metadata saved for {count} files', { count: this.files.length }))
+				// TRANSLATORS Confirmation message; {count} is the number of files the metadata was saved for
+				showSuccess(this.n('metavox', 'Metadata saved for {count} file', 'Metadata saved for {count} files', this.files.length, { count: this.files.length }))
 				this.$emit('saved')
 				this.close()
 			} catch (error) {
 				console.error('Failed to save metadata:', error)
-				showError(error.response?.data?.error || this.t('metavox', 'Failed to save metadata'))
+				showError(errorText(error, this.t('metavox', 'Failed to save metadata')))
 			} finally {
 				this.saving = false
 			}
@@ -359,7 +383,8 @@ export default {
 		},
 
 		async confirmClearAll() {
-			if (!confirm(this.t('metavox', 'Are you sure you want to clear all metadata from {count} files? This cannot be undone.', { count: this.files.length }))) {
+			// TRANSLATORS Confirmation question; {count} is the number of selected files
+			if (!confirm(this.n('metavox', 'Clear all metadata from this file? This cannot be undone.', 'Clear all metadata from {count} files? This cannot be undone.', this.files.length, { count: this.files.length }))) {
 				return
 			}
 			await this.clearAllMetadata()
@@ -374,12 +399,13 @@ export default {
 					fileIds,
 				})
 
-				showSuccess(this.t('metavox', 'Metadata cleared for {count} files', { count: this.files.length }))
+				// TRANSLATORS Confirmation message; {count} is the number of files the metadata was removed from
+				showSuccess(this.n('metavox', 'Metadata cleared for {count} file', 'Metadata cleared for {count} files', this.files.length, { count: this.files.length }))
 				this.$emit('saved')
 				this.close()
 			} catch (error) {
 				console.error('Failed to clear metadata:', error)
-				showError(error.response?.data?.error || this.t('metavox', 'Failed to clear metadata'))
+				showError(errorText(error, this.t('metavox', 'Failed to clear metadata')))
 			} finally {
 				this.clearing = false
 			}
@@ -402,7 +428,13 @@ export default {
 				}
 
 				// Build CSV
-				const headers = ['File Path', 'File Name', ...this.fields.map(f => f.field_label || f.field_name)]
+				const headers = [
+					// TRANSLATORS Noun: column header in the exported CSV file, the full path of each file
+					this.t('metavox', 'File path'),
+					// TRANSLATORS Noun: column header in the exported CSV file
+					this.t('metavox', 'File name'),
+					...this.fields.map(f => f.field_label || f.field_name),
+				]
 				const rows = data.map(item => {
 					const row = [item.path, item.name]
 					this.fields.forEach(field => {
@@ -437,10 +469,11 @@ export default {
 				document.body.removeChild(link)
 				URL.revokeObjectURL(url)
 
-				showSuccess(this.t('metavox', 'Metadata exported for {count} files', { count: this.files.length }))
+				// TRANSLATORS Confirmation message; {count} is the number of files whose metadata was exported to the CSV file
+				showSuccess(this.n('metavox', 'Metadata exported for {count} file', 'Metadata exported for {count} files', this.files.length, { count: this.files.length }))
 			} catch (error) {
 				console.error('Failed to export metadata:', error)
-				showError(error.response?.data?.error || this.t('metavox', 'Failed to export metadata'))
+				showError(errorText(error, this.t('metavox', 'Failed to export metadata')))
 			} finally {
 				this.exporting = false
 			}

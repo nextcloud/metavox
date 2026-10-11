@@ -17,7 +17,8 @@
 
 		<!-- Header -->
 		<div class="section-header">
-			<h2>{{ t('metavox', 'MetaVox - Custom Metadata Fields') }}</h2>
+			<!-- TRANSLATORS Heading of the admin settings page; MetaVox is the app name, do not translate it -->
+			<h2>{{ t('metavox', 'MetaVox - Custom metadata fields') }}</h2>
 		</div>
 
 		<!-- Tab Navigation -->
@@ -75,6 +76,7 @@
 </template>
 
 <script>
+import { translate } from '@nextcloud/l10n'
 // Icons from vue-material-design-icons
 import FolderIcon from 'vue-material-design-icons/Folder.vue'
 import FileIcon from 'vue-material-design-icons/File.vue'
@@ -121,13 +123,20 @@ export default {
 			activeTab: 'groupfolder-metadata',
 			licenseStats: null,
 			tabs: [
-				{ id: 'groupfolder-metadata', name: this.t('metavox', 'Team folder Metadata') },
-				{ id: 'file-metadata', name: this.t('metavox', 'File Metadata') },
+				// TRANSLATORS Noun: heading of the collapsible section with the metadata of the whole Team folder
+				{ id: 'groupfolder-metadata', name: this.t('metavox', 'Team folder metadata') },
+				// TRANSLATORS Noun: heading of the metadata of the selected file in the sidebar
+				{ id: 'file-metadata', name: this.t('metavox', 'File metadata') },
+				// TRANSLATORS Heading of the settings section that sets fields and metadata per Team folder
 				{ id: 'groupfolders', name: this.t('metavox', 'Manage Team folders') },
-				{ id: 'permissions', name: this.t('metavox', 'User Permissions') },
+				// TRANSLATORS Noun: tab that opens the permission settings; keep it short, the tab row does not wrap
+				{ id: 'permissions', name: this.t('metavox', 'Permissions') },
+				// TRANSLATORS Noun: tab that opens the usage statistics; keep it short, the tab row does not wrap
 				{ id: 'statistics', name: this.t('metavox', 'Statistics') },
+				// TRANSLATORS Noun: tab that opens subscription and support; keep it short, the tab row does not wrap
 				{ id: 'support', name: this.t('metavox', 'Support') },
-				{ id: 'backup', name: this.t('metavox', 'Backup & Restore') },
+				// TRANSLATORS Heading of the settings section for metadata backups
+				{ id: 'backup', name: this.t('metavox', 'Backup and restore') },
 			]
 		}
 	},
@@ -140,7 +149,14 @@ export default {
 
 			// Invalid/expired subscription key — friendly notice, not an error
 			if (hasKey && !s.licenseValid) {
-				return { type: 'info', message: this.t('metavox', 'Your MetaVox subscription key needs attention.'), linkText: this.t('metavox', 'Visit Support'), link: '#support' }
+				return {
+					type: 'info',
+					// TRANSLATORS Notice above the settings tabs; MetaVox is the app name, do not translate it
+					message: this.t('metavox', 'Your MetaVox subscription key needs attention.'),
+					// TRANSLATORS Link that opens the Support tab; translate "Support" as in that tab
+					linkText: this.t('metavox', 'Visit Support'),
+					link: '#support',
+				}
 			}
 			// The subscription suggestion, shared with the Support tab so the two
 			// cannot drift apart. The old trigger fired from 50 users or 20 team
@@ -148,6 +164,7 @@ export default {
 			// below that there was nothing to sell and the notice arrived early.
 			const nudge = buildSubscriptionNudge(s)
 			if (nudge) {
+				// TRANSLATORS Link after the subscription notice that opens the Support tab
 				return { type: 'info', message: nudge, linkText: this.t('metavox', 'Learn more'), link: '#support' }
 			}
 			return null
@@ -191,18 +208,7 @@ export default {
 		},
 		
 		// Translation helper
-		t(app, text, vars) {
-			if (typeof OC !== 'undefined' && OC.L10N) {
-				return OC.L10N.translate(app, text, vars)
-			}
-			// Fallback for development
-			if (vars) {
-				return Object.keys(vars).reduce((result, key) => {
-					return result.replace(`{${key}}`, vars[key])
-				}, text)
-			}
-			return text
-		}
+		t: translate,
 	},
 }
 </script>

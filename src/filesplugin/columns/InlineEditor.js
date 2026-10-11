@@ -13,7 +13,8 @@ import { saveSingleField, saveBulkFields } from './MetaVoxAPI.js'
 import { parseFieldOptions, formatValue } from './ColumnUtils.js'
 import { permissionCache, metadataCache, getActiveGroupfolderId, getFilelinkName } from './MetaVoxState.js'
 import { parseValue, joinTokens, displayName } from '../../components/fields/filelinkUtils.js'
-import { translate } from '@nextcloud/l10n'
+import { translate as t } from '@nextcloud/l10n'
+import { PLAIN_TEXT } from '../../utils/fieldValue.js'
 import { pushUndo } from './UndoSupport.js'
 import { dateFieldIncludesTime, padDatetimeLocal } from '../../utils/dateField.js'
 
@@ -79,6 +80,20 @@ export function canEditFile(fileId) {
  * @param {HTMLElement} td     The <td> element
  * @param {Object}      config Column configuration object
  */
+/**
+ * The tooltip of a cell someone else is editing.
+ *
+ * @param {string|undefined} user who holds the lock, when the server says
+ * @return {string}
+ */
+function lockedTitle(user) {
+	return user
+		// TRANSLATORS Tooltip on a grid cell that is locked; {user} is the display name of the person editing it, e.g. "Being edited by Anna de Vries"
+		? t('metavox', 'Being edited by {user}', { user }, undefined, PLAIN_TEXT)
+		// TRANSLATORS Tooltip on a grid cell that another person is editing, when their name is unknown
+		: t('metavox', 'Being edited by someone else')
+}
+
 export function setupCellEditing(td, config) {
 	td.style.cursor = 'pointer'
 	td.addEventListener('dblclick', (e) => {
@@ -125,15 +140,14 @@ export async function openInlineEditor(td, config) {
 			const url = generateUrl('/apps/metavox/api/groupfolders/{gfId}/files/{fileId}/lock', { gfId, fileId })
 			const resp = await axios.post(url, { field_name: fieldName })
 			if (resp.data?.locked) {
-				td.title = translate('metavox', 'Being edited by {user}', { user: resp.data.lockedBy || '?' })
+				td.title = lockedTitle(resp.data.lockedBy)
 				td.style.cursor = 'not-allowed'
 				setTimeout(() => { td.style.cursor = ''; td.title = '' }, 3000)
 				return
 			}
 		} catch (e) {
 			if (e.response?.status === 409) {
-				const lockedBy = e.response?.data?.lockedBy || '?'
-				td.title = translate('metavox', 'Being edited by {user}', { user: lockedBy })
+				td.title = lockedTitle(e.response?.data?.lockedBy)
 				td.style.cursor = 'not-allowed'
 				setTimeout(() => { td.style.cursor = ''; td.title = '' }, 3000)
 				return
@@ -159,8 +173,10 @@ export async function openInlineEditor(td, config) {
 			container.className = 'metavox-inline-editor metavox-inline-select'
 
 			const boolOpts = [
-				{ value: '1', label: translate('metavox', 'Yes') },
-				{ value: '0', label: translate('metavox', 'No') },
+				// TRANSLATORS Option in the cell editor of a checkbox field: ticked
+				{ value: '1', label: t('metavox', 'Yes') },
+				// TRANSLATORS Option in the cell editor of a checkbox field: not ticked
+				{ value: '0', label: t('metavox', 'No') },
 			]
 
 			for (const opt of boolOpts) {
@@ -196,6 +212,8 @@ export async function openInlineEditor(td, config) {
 			clearOpt.className = 'metavox-select-option'
 			clearOpt.dataset.value = ''
 			clearOpt.textContent = '—'
+			// TRANSLATORS Verb: accessible name of the empty option that clears the cell value
+			clearOpt.setAttribute('aria-label', t('metavox', 'Clear'))
 			if (!currentValue) clearOpt.classList.add('metavox-select-option--selected')
 			clearOpt.addEventListener('click', () => {
 				saveSingleField(fileId, fieldName, '', { unlock: true })
@@ -247,6 +265,9 @@ export async function openInlineEditor(td, config) {
 			btnRow.className = 'metavox-ms-actions'
 			const saveBtn = document.createElement('button')
 			saveBtn.textContent = '\u2713'
+			// TRANSLATORS Verb: tooltip and accessible name of the check-mark button that saves the cell value
+			saveBtn.title = t('metavox', 'Save')
+			saveBtn.setAttribute('aria-label', saveBtn.title)
 			saveBtn.className = 'metavox-ms-save'
 			saveBtn.addEventListener('click', () => {
 				const checked = Array.from(container.querySelectorAll('input:checked')).map(c => c.value)
@@ -255,6 +276,9 @@ export async function openInlineEditor(td, config) {
 			})
 			const cancelBtn = document.createElement('button')
 			cancelBtn.textContent = '\u2715'
+			// TRANSLATORS Verb: tooltip and accessible name of the cross button that closes the cell editor without saving
+			cancelBtn.title = t('metavox', 'Cancel')
+			cancelBtn.setAttribute('aria-label', cancelBtn.title)
 			cancelBtn.className = 'metavox-ms-cancel'
 			cancelBtn.addEventListener('click', () => closeInlineEditor(true))
 			btnRow.appendChild(saveBtn)
@@ -319,7 +343,8 @@ export async function openInlineEditor(td, config) {
 			const searchInput = document.createElement('input')
 			searchInput.type = 'text'
 			searchInput.className = 'metavox-user-search'
-			searchInput.placeholder = translate('metavox', 'Type to search users...')
+			// TRANSLATORS Placeholder of the account search box in the cell editor of a person field
+			searchInput.placeholder = t('metavox', 'Type to search accounts …')
 			container.appendChild(searchInput)
 
 			const listEl = document.createElement('div')
@@ -330,6 +355,8 @@ export async function openInlineEditor(td, config) {
 			const clearOpt = document.createElement('div')
 			clearOpt.className = 'metavox-select-option metavox-user-option'
 			clearOpt.textContent = '—'
+			// TRANSLATORS Verb: accessible name of the empty option that clears the cell value
+			clearOpt.setAttribute('aria-label', t('metavox', 'Clear'))
 			if (!currentValue) clearOpt.classList.add('metavox-select-option--selected')
 			clearOpt.addEventListener('click', () => {
 				saveSingleField(fileId, fieldName, '', { unlock: true })
@@ -374,7 +401,8 @@ export async function openInlineEditor(td, config) {
 					if (users.length === 0) {
 						const empty = document.createElement('div')
 						empty.className = 'metavox-select-option metavox-user-empty'
-						empty.textContent = translate('metavox', 'No users found')
+						// TRANSLATORS Shown in the account list of a person field when the search has no results
+						empty.textContent = t('metavox', 'No accounts found')
 						listEl.appendChild(empty)
 						return
 					}
@@ -430,13 +458,15 @@ export async function openInlineEditor(td, config) {
 			input.type = 'url'
 			input.className = 'metavox-url-input'
 			input.value = currentValue || ''
-			input.placeholder = translate('metavox', 'https://...')
+			// TRANSLATORS Placeholder of the web address box in the cell editor; {example} is an example address, e.g. "Enter URL (https://example.com)"
+			input.placeholder = t('metavox', 'Enter URL ({example})', { example: 'https://example.com' })
 			container.appendChild(input)
 
 			const openBtn = document.createElement('a')
 			openBtn.className = 'metavox-url-open'
 			openBtn.textContent = '↗'
-			openBtn.title = translate('metavox', 'Open link')
+			// TRANSLATORS Accessible name of the small button that opens the entered web address in a new tab
+			openBtn.title = t('metavox', 'Open link')
 			openBtn.target = '_blank'
 			openBtn.rel = 'noopener noreferrer'
 			const updateLink = () => {
@@ -502,17 +532,20 @@ export async function openInlineEditor(td, config) {
 			if (fileTokens.length === 0) {
 				const pathDisplay = document.createElement('span')
 				pathDisplay.className = 'metavox-filelink-path'
-				pathDisplay.textContent = translate('metavox', 'No files selected')
+				// TRANSLATORS Shown in the cell editor of a file-link field when no file is linked yet
+				pathDisplay.textContent = t('metavox', 'No files selected')
 				container.appendChild(pathDisplay)
 			}
 
 			const browseBtn = document.createElement('button')
 			browseBtn.className = 'metavox-filelink-browse'
-			browseBtn.textContent = translate('metavox', 'Add file')
+			// TRANSLATORS Verb: button in the cell editor of a file-link field that opens the file picker; keep it short
+			browseBtn.textContent = t('metavox', 'Add file')
 			browseBtn.addEventListener('click', () => {
 				if (typeof OC !== 'undefined' && OC.dialogs) {
 					OC.dialogs.filepicker(
-						translate('metavox', 'Select a file or folder'),
+						// TRANSLATORS Title of the file picker dialog for a file-link field
+						t('metavox', 'Select a file or folder'),
 						(path) => {
 							if (path) {
 								// Append the picked file to the existing set.
@@ -534,7 +567,8 @@ export async function openInlineEditor(td, config) {
 				const clearBtn = document.createElement('button')
 				clearBtn.className = 'metavox-filelink-clear'
 				clearBtn.textContent = '✕'
-				clearBtn.title = translate('metavox', 'Clear')
+				// TRANSLATORS Verb: accessible name of the cross button that removes all linked files from the cell
+				clearBtn.title = t('metavox', 'Clear')
 				clearBtn.addEventListener('click', () => {
 					saveSingleField(fileId, fieldName, '', { unlock: true })
 					closeInlineEditor(false)

@@ -1,0 +1,1500 @@
+# MetaVox sv translation.
+# Carried over from the pre-Transifex l10n/sv.json bundle.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: MetaVox 2.2.3\n"
+"Report-Msgid-Bugs-To: translations@nextcloud.com\n"
+"PO-Revision-Date: 2026-10-09 00:00+0000\n"
+"Last-Translator: MetaVox <translations@nextcloud.com>\n"
+"Language-Team: sv\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: sv\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "— no sorting —"
+msgstr "— ingen sortering —"
+
+msgid "{field} {operator}"
+msgstr ""
+
+msgid "{field} {operator} \"{value}\""
+msgstr ""
+
+msgid "{field}: {value}"
+msgstr ""
+
+msgid "{seconds} s"
+msgstr ""
+
+msgid "+ add value"
+msgstr "+ lägg till värde"
+
+msgid "A subscription includes: guaranteed Nextcloud compatibility, email support, priority bug fixes, and active development."
+msgstr ""
+
+msgid "Accept"
+msgstr "Acceptera"
+
+msgid "Access denied"
+msgstr "Åtkomst nekad"
+
+msgid "Account"
+msgstr "Användare"
+
+msgid "Account names or email addresses"
+msgstr "Användarnamn eller e-postadresser"
+
+msgid "Actions"
+msgstr "Åtgärder"
+
+msgid "Active permissions"
+msgstr "Aktiva behörigheter"
+
+msgid "Add field"
+msgstr "Lägg till fält"
+
+msgid "Add file"
+msgstr "Lägg till fil"
+
+msgid "Add new metadata field"
+msgstr "Lägg till nytt metadatafält"
+
+msgid "Add option"
+msgstr "Lägg till alternativ"
+
+msgid "Add permission"
+msgstr "Lägg till behörighet"
+
+msgid "Add your first metadata field to get started organizing your files."
+msgstr "Lägg till ditt första metadatafält för att komma igång med att organisera dina filer."
+
+msgid "Add your first metadata field to get started organizing your Team folders."
+msgstr "Lägg till ditt första metadatafält för att komma igång med att organisera dina teammappar."
+
+msgid "AI could not generate a new suggestion for this field."
+msgstr "AI kunde inte generera ett nytt förslag för det här fältet."
+
+msgid "AI could not generate any suggestions for this file."
+msgstr "AI kunde inte generera några förslag för den här filen."
+
+msgid "AI generation failed. Please try again."
+msgstr "AI-generering misslyckades. Försök igen."
+
+msgid "AI metadata generation"
+msgstr "AI-generering av metadata"
+
+msgid "AI metadata generation disabled."
+msgstr "AI-generering av metadata inaktiverad."
+
+msgid "AI metadata generation enabled."
+msgstr "AI-generering av metadata aktiverad."
+
+msgid "AI suggests:"
+msgstr "AI föreslår:"
+
+msgid "AI task failed"
+msgstr "AI-uppgiften misslyckades"
+
+msgid "AI task timed out"
+msgstr "AI-uppgiften tog för lång tid"
+
+msgid "All types"
+msgstr "Alla typer"
+
+msgid "Allow people to generate metadata suggestions using AI. Requires an AI provider to be configured in Nextcloud."
+msgstr "Tillåt användare att generera metadataförslag med AI. Kräver att en AI-leverantör är konfigurerad i Nextcloud."
+
+msgid "Anonymous instance identifier (hashed URL)"
+msgstr "Anonym instans-identifierare (hashad URL)"
+
+msgid "Anonymous usage statistics"
+msgstr "Anonym användningsstatistik"
+
+msgid "Anonymous usage statistics disabled."
+msgstr "Anonym användningsstatistik inaktiverad."
+
+msgid "Any personal or sensitive data"
+msgstr "Personuppgifter eller känsliga uppgifter"
+
+msgid "Apply defaults now"
+msgstr "Tillämpa standardvärden nu"
+
+msgid "Apply filter"
+msgstr "Tillämpa filter"
+
+msgid "Apply the configured default values to existing files in this Team folder that do not yet have a value for these fields."
+msgstr "Tillämpa de konfigurerade standardvärdena på befintliga filer i denna teammapp som ännu inte har något värde för dessa fält."
+
+msgid "Applying defaults …"
+msgstr "Tillämpar standardvärden …"
+
+msgid "Applying defaults is taking longer than expected. It will continue in the background."
+msgstr "Att tillämpa standardvärden tar längre tid än väntat. Det fortsätter i bakgrunden."
+
+msgid "Are you sure you want to delete the view \"{name}\"?"
+msgstr "Är du säker på att du vill ta bort vyn \"{name}\"?"
+
+msgid "Are you sure you want to restore this backup? This will replace all current metadata with the backup data."
+msgstr "Är du säker på att du vill återställa den här säkerhetskopian? Detta kommer att ersätta all nuvarande metadata med data från säkerhetskopian."
+
+msgid "Are you sure you want to revoke this permission?"
+msgstr "Är du säker på att du vill återkalla den här behörigheten?"
+
+msgid "Ascending"
+msgstr "Stigande"
+
+msgid "Auto-detect"
+msgstr "Upptäck automatiskt"
+
+msgid "Automatic daily backups of all metadata. You can also create manual backups and restore from any backup."
+msgstr "Automatiska dagliga säkerhetskopior av all metadata. Du kan också skapa manuella säkerhetskopior och återställa från valfri säkerhetskopia."
+
+msgid "Backup and restore"
+msgstr "Säkerhetskopiering och återställning"
+
+msgid "Backup completed"
+msgstr "Säkerhetskopiering slutförd"
+
+msgid "Backup failed: {error}"
+msgstr "Säkerhetskopiering misslyckades: {error}"
+
+msgid "Backup from: {date}"
+msgstr "Säkerhetskopia från: {date}"
+
+msgid "Basic server configuration (database, OS, web server, language, timezone, country)"
+msgstr "Grundläggande serverkonfiguration (databas, OS, webbserver, språk, tidszon, land)"
+
+msgid "Being edited by {user}"
+msgstr "Redigeras av {user}"
+
+msgid "Being edited by someone else"
+msgstr ""
+
+msgid "Cancel"
+msgstr "Avbryt"
+
+msgid "Cannot delete (in use)"
+msgstr "Kan inte tas bort (används)"
+
+msgid "Cannot delete field - it is currently in use"
+msgstr "Kan inte ta bort fältet – det används för närvarande"
+
+msgid "Change account"
+msgstr "Byt användare"
+
+msgid "Check configuration:"
+msgstr ""
+
+msgid "Checkbox"
+msgstr "Kryssruta"
+
+msgid "Choose an option …"
+msgstr "Välj ett alternativ …"
+
+msgid "Choose options …"
+msgstr "Välj alternativ …"
+
+msgid "Choose which columns to show and in what order."
+msgstr "Välj vilka kolumner som ska visas och i vilken ordning."
+
+msgid "Clear"
+msgstr "Rensa"
+
+msgid "Clear all"
+msgstr "Rensa allt"
+
+msgid "Clear search"
+msgstr "Rensa sökning"
+
+msgid "Clear selection"
+msgstr "Rensa markering"
+
+msgid "Clearing …"
+msgstr "Rensar …"
+
+msgid "Close"
+msgstr "Stäng"
+
+msgid "Columns"
+msgstr "Kolumner"
+
+msgid "Comparison value is required"
+msgstr "Jämförelsevärde krävs"
+
+msgid "Configure custom metadata fields that will be available for all Team folders. These fields help organize and categorize your Team folders."
+msgstr "Konfigurera anpassade metadatafält som kommer att vara tillgängliga för alla teammappar. Dessa fält hjälper dig att organisera och kategorisera dina teammappar."
+
+msgid "Configure custom metadata fields that will be available for files within Team folders. These fields help organize and categorize your files."
+msgstr "Konfigurera anpassade metadatafält som kommer att vara tillgängliga för filer inom teammappar. Dessa fält hjälper dig att organisera och kategorisera dina filer."
+
+msgid "Configure fields"
+msgstr "Konfigurera fält"
+
+msgid "Configure fields for this Team folder"
+msgstr "Konfigurera fält för den här teammappen"
+
+msgid "Configure fields: Choose which fields are available for each Team folder"
+msgstr "Konfigurera fält: Välj vilka fält som är tillgängliga för varje teammapp"
+
+msgid "Configure metadata fields and manage metadata for your Team folders."
+msgstr "Konfigurera metadatafält och hantera metadata för dina teammappar."
+
+msgid "Configure which metadata fields are available for your Team folders"
+msgstr "Konfigurera vilka metadatafält som är tillgängliga för dina teammappar"
+
+msgid "Configure which metadata search fields are available for each Team folder and manage Team folder-specific metadata."
+msgstr "Konfigurera vilka metadatasökfält som är tillgängliga för varje teammapp och hantera teammappsspecifik metadata."
+
+msgid "Confirm import"
+msgstr "Bekräfta import"
+
+msgid "contains"
+msgstr "innehåller"
+
+msgid "contains all"
+msgstr "innehåller alla"
+
+msgid "Could not connect to license server"
+msgstr ""
+
+msgid "Could not delete the view: {reason}"
+msgstr "Kunde inte ta bort vyn: {reason}"
+
+msgid "Could not reach the telemetry server. Please try again later."
+msgstr "Kunde inte nå telemetriservern. Försök igen senare."
+
+msgid "Could not save the view: {reason}"
+msgstr "Det gick inte att spara vyn: {reason}"
+
+msgid "Create backup now"
+msgstr "Skapa säkerhetskopia nu"
+
+msgid "Create new view"
+msgstr "Skapa ny vy"
+
+msgid "Create predefined filter, column and sort combinations for this Team folder."
+msgstr "Skapa fördefinierade kombinationer av filter, kolumner och sortering för den här teammappen."
+
+msgid "Created"
+msgstr "Skapad"
+
+msgid "Creating backup …"
+msgstr "Skapar säkerhetskopia …"
+
+msgid "Date"
+msgstr "Datum"
+
+msgid "Default"
+msgstr "Standard"
+
+msgid "Default value"
+msgstr "Standardvärde"
+
+msgid "Delete"
+msgstr "Ta bort"
+
+msgid "Delete field"
+msgstr "Ta bort fält"
+
+msgid "Delete this view?"
+msgstr "Ta bort den här vyn?"
+
+msgid "Delete view"
+msgstr "Ta bort vy"
+
+msgid "Descending"
+msgstr "Fallande"
+
+msgid "Description"
+msgstr "Beskrivning"
+
+msgid "Description:"
+msgstr "Beskrivning:"
+
+msgid "Dismiss"
+msgstr "Avfärda"
+
+msgid "Display name"
+msgstr "Visningsnamn"
+
+msgid "Display name shown to people"
+msgstr "Visningsnamn som visas för användare"
+
+msgid "does not contain"
+msgstr "innehåller inte"
+
+msgid "Download"
+msgstr "Ladda ner"
+
+msgid "Download all metadata fields as a JSON file."
+msgstr "Ladda ner alla metadatafält som en JSON-fil."
+
+msgid "Drag to reorder"
+msgstr "Dra för att ändra ordning"
+
+msgid "Dropdown"
+msgstr "Rullgardinsmeny"
+
+msgid "Dropdown options"
+msgstr "Alternativ för rullgardinsmeny"
+
+msgid "e.g. Author, Document type, Status"
+msgstr "t.ex. Författare, Dokumenttyp, Status"
+
+msgid "e.g. Department, Project type, Priority"
+msgstr "t.ex. Avdelning, Projekttyp, Prioritet"
+
+msgid "e.g. MVOX-XXXX-XXXX-XXXX-XXXX"
+msgstr "t.ex. MVOX-XXXX-XXXX-XXXX-XXXX"
+
+msgid "e.g. Value 1, Value 2"
+msgstr "t.ex. Värde 1, Värde 2"
+
+msgid "e.g., author, document_type, status"
+msgstr "t.ex. author, document_type, status"
+
+msgid "e.g., department, project_type, priority"
+msgstr "t.ex. department, project_type, priority"
+
+msgid "Edit field"
+msgstr "Redigera fält"
+
+msgid "Edit field: {name}"
+msgstr "Redigera fält: {name}"
+
+msgid "Edit metadata"
+msgstr "Redigera metadata"
+
+msgid "Edit metadata fields for selected files"
+msgstr "Redigera metadatafält för valda filer"
+
+msgid "Edit metadata for {folder}"
+msgstr "Redigera metadata för {folder}"
+
+msgid "Edit metadata: Set Team folder-specific metadata values (admin only)"
+msgstr "Redigera metadata: Ange teammappsspecifika metadatavärden (endast admin)"
+
+msgid "Edit Team folder metadata values"
+msgstr "Redigera metadatavärden för teammapp"
+
+msgid "Edit the metadata values for this Team folder"
+msgstr "Redigera metadatavärdena för den här teammappen"
+
+msgid "Edit view"
+msgstr "Redigera vy"
+
+msgid "Enable AI metadata generation"
+msgstr "Aktivera AI-generering av metadata"
+
+msgid "Enter a name for the view"
+msgstr "Ge vyn ett namn"
+
+msgid "Enter a number"
+msgstr "Ange ett tal"
+
+msgid "Enter expected value"
+msgstr "Ange förväntat värde"
+
+msgid "Enter URL ({example})"
+msgstr "Ange URL ({example})"
+
+msgid "equals"
+msgstr "är lika med"
+
+msgid "Error loading metadata"
+msgstr "Fel vid inläsning av metadata"
+
+msgid "Error saving metadata: {error}"
+msgstr "Fel vid sparande av metadata: {error}"
+
+msgid "Existing metadata fields"
+msgstr "Befintliga metadatafält"
+
+msgid "Export CSV"
+msgstr "Exportera CSV"
+
+msgid "Export fields"
+msgstr "Exportera fält"
+
+msgid "Export fields to JSON"
+msgstr "Exportera fält till JSON"
+
+msgid "Exporting …"
+msgstr "Exporterar …"
+
+msgid "Failed to add field"
+msgstr "Kunde inte lägga till fält"
+
+msgid "Failed to apply defaults"
+msgstr "Det gick inte att tillämpa standardvärden"
+
+msgid "Failed to clear metadata"
+msgstr "Kunde inte rensa metadata"
+
+msgid "Failed to delete field"
+msgstr "Kunde inte ta bort fält"
+
+msgid "Failed to export fields"
+msgstr "Kunde inte exportera fält"
+
+msgid "Failed to export metadata"
+msgstr "Kunde inte exportera metadata"
+
+msgid "Failed to grant permission"
+msgstr "Kunde inte bevilja behörighet"
+
+msgid "Failed to import fields: {error}"
+msgstr "Kunde inte importera fält: {error}"
+
+msgid "Failed to load groups"
+msgstr "Kunde inte läsa in grupper"
+
+msgid "Failed to load metadata"
+msgstr "Kunde inte läsa in metadata"
+
+msgid "Failed to load metadata fields"
+msgstr "Kunde inte läsa in metadatafält"
+
+msgid "Failed to load permissions"
+msgstr "Kunde inte läsa in behörigheter"
+
+msgid "Failed to load Team folders"
+msgstr "Kunde inte läsa in teammappar"
+
+msgid "Failed to parse JSON file: {error}"
+msgstr "Kunde inte tolka JSON-fil: {error}"
+
+msgid "Failed to read file"
+msgstr ""
+
+msgid "Failed to regenerate suggestion."
+msgstr "Kunde inte generera nytt förslag."
+
+msgid "Failed to remove subscription key"
+msgstr "Kunde inte ta bort prenumerationsnyckel"
+
+msgid "Failed to revoke permission"
+msgstr "Kunde inte återkalla behörighet"
+
+msgid "Failed to save default value for {field}"
+msgstr "Det gick inte att spara standardvärdet för {field}"
+
+msgid "Failed to save field configuration"
+msgstr "Kunde inte spara fältkonfiguration"
+
+msgid "Failed to save metadata"
+msgstr "Kunde inte spara metadata"
+
+msgid "Failed to save subscription key"
+msgstr "Kunde inte spara prenumerationsnyckel"
+
+msgid "Failed to save view"
+msgstr "Kunde inte spara vy"
+
+msgid "Failed to send report"
+msgstr "Kunde inte skicka rapport"
+
+msgid "Failed to update field"
+msgstr "Kunde inte uppdatera fält"
+
+msgid "Failed to update settings"
+msgstr "Kunde inte uppdatera inställningar"
+
+msgid "Field"
+msgstr "Fält"
+
+msgid "Field \"{name}\" added successfully"
+msgstr "Fältet \"{name}\" lades till"
+
+msgid "Field configuration saved successfully"
+msgstr "Fältkonfiguration sparad"
+
+msgid "Field definitions"
+msgstr ""
+
+msgid "Field deleted successfully"
+msgstr "Fältet togs bort"
+
+msgid "Field label"
+msgstr "Fältetikett"
+
+msgid "Field name"
+msgstr "Fältnamn"
+
+msgid "Field name may only contain lowercase letters, numbers and underscores, and must start with a letter"
+msgstr "Ett fältnamn får bara innehålla små bokstäver, siffror och understreck och måste börja med en bokstav"
+
+msgid "Field name, label, and type are required"
+msgstr "Fältnamn, etikett och typ krävs"
+
+msgid "Field type"
+msgstr "Fälttyp"
+
+msgid "Field type:"
+msgstr "Fälttyp:"
+
+msgid "Field updated successfully"
+msgstr "Fältet uppdaterades"
+
+msgid "File fields"
+msgstr "Filfält"
+
+msgid "File link"
+msgstr "Fillänk"
+
+msgid "File metadata"
+msgstr "Filmetadata"
+
+msgid "File metadata can be edited by people within the Files app"
+msgstr "Filmetadata kan redigeras av användare i Filer-appen"
+
+msgid "File metadata fields"
+msgstr "Metadatafält för filer"
+
+msgid "File name"
+msgstr "Filnamn"
+
+msgid "File names or paths"
+msgstr "Filnamn eller sökvägar"
+
+msgid "File path"
+msgstr "Filsökväg"
+
+msgid "File values"
+msgstr ""
+
+msgid "Files matching all selected options are shown."
+msgstr "Filer som matchar alla valda alternativ visas."
+
+msgid "Filter by metadata"
+msgstr "Filtrera efter metadata"
+
+msgid "Filterable"
+msgstr "Filtrerbar"
+
+msgid "Filters"
+msgstr "Filter"
+
+msgid "Filters (preset values)"
+msgstr "Filter (förinställda värden)"
+
+msgid "Folder metadata"
+msgstr "Mappmetadata"
+
+msgid "Generate with AI"
+msgstr "Generera med AI"
+
+msgid "Generating …"
+msgstr "Genererar …"
+
+msgid "Generating metadata with AI …"
+msgstr "Genererar metadata med AI …"
+
+msgid "Grant permission"
+msgstr "Bevilja behörighet"
+
+msgid "Grant permissions to accounts or groups to allow them to view or edit metadata."
+msgstr "Bevilja behörigheter till användare eller grupper så att de kan visa eller redigera metadata."
+
+msgid "greater or equal"
+msgstr "större än eller lika med"
+
+msgid "greater than"
+msgstr "större än"
+
+msgid "Group"
+msgstr "Grupp"
+
+msgid "Help improve MetaVox by sharing anonymous usage statistics."
+msgstr "Hjälp till att förbättra MetaVox genom att dela anonym användningsstatistik."
+
+msgid "How it works:"
+msgstr "Så fungerar det:"
+
+msgid "Idle"
+msgstr "Inaktiv"
+
+msgid "Import and export"
+msgstr "Import och export"
+
+msgid "Import completed: {imported} imported, {errors} errors"
+msgstr "Import slutförd: {imported} importerade, {errors} fel"
+
+msgid "Import fields"
+msgstr "Importera fält"
+
+msgid "Import fields from JSON"
+msgstr "Importera fält från JSON"
+
+msgid "Import preview"
+msgstr "Förhandsgranskning av import"
+
+msgid "Importing …"
+msgstr "Importerar …"
+
+msgid "Include time component"
+msgstr "Inkludera tid"
+
+msgid "Internal field name"
+msgstr "Internt fältnamn"
+
+msgid "Internal identifier used in the system"
+msgstr "Intern identifierare som används i systemet"
+
+msgid "Internal name cannot be changed when field is in use"
+msgstr "Internt namn kan inte ändras när fältet används"
+
+msgid "Internal name:"
+msgstr "Internt namn:"
+
+msgid "Internal server error"
+msgstr "Internt serverfel"
+
+msgid "Invalid character \"{char}\" — only a-z, 0-9 and _ allowed"
+msgstr "Ogiltigt tecken \"{char}\" — endast a-z, 0-9 och _ tillåts"
+
+msgid "Invalid configuration format"
+msgstr "Ogiltigt konfigurationsformat"
+
+msgid "Invalid JSON file: {error}"
+msgstr "Ogiltig JSON-fil: {error}"
+
+msgid "Invalid JSON format. Expected an array of field definitions."
+msgstr "Ogiltigt JSON-format. Förväntade en array med fältdefinitioner."
+
+msgid "Invalid operator"
+msgstr "Ogiltig operator"
+
+msgid "is after"
+msgstr "är efter"
+
+msgid "is before"
+msgstr "är före"
+
+msgid "is empty"
+msgstr "är tom"
+
+msgid "is not"
+msgstr "är inte"
+
+msgid "is not empty"
+msgstr "är inte tom"
+
+msgid "is one of"
+msgstr "är en av"
+
+msgid "JSON must be an array of field definitions"
+msgstr "JSON måste vara en array med fältdefinitioner"
+
+msgid "Last report sent: {date}"
+msgstr "Senaste rapport skickad: {date}"
+
+msgid "Learn more"
+msgstr "Läs mer"
+
+msgid "Leave empty to auto-detect from file location"
+msgstr "Lämna tomt för att upptäcka automatiskt utifrån filens plats"
+
+msgid "less or equal"
+msgstr "mindre än eller lika med"
+
+msgid "less than"
+msgstr "mindre än"
+
+msgid "Loading …"
+msgstr "Laddar …"
+
+msgid "Loading backups …"
+msgstr "Läser in säkerhetskopior …"
+
+msgid "Loading field configuration …"
+msgstr "Läser in fältkonfiguration …"
+
+msgid "Loading metadata …"
+msgstr "Läser in metadata …"
+
+msgid "Loading metadata fields …"
+msgstr "Läser in metadatafält …"
+
+msgid "Loading MetaVox …"
+msgstr "Läser in MetaVox …"
+
+msgid "Loading permissions …"
+msgstr "Läser in behörigheter …"
+
+msgid "Loading Team folders …"
+msgstr "Läser in teammappar …"
+
+msgid "Loading your Team folders …"
+msgstr "Läser in dina teammappar …"
+
+msgid "Long text"
+msgstr "Lång text"
+
+msgid "Make sure the Team Folders app is installed and you have created some Team folders."
+msgstr "Se till att appen Teammappar är installerad och att du har skapat några teammappar."
+
+msgid "Manage account and group permissions for metadata fields and views"
+msgstr "Hantera användar- och gruppbehörigheter för metadatafält och vyer"
+
+msgid "Manage fields permission required"
+msgstr "Behörighet att hantera fält krävs"
+
+msgid "Manage metadata fields & views"
+msgstr "Hantera metadatafält och vyer"
+
+msgid "Manage Team folders"
+msgstr "Hantera teammappar"
+
+msgid "Metadata content or values"
+msgstr "Metadatainnehåll eller värden"
+
+msgid "Metadata field"
+msgstr "Metadatafält"
+
+msgid "Metadata field name is required"
+msgstr "Metadatafältsnamn krävs"
+
+msgid "Metadata fields"
+msgstr "Metadatafält"
+
+msgid "Metadata saved successfully"
+msgstr "Metadata sparad"
+
+msgid "Metadata saved successfully!"
+msgstr "Metadata sparad!"
+
+msgid "Metadata statistics"
+msgstr "Metadatastatistik"
+
+msgid "Metadata updated"
+msgstr "Metadata uppdaterad"
+
+msgid "MetaVox"
+msgstr ""
+
+msgid "MetaVox - Custom metadata fields"
+msgstr "MetaVox - Anpassade metadatafält"
+
+msgid "MetaVox · Filter by field …"
+msgstr "MetaVox · Filtrera efter fält …"
+
+msgid "MetaVox is free and open source (AGPL-3.0). All features work without a subscription. If MetaVox is valuable to your organization, a subscription supports active development and gives you guaranteed Nextcloud compatibility and email support."
+msgstr ""
+
+msgid "MetaVox metadata"
+msgstr "MetaVox-metadata"
+
+msgid "MetaVox, Nextcloud and PHP versions"
+msgstr "MetaVox-, Nextcloud- och PHP-versioner"
+
+msgid "Move down"
+msgstr "Flytta ner"
+
+msgid "Move up"
+msgstr "Flytta upp"
+
+msgid "Multi-select"
+msgstr "Flerval"
+
+msgid "Must start with a lowercase letter (a-z)"
+msgstr "Måste börja med en gemen bokstav (a-z)"
+
+msgid "My Team folders"
+msgstr "Mina teammappar"
+
+msgid "Name"
+msgstr "Namn"
+
+msgid "Name is required"
+msgstr "Namn krävs"
+
+msgid "Name shown to people"
+msgstr "Namn som visas för användare"
+
+msgid "Never"
+msgstr "Aldrig"
+
+msgid "New view"
+msgstr "Ny vy"
+
+msgid "Nextcloud Enterprise subscription detected on this instance. MetaVox subscriptions are sold through Nextcloud — contact your Nextcloud account manager or {email}."
+msgstr "Nextcloud Enterprise-prenumeration upptäckt på denna instans. MetaVox-prenumerationer säljs via Nextcloud — kontakta din Nextcloud-kontoansvarige eller {email}."
+
+msgid "No"
+msgstr "Nej"
+
+msgid "No (unchecked)"
+msgstr "Nej (ej ikryssad)"
+
+msgid "No accessible Team folders"
+msgstr "Inga tillgängliga teammappar"
+
+msgid "No accounts found"
+msgstr "Inga användare hittades"
+
+msgid "No AI text generation provider available"
+msgstr "Ingen leverantör för AI-textgenerering är tillgänglig"
+
+msgid "No backups available yet. Backups are created automatically every 24 hours, or you can create one manually."
+msgstr "Inga säkerhetskopior tillgängliga ännu. Säkerhetskopior skapas automatiskt var 24:e timme, eller så kan du skapa en manuellt."
+
+msgid "No columns configured. Configure columns first."
+msgstr "Inga kolumner konfigurerade. Konfigurera kolumner först."
+
+msgid "No fields available"
+msgstr "Inga fält tillgängliga"
+
+msgid "No fields available. Contact your administrator to create metadata fields."
+msgstr "Inga fält tillgängliga. Kontakta din administratör för att skapa metadatafält."
+
+msgid "No fields available. Create some fields first in the field management tabs."
+msgstr "Inga fält tillgängliga. Skapa några fält först i flikarna för fälthantering."
+
+msgid "No fields configured"
+msgstr "Inga fält konfigurerade"
+
+msgid "No fields found matching \"{query}\""
+msgstr "Inga fält hittades som matchar \"{query}\""
+
+msgid "No fields match {query}"
+msgstr "Inga fält matchar {query}"
+
+msgid "No fields match the selected filter"
+msgstr "Inga fält matchar det valda filtret"
+
+msgid "No fields to import"
+msgstr "Inga fält att importera"
+
+msgid "No file IDs provided"
+msgstr ""
+
+msgid "No file metadata fields are configured for items in this Team folder. Contact your administrator to set up metadata fields."
+msgstr "Inga filmetadatafält är konfigurerade för objekt i den här teammappen. Kontakta din administratör för att konfigurera metadatafält."
+
+msgid "No files selected"
+msgstr "Inga filer valda"
+
+msgid "No files specified"
+msgstr ""
+
+msgid "No filterable columns available. Mark columns as filterable in the column settings."
+msgstr "Inga filtrerbara kolumner tillgängliga. Markera kolumner som filtrerbara i kolumninställningarna."
+
+msgid "No filterable fields"
+msgstr "Inga filtrerbara fält"
+
+msgid "No filterable fields in this folder"
+msgstr "Inga filtrerbara fält i den här mappen"
+
+msgid "No folder metadata fields are configured for items in this Team folder. Contact your administrator to set up metadata fields."
+msgstr "Inga mappmetadatafält är konfigurerade för objekt i den här teammappen. Kontakta din administratör för att konfigurera metadatafält."
+
+msgid "No groups found"
+msgstr "Inga grupper hittades"
+
+msgid "No license key configured"
+msgstr ""
+
+msgid "No matching values in this folder"
+msgstr "Inga matchande värden i den här mappen"
+
+msgid "No metadata fields are configured for this Team folder."
+msgstr "Inga metadatafält är konfigurerade för den här teammappen."
+
+msgid "No metadata fields available for these files."
+msgstr "Inga metadatafält tillgängliga för dessa filer."
+
+msgid "No metadata fields configured"
+msgstr "Inga metadatafält konfigurerade"
+
+msgid "No metadata provided"
+msgstr ""
+
+msgid "No metadata to export"
+msgstr "Ingen metadata att exportera"
+
+msgid "No metadata values to save"
+msgstr "Inga metadatavärden att spara"
+
+msgid "No options available"
+msgstr "Inga alternativ tillgängliga"
+
+msgid "No permissions configured"
+msgstr "Inga behörigheter konfigurerade"
+
+msgid "No permissions found matching \"{query}\""
+msgstr "Inga behörigheter hittades som matchar \"{query}\""
+
+msgid "No Team folder metadata fields are configured for this Team folder. Contact your administrator to set up Team folder metadata fields."
+msgstr "Inga metadatafält för teammapp är konfigurerade för den här teammappen. Kontakta din administratör för att konfigurera metadatafält för teammapp."
+
+msgid "No Team folders found"
+msgstr "Inga teammappar hittades"
+
+msgid "No views configured yet."
+msgstr "Inga vyer konfigurerade ännu."
+
+msgid "Not logged in"
+msgstr "Inte inloggad"
+
+msgid "Number"
+msgstr "Nummer"
+
+msgid "Number of metadata fields and their types"
+msgstr "Antal metadatafält och deras typer"
+
+msgid "Number of Team folders using MetaVox"
+msgstr "Antal gruppmappar som använder MetaVox"
+
+msgid "Only fill empty fields"
+msgstr "Fyll bara i tomma fält"
+
+msgid "Only lowercase letters (a-z), numbers (0-9) and underscores (_)"
+msgstr "Endast gemena bokstäver (a-z), siffror (0-9) och understreck (_)"
+
+msgid "Open link"
+msgstr "Öppna länk"
+
+msgid "Open link in new tab"
+msgstr "Öppna länk i ny flik"
+
+msgid "Operator"
+msgstr ""
+
+msgid "Option value"
+msgstr "Alternativvärde"
+
+msgid "Optional description for this field"
+msgstr "Valfri beskrivning för det här fältet"
+
+msgid "Options:"
+msgstr "Alternativ:"
+
+msgid "Organization name or contact email"
+msgstr "Organisationsnamn eller kontaktmejladress"
+
+msgid "Overview of metadata fields and usage in your MetaVox installation."
+msgstr "Översikt över metadatafält och användning i din MetaVox-installation."
+
+msgid "Overwrite existing values"
+msgstr "Skriv över befintliga värden"
+
+msgid "People in the selected groups will be able to manage metadata fields and views"
+msgstr "Användare i valda grupper kommer att kunna hantera metadatafält och vyer"
+
+msgid "Permission"
+msgstr "Behörighet"
+
+msgid "Permission revoked successfully"
+msgstr "Behörighet återkallad"
+
+msgid "Permissions"
+msgstr "Behörigheter"
+
+msgid "Please add at least one option for dropdown fields"
+msgstr "Lägg till minst ett alternativ för rullgardinsfält"
+
+msgid "Please configure some fields first using the \"Configure fields\" button."
+msgstr "Konfigurera några fält först med knappen \"Konfigurera fält\"."
+
+msgid "Please enter a field label"
+msgstr "Ange en fältetikett"
+
+msgid "Please enter a field name"
+msgstr "Ange ett fältnamn"
+
+msgid "Please enter a subscription key"
+msgstr "Ange en prenumerationsnyckel"
+
+msgid "Please enter a valid URL"
+msgstr "Ange en giltig URL"
+
+msgid "Please select a JSON file to import"
+msgstr "Välj en JSON-fil att importera"
+
+msgid "Please try again."
+msgstr "Försök igen."
+
+msgid "Preparing …"
+msgstr ""
+
+msgid "Pricing details"
+msgstr "Prisinformation"
+
+msgid "Questions?"
+msgstr ""
+
+msgid "Referenced by"
+msgstr "Refererad av"
+
+msgid "Regenerate"
+msgstr "Generera igen"
+
+msgid "Remove"
+msgstr "Ta bort"
+
+msgid "Remove option"
+msgstr "Ta bort alternativ"
+
+msgid "Remove subscription key"
+msgstr "Ta bort prenumerationsnyckel"
+
+msgid "Report sent successfully"
+msgstr "Rapport skickad"
+
+msgid "Required"
+msgstr "Obligatorisk"
+
+msgid "Required field"
+msgstr "Obligatoriskt fält"
+
+msgid "Restore"
+msgstr "Återställ"
+
+msgid "Restore backup"
+msgstr "Återställ säkerhetskopia"
+
+msgid "Restore completed"
+msgstr "Återställning slutförd"
+
+msgid "Restore failed: {error}"
+msgstr "Återställning misslyckades: {error}"
+
+msgid "Restoring backup …"
+msgstr "Återställer säkerhetskopia …"
+
+msgid "Retry"
+msgstr "Försök igen"
+
+msgid "Revoke"
+msgstr "Återkalla"
+
+msgid "Save"
+msgstr "Spara"
+
+msgid "Save & activate"
+msgstr "Spara och aktivera"
+
+msgid "Save changes"
+msgstr "Spara ändringar"
+
+msgid "Save configuration"
+msgstr "Spara konfiguration"
+
+msgid "Save view"
+msgstr "Spara vy"
+
+msgid "Saving …"
+msgstr "Sparar …"
+
+msgid "Search and select groups …"
+msgstr "Sök och välj grupper …"
+
+msgid "Search fields"
+msgstr "Sökfält"
+
+msgid "Search fields …"
+msgstr "Sök fält …"
+
+msgid "Search permissions …"
+msgstr "Sök behörigheter …"
+
+msgid "Search Team folders"
+msgstr "Sök teammappar"
+
+msgid "Select a field"
+msgstr "Välj ett fält"
+
+msgid "Select a file or folder"
+msgstr "Välj en fil eller mapp"
+
+msgid "Select a metadata field"
+msgstr "Välj ett metadatafält"
+
+msgid "Select a Team folder"
+msgstr "Välj en teammapp"
+
+msgid "Select a value"
+msgstr "Välj ett värde"
+
+msgid "Select groups"
+msgstr "Välj grupper"
+
+msgid "Select JSON file"
+msgstr "Välj JSON-fil"
+
+msgid "Send report now"
+msgstr "Skicka rapport nu"
+
+msgid "Sending …"
+msgstr "Skickar …"
+
+msgid "Set as default view"
+msgstr "Ange som standardvy"
+
+msgid "Set preset filter values (comma-separated) per field."
+msgstr "Ange förinställda filtervärden (kommaseparerade) per fält."
+
+msgid "Share anonymous usage statistics"
+msgstr "Dela anonym användningsstatistik"
+
+msgid "Sort"
+msgstr "Sortera"
+
+msgid "Sorting"
+msgstr "Sortering"
+
+msgid "Spaces are not allowed — use underscores instead"
+msgstr "Mellanslag är inte tillåtna — använd understreck istället"
+
+msgid "Standard Nextcloud file view"
+msgstr ""
+
+msgid "Standard view"
+msgstr "Standardvy"
+
+msgid "Standard view — loads automatically when opening this folder"
+msgstr "Standardvy — laddas automatiskt när mappen öppnas"
+
+msgid "Statistics"
+msgstr "Statistik"
+
+msgid "Subscription activated!"
+msgstr "Prenumeration aktiverad!"
+
+msgid "Subscription active — thank you for supporting MetaVox!"
+msgstr "Prenumeration aktiv — tack för att du stödjer MetaVox!"
+
+msgid "Subscription key"
+msgstr "Prenumerationsnyckel"
+
+msgid "Subscription key is invalid or expired."
+msgstr "Prenumerationsnyckeln är ogiltig eller har gått ut."
+
+msgid "Subscription key removed."
+msgstr "Prenumerationsnyckel borttagen."
+
+msgid "Subscription key saved but validation failed: {reason}"
+msgstr "Prenumerationsnyckel sparad men validering misslyckades: {reason}"
+
+msgid "Support"
+msgstr ""
+
+msgid "Support MetaVox"
+msgstr "Stöd MetaVox"
+
+msgid "Team folder"
+msgstr "Teammapp"
+
+msgid "Team folder (optional)"
+msgstr "Teammapp (valfritt)"
+
+msgid "Team folder {id}"
+msgstr "Teammapp {id}"
+
+msgid "Team folder fields"
+msgstr "Teammappsfält"
+
+msgid "Team folder information"
+msgstr "Information om teammapp"
+
+msgid "Team folder metadata"
+msgstr "Metadata för teammapp"
+
+msgid "Team folder metadata fields"
+msgstr "Metadatafält för teammapp"
+
+msgid "Team folder values"
+msgstr ""
+
+msgid "Team folders"
+msgstr "Teammappar"
+
+msgid "Team folders with metadata"
+msgstr "Teammappar med metadata"
+
+msgid "Text"
+msgstr ""
+
+msgid "Thank you for helping improve MetaVox!"
+msgstr "Tack för att du hjälper till att förbättra MetaVox!"
+
+msgid "Thank you! Anonymous usage statistics enabled."
+msgstr "Tack! Anonym användningsstatistik aktiverad."
+
+msgid "The telemetry server returned an error: {error}"
+msgstr "Telemetriservern returnerade ett fel: {error}"
+
+msgid "These fields apply to the Team folder itself"
+msgstr "Dessa fält gäller själva teammappen"
+
+msgid "These fields can be set on individual files"
+msgstr "Dessa fält kan anges på enskilda filer"
+
+msgid "This file is already linked"
+msgstr "Den här filen är redan länkad"
+
+msgid "This file is not in a Team folder. Metadata is only available for Team folder files."
+msgstr "Den här filen finns inte i en teammapp. Metadata är endast tillgänglig för filer i teammappar."
+
+msgid "This metadata applies to the entire Team folder and can only be edited by administrators in the administration settings."
+msgstr "Denna metadata gäller hela teammappen och kan endast redigeras av administratörer i administratörsinställningarna."
+
+msgid "Total accounts"
+msgstr "Totalt antal användare"
+
+msgid "Total metadata entries"
+msgstr "Totalt antal metadataposter"
+
+msgid "Total metadata entries count"
+msgstr "Totalt antal metadataposter"
+
+msgid "Total number of accounts and active accounts"
+msgstr "Totalt antal användare och aktiva användare"
+
+msgid "Type at least 2 characters …"
+msgstr "Skriv minst 2 tecken …"
+
+msgid "Type to search accounts …"
+msgstr "Skriv för att söka användare …"
+
+msgid "Unknown"
+msgstr "Okänd"
+
+msgid "Unknown error"
+msgstr ""
+
+msgid "Unknown field type: {type}"
+msgstr ""
+
+msgid "Unnamed field"
+msgstr "Namnlöst fält"
+
+msgid "Upload a JSON file to import metadata fields."
+msgstr "Ladda upp en JSON-fil för att importera metadatafält."
+
+msgid "Uppercase letters are not allowed — use lowercase only"
+msgstr "Versaler är inte tillåtna — använd endast gemener"
+
+msgid "URL"
+msgstr ""
+
+msgid "Value"
+msgstr "Värde"
+
+msgid "Value to check"
+msgstr "Värde att kontrollera"
+
+msgid "View details"
+msgstr "Visa detaljer"
+
+msgid "View name"
+msgstr "Vynamn"
+
+msgid "View name is required"
+msgstr "Vyns namn krävs"
+
+msgid "View not found"
+msgstr "Vyn hittades inte"
+
+msgid "Views"
+msgstr "Vyer"
+
+msgid "Visible"
+msgstr "Synlig"
+
+msgid "Visit Support"
+msgstr "Besök support"
+
+msgid "Warning:"
+msgstr "Varning:"
+
+msgid "We collect: field counts, Team folder counts, entry counts, version info (MetaVox, Nextcloud, PHP), and basic server configuration. No personal data or file contents are ever shared."
+msgstr "Vi samlar in: antal fält, antal teammappar, antal poster, versionsinformation (MetaVox, Nextcloud, PHP) och grundläggande serverkonfiguration. Inga personuppgifter eller filinnehåll delas någonsin."
+
+msgid "What we collect:"
+msgstr "Vad vi samlar in:"
+
+msgid "What we never collect:"
+msgstr "Vad vi aldrig samlar in:"
+
+msgid "What you can do:"
+msgstr "Vad du kan göra:"
+
+msgid "When enabled, people see a \"Generate with AI\" button in the metadata sidebar. The AI reads file content and suggests values for metadata fields."
+msgstr "När det är aktiverat ser användare en \"Generera med AI\"-knapp i metadatasidopanelen. AI:n läser filinnehåll och föreslår värden för metadatafält."
+
+msgid "When enabled, this field stores both date and time (e.g. meetings, deadlines)."
+msgstr "När detta är aktiverat lagrar fältet både datum och tid (till exempel för möten och tidsfrister)."
+
+msgid "where"
+msgstr "där"
+
+msgid "Whether your Nextcloud has an Extended Support / Enterprise subscription (a single yes/no, sourced from Nextcloud's public API)"
+msgstr "Om din Nextcloud har ett Extended Support- eller Enterprise-abonnemang (endast ja eller nej, hämtat från Nextclouds publika API)"
+
+msgid "Yes"
+msgstr "Ja"
+
+msgid "Yes (checked)"
+msgstr "Ja (ikryssad)"
+
+msgid "You can only link files inside this Team folder"
+msgstr "Du kan bara länka filer i den här teammappen"
+
+msgid "You do not have access to any Team folders yet. Contact your administrator if you need access."
+msgstr "Du har inte tillgång till några teammappar ännu. Kontakta din administratör om du behöver åtkomst."
+
+msgid "You do not have permission to view or edit metadata for this file."
+msgstr "Du har inte behörighet att visa eller redigera metadata för den här filen."
+
+msgid "Your actual server URL"
+msgstr "Din faktiska server-URL"
+
+msgid "Your installation"
+msgstr "Din installation"
+
+msgid "Your MetaVox subscription key needs attention."
+msgstr "Din MetaVox-prenumerationsnyckel behöver åtgärdas."
+
+msgid "Your Team folders"
+msgstr "Dina teammappar"
+
+msgid "{count} cell updated"
+msgid_plural "{count} cells updated"
+msgstr[0] "{count} celler uppdaterade"
+msgstr[1] "{count} celler uppdaterade"
+
+msgid "{values} and %n other"
+msgid_plural "{values} and %n others"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "%n column"
+msgid_plural "%n columns"
+msgstr[0] "%n kolumner"
+msgstr[1] "%n kolumner"
+
+msgid "%n entry"
+msgid_plural "%n entries"
+msgstr[0] "%n post"
+msgstr[1] "%n poster"
+
+msgid "%n field configured"
+msgid_plural "%n fields configured"
+msgstr[0] "%n fält konfigurerade"
+msgstr[1] "%n fält konfigurerade"
+
+msgid "%n field definition"
+msgid_plural "%n field definitions"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "%n field found"
+msgid_plural "%n fields found"
+msgstr[0] "%n fält hittades"
+msgstr[1] "%n fält hittades"
+
+msgid "%n file value"
+msgid_plural "%n file values"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "%n filter"
+msgid_plural "%n filters"
+msgstr[0] "%n filter"
+msgstr[1] "%n filter"
+
+msgid "%n folder"
+msgid_plural "%n folders"
+msgstr[0] "%n mapp"
+msgstr[1] "%n mappar"
+
+msgid "%n Team folder value"
+msgid_plural "%n Team folder values"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "Clear all metadata from this file? This cannot be undone."
+msgid_plural "Clear all metadata from {count} files? This cannot be undone."
+msgstr[0] "Rensa all metadata från den här filen? Detta kan inte ångras."
+msgstr[1] "Rensa all metadata från {count} filer? Detta kan inte ångras."
+
+msgid "Edit metadata ({count} item)"
+msgid_plural "Edit metadata ({count} items)"
+msgstr[0] "Redigera metadata ({count} objekt)"
+msgstr[1] "Redigera metadata ({count} objekt)"
+
+msgid "Exported %n field"
+msgid_plural "Exported %n fields"
+msgstr[0] "%n fält exporterat"
+msgstr[1] "%n fält exporterade"
+
+msgid "Found %n field matching \"{query}\""
+msgid_plural "Found %n fields matching \"{query}\""
+msgstr[0] "Hittade %n fält som matchar \"{query}\""
+msgstr[1] "Hittade %n fält som matchar \"{query}\""
+
+msgid "Found %n field to import"
+msgid_plural "Found %n fields to import"
+msgstr[0] "%n fält att importera hittades"
+msgstr[1] "%n fält att importera hittades"
+
+msgid "Found %n Team folder matching \"{query}\""
+msgid_plural "Found %n Team folders matching \"{query}\""
+msgstr[0] "Hittade %n teammappar som matchar \"{query}\""
+msgstr[1] "Hittade %n teammappar som matchar \"{query}\""
+
+msgid "Imported %n field"
+msgid_plural "Imported %n fields"
+msgstr[0] "%n fält importerat"
+msgstr[1] "%n fält importerade"
+
+msgid "Metadata cleared for {count} file"
+msgid_plural "Metadata cleared for {count} files"
+msgstr[0] "Metadata rensad för {count} filer"
+msgstr[1] "Metadata rensad för {count} filer"
+
+msgid "Metadata exported for {count} file"
+msgid_plural "Metadata exported for {count} files"
+msgstr[0] "Metadata exporterad för {count} filer"
+msgstr[1] "Metadata exporterad för {count} filer"
+
+msgid "Metadata saved for {count} file"
+msgid_plural "Metadata saved for {count} files"
+msgstr[0] "Metadata sparad för {count} filer"
+msgstr[1] "Metadata sparad för {count} filer"
+
+msgid "MetaVox is running for {count} account here and keeps working in full without a subscription. If your organization gets value from it, a subscription is much appreciated — it funds the maintenance. Sold through Nextcloud: contact your account manager or {email}."
+msgid_plural "MetaVox is running for {count} accounts here and keeps working in full without a subscription. If your organization gets value from it, a subscription is much appreciated — it funds the maintenance. Sold through Nextcloud: contact your account manager or {email}."
+msgstr[0] "MetaVox körs här för {count} användare och fortsätter att fungera fullt ut utan prenumeration. Om din organisation har nytta av det uppskattas en prenumeration mycket — den finansierar underhållet. Säljs via Nextcloud: kontakta din kontoansvarige eller {email}."
+msgstr[1] "MetaVox körs här för {count} användare och fortsätter att fungera fullt ut utan prenumeration. Om din organisation har nytta av det uppskattas en prenumeration mycket — den finansierar underhållet. Säljs via Nextcloud: kontakta din kontoansvarige eller {email}."
+
+msgid "Permission granted to %n group"
+msgid_plural "Permission granted to %n groups"
+msgstr[0] "Behörighet beviljad till %n grupp"
+msgstr[1] "Behörighet beviljad till %n grupper"
+
+msgid "Show %n more folder"
+msgid_plural "Show %n more folders"
+msgstr[0] "Visa %n mapp till"
+msgstr[1] "Visa %n mappar till"
+
+msgid "Showing {displayed} of {total} folder"
+msgid_plural "Showing {displayed} of {total} folders"
+msgstr[0] "Visar {displayed} av {total} mappar"
+msgstr[1] "Visar {displayed} av {total} mappar"
+
+msgid "This field is used in %n Team folder. Some changes may be restricted."
+msgid_plural "This field is used in %n Team folders. Some changes may be restricted."
+msgstr[0] "Detta fält används i %n teammapp. Vissa ändringar kan vara begränsade."
+msgstr[1] "Detta fält används i %n teammappar. Vissa ändringar kan vara begränsade."
+
+msgid "Used in %n Team folder"
+msgid_plural "Used in %n Team folders"
+msgstr[0] "Används i %n teammappar"
+msgstr[1] "Används i %n teammappar"

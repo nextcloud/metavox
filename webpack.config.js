@@ -21,7 +21,13 @@ module.exports = {
     rules: [
       {
         test: /\.vue$/,
-        loader: 'vue-loader'
+        loader: 'vue-loader',
+        options: {
+          // Template comments (our <!-- TRANSLATORS --> hints among them) stay out
+          // of the shipped bundle, and can never become a component's slot content
+          // (NcActionButton takes its first slot node as its label).
+          compilerOptions: { comments: false },
+        },
       },
       {
         test: /\.js$/,

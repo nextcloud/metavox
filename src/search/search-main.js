@@ -12,10 +12,10 @@
  * search bar keeps working regardless (the provider parses it from the term).
  */
 
+import { translate as t } from '@nextcloud/l10n'
 import { imagePath } from '@nextcloud/router'
 import { openFilterPicker } from './FilterPicker.js'
-
-const t = window.t ? (text) => window.t('metavox', text) : (text) => text
+import { PLAIN_TEXT } from '../utils/fieldValue.js'
 
 // Must equal MetadataSearchProvider::getId() so NC can match the filter to the
 // provider in handlePluginFilter() (it looks up filteredProviders by id, then
@@ -58,7 +58,8 @@ function registerMetaVoxFilter() {
 			// Pairs with the provider "MetaVox" while making the role explicit:
 			// the trailing "…" signals this entry opens a chooser (NC action
 			// convention), distinguishing it from the plain "MetaVox" location.
-			label: t('MetaVox · Filter by field…'),
+			// TRANSLATORS Entry in the filter menu of the unified search that opens a field filter; MetaVox is the app name, do not translate it
+			label: t('metavox', 'MetaVox · Filter by field …'),
 			icon: FILTER_ICON,
 			callback: () => {
 				// Open the picker; it resolves with the selection (or null when
@@ -108,7 +109,8 @@ function applyFilter({ field, value, label, groupfolderId }) {
 	emit('nextcloud:unified-search:add-filter', {
 		id: FILTER_ID,
 		// Readable chip text: "Field label: value(s)" supplied by the picker.
-		filterUpdateText: label || `${field}: ${value}`,
+		// TRANSLATORS: Text of a search filter chip, e.g. "Status: Approved".
+		filterUpdateText: label || t('metavox', '{field}: {value}', { field, value }, undefined, PLAIN_TEXT),
 		filterParams: {
 			metavox_field: expr,
 			...(groupfolderId != null ? { metavox_groupfolder: String(groupfolderId) } : {}),

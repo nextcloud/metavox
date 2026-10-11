@@ -66,6 +66,7 @@ class MetadataSearchProvider implements IProvider, IFilteringProvider {
     public function getName(): string {
         // App-branded provider name (mirrors IntraVox's "IntraVox pages"). NC
         // renders the app icon next to it automatically in the location list.
+        // TRANSLATORS Name of the search result group in the unified search; MetaVox is the app name, do not translate it
         return $this->l10n->t('MetaVox');
     }
 
@@ -110,6 +111,7 @@ class MetadataSearchProvider implements IProvider, IFilteringProvider {
         $searchExpr = $filterExpr ?? $query->getTerm();
 
         if ($searchExpr === null || strlen($searchExpr) < self::MIN_SEARCH_LENGTH) {
+            // TRANSLATORS Name of the search result group in the unified search; MetaVox is the app name, do not translate it
             return SearchResult::complete($this->l10n->t('MetaVox'), []);
         }
 
@@ -171,6 +173,7 @@ class MetadataSearchProvider implements IProvider, IFilteringProvider {
             ]);
         }
 
+        // TRANSLATORS Name of the search result group in the unified search; MetaVox is the app name, do not translate it
         return SearchResult::complete($this->l10n->t('MetaVox'), $results);
     }
 

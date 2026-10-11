@@ -5,7 +5,7 @@
  */
 
 import axios from '@nextcloud/axios'
-import { translate } from '@nextcloud/l10n'
+import { translate, translate as t } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
 import { createApp, h } from 'vue'
 import ViewEditorPanel from './ViewEditorPanel.vue'
@@ -317,14 +317,16 @@ export function injectViewTabs(views) {
 	const allTab = document.createElement('button')
 	allTab.type = 'button'
 	allTab.className = 'mv-tab mv-tab-all' + (!activeView ? ' mv-tab-active' : '')
-	allTab.title = translate('metavox', 'Standard Nextcloud file view')
+	// TRANSLATORS Tooltip on the "Default" tab, which shows the files without any saved view; Nextcloud is a product name
+	allTab.title = t('metavox', 'Standard Nextcloud file view')
 	// Home icon + label
 	const homeIcon = document.createElement('span')
 	homeIcon.className = 'mv-tab-home-icon'
 	homeIcon.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></svg>'
 	allTab.appendChild(homeIcon)
 	const allLabel = document.createElement('span')
-	allLabel.textContent = translate('metavox', 'Default')
+	// TRANSLATORS Name of the built-in view without saved settings, shown on the view picker button; keep it short
+	allLabel.textContent = t('metavox', 'Default')
 	allTab.appendChild(allLabel)
 	allTab.addEventListener('click', () => clearView())
 	container.appendChild(allTab)
@@ -339,7 +341,8 @@ export function injectViewTabs(views) {
 		star.className = 'mv-tab-default-icon'
 		star.textContent = '\u2605'
 		defTab.insertBefore(star, defTab.firstChild)
-		defTab.title = translate('metavox', 'Standard view — loads automatically when opening this folder')
+		// TRANSLATORS Tooltip on the star next to the view that opens by default in this folder
+		defTab.title = t('metavox', 'Standard view — loads automatically when opening this folder')
 		container.appendChild(defTab)
 	}
 
@@ -361,7 +364,8 @@ export function injectViewTabs(views) {
 		const addBtn = document.createElement('button')
 		addBtn.type = 'button'
 		addBtn.className = 'mv-tab mv-tab-add'
-		addBtn.title = translate('metavox', 'New view')
+		// TRANSLATORS Menu item in the view menu that opens the editor for a new view; also the title of that panel
+		addBtn.title = t('metavox', 'New view')
 		addBtn.textContent = '+'
 		addBtn.addEventListener('click', () => openViewEditor(null))
 		scrollArea.appendChild(addBtn)
@@ -423,12 +427,14 @@ function _makeViewTab(view) {
 		const icon = document.createElement('span')
 		if (canManageViews) {
 			icon.className = 'mv-tab-action-icon mv-tab-edit-icon'
-			icon.title = translate('metavox', 'Edit view')
+			// TRANSLATORS Title of the view editor when it changes an existing view
+			icon.title = t('metavox', 'Edit view')
 			icon.innerHTML = '<svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/></svg>'
 			icon.addEventListener('click', (e) => { e.stopPropagation(); openViewEditor(view) })
 		} else {
 			icon.className = 'mv-tab-action-icon mv-tab-view-icon'
-			icon.title = translate('metavox', 'View details')
+			// TRANSLATORS Menu item in the view menu that shows the settings of the current view read-only; also the title of that panel
+			icon.title = t('metavox', 'View details')
 			icon.innerHTML = '<svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5M3.18,12C4.83,15.36 8.24,17.5 12,17.5C15.76,17.5 19.17,15.36 20.82,12C19.17,8.64 15.76,6.5 12,6.5C8.24,6.5 4.83,8.64 3.18,12Z"/></svg>'
 			icon.addEventListener('click', (e) => { e.stopPropagation(); openViewEditor(view, true) })
 		}
@@ -552,12 +558,14 @@ export function updateActiveTabs() {
 					const icon = document.createElement('span')
 					if (canManageViews) {
 						icon.className = 'mv-tab-action-icon mv-tab-edit-icon'
-						icon.title = translate('metavox', 'Edit view')
+						// TRANSLATORS Title of the view editor when it changes an existing view
+						icon.title = t('metavox', 'Edit view')
 						icon.innerHTML = '<svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/></svg>'
 						icon.addEventListener('click', (e) => { e.stopPropagation(); openViewEditor(view) })
 					} else {
 						icon.className = 'mv-tab-action-icon mv-tab-view-icon'
-						icon.title = translate('metavox', 'View details')
+						// TRANSLATORS Menu item in the view menu that shows the settings of the current view read-only; also the title of that panel
+						icon.title = t('metavox', 'View details')
 						icon.innerHTML = '<svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5M3.18,12C4.83,15.36 8.24,17.5 12,17.5C15.76,17.5 19.17,15.36 20.82,12C19.17,8.64 15.76,6.5 12,6.5C8.24,6.5 4.83,8.64 3.18,12Z"/></svg>'
 						icon.addEventListener('click', (e) => { e.stopPropagation(); openViewEditor(view, true) })
 					}
@@ -716,7 +724,11 @@ async function _handleEditorSave(view, payload) {
 		}
 	} catch (e) {
 		console.error('MetaVox: Failed to save view', e)
-		alert(translate('metavox', 'Save failed: ') + (e.response?.data?.error || e.message))
+		// TRANSLATORS Error message; {reason} is the server's error text, e.g. "Could not save the view: Internal server error"
+		alert(t('metavox', 'Could not save the view: {reason}', {
+			// TRANSLATORS Fallback error reason when the server gives none; shown as {reason} in an error message, e.g. "Could not save the view: {reason}"
+			reason: e.response?.data?.error || t('metavox', 'Internal server error'),
+		}))
 	}
 }
 
@@ -756,7 +768,11 @@ async function _confirmDeleteView(view) {
 		}
 	} catch (e) {
 		console.error('MetaVox: Failed to delete view', e)
-		alert(translate('metavox', 'Delete failed: ') + (e.response?.data?.error || e.message))
+		// TRANSLATORS Error message; {reason} is the server's error text, e.g. "Could not delete the view: Internal server error"
+		alert(t('metavox', 'Could not delete the view: {reason}', {
+			// TRANSLATORS Fallback error reason when the server gives none; shown as {reason} in an error message, e.g. "Could not save the view: {reason}"
+			reason: e.response?.data?.error || t('metavox', 'Internal server error'),
+		}))
 	}
 }
 

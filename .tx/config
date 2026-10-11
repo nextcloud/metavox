@@ -1,8 +1,9 @@
 [main]
-host = https://www.transifex.com
+host     = https://www.transifex.com
+lang_map = hu_HU: hu, nb_NO: nb, sk_SK: sk, th_TH: th, ja_JP: ja, bg_BG: bg, cs_CZ: cs, fi_FI: fi
 
 [o:nextcloud:p:nextcloud:r:metavox]
-file_filter = l10n/<lang>.json
-source_file = l10n/en.json
+file_filter = translationfiles/<lang>/metavox.po
+source_file = translationfiles/templates/metavox.pot
 source_lang = en
-type = KEYVALUEJSON
+type        = PO

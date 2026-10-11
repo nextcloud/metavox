@@ -20,6 +20,7 @@ class AdminSection implements IIconSection {
     }
 
     public function getName(): string {
+        // TRANSLATORS Name of the section in the administration settings menu; MetaVox is the app name, do not translate it
         return $this->l->t('MetaVox');
     }
 

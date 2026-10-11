@@ -2,23 +2,25 @@
   <div class="permissions-manager">
     <!-- Page Header -->
     <div class="page-header">
-      <h2>{{ t('metavox', 'User Permissions') }}</h2>
+      <!-- TRANSLATORS Noun: heading of the settings section that sets who may manage fields -->
+      <h2>{{ t('metavox', 'Permissions') }}</h2>
       <p class="page-description">
-        {{ t('metavox', 'Manage user and group permissions for metadata fields and views') }}
+        {{ t('metavox', 'Manage account and group permissions for metadata fields and views') }}
       </p>
     </div>
 
     <!-- Loading State -->
     <div v-if="loading" class="loading-container">
       <div class="icon-loading"></div>
-      <p>{{ t('metavox', 'Loading permissions...') }}</p>
+      <!-- TRANSLATORS Status text while the list of permissions loads -->
+      <p>{{ t('metavox', 'Loading permissions …') }}</p>
     </div>
 
     <div v-else>
       <!-- Add Permission Section -->
       <div class="settings-section">
         <div class="section-header">
-          <h3>{{ t('metavox', 'Grant Permission') }}</h3>
+          <h3>{{ t('metavox', 'Grant permission') }}</h3>
           <NcButton 
             v-if="!showAddForm"
             @click="showAddForm = true" 
@@ -26,7 +28,8 @@
             <template #icon>
               <PlusIcon :size="20" />
             </template>
-            {{ t('metavox', 'Add Permission') }}
+            <!-- TRANSLATORS Button that opens the form to give groups a permission; keep it short -->
+            {{ t('metavox', 'Add permission') }}
           </NcButton>
         </div>
 
@@ -34,22 +37,24 @@
         <div v-if="showAddForm" class="add-permission-form">
           <!-- Group Selection with Multiselect (like Groupfolders) -->
           <div class="form-row">
-            <label class="field-label">{{ t('metavox', 'Select Groups') }}</label>
+            <!-- TRANSLATORS Label above the group picker in the add permission form -->
+            <label class="field-label">{{ t('metavox', 'Select groups') }}</label>
             <NcSelect
               v-model="formData.selectedGroups"
               :options="availableGroups"
               :multiple="true"
               label="displayname"
               track-by="id"
-              :placeholder="t('metavox', 'Search and select groups...')"
+              :placeholder="t('metavox', 'Search and select groups …')"
               :loading="loadingGroups"
               @search-change="searchGroups">
               <template #noResult>
+                <!-- TRANSLATORS Shown in the group picker when the search matches no group -->
                 {{ t('metavox', 'No groups found') }}
               </template>
             </NcSelect>
             <p class="field-help-text">
-              {{ t('metavox', 'Users in selected groups will be able to manage metadata fields and views') }}
+              {{ t('metavox', 'People in the selected groups will be able to manage metadata fields and views') }}
             </p>
           </div>
 
@@ -66,9 +71,10 @@
                 <div v-if="saving" class="icon-loading-small"></div>
                 <CheckIcon v-else :size="20" />
               </template>
-              {{ saving ? t('metavox', 'Saving...') : t('metavox', 'Grant Permission') }}
+              {{ grantButtonLabel }}
             </NcButton>
             <NcButton @click="cancelAdd" type="secondary" :disabled="saving">
+              <!-- TRANSLATORS Button that closes the add permission form without saving -->
               {{ t('metavox', 'Cancel') }}
             </NcButton>
           </div>
@@ -78,16 +84,17 @@
       <!-- Existing Permissions List -->
       <div class="settings-section">
         <div class="section-header">
-          <h3>{{ t('metavox', 'Active Permissions') }}</h3>
+          <!-- TRANSLATORS Heading of the list of permissions that are in effect -->
+          <h3>{{ t('metavox', 'Active permissions') }}</h3>
           <span class="permission-count">{{ permissions.length }}</span>
         </div>
 
   <!-- Search -->
 <div class="search-container">
-  <NcTextField
+  <!-- TRANSLATORS Placeholder of the search field above the permissions table -->
+  <NcTextField :placeholder="t('metavox', 'Search permissions …')"
     :model-value="searchQuery"
     @update:model-value="searchQuery = $event"
-    :placeholder="t('metavox', 'Search permissions...')"
     :show-trailing-button="!!searchQuery"
     trailing-button-icon="close"
     @trailing-button-click="searchQuery = ''">
@@ -100,12 +107,14 @@
         <!-- Empty State -->
         <div v-if="filteredPermissions.length === 0 && !searchQuery" class="empty-content">
           <ShieldIcon :size="64" class="empty-icon" />
+          <!-- TRANSLATORS Heading of the empty state when no group has a permission yet -->
           <h4>{{ t('metavox', 'No permissions configured') }}</h4>
-          <p>{{ t('metavox', 'Grant permissions to users or groups to allow them to view or edit metadata.') }}</p>
+          <p>{{ t('metavox', 'Grant permissions to accounts or groups to allow them to view or edit metadata.') }}</p>
         </div>
 
         <!-- No Search Results -->
         <div v-else-if="filteredPermissions.length === 0 && searchQuery" class="empty-search">
+          <!-- TRANSLATORS {query} is the text typed in the search field, e.g. No permissions found matching "finance" -->
           <p>{{ t('metavox', 'No permissions found matching "{query}"', { query: searchQuery }) }}</p>
         </div>
 
@@ -114,9 +123,13 @@
           <table>
             <thead>
               <tr>
+                <!-- TRANSLATORS Noun: column header for the group a permission is given to; keep it short -->
                 <th>{{ t('metavox', 'Group') }}</th>
+                <!-- TRANSLATORS Noun: column header for the kind of permission; keep it short -->
                 <th>{{ t('metavox', 'Permission') }}</th>
+                <!-- TRANSLATORS Column header for the date the permission was given; keep it short -->
                 <th>{{ t('metavox', 'Created') }}</th>
+                <!-- TRANSLATORS Noun: column header above the revoke buttons; keep it short -->
                 <th class="actions-column">{{ t('metavox', 'Actions') }}</th>
               </tr>
             </thead>
@@ -127,6 +140,7 @@
                     <AccountGroupIcon :size="20" />
                     <div class="target-info">
                       <strong>{{ permission.group_id }}</strong>
+                      <!-- TRANSLATORS Noun: small type label under the group name in the permissions table -->
                       <span class="target-type">{{ t('metavox', 'Group') }}</span>
                     </div>
                   </div>
@@ -148,6 +162,7 @@
                       <div v-if="deleting === permission.id" class="icon-loading-small"></div>
                       <DeleteIcon v-else :size="20" />
                     </template>
+                    <!-- TRANSLATORS Verb: button that removes this permission from the group; keep it short -->
                     {{ t('metavox', 'Revoke') }}
                   </NcButton>
                 </td>
@@ -161,6 +176,7 @@
 </template>
 
 <script>
+import { translate, translatePlural } from '@nextcloud/l10n'
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 
@@ -250,6 +266,15 @@ filteredPermissions() {
     isFormValid() {
       return this.formData.selectedGroups && this.formData.selectedGroups.length > 0
     },
+
+    grantButtonLabel() {
+      if (this.saving) {
+        // TRANSLATORS Button text while the permission is being saved; keep it short
+        return this.t('metavox', 'Saving …')
+      }
+      // TRANSLATORS Button that gives the selected groups the permission; keep it short
+      return this.t('metavox', 'Grant permission')
+    },
   },
   
   mounted() {
@@ -329,9 +354,8 @@ filteredPermissions() {
           await axios.post(generateUrl('/apps/metavox/api/permissions/group'), data)
         }
         
-        showSuccess(this.t('metavox', 'Permission granted to {count} group(s)', { 
-          count: this.formData.selectedGroups.length 
-        }))
+        // TRANSLATORS %n is the number of groups that were given the permission
+        showSuccess(this.n('metavox', 'Permission granted to %n group', 'Permission granted to %n groups', this.formData.selectedGroups.length))
         
         this.resetForm()
         this.showAddForm = false
@@ -362,6 +386,7 @@ filteredPermissions() {
           { data }
         )
         
+        // TRANSLATORS Confirmation after a permission was removed from a group
         showSuccess(this.t('metavox', 'Permission revoked successfully'))
         await this.loadPermissions()
       } catch (error) {
@@ -386,6 +411,7 @@ filteredPermissions() {
     
     getPermissionLabel(permissionType) {
       const labels = {
+        // TRANSLATORS Name of the only permission type, shown as a label in the permissions table
         'manage_fields': this.t('metavox', 'Manage metadata fields & views'),
       }
       return labels[permissionType] || permissionType
@@ -401,17 +427,8 @@ filteredPermissions() {
     },
     
     // Translation helper
-    t(app, text, vars) {
-      if (typeof OC !== 'undefined' && OC.L10N) {
-        return OC.L10N.translate(app, text, vars)
-      }
-      if (vars) {
-        return Object.keys(vars).reduce((result, key) => {
-          return result.replace(`{${key}}`, vars[key])
-        }, text)
-      }
-      return text
-    }
+    t: translate,
+    n: translatePlural,
   }
 }
 </script>

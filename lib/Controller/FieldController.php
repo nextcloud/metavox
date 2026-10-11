@@ -103,14 +103,14 @@ class FieldController extends BaseController {
             $appliesToGroupfolder = $this->request->getParam('applies_to_groupfolder');
 
             if (empty($fieldName) || empty($fieldLabel) || empty($fieldType)) {
-                return new JSONResponse(['error' => 'Field name, label, and type are required'], Http::STATUS_BAD_REQUEST);
+                return new JSONResponse(['error' => $this->l10n()->t('Field name, label, and type are required')], Http::STATUS_BAD_REQUEST);
             }
 
             // Strip any prefix before validating the base name
             $baseName = trim($fieldName);
             $baseName = preg_replace('/^(file_gf_|gf_)/', '', $baseName);
             if (!preg_match('/^[a-z][a-z0-9_]*$/', $baseName)) {
-                return new JSONResponse(['error' => 'Field name may only contain lowercase letters, numbers and underscores, and must start with a letter'], Http::STATUS_BAD_REQUEST);
+                return new JSONResponse(['error' => $this->l10n()->t('Field name may only contain lowercase letters, numbers and underscores, and must start with a letter')], Http::STATUS_BAD_REQUEST);
             }
 
             $fieldData = [
@@ -484,10 +484,12 @@ class FieldController extends BaseController {
             $mergeStrategy = $this->request->getParam('mergeStrategy', 'overwrite');
 
             if (empty($fileIds)) {
-                return new JSONResponse(['error' => 'No file IDs provided'], Http::STATUS_BAD_REQUEST);
+                // TRANSLATORS Error message shown to the user when no files were selected; IDs are the numbers that identify the files
+                return new JSONResponse(['error' => $this->l10n()->t('No file IDs provided')], Http::STATUS_BAD_REQUEST);
             }
             if (empty($metadata)) {
-                return new JSONResponse(['error' => 'No metadata provided'], Http::STATUS_BAD_REQUEST);
+                // TRANSLATORS Error message shown to the user when metadata is saved for several files without any value filled in
+                return new JSONResponse(['error' => $this->l10n()->t('No metadata provided')], Http::STATUS_BAD_REQUEST);
             }
 
             $userFolder = $this->rootFolder->getUserFolder($userId);
@@ -579,7 +581,8 @@ class FieldController extends BaseController {
             $userId = $user->getUID();
             $fileIds = $this->request->getParam('fileIds', []);
             if (empty($fileIds)) {
-                return new JSONResponse(['error' => 'No files specified'], Http::STATUS_BAD_REQUEST);
+                // TRANSLATORS Error message shown to the user when an action on several files is started without any file selected
+                return new JSONResponse(['error' => $this->l10n()->t('No files specified')], Http::STATUS_BAD_REQUEST);
             }
 
             $userFolder = $this->rootFolder->getUserFolder($userId);
@@ -631,7 +634,8 @@ class FieldController extends BaseController {
             $userId = $user->getUID();
             $fileIds = $this->request->getParam('fileIds', []);
             if (empty($fileIds)) {
-                return new JSONResponse(['error' => 'No files specified'], Http::STATUS_BAD_REQUEST);
+                // TRANSLATORS Error message shown to the user when an action on several files is started without any file selected
+                return new JSONResponse(['error' => $this->l10n()->t('No files specified')], Http::STATUS_BAD_REQUEST);
             }
 
             $userFolder = $this->rootFolder->getUserFolder($userId);

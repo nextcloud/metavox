@@ -1,0 +1,1922 @@
+# MetaVox translation template.
+# Copyright (C) 2026 VoxCloud
+# This file is distributed under the AGPL-3.0-or-later license.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: MetaVox 2.2.3\n"
+"Report-Msgid-Bugs-To: translations@nextcloud.com\n"
+"POT-Creation-Date: 2026-10-09 17:10+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. TRANSLATORS Placeholder of the sort field dropdown when the view does not sort
+msgid "— no sorting —"
+msgstr ""
+
+#. TRANSLATORS: Preview of a Flow check without a value, e.g. Status is empty.
+msgid "{field} {operator}"
+msgstr ""
+
+#. TRANSLATORS: Preview of a Flow check, e.g. Status equals "Approved".
+msgid "{field} {operator} \"{value}\""
+msgstr ""
+
+#. TRANSLATORS: Text of a filter chip, e.g. "Status: Approved".
+#. TRANSLATORS: Text of a search filter chip, e.g. "Status: Approved".
+msgid "{field}: {value}"
+msgstr ""
+
+#. TRANSLATORS: Duration of a backup or restore, {seconds} is a number, "s" abbreviates seconds.
+msgid "{seconds} s"
+msgstr ""
+
+#. TRANSLATORS Placeholder of the box where you type a value to filter a text or number field on; the "+" stays
+msgid "+ add value"
+msgstr ""
+
+msgid "A subscription includes: guaranteed Nextcloud compatibility, email support, priority bug fixes, and active development."
+msgstr ""
+
+#. TRANSLATORS Verb: tooltip and accessible name of the check-mark button that accepts the value AI suggests for a field; keep it short
+msgid "Accept"
+msgstr ""
+
+#. TRANSLATORS Error message shown to the user when they may not do this action
+msgid "Access denied"
+msgstr ""
+
+#. TRANSLATORS Noun: field type that holds a Nextcloud account (a person), shown in the field type picker
+msgid "Account"
+msgstr ""
+
+msgid "Account names or email addresses"
+msgstr ""
+
+#. TRANSLATORS Noun: column header above the revoke buttons; keep it short
+msgid "Actions"
+msgstr ""
+
+#. TRANSLATORS Heading of the list of permissions that are in effect
+msgid "Active permissions"
+msgstr ""
+
+#. TRANSLATORS Title of the dialog that creates a metadata field
+msgid "Add field"
+msgstr ""
+
+#. TRANSLATORS Button that opens the file picker to link a file to the field
+#. TRANSLATORS Verb: button in the cell editor of a file-link field that opens the file picker; keep it short
+msgid "Add file"
+msgstr ""
+
+#. TRANSLATORS Heading of the section where a new field is created
+#. TRANSLATORS Heading of the section with the form that creates a metadata field
+msgid "Add new metadata field"
+msgstr ""
+
+#. TRANSLATORS Button that adds a choice to a dropdown field
+msgid "Add option"
+msgstr ""
+
+#. TRANSLATORS Button that opens the form to give groups a permission; keep it short
+msgid "Add permission"
+msgstr ""
+
+msgid "Add your first metadata field to get started organizing your files."
+msgstr ""
+
+msgid "Add your first metadata field to get started organizing your Team folders."
+msgstr ""
+
+msgid "AI could not generate a new suggestion for this field."
+msgstr ""
+
+msgid "AI could not generate any suggestions for this file."
+msgstr ""
+
+#. TRANSLATORS Error message in the sidebar when AI could not fill in the metadata; AI = artificial intelligence
+msgid "AI generation failed. Please try again."
+msgstr ""
+
+#. TRANSLATORS Heading of the settings section for metadata suggestions made by AI; AI is artificial intelligence
+msgid "AI metadata generation"
+msgstr ""
+
+#. TRANSLATORS Notification after the AI metadata switch was turned off; AI is artificial intelligence
+msgid "AI metadata generation disabled."
+msgstr ""
+
+#. TRANSLATORS Notification after the AI metadata switch was turned on; AI is artificial intelligence
+msgid "AI metadata generation enabled."
+msgstr ""
+
+#. TRANSLATORS Label above a value that AI proposes for a field; AI = artificial intelligence
+msgid "AI suggests:"
+msgstr ""
+
+#. TRANSLATORS Error message shown to the user when AI could not fill in the metadata; AI = artificial intelligence
+msgid "AI task failed"
+msgstr ""
+
+#. TRANSLATORS Error message shown to the user when AI took too long to fill in the metadata; AI = artificial intelligence
+msgid "AI task timed out"
+msgstr ""
+
+#. TRANSLATORS Filter button that shows fields of all types; keep it short
+msgid "All types"
+msgstr ""
+
+msgid "Allow people to generate metadata suggestions using AI. Requires an AI provider to be configured in Nextcloud."
+msgstr ""
+
+msgid "Anonymous instance identifier (hashed URL)"
+msgstr ""
+
+#. TRANSLATORS Heading of the section about sending anonymous usage statistics
+msgid "Anonymous usage statistics"
+msgstr ""
+
+msgid "Anonymous usage statistics disabled."
+msgstr ""
+
+msgid "Any personal or sensitive data"
+msgstr ""
+
+#. TRANSLATORS Button that fills in the default values on existing files of the Team folder
+msgid "Apply defaults now"
+msgstr ""
+
+#. TRANSLATORS Button that adds the chosen filter to the search; keep it short
+msgid "Apply filter"
+msgstr ""
+
+msgid "Apply the configured default values to existing files in this Team folder that do not yet have a value for these fields."
+msgstr ""
+
+#. TRANSLATORS Status beside the "Apply defaults now" button while default values are being written to files
+msgid "Applying defaults …"
+msgstr ""
+
+msgid "Applying defaults is taking longer than expected. It will continue in the background."
+msgstr ""
+
+#. TRANSLATORS Confirmation question; {name} is the view name, e.g. "Open contracts"
+msgid "Are you sure you want to delete the view \"{name}\"?"
+msgstr ""
+
+msgid "Are you sure you want to restore this backup? This will replace all current metadata with the backup data."
+msgstr ""
+
+msgid "Are you sure you want to revoke this permission?"
+msgstr ""
+
+#. TRANSLATORS Radio option for the sort direction (A to Z, oldest first)
+msgid "Ascending"
+msgstr ""
+
+#. TRANSLATORS Entry of the Team folder dropdown: the Team folder is found from where the file is
+msgid "Auto-detect"
+msgstr ""
+
+msgid "Automatic daily backups of all metadata. You can also create manual backups and restore from any backup."
+msgstr ""
+
+#. TRANSLATORS Heading of the settings section for metadata backups
+msgid "Backup and restore"
+msgstr ""
+
+#. TRANSLATORS Notice after a backup finished; the duration follows it
+msgid "Backup completed"
+msgstr ""
+
+#. TRANSLATORS {error} is the reason the backup failed, e.g. "Internal server error"
+msgid "Backup failed: {error}"
+msgstr ""
+
+#. TRANSLATORS {date} is the date and time the backup was made, e.g. "9 October 2026, 02:00"
+msgid "Backup from: {date}"
+msgstr ""
+
+msgid "Basic server configuration (database, OS, web server, language, timezone, country)"
+msgstr ""
+
+#. TRANSLATORS Tooltip on a grid cell that is locked; {user} is the display name of the person editing it, e.g. "Being edited by Anna de Vries"
+msgid "Being edited by {user}"
+msgstr ""
+
+#. TRANSLATORS Tooltip on a grid cell that another person is editing, when their name is unknown
+msgid "Being edited by someone else"
+msgstr ""
+
+#. TRANSLATORS Button that closes the restore dialog without restoring
+#. TRANSLATORS Button that closes a dialog without saving
+#. TRANSLATORS Button that closes the edit dialog without saving; keep it short
+#. TRANSLATORS Button that closes the dialog without saving; keep it short
+#. TRANSLATORS Button that closes the add permission form without saving
+#. TRANSLATORS Verb: dialog button that closes the view editor without saving
+#. TRANSLATORS Verb: tooltip and accessible name of the cross button that closes the cell editor without saving
+#. TRANSLATORS Verb: button in the confirmation dialog that keeps the view
+#. TRANSLATORS Button that closes the search filter dialog without adding a filter; keep it short
+msgid "Cancel"
+msgstr ""
+
+#. TRANSLATORS Disabled menu action of a field that is used in a Team folder and so cannot be deleted; keep it short
+msgid "Cannot delete (in use)"
+msgstr ""
+
+msgid "Cannot delete field - it is currently in use"
+msgstr ""
+
+#. TRANSLATORS Accessible name of the pencil button that picks a different account for the field
+msgid "Change account"
+msgstr ""
+
+#. TRANSLATORS Label before a preview of the Flow check, e.g. Status equals "Approved"
+msgid "Check configuration:"
+msgstr ""
+
+#. TRANSLATORS Noun: field type for a yes/no tick box, shown in the field type picker
+msgid "Checkbox"
+msgstr ""
+
+#. TRANSLATORS Placeholder of a dropdown field before a value is picked
+msgid "Choose an option …"
+msgstr ""
+
+#. TRANSLATORS Placeholder of a multi-select field before any value is picked
+msgid "Choose options …"
+msgstr ""
+
+msgid "Choose which columns to show and in what order."
+msgstr ""
+
+#. TRANSLATORS Verb: accessible name of the empty option that clears the cell value
+#. TRANSLATORS Verb: accessible name of the cross button that removes all linked files from the cell
+msgid "Clear"
+msgstr ""
+
+#. TRANSLATORS Button that removes all metadata from the selected files; keep it short
+#. TRANSLATORS Button chip in the filter bar that removes all active filters; keep it short
+msgid "Clear all"
+msgstr ""
+
+#. TRANSLATORS Button that empties the search box
+msgid "Clear search"
+msgstr ""
+
+#. TRANSLATORS Accessible name of the button that removes the chosen account from the field
+msgid "Clear selection"
+msgstr ""
+
+#. TRANSLATORS Label of the clear button while the metadata is being removed; keep it short
+msgid "Clearing …"
+msgstr ""
+
+#. TRANSLATORS Verb: dialog button that closes the read-only view editor
+msgid "Close"
+msgstr ""
+
+#. TRANSLATORS Noun: heading of the column list section in the view editor
+msgid "Columns"
+msgstr ""
+
+#. TRANSLATORS Error message in the Flow (workflow) rule editor when the value to compare with is empty
+msgid "Comparison value is required"
+msgstr ""
+
+msgid "Configure custom metadata fields that will be available for all Team folders. These fields help organize and categorize your Team folders."
+msgstr ""
+
+msgid "Configure custom metadata fields that will be available for files within Team folders. These fields help organize and categorize your files."
+msgstr ""
+
+#. TRANSLATORS Menu item that opens the dialog to choose the metadata fields of a Team folder
+msgid "Configure fields"
+msgstr ""
+
+msgid "Configure fields for this Team folder"
+msgstr ""
+
+#. TRANSLATORS "Configure fields" names the menu item of a Team folder row; translate it the same way
+msgid "Configure fields: Choose which fields are available for each Team folder"
+msgstr ""
+
+msgid "Configure metadata fields and manage metadata for your Team folders."
+msgstr ""
+
+msgid "Configure which metadata fields are available for your Team folders"
+msgstr ""
+
+msgid "Configure which metadata search fields are available for each Team folder and manage Team folder-specific metadata."
+msgstr ""
+
+#. TRANSLATORS Dialog button that imports the fields listed in the preview; keep it short
+#. TRANSLATORS Button that imports the fields listed in the preview; keep it short
+msgid "Confirm import"
+msgstr ""
+
+#. TRANSLATORS: Flow check operator, read as "<field> contains <value>".
+msgid "contains"
+msgstr ""
+
+#. TRANSLATORS: Flow check operator for a multi-select field, read as "<field> contains all <values>".
+msgid "contains all"
+msgstr ""
+
+msgid "Could not connect to license server"
+msgstr ""
+
+#. TRANSLATORS Error message; {reason} is the server's error text, e.g. "Could not delete the view: Internal server error"
+msgid "Could not delete the view: {reason}"
+msgstr ""
+
+msgid "Could not reach the telemetry server. Please try again later."
+msgstr ""
+
+#. TRANSLATORS Error message; {reason} is the server's error text, e.g. "Could not save the view: Internal server error"
+msgid "Could not save the view: {reason}"
+msgstr ""
+
+#. TRANSLATORS Button that starts a manual backup of all metadata
+msgid "Create backup now"
+msgstr ""
+
+#. TRANSLATORS Button that opens the form for a new view; keep it short
+msgid "Create new view"
+msgstr ""
+
+msgid "Create predefined filter, column and sort combinations for this Team folder."
+msgstr ""
+
+#. TRANSLATORS Column header for the date the permission was given; keep it short
+msgid "Created"
+msgstr ""
+
+#. TRANSLATORS Progress text while a backup is being made
+msgid "Creating backup …"
+msgstr ""
+
+#. TRANSLATORS Noun: field type for a date, shown in the field type picker
+msgid "Date"
+msgstr ""
+
+#. TRANSLATORS Name of the built-in view without saved settings, shown on the view picker button; keep it short
+msgid "Default"
+msgstr ""
+
+#. TRANSLATORS Noun: label of the input that sets the default value of a field for new files in a Team folder
+msgid "Default value"
+msgstr ""
+
+#. TRANSLATORS Verb: dialog button that deletes the view
+msgid "Delete"
+msgstr ""
+
+#. TRANSLATORS Menu action that deletes a field; keep it short
+msgid "Delete field"
+msgstr ""
+
+#. TRANSLATORS Question in the confirmation box shown before a view is deleted
+msgid "Delete this view?"
+msgstr ""
+
+#. TRANSLATORS Verb: button in the confirmation dialog that deletes the view
+#. TRANSLATORS Title of the confirmation dialog for deleting a view
+msgid "Delete view"
+msgstr ""
+
+#. TRANSLATORS Radio option for the sort direction (Z to A, newest first)
+msgid "Descending"
+msgstr ""
+
+#. TRANSLATORS Noun: label of the input for the description of a field
+msgid "Description"
+msgstr ""
+
+#. TRANSLATORS Label before the description of a field in the import preview
+msgid "Description:"
+msgstr ""
+
+#. TRANSLATORS Verb: tooltip and accessible name of the cross button that rejects the value AI suggests for a field; keep it short
+msgid "Dismiss"
+msgstr ""
+
+#. TRANSLATORS Label of the input for the name of a field that people see
+msgid "Display name"
+msgstr ""
+
+msgid "Display name shown to people"
+msgstr ""
+
+#. TRANSLATORS: Flow check operator, read as "<field> does not contain <value>".
+msgid "does not contain"
+msgstr ""
+
+#. TRANSLATORS Verb: button that downloads this backup file; keep it short
+msgid "Download"
+msgstr ""
+
+#. TRANSLATORS Description under the export heading; JSON is a file format, keep it as it is
+#. TRANSLATORS Description of the export section; JSON is a file format, keep it as it is
+msgid "Download all metadata fields as a JSON file."
+msgstr ""
+
+#. TRANSLATORS Tooltip on the drag handle of a row in the column list
+msgid "Drag to reorder"
+msgstr ""
+
+#. TRANSLATORS Noun: field type where one value is picked from a list, shown in the field type picker
+msgid "Dropdown"
+msgstr ""
+
+#. TRANSLATORS Heading above the list of choices of a dropdown or multi-select field
+msgid "Dropdown options"
+msgstr ""
+
+msgid "e.g. Author, Document type, Status"
+msgstr ""
+
+msgid "e.g. Department, Project type, Priority"
+msgstr ""
+
+#. TRANSLATORS Placeholder of the subscription key field; keep MVOX-XXXX-XXXX-XXXX-XXXX unchanged, it shows the key format
+msgid "e.g. MVOX-XXXX-XXXX-XXXX-XXXX"
+msgstr ""
+
+#. TRANSLATORS Placeholder of a filter value field; example values separated by commas, keep the commas
+msgid "e.g. Value 1, Value 2"
+msgstr ""
+
+#. TRANSLATORS Placeholder of the internal field name input. The example names may be translated but must stay lowercase a-z, 0-9 and _ without spaces
+msgid "e.g., author, document_type, status"
+msgstr ""
+
+#. TRANSLATORS Placeholder of the internal field name input. The example names may be translated but must stay lowercase a-z, 0-9 and _ without spaces
+msgid "e.g., department, project_type, priority"
+msgstr ""
+
+#. TRANSLATORS Menu action that opens the dialog to edit a field; keep it short
+msgid "Edit field"
+msgstr ""
+
+#. TRANSLATORS Title of the dialog that edits a metadata field; {name} is the name of the field, e.g. "Edit field: Status"
+#. TRANSLATORS Title of the dialog that edits a field; {name} is the field label, e.g. "Edit field: Status"
+msgid "Edit field: {name}"
+msgstr ""
+
+#. TRANSLATORS Menu item that opens the dialog to edit the metadata values of a Team folder
+#. TRANSLATORS Action in the Files menu that opens the dialog to edit the metadata of the selected files
+#. TRANSLATORS Title of the dialog that edits the metadata of the selected files
+msgid "Edit metadata"
+msgstr ""
+
+#. TRANSLATORS Tooltip of the Edit metadata action in the Files menu
+msgid "Edit metadata fields for selected files"
+msgstr ""
+
+#. TRANSLATORS Dialog title; {folder} is the name of a Team folder, e.g. "Edit metadata for Finance"
+msgid "Edit metadata for {folder}"
+msgstr ""
+
+#. TRANSLATORS "Edit metadata" names the menu item of a Team folder row; translate it the same way
+msgid "Edit metadata: Set Team folder-specific metadata values (admin only)"
+msgstr ""
+
+msgid "Edit Team folder metadata values"
+msgstr ""
+
+msgid "Edit the metadata values for this Team folder"
+msgstr ""
+
+#. TRANSLATORS Title of the view editor when it changes an existing view
+msgid "Edit view"
+msgstr ""
+
+#. TRANSLATORS Switch label in the admin settings; AI is artificial intelligence
+msgid "Enable AI metadata generation"
+msgstr ""
+
+msgid "Enter a name for the view"
+msgstr ""
+
+#. TRANSLATORS Placeholder of the value box for a number field in the Flow rule
+msgid "Enter a number"
+msgstr ""
+
+#. TRANSLATORS Placeholder of the value box for a text field in the Flow rule
+msgid "Enter expected value"
+msgstr ""
+
+#. TRANSLATORS Placeholder of a web address field. {example} is a sample address, e.g. "https://example.com"; URL is a web address
+#. TRANSLATORS Placeholder of the web address box in the cell editor; {example} is an example address, e.g. "Enter URL (https://example.com)"
+msgid "Enter URL ({example})"
+msgstr ""
+
+#. TRANSLATORS: Flow check operator, read as "<field> equals <value>".
+msgid "equals"
+msgstr ""
+
+#. TRANSLATORS Error notice when the metadata values of a Team folder could not be loaded
+msgid "Error loading metadata"
+msgstr ""
+
+#. TRANSLATORS {error} is the reason the server gave, or "Please try again." when it gave none
+msgid "Error saving metadata: {error}"
+msgstr ""
+
+#. TRANSLATORS Heading of the list of metadata fields
+msgid "Existing metadata fields"
+msgstr ""
+
+#. TRANSLATORS Button that downloads the metadata of the selected files as a CSV (spreadsheet) file; keep CSV as is
+msgid "Export CSV"
+msgstr ""
+
+#. TRANSLATORS Button that downloads all fields as a JSON file; keep it short
+msgid "Export fields"
+msgstr ""
+
+#. TRANSLATORS Heading above the export button; JSON is a file format, keep it as it is
+#. TRANSLATORS Heading of the export section; JSON is a file format, keep it as it is
+msgid "Export fields to JSON"
+msgstr ""
+
+#. TRANSLATORS Label of the export button while the export file is being made; keep it short
+msgid "Exporting …"
+msgstr ""
+
+msgid "Failed to add field"
+msgstr ""
+
+msgid "Failed to apply defaults"
+msgstr ""
+
+msgid "Failed to clear metadata"
+msgstr ""
+
+msgid "Failed to delete field"
+msgstr ""
+
+msgid "Failed to export fields"
+msgstr ""
+
+msgid "Failed to export metadata"
+msgstr ""
+
+msgid "Failed to grant permission"
+msgstr ""
+
+#. TRANSLATORS {error} is the reason the import failed, e.g. a server message or "Please try again."
+msgid "Failed to import fields: {error}"
+msgstr ""
+
+msgid "Failed to load groups"
+msgstr ""
+
+msgid "Failed to load metadata"
+msgstr ""
+
+msgid "Failed to load metadata fields"
+msgstr ""
+
+msgid "Failed to load permissions"
+msgstr ""
+
+msgid "Failed to load Team folders"
+msgstr ""
+
+#. TRANSLATORS {error} is the technical reason the file could not be read, e.g. "Unexpected token"; JSON is a file format, keep it as it is
+msgid "Failed to parse JSON file: {error}"
+msgstr ""
+
+msgid "Failed to read file"
+msgstr ""
+
+#. TRANSLATORS Error message in the sidebar when AI could not make a new suggestion for a field
+msgid "Failed to regenerate suggestion."
+msgstr ""
+
+msgid "Failed to remove subscription key"
+msgstr ""
+
+msgid "Failed to revoke permission"
+msgstr ""
+
+#. TRANSLATORS {field} is the label of a metadata field, e.g. "Status"
+msgid "Failed to save default value for {field}"
+msgstr ""
+
+msgid "Failed to save field configuration"
+msgstr ""
+
+msgid "Failed to save metadata"
+msgstr ""
+
+msgid "Failed to save subscription key"
+msgstr ""
+
+msgid "Failed to save view"
+msgstr ""
+
+msgid "Failed to send report"
+msgstr ""
+
+msgid "Failed to update field"
+msgstr ""
+
+msgid "Failed to update settings"
+msgstr ""
+
+#. TRANSLATORS Noun: column header in the column list of the view editor; keep it short
+#. TRANSLATORS Noun: label of the dropdown that picks the metadata field to filter on
+msgid "Field"
+msgstr ""
+
+#. TRANSLATORS Notification after a field is created; {name} is the name of the field, e.g. "Status"
+#. TRANSLATORS {name} is the label of the new field, e.g. "Status"
+msgid "Field \"{name}\" added successfully"
+msgstr ""
+
+#. TRANSLATORS Confirmation after the field choice of a Team folder was saved
+msgid "Field configuration saved successfully"
+msgstr ""
+
+#. TRANSLATORS Noun: progress step, the metadata field definitions are being copied
+msgid "Field definitions"
+msgstr ""
+
+#. TRANSLATORS Notification after a field is deleted
+msgid "Field deleted successfully"
+msgstr ""
+
+#. TRANSLATORS Label of the input for the name of a field that people see
+msgid "Field label"
+msgstr ""
+
+#. TRANSLATORS Label of the input for the internal name of a field
+msgid "Field name"
+msgstr ""
+
+msgid "Field name may only contain lowercase letters, numbers and underscores, and must start with a letter"
+msgstr ""
+
+msgid "Field name, label, and type are required"
+msgstr ""
+
+#. TRANSLATORS Label of the picker that sets the type of a field (text, number, date …)
+msgid "Field type"
+msgstr ""
+
+#. TRANSLATORS Label in front of the buttons that filter the fields by type; keep the colon
+msgid "Field type:"
+msgstr ""
+
+#. TRANSLATORS Notification after the changes to a field are saved
+msgid "Field updated successfully"
+msgstr ""
+
+#. TRANSLATORS Filter button that shows only the fields set on files; keep it short
+msgid "File fields"
+msgstr ""
+
+#. TRANSLATORS Noun: field type that links to one or more files, shown in the field type picker
+msgid "File link"
+msgstr ""
+
+#. TRANSLATORS Noun: heading of the metadata of the selected file in the sidebar
+msgid "File metadata"
+msgstr ""
+
+msgid "File metadata can be edited by people within the Files app"
+msgstr ""
+
+#. TRANSLATORS Heading of the settings section for metadata fields of files
+#. TRANSLATORS Heading above the fields that can be set on files in the Team folder
+msgid "File metadata fields"
+msgstr ""
+
+#. TRANSLATORS Noun: column header in the exported CSV file
+msgid "File name"
+msgstr ""
+
+msgid "File names or paths"
+msgstr ""
+
+#. TRANSLATORS Noun: column header in the exported CSV file, the full path of each file
+msgid "File path"
+msgstr ""
+
+#. TRANSLATORS Noun: progress step, the metadata values of files are being copied
+msgid "File values"
+msgstr ""
+
+msgid "Files matching all selected options are shown."
+msgstr ""
+
+#. TRANSLATORS Title of the dialog that adds a metadata filter to the unified search
+msgid "Filter by metadata"
+msgstr ""
+
+#. TRANSLATORS Adjective: column header of the checkboxes that offer a column in the filter panel; keep it short
+msgid "Filterable"
+msgstr ""
+
+#. TRANSLATORS Noun: heading of the filter section in the view editor
+msgid "Filters"
+msgstr ""
+
+#. TRANSLATORS Noun: heading of the section in the view editor where the view gets fixed filter values
+msgid "Filters (preset values)"
+msgstr ""
+
+#. TRANSLATORS Noun: heading of the metadata of the selected folder in the sidebar
+msgid "Folder metadata"
+msgstr ""
+
+#. TRANSLATORS Button in the edit dialog that lets AI fill in the metadata of the file; AI = artificial intelligence
+msgid "Generate with AI"
+msgstr ""
+
+#. TRANSLATORS Label of the AI button while AI fills in the metadata; keep it short
+msgid "Generating …"
+msgstr ""
+
+#. TRANSLATORS Shown in the sidebar while AI fills in the metadata of the file
+msgid "Generating metadata with AI …"
+msgstr ""
+
+#. TRANSLATORS Button that gives the selected groups the permission; keep it short
+msgid "Grant permission"
+msgstr ""
+
+msgid "Grant permissions to accounts or groups to allow them to view or edit metadata."
+msgstr ""
+
+#. TRANSLATORS: Flow check operator for a number field, read as "<field> greater or equal <number>"; keep it short.
+msgid "greater or equal"
+msgstr ""
+
+#. TRANSLATORS: Flow check operator for a number field, read as "<field> greater than <number>".
+msgid "greater than"
+msgstr ""
+
+#. TRANSLATORS Noun: column header for the group a permission is given to; keep it short
+#. TRANSLATORS Noun: small type label under the group name in the permissions table
+msgid "Group"
+msgstr ""
+
+msgid "Help improve MetaVox by sharing anonymous usage statistics."
+msgstr ""
+
+#. TRANSLATORS Lead-in above a short list that explains this page; keep the colon
+msgid "How it works:"
+msgstr ""
+
+#. TRANSLATORS Status beside the "Apply defaults now" button when nothing is running
+msgid "Idle"
+msgstr ""
+
+#. TRANSLATORS Accessible name of the menu button with the import and export actions
+msgid "Import and export"
+msgstr ""
+
+#. TRANSLATORS Notification after an import; {imported} is the number of fields imported, {errors} the number of fields that failed
+#. TRANSLATORS {imported} is the number of fields imported, {errors} the number of fields that failed
+msgid "Import completed: {imported} imported, {errors} errors"
+msgstr ""
+
+#. TRANSLATORS Button that imports the fields listed in the preview
+msgid "Import fields"
+msgstr ""
+
+#. TRANSLATORS Heading above the import button; JSON is a file format, keep it as it is
+#. TRANSLATORS Heading of the import section; JSON is a file format, keep it as it is
+msgid "Import fields from JSON"
+msgstr ""
+
+#. TRANSLATORS Title of the dialog that lists the fields of a JSON file before they are imported
+msgid "Import preview"
+msgstr ""
+
+#. TRANSLATORS Dialog button label while the fields from the JSON file are being imported
+msgid "Importing …"
+msgstr ""
+
+#. TRANSLATORS Checkbox label for a date field: also store the time of day
+msgid "Include time component"
+msgstr ""
+
+#. TRANSLATORS Label of the internal name of a field, the identifier stored in the data
+msgid "Internal field name"
+msgstr ""
+
+msgid "Internal identifier used in the system"
+msgstr ""
+
+#. TRANSLATORS Error message under the "Internal name" box of a metadata field that already has values
+msgid "Internal name cannot be changed when field is in use"
+msgstr ""
+
+#. TRANSLATORS Label before the internal name of a field in the import preview, e.g. "Internal name: status"
+msgid "Internal name:"
+msgstr ""
+
+#. TRANSLATORS Reason shown after "Backup failed:" or "Restore failed:" when the server hit an unexpected error
+#. TRANSLATORS Fallback error reason when the server gives none; shown as {reason} in an error message, e.g. "Could not save the view: {reason}"
+msgid "Internal server error"
+msgstr ""
+
+#. TRANSLATORS Error under the field name input. {char} is the character that is not allowed, e.g. "#"; keep "a-z", "0-9" and "_" as they are
+msgid "Invalid character \"{char}\" — only a-z, 0-9 and _ allowed"
+msgstr ""
+
+#. TRANSLATORS Error message in the Flow (workflow) rule editor when the saved check cannot be read
+msgid "Invalid configuration format"
+msgstr ""
+
+#. TRANSLATORS {error} is the technical reason the file could not be read, e.g. "Unexpected token"; JSON is a file format
+msgid "Invalid JSON file: {error}"
+msgstr ""
+
+#. TRANSLATORS Error when an imported file is not a list of fields; JSON is a file format, keep it as it is
+msgid "Invalid JSON format. Expected an array of field definitions."
+msgstr ""
+
+#. TRANSLATORS Error message in the Flow (workflow) rule editor; the operator is how the field is compared, e.g. equals, contains
+msgid "Invalid operator"
+msgstr ""
+
+#. TRANSLATORS: Flow check operator for a date field, read as "<field> is after <date>".
+msgid "is after"
+msgstr ""
+
+#. TRANSLATORS: Flow check operator for a date field, read as "<field> is before <date>".
+msgid "is before"
+msgstr ""
+
+#. TRANSLATORS: Flow check operator without a value, read as "<field> is empty".
+msgid "is empty"
+msgstr ""
+
+#. TRANSLATORS: Flow check operator, read as "<field> is not <value>".
+msgid "is not"
+msgstr ""
+
+#. TRANSLATORS: Flow check operator without a value, read as "<field> is not empty".
+msgid "is not empty"
+msgstr ""
+
+#. TRANSLATORS: Flow check operator for a dropdown field, read as "<field> is one of <values>".
+msgid "is one of"
+msgstr ""
+
+#. TRANSLATORS Error when an imported file is not a list of fields; JSON is a file format, keep it as it is
+msgid "JSON must be an array of field definitions"
+msgstr ""
+
+#. TRANSLATORS {date} is the date and time of the last usage report, e.g. "9 October 2026, 14:30"
+msgid "Last report sent: {date}"
+msgstr ""
+
+#. TRANSLATORS Link after the subscription notice that opens the Support tab
+msgid "Learn more"
+msgstr ""
+
+msgid "Leave empty to auto-detect from file location"
+msgstr ""
+
+#. TRANSLATORS: Flow check operator for a number field, read as "<field> less or equal <number>"; keep it short.
+msgid "less or equal"
+msgstr ""
+
+#. TRANSLATORS: Flow check operator for a number field, read as "<field> less than <number>".
+msgid "less than"
+msgstr ""
+
+#. TRANSLATORS Button text while more Team folders load; keep it short
+#. TRANSLATORS Shown next to the field dropdown while the fields load
+#. TRANSLATORS Shown in a dropdown while its entries load
+msgid "Loading …"
+msgstr ""
+
+#. TRANSLATORS Status text while the list of backups loads
+msgid "Loading backups …"
+msgstr ""
+
+#. TRANSLATORS Status text while the field settings of the Team folder load
+msgid "Loading field configuration …"
+msgstr ""
+
+#. TRANSLATORS Status text while the metadata values of the Team folder load
+#. TRANSLATORS Shown in the sidebar while the metadata of the file loads
+msgid "Loading metadata …"
+msgstr ""
+
+msgid "Loading metadata fields …"
+msgstr ""
+
+#. TRANSLATORS Shown while the MetaVox administration settings page loads; MetaVox is the app name, do not translate it
+#. TRANSLATORS Shown while the MetaVox personal settings page loads; MetaVox is the app name, do not translate it
+msgid "Loading MetaVox …"
+msgstr ""
+
+#. TRANSLATORS Status text while the list of permissions loads
+msgid "Loading permissions …"
+msgstr ""
+
+#. TRANSLATORS Status text while the list of Team folders loads
+msgid "Loading Team folders …"
+msgstr ""
+
+#. TRANSLATORS Status text while the list of Team folders loads
+msgid "Loading your Team folders …"
+msgstr ""
+
+#. TRANSLATORS Noun: field type for several lines of text, shown in the field type picker
+msgid "Long text"
+msgstr ""
+
+#. TRANSLATORS "Team Folders" is the name of the Nextcloud app that provides Team folders
+msgid "Make sure the Team Folders app is installed and you have created some Team folders."
+msgstr ""
+
+msgid "Manage account and group permissions for metadata fields and views"
+msgstr ""
+
+#. TRANSLATORS Error message shown to the user; "Manage fields" is the name of a permission that lets someone change the metadata fields
+msgid "Manage fields permission required"
+msgstr ""
+
+#. TRANSLATORS Name of the only permission type, shown as a label in the permissions table
+msgid "Manage metadata fields & views"
+msgstr ""
+
+#. TRANSLATORS Heading of the settings section that sets fields and metadata per Team folder
+msgid "Manage Team folders"
+msgstr ""
+
+msgid "Metadata content or values"
+msgstr ""
+
+#. TRANSLATORS Noun: label of the dropdown that picks the metadata field the Flow rule checks
+msgid "Metadata field"
+msgstr ""
+
+#. TRANSLATORS Error message in the Flow (workflow) rule editor when no metadata field is chosen
+msgid "Metadata field name is required"
+msgstr ""
+
+#. TRANSLATORS Noun: label next to the number of metadata fields on this server
+msgid "Metadata fields"
+msgstr ""
+
+#. TRANSLATORS Confirmation after the metadata values of a Team folder were saved
+msgid "Metadata saved successfully"
+msgstr ""
+
+#. TRANSLATORS Confirmation message after the metadata of the file was saved in the sidebar
+msgid "Metadata saved successfully!"
+msgstr ""
+
+#. TRANSLATORS Heading of the section with usage counts of metadata on this server
+msgid "Metadata statistics"
+msgstr ""
+
+#. TRANSLATORS Message with an Undo button after one cell value was changed
+msgid "Metadata updated"
+msgstr ""
+
+#. TRANSLATORS Name of the search result group in the unified search; MetaVox is the app name, do not translate it
+#. TRANSLATORS Name of the section in the administration settings menu; MetaVox is the app name, do not translate it
+#. TRANSLATORS Name of the section in the personal settings menu; MetaVox is the app name, do not translate it
+msgid "MetaVox"
+msgstr ""
+
+#. TRANSLATORS Heading of the admin settings page; MetaVox is the app name, do not translate it
+msgid "MetaVox - Custom metadata fields"
+msgstr ""
+
+#. TRANSLATORS Entry in the filter menu of the unified search that opens a field filter; MetaVox is the app name, do not translate it
+msgid "MetaVox · Filter by field …"
+msgstr ""
+
+#. TRANSLATORS MetaVox is the app name and AGPL-3.0 the name of its license; keep both unchanged
+msgid "MetaVox is free and open source (AGPL-3.0). All features work without a subscription. If MetaVox is valuable to your organization, a subscription supports active development and gives you guaranteed Nextcloud compatibility and email support."
+msgstr ""
+
+#. TRANSLATORS Name of the check in the Flow (workflow) rule editor; MetaVox is the app name, do not translate it
+msgid "MetaVox metadata"
+msgstr ""
+
+msgid "MetaVox, Nextcloud and PHP versions"
+msgstr ""
+
+#. TRANSLATORS Verb: menu item that moves a highlight rule one place down
+msgid "Move down"
+msgstr ""
+
+#. TRANSLATORS Verb: menu item that moves a highlight rule one place up
+msgid "Move up"
+msgstr ""
+
+#. TRANSLATORS Noun: field type where several values are picked from a list, shown in the field type picker
+msgid "Multi-select"
+msgstr ""
+
+#. TRANSLATORS Error under the field name input; keep "a-z" as it is
+msgid "Must start with a lowercase letter (a-z)"
+msgstr ""
+
+#. TRANSLATORS Heading of the MetaVox section in the personal settings
+msgid "My Team folders"
+msgstr ""
+
+#. TRANSLATORS Noun: label of the field that holds the name of a view
+msgid "Name"
+msgstr ""
+
+#. TRANSLATORS Error shown when the name field of the view is empty
+msgid "Name is required"
+msgstr ""
+
+msgid "Name shown to people"
+msgstr ""
+
+#. TRANSLATORS Shown instead of a date when no usage report has been sent yet
+msgid "Never"
+msgstr ""
+
+#. TRANSLATORS Title of the view editor when it creates a new view; also a menu item in the view menu
+#. TRANSLATORS Menu item in the view menu that opens the editor for a new view; also the title of that panel
+msgid "New view"
+msgstr ""
+
+#. TRANSLATORS {email} is the Nextcloud sales email address; MetaVox is the app name, do not translate it
+msgid "Nextcloud Enterprise subscription detected on this instance. MetaVox subscriptions are sold through Nextcloud — contact your Nextcloud account manager or {email}."
+msgstr ""
+
+#. TRANSLATORS Value of a checkbox field that is not ticked, shown in cells and lists
+#. TRANSLATORS Option in the cell editor of a checkbox field: not ticked
+#. TRANSLATORS Filter option for a checkbox field: files where the box is not ticked
+msgid "No"
+msgstr ""
+
+#. TRANSLATORS Value choice for a checkbox field: the box is not ticked
+msgid "No (unchecked)"
+msgstr ""
+
+msgid "No accessible Team folders"
+msgstr ""
+
+#. TRANSLATORS Shown in the account search list when no account matches the search
+#. TRANSLATORS Shown in the account list of a person field when the search has no results
+msgid "No accounts found"
+msgstr ""
+
+#. TRANSLATORS Error message shown to the user when no AI text generation is set up on the server; AI = artificial intelligence
+msgid "No AI text generation provider available"
+msgstr ""
+
+msgid "No backups available yet. Backups are created automatically every 24 hours, or you can create one manually."
+msgstr ""
+
+msgid "No columns configured. Configure columns first."
+msgstr ""
+
+#. TRANSLATORS Shown in place of the field list when there are no fields to choose from
+msgid "No fields available"
+msgstr ""
+
+msgid "No fields available. Contact your administrator to create metadata fields."
+msgstr ""
+
+msgid "No fields available. Create some fields first in the field management tabs."
+msgstr ""
+
+#. TRANSLATORS Shown in a Team folder row when no metadata fields are assigned to it
+msgid "No fields configured"
+msgstr ""
+
+#. TRANSLATORS {query} is the text typed in the search box
+msgid "No fields found matching \"{query}\""
+msgstr ""
+
+#. TRANSLATORS {query} is the text typed in the field search box, e.g. "No fields match status"
+msgid "No fields match {query}"
+msgstr ""
+
+msgid "No fields match the selected filter"
+msgstr ""
+
+msgid "No fields to import"
+msgstr ""
+
+#. TRANSLATORS Error message shown to the user when no files were selected; IDs are the numbers that identify the files
+msgid "No file IDs provided"
+msgstr ""
+
+msgid "No file metadata fields are configured for items in this Team folder. Contact your administrator to set up metadata fields."
+msgstr ""
+
+#. TRANSLATORS Shown in a file link field that does not link to any file yet
+#. TRANSLATORS Shown in the cell editor of a file-link field when no file is linked yet
+msgid "No files selected"
+msgstr ""
+
+#. TRANSLATORS Error message shown to the user when an action on several files is started without any file selected
+msgid "No files specified"
+msgstr ""
+
+msgid "No filterable columns available. Mark columns as filterable in the column settings."
+msgstr ""
+
+#. TRANSLATORS Shown in the filter panel when the view has no column to filter on
+msgid "No filterable fields"
+msgstr ""
+
+msgid "No filterable fields in this folder"
+msgstr ""
+
+msgid "No folder metadata fields are configured for items in this Team folder. Contact your administrator to set up metadata fields."
+msgstr ""
+
+#. TRANSLATORS Shown in the group picker when the search matches no group
+msgid "No groups found"
+msgstr ""
+
+msgid "No license key configured"
+msgstr ""
+
+msgid "No matching values in this folder"
+msgstr ""
+
+msgid "No metadata fields are configured for this Team folder."
+msgstr ""
+
+msgid "No metadata fields available for these files."
+msgstr ""
+
+msgid "No metadata fields configured"
+msgstr ""
+
+#. TRANSLATORS Error message shown to the user when metadata is saved for several files without any value filled in
+msgid "No metadata provided"
+msgstr ""
+
+msgid "No metadata to export"
+msgstr ""
+
+msgid "No metadata values to save"
+msgstr ""
+
+#. TRANSLATORS Shown in the filter section when a dropdown field has no options to filter on
+msgid "No options available"
+msgstr ""
+
+#. TRANSLATORS Heading of the empty state when no group has a permission yet
+msgid "No permissions configured"
+msgstr ""
+
+#. TRANSLATORS {query} is the text typed in the search field, e.g. No permissions found matching "finance"
+msgid "No permissions found matching \"{query}\""
+msgstr ""
+
+msgid "No Team folder metadata fields are configured for this Team folder. Contact your administrator to set up Team folder metadata fields."
+msgstr ""
+
+#. TRANSLATORS Heading of the empty state when the server has no Team folders
+msgid "No Team folders found"
+msgstr ""
+
+msgid "No views configured yet."
+msgstr ""
+
+#. TRANSLATORS Error message shown to the user when the session has ended and the user must log in again
+msgid "Not logged in"
+msgstr ""
+
+#. TRANSLATORS Noun: field type for a number, shown in the field type picker
+msgid "Number"
+msgstr ""
+
+msgid "Number of metadata fields and their types"
+msgstr ""
+
+msgid "Number of Team folders using MetaVox"
+msgstr ""
+
+#. TRANSLATORS Radio button: saving only fills fields that are still empty on the selected files
+msgid "Only fill empty fields"
+msgstr ""
+
+#. TRANSLATORS Help text under the internal field name input; keep "a-z", "0-9" and "_" as they are
+msgid "Only lowercase letters (a-z), numbers (0-9) and underscores (_)"
+msgstr ""
+
+#. TRANSLATORS Accessible name of the small button in a cell that opens the link in a new tab
+#. TRANSLATORS Accessible name of the small button that opens the entered web address in a new tab
+msgid "Open link"
+msgstr ""
+
+#. TRANSLATORS Tooltip of the icon button that opens the web address in a new browser tab
+msgid "Open link in new tab"
+msgstr ""
+
+#. TRANSLATORS Noun: label of the dropdown that picks how the field is compared, e.g. equals, contains
+msgid "Operator"
+msgstr ""
+
+#. TRANSLATORS Placeholder of the input for one choice of a dropdown field
+msgid "Option value"
+msgstr ""
+
+msgid "Optional description for this field"
+msgstr ""
+
+#. TRANSLATORS Label before the list of choices of a dropdown field
+#. TRANSLATORS Label before the list of choices of a dropdown field, e.g. "Options: High, Low"
+msgid "Options:"
+msgstr ""
+
+msgid "Organization name or contact email"
+msgstr ""
+
+msgid "Overview of metadata fields and usage in your MetaVox installation."
+msgstr ""
+
+#. TRANSLATORS Radio button: saving replaces values the selected files already have
+msgid "Overwrite existing values"
+msgstr ""
+
+msgid "People in the selected groups will be able to manage metadata fields and views"
+msgstr ""
+
+#. TRANSLATORS Noun: column header for the kind of permission; keep it short
+msgid "Permission"
+msgstr ""
+
+#. TRANSLATORS Confirmation after a permission was removed from a group
+msgid "Permission revoked successfully"
+msgstr ""
+
+#. TRANSLATORS Noun: tab that opens the permission settings; keep it short, the tab row does not wrap
+#. TRANSLATORS Noun: heading of the settings section that sets who may manage fields
+msgid "Permissions"
+msgstr ""
+
+msgid "Please add at least one option for dropdown fields"
+msgstr ""
+
+#. TRANSLATORS "Configure fields" names the menu item of a Team folder row; translate it the same way
+msgid "Please configure some fields first using the \"Configure fields\" button."
+msgstr ""
+
+msgid "Please enter a field label"
+msgstr ""
+
+msgid "Please enter a field name"
+msgstr ""
+
+msgid "Please enter a subscription key"
+msgstr ""
+
+#. TRANSLATORS Error under a web address field; URL is a web address
+msgid "Please enter a valid URL"
+msgstr ""
+
+#. TRANSLATORS Error when the import is started without a file; JSON is a file format, keep it as it is
+msgid "Please select a JSON file to import"
+msgstr ""
+
+#. TRANSLATORS Fallback reason shown after "Failed to import fields:" when the server gave none
+#. TRANSLATORS Shown after "Error saving metadata:" when the server gave no reason
+msgid "Please try again."
+msgstr ""
+
+#. TRANSLATORS Progress step shown before copying starts
+msgid "Preparing …"
+msgstr ""
+
+#. TRANSLATORS Button that opens the subscription pricing page in a new tab; keep it short
+msgid "Pricing details"
+msgstr ""
+
+#. TRANSLATORS Text in front of the contact email address, asking if the reader has questions
+msgid "Questions?"
+msgstr ""
+
+#. TRANSLATORS Noun: heading of the sidebar section that lists the files whose metadata links to this file
+msgid "Referenced by"
+msgstr ""
+
+#. TRANSLATORS Verb: tooltip and accessible name of the button that asks AI for a new suggestion for a field; keep it short
+msgid "Regenerate"
+msgstr ""
+
+#. TRANSLATORS Accessible name and tooltip of the button that removes a linked file from the field
+msgid "Remove"
+msgstr ""
+
+#. TRANSLATORS Accessible name of the button that removes one choice from a dropdown field
+msgid "Remove option"
+msgstr ""
+
+#. TRANSLATORS Button that deletes the saved subscription key
+msgid "Remove subscription key"
+msgstr ""
+
+#. TRANSLATORS Notification after the usage report was sent
+msgid "Report sent successfully"
+msgstr ""
+
+#. TRANSLATORS Badge on a field that must be filled in; keep it short
+msgid "Required"
+msgstr ""
+
+#. TRANSLATORS Checkbox label: the field must be filled in
+msgid "Required field"
+msgstr ""
+
+#. TRANSLATORS Verb: button that restores the metadata from this backup; keep it short
+#. TRANSLATORS Verb: confirm button of the restore dialog; keep it short
+msgid "Restore"
+msgstr ""
+
+#. TRANSLATORS Title of the dialog that asks to confirm restoring a backup
+msgid "Restore backup"
+msgstr ""
+
+#. TRANSLATORS Notice after a restore finished; the duration follows it
+msgid "Restore completed"
+msgstr ""
+
+#. TRANSLATORS {error} is the reason the restore failed, e.g. "Internal server error"
+msgid "Restore failed: {error}"
+msgstr ""
+
+#. TRANSLATORS Progress text while a backup is being restored
+msgid "Restoring backup …"
+msgstr ""
+
+#. TRANSLATORS Button that tries to load the metadata again after an error
+msgid "Retry"
+msgstr ""
+
+#. TRANSLATORS Verb: button that removes this permission from the group; keep it short
+msgid "Revoke"
+msgstr ""
+
+#. TRANSLATORS Button that saves the metadata in the edit dialog; keep it short
+#. TRANSLATORS Button that saves the metadata in the dialog; keep it short
+#. TRANSLATORS Verb: tooltip and accessible name of the check-mark button that saves the cell value
+#. TRANSLATORS Verb: dialog button that saves the view
+msgid "Save"
+msgstr ""
+
+#. TRANSLATORS Button that saves and activates the subscription key; keep it short
+msgid "Save & activate"
+msgstr ""
+
+#. TRANSLATORS Button in the edit dialog that saves the changes to the field
+#. TRANSLATORS Button that saves the changes to the field; keep it short
+msgid "Save changes"
+msgstr ""
+
+#. TRANSLATORS Button that saves which fields a Team folder uses
+msgid "Save configuration"
+msgstr ""
+
+#. TRANSLATORS Button that saves the view; keep it short
+msgid "Save view"
+msgstr ""
+
+#. TRANSLATORS Dialog button label while the changes are being saved
+#. TRANSLATORS Label of the save button while the metadata is being saved; keep it short
+#. TRANSLATORS Button text while the permission is being saved; keep it short
+#. TRANSLATORS Button text while the subscription key is being saved; keep it short
+#. TRANSLATORS Label of the save button while the view is being saved; keep it short
+msgid "Saving …"
+msgstr ""
+
+msgid "Search and select groups …"
+msgstr ""
+
+#. TRANSLATORS Label of the search box that filters the field list
+msgid "Search fields"
+msgstr ""
+
+#. TRANSLATORS Placeholder of the search box that filters the field list
+msgid "Search fields …"
+msgstr ""
+
+#. TRANSLATORS Placeholder of the search field above the permissions table
+msgid "Search permissions …"
+msgstr ""
+
+#. TRANSLATORS Label of the search field above the list of Team folders
+msgid "Search Team folders"
+msgstr ""
+
+#. TRANSLATORS Placeholder of the field dropdown in the search filter dialog
+msgid "Select a field"
+msgstr ""
+
+#. TRANSLATORS Title of the file picker dialog for a file-link field
+msgid "Select a file or folder"
+msgstr ""
+
+#. TRANSLATORS Placeholder entry of the field dropdown in the Flow rule
+msgid "Select a metadata field"
+msgstr ""
+
+#. TRANSLATORS Placeholder of the Team folder dropdown in the search filter dialog
+msgid "Select a Team folder"
+msgstr ""
+
+#. TRANSLATORS Placeholder entry of the value dropdown in the Flow rule
+#. TRANSLATORS Placeholder of the value dropdown in the search filter dialog
+msgid "Select a value"
+msgstr ""
+
+#. TRANSLATORS Label above the group picker in the add permission form
+msgid "Select groups"
+msgstr ""
+
+#. TRANSLATORS Button that opens the file chooser to pick a JSON file; JSON is a file format
+#. TRANSLATORS Button that opens the file picker to choose the JSON file to import; keep it short
+msgid "Select JSON file"
+msgstr ""
+
+#. TRANSLATORS Button that sends the anonymous usage report right away; keep it short
+msgid "Send report now"
+msgstr ""
+
+#. TRANSLATORS Button text while the usage report is being sent; keep it short
+msgid "Sending …"
+msgstr ""
+
+#. TRANSLATORS Accessible name of the star button that makes this view the default view
+#. TRANSLATORS Label of the checkbox that makes this view the default view
+msgid "Set as default view"
+msgstr ""
+
+msgid "Set preset filter values (comma-separated) per field."
+msgstr ""
+
+#. TRANSLATORS Label of the switch that turns sending anonymous usage statistics on or off
+msgid "Share anonymous usage statistics"
+msgstr ""
+
+#. TRANSLATORS Noun: heading of the sort section in the view editor
+msgid "Sort"
+msgstr ""
+
+#. TRANSLATORS Noun: heading of the sort section in the view editor
+msgid "Sorting"
+msgstr ""
+
+msgid "Spaces are not allowed — use underscores instead"
+msgstr ""
+
+#. TRANSLATORS Tooltip on the "Default" tab, which shows the files without any saved view; Nextcloud is a product name
+msgid "Standard Nextcloud file view"
+msgstr ""
+
+#. TRANSLATORS Checkbox in the view editor: this view opens by default when the folder is opened
+msgid "Standard view"
+msgstr ""
+
+#. TRANSLATORS Tooltip on the star next to the view that opens by default in this folder
+msgid "Standard view — loads automatically when opening this folder"
+msgstr ""
+
+#. TRANSLATORS Noun: tab that opens the usage statistics; keep it short, the tab row does not wrap
+msgid "Statistics"
+msgstr ""
+
+#. TRANSLATORS Confirmation after the subscription key was saved and found valid
+msgid "Subscription activated!"
+msgstr ""
+
+msgid "Subscription active — thank you for supporting MetaVox!"
+msgstr ""
+
+#. TRANSLATORS Heading of the section where the subscription key is entered
+msgid "Subscription key"
+msgstr ""
+
+msgid "Subscription key is invalid or expired."
+msgstr ""
+
+#. TRANSLATORS Confirmation after the subscription key was deleted
+msgid "Subscription key removed."
+msgstr ""
+
+#. TRANSLATORS {reason} is the explanation from the subscription server, e.g. that the key has expired
+msgid "Subscription key saved but validation failed: {reason}"
+msgstr ""
+
+#. TRANSLATORS Noun: tab that opens subscription and support; keep it short, the tab row does not wrap
+msgid "Support"
+msgstr ""
+
+#. TRANSLATORS Heading of the settings section about subscriptions and support; MetaVox is the app name, do not translate it
+msgid "Support MetaVox"
+msgstr ""
+
+#. TRANSLATORS Noun: label of the dropdown that picks the Team folder to search in
+msgid "Team folder"
+msgstr ""
+
+#. TRANSLATORS Label of the dropdown that limits the Flow rule to one Team folder; it may stay empty
+msgid "Team folder (optional)"
+msgstr ""
+
+#. TRANSLATORS Name of a Team folder that has no name; {id} is its number, e.g. "Team folder 4"
+msgid "Team folder {id}"
+msgstr ""
+
+#. TRANSLATORS Filter button that shows only the fields set on the Team folder itself; keep it short
+msgid "Team folder fields"
+msgstr ""
+
+#. TRANSLATORS Noun: heading of the collapsible section in the sidebar that shows the read-only metadata of the Team folder
+msgid "Team folder information"
+msgstr ""
+
+#. TRANSLATORS Noun: heading of the collapsible section with the metadata of the whole Team folder
+msgid "Team folder metadata"
+msgstr ""
+
+#. TRANSLATORS Heading of the settings section for metadata fields of Team folders
+#. TRANSLATORS Heading above the fields that describe the Team folder itself
+msgid "Team folder metadata fields"
+msgstr ""
+
+#. TRANSLATORS Noun: progress step, the metadata values of Team folders are being copied
+msgid "Team folder values"
+msgstr ""
+
+#. TRANSLATORS Heading of the list of all Team folders on the server
+msgid "Team folders"
+msgstr ""
+
+#. TRANSLATORS Label next to the number of Team folders that have metadata fields
+msgid "Team folders with metadata"
+msgstr ""
+
+#. TRANSLATORS Noun: field type for a single line of text, shown in the field type picker
+msgid "Text"
+msgstr ""
+
+msgid "Thank you for helping improve MetaVox!"
+msgstr ""
+
+msgid "Thank you! Anonymous usage statistics enabled."
+msgstr ""
+
+#. TRANSLATORS {error} is the error text returned by the usage statistics server, often in English
+msgid "The telemetry server returned an error: {error}"
+msgstr ""
+
+msgid "These fields apply to the Team folder itself"
+msgstr ""
+
+msgid "These fields can be set on individual files"
+msgstr ""
+
+msgid "This file is already linked"
+msgstr ""
+
+msgid "This file is not in a Team folder. Metadata is only available for Team folder files."
+msgstr ""
+
+msgid "This metadata applies to the entire Team folder and can only be edited by administrators in the administration settings."
+msgstr ""
+
+#. TRANSLATORS Label next to the number of accounts on this server
+msgid "Total accounts"
+msgstr ""
+
+#. TRANSLATORS Label next to the total number of metadata values on this server
+msgid "Total metadata entries"
+msgstr ""
+
+msgid "Total metadata entries count"
+msgstr ""
+
+msgid "Total number of accounts and active accounts"
+msgstr ""
+
+#. TRANSLATORS Shown in the account search list until at least 2 characters are typed
+msgid "Type at least 2 characters …"
+msgstr ""
+
+#. TRANSLATORS Placeholder of the account search box in the cell editor of a person field
+msgid "Type to search accounts …"
+msgstr ""
+
+#. TRANSLATORS Shown instead of a date when a backup has no creation date
+msgid "Unknown"
+msgstr ""
+
+#. TRANSLATORS Used as the reason when the subscription server gave none
+msgid "Unknown error"
+msgstr ""
+
+#. TRANSLATORS Placeholder of a text box for a field whose type the app does not know; {type} is the technical name of that field type
+msgid "Unknown field type: {type}"
+msgstr ""
+
+#. TRANSLATORS Shown in place of the name of a field that has no label or name
+msgid "Unnamed field"
+msgstr ""
+
+#. TRANSLATORS Description under the import heading; JSON is a file format, keep it as it is
+#. TRANSLATORS Description of the import section; JSON is a file format, keep it as it is
+msgid "Upload a JSON file to import metadata fields."
+msgstr ""
+
+msgid "Uppercase letters are not allowed — use lowercase only"
+msgstr ""
+
+#. TRANSLATORS Noun: field type for a web address (URL), shown in the field type picker
+msgid "URL"
+msgstr ""
+
+#. TRANSLATORS Noun: label of the input for the field value to filter on
+msgid "Value"
+msgstr ""
+
+#. TRANSLATORS Label of the input for the value the field is compared with in the Flow rule
+msgid "Value to check"
+msgstr ""
+
+#. TRANSLATORS Title of the view editor when it only shows a view; also a menu item in the view menu
+#. TRANSLATORS Menu item in the view menu that shows the settings of the current view read-only; also the title of that panel
+msgid "View details"
+msgstr ""
+
+#. TRANSLATORS Placeholder of the field that holds the name of a view
+msgid "View name"
+msgstr ""
+
+#. TRANSLATORS Error message shown to the user when a view is saved without a name; a view is a saved combination of columns, filters and sort order
+msgid "View name is required"
+msgstr ""
+
+#. TRANSLATORS Error message shown to the user when the view no longer exists; a view is a saved combination of columns, filters and sort order
+msgid "View not found"
+msgstr ""
+
+#. TRANSLATORS Noun: heading of the section that lists the saved views of this Team folder
+msgid "Views"
+msgstr ""
+
+#. TRANSLATORS Adjective: column header of the checkboxes that show a column in the file list; keep it short
+msgid "Visible"
+msgstr ""
+
+#. TRANSLATORS Link that opens the Support tab; translate "Support" as in that tab
+msgid "Visit Support"
+msgstr ""
+
+#. TRANSLATORS Label before the warning that the field is in use; keep it short
+#. TRANSLATORS Label in bold before the warning text in the edit dialog
+msgid "Warning:"
+msgstr ""
+
+msgid "We collect: field counts, Team folder counts, entry counts, version info (MetaVox, Nextcloud, PHP), and basic server configuration. No personal data or file contents are ever shared."
+msgstr ""
+
+#. TRANSLATORS Heading above the list of data that is sent; keep the colon
+msgid "What we collect:"
+msgstr ""
+
+#. TRANSLATORS Heading above the list of data that is never sent; keep the colon
+msgid "What we never collect:"
+msgstr ""
+
+#. TRANSLATORS Lead-in above a short list of what this page offers; keep the colon
+msgid "What you can do:"
+msgstr ""
+
+#. TRANSLATORS "Generate with AI" is the name of a button in the Files sidebar; use the same translation as that button
+msgid "When enabled, people see a \"Generate with AI\" button in the metadata sidebar. The AI reads file content and suggests values for metadata fields."
+msgstr ""
+
+msgid "When enabled, this field stores both date and time (e.g. meetings, deadlines)."
+msgstr ""
+
+#. TRANSLATORS Operator of the Flow check, read as "MetaVox metadata where <field> equals <value>"; keep it short
+msgid "where"
+msgstr ""
+
+msgid "Whether your Nextcloud has an Extended Support / Enterprise subscription (a single yes/no, sourced from Nextcloud's public API)"
+msgstr ""
+
+#. TRANSLATORS Value of a checkbox field that is ticked, shown in cells and lists
+#. TRANSLATORS Option in the cell editor of a checkbox field: ticked
+#. TRANSLATORS Filter option for a checkbox field: files where the box is ticked
+msgid "Yes"
+msgstr ""
+
+#. TRANSLATORS Value choice for a checkbox field: the box is ticked
+msgid "Yes (checked)"
+msgstr ""
+
+#. TRANSLATORS Warning when a picked file lies outside the current folder; "Team folder" is the Nextcloud feature name, use its official translation
+msgid "You can only link files inside this Team folder"
+msgstr ""
+
+msgid "You do not have access to any Team folders yet. Contact your administrator if you need access."
+msgstr ""
+
+msgid "You do not have permission to view or edit metadata for this file."
+msgstr ""
+
+msgid "Your actual server URL"
+msgstr ""
+
+#. TRANSLATORS Heading of the block with usage counts of this server
+msgid "Your installation"
+msgstr ""
+
+#. TRANSLATORS Notice above the settings tabs; MetaVox is the app name, do not translate it
+msgid "Your MetaVox subscription key needs attention."
+msgstr ""
+
+#. TRANSLATORS Heading of the list of Team folders this account can open
+msgid "Your Team folders"
+msgstr ""
+
+#. TRANSLATORS Message with an Undo button; {count} is the number of cells that were changed at once, e.g. "5 cells updated"
+msgid "{count} cell updated"
+msgid_plural "{count} cells updated"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS: A filter chip that lists two values, e.g. "Draft, Final and 3 others".
+msgid "{values} and %n other"
+msgid_plural "{values} and %n others"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS %n is the number of columns shown in this view
+msgid "%n column"
+msgid_plural "%n columns"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS %n is the number of metadata records in a backup, shown in the backup list
+msgid "%n entry"
+msgid_plural "%n entries"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS %n is the number of metadata fields; shown beside the list heading
+#. TRANSLATORS %n is the number of metadata fields set up for Team folders
+#. TRANSLATORS Badge in a Team folder row; %n is the number of metadata fields assigned to the folder
+msgid "%n field configured"
+msgid_plural "%n fields configured"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS %n is the number of metadata field definitions in the backup
+msgid "%n field definition"
+msgid_plural "%n field definitions"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS %n is the number of fields that match the search; shown beside the list heading
+msgid "%n field found"
+msgid_plural "%n fields found"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS %n is the number of metadata values of files in the backup
+msgid "%n file value"
+msgid_plural "%n file values"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS %n is the number of preset filters in this view
+msgid "%n filter"
+msgid_plural "%n filters"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS %n is the number of Team folders in the list; shown beside the list heading
+msgid "%n folder"
+msgid_plural "%n folders"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS %n is the number of metadata values of Team folders in the backup
+msgid "%n Team folder value"
+msgid_plural "%n Team folder values"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS Confirmation question; {count} is the number of selected files
+msgid "Clear all metadata from this file? This cannot be undone."
+msgid_plural "Clear all metadata from {count} files? This cannot be undone."
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS Action in the Files menu for several selected items; {count} is the number of selected files and folders, e.g. "Edit metadata (3 items)"
+msgid "Edit metadata ({count} item)"
+msgid_plural "Edit metadata ({count} items)"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS Notification after an export; %n is the number of fields written to the JSON file
+msgid "Exported %n field"
+msgid_plural "Exported %n fields"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS %n is the number of fields that match the search, {query} the text typed in the search box
+#. TRANSLATORS %n is the number of fields that match the search, {query} is the text typed in the search box
+msgid "Found %n field matching \"{query}\""
+msgid_plural "Found %n fields matching \"{query}\""
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS %n is the number of fields found in the JSON file that will be imported
+msgid "Found %n field to import"
+msgid_plural "Found %n fields to import"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS Shown above the search results; %n is the number of Team folders found, {query} the text typed in the search field
+msgid "Found %n Team folder matching \"{query}\""
+msgid_plural "Found %n Team folders matching \"{query}\""
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS Notification after an import; %n is the number of fields imported
+msgid "Imported %n field"
+msgid_plural "Imported %n fields"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS Confirmation message; {count} is the number of files the metadata was removed from
+msgid "Metadata cleared for {count} file"
+msgid_plural "Metadata cleared for {count} files"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS Confirmation message; {count} is the number of files whose metadata was exported to the CSV file
+msgid "Metadata exported for {count} file"
+msgid_plural "Metadata exported for {count} files"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS Confirmation message; {count} is the number of files the metadata was saved for
+msgid "Metadata saved for {count} file"
+msgid_plural "Metadata saved for {count} files"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS {count} is the number of accounts on this server, {email} the Nextcloud sales email address; MetaVox is the app name, do not translate it
+msgid "MetaVox is running for {count} account here and keeps working in full without a subscription. If your organization gets value from it, a subscription is much appreciated — it funds the maintenance. Sold through Nextcloud: contact your account manager or {email}."
+msgid_plural "MetaVox is running for {count} accounts here and keeps working in full without a subscription. If your organization gets value from it, a subscription is much appreciated — it funds the maintenance. Sold through Nextcloud: contact your account manager or {email}."
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS %n is the number of groups that were given the permission
+msgid "Permission granted to %n group"
+msgid_plural "Permission granted to %n groups"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS Button that shows more Team folders; %n is how many are not shown yet
+msgid "Show %n more folder"
+msgid_plural "Show %n more folders"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS {displayed} is the number of Team folders shown, {total} the number of all Team folders, e.g. "Showing 20 of 45 folders"
+msgid "Showing {displayed} of {total} folder"
+msgid_plural "Showing {displayed} of {total} folders"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS Warning in the edit dialog; %n is the number of Team folders that use the field
+msgid "This field is used in %n Team folder. Some changes may be restricted."
+msgid_plural "This field is used in %n Team folders. Some changes may be restricted."
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS %n is the number of Team folders that use this field
+msgid "Used in %n Team folder"
+msgid_plural "Used in %n Team folders"
+msgstr[0] ""
+msgstr[1] ""

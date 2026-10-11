@@ -1,16 +1,17 @@
 <template>
   <div class="default-value-input" :class="`dv--${field.field_type}`">
     <label v-if="field.field_type !== 'checkbox'" :for="inputId" class="default-value-label">
+      <!-- TRANSLATORS Noun: label of the input that sets the default value of a field for new files in a Team folder -->
       {{ t('metavox', 'Default value') }}
     </label>
 
     <!-- Select -->
-    <NcSelect
+    <!-- TRANSLATORS Placeholder of a dropdown field before a value is picked -->
+    <NcSelect :placeholder="t('metavox', 'Choose an option …')"
       v-if="field.field_type === 'select'"
       :id="inputId"
       :model-value="modelValue"
       :options="options"
-      :placeholder="t('metavox', 'Choose an option...')"
       class="field-input select-field"
       :clearable="true"
       :reduce="option => option.value"
@@ -18,13 +19,13 @@
       @update:model-value="emitValue($event)" />
 
     <!-- MultiSelect -->
-    <NcSelect
+    <!-- TRANSLATORS Placeholder of a multi-select field before any value is picked -->
+    <NcSelect :placeholder="t('metavox', 'Choose options …')"
       v-else-if="field.field_type === 'multiselect'"
       :id="inputId"
       :model-value="multiSelectValue"
       :options="options"
       :multiple="true"
-      :placeholder="t('metavox', 'Choose options...')"
       class="field-input select-field"
       :clearable="true"
       :reduce="option => option.value"
@@ -67,6 +68,7 @@
       :model-value="checkboxChecked"
       type="checkbox"
       @update:model-value="emitValue($event ? '1' : '0')">
+      <!-- TRANSLATORS Noun: label of the input that sets the default value of a field for new files in a Team folder -->
       {{ t('metavox', 'Default value') }}
     </NcCheckboxRadioSwitch>
 
@@ -98,11 +100,11 @@
       @input="emitValue($event)" />
 
     <!-- Text / fallback -->
-    <NcTextField
+    <!-- TRANSLATORS Noun: label of the input that sets the default value of a field for new files in a Team folder -->
+    <NcTextField :label="t('metavox', 'Default value')"
       v-else
       :id="inputId"
       :model-value="modelValue"
-      :label="t('metavox', 'Default value')"
       :placeholder="field.field_label"
       class="field-input"
       @update:model-value="emitValue($event)" />

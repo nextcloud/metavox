@@ -213,7 +213,9 @@ class BackupController extends Controller {
             $this->setStatus([
                 'status' => 'error',
                 'operation' => 'export',
-                'error' => $e->getMessage(),
+                'error' => 'Internal server error',
+                // Read by the admin page, which says it in the reader's language.
+                'reason' => 'internal_error',
             ]);
             $this->logger->error('MetaVox backup failed', ['exception' => $e]);
             return new JSONResponse(['error' => $e->getMessage()], 500);
@@ -304,7 +306,9 @@ class BackupController extends Controller {
             $this->setStatus([
                 'status' => 'error',
                 'operation' => 'import',
-                'error' => $e->getMessage(),
+                'error' => 'Internal server error',
+                // Read by the admin page, which says it in the reader's language.
+                'reason' => 'internal_error',
             ]);
             $this->logger->error('MetaVox restore failed', ['exception' => $e]);
             return new JSONResponse(['error' => $e->getMessage()], 500);

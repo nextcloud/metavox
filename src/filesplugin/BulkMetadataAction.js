@@ -7,7 +7,7 @@
  * directly into the scoped globals (same approach as the sidebar tab fix).
  */
 
-import { translate as t } from '@nextcloud/l10n'
+import { translate as t, translatePlural as n } from '@nextcloud/l10n'
 import { createApp, h, ref } from 'vue'
 import BulkMetadataModal from './BulkMetadataModal.vue'
 
@@ -139,10 +139,13 @@ const bulkMetadataAction = {
 	displayName: (nodes) => {
 		const nodeArray = extractNodes(nodes)
 		if (nodeArray.length > 1) {
-			return t('metavox', 'Edit Metadata ({count} items)', { count: nodeArray.length })
+			// TRANSLATORS Action in the Files menu for several selected items; {count} is the number of selected files and folders, e.g. "Edit metadata (3 items)"
+			return n('metavox', 'Edit metadata ({count} item)', 'Edit metadata ({count} items)', nodeArray.length, { count: nodeArray.length })
 		}
-		return t('metavox', 'Edit Metadata')
+		// TRANSLATORS Action in the Files menu that opens the dialog to edit the metadata of the selected files
+		return t('metavox', 'Edit metadata')
 	},
+	// TRANSLATORS Tooltip of the Edit metadata action in the Files menu
 	title: () => t('metavox', 'Edit metadata fields for selected files'),
 	iconSvgInline: () => metadataIconSvg,
 

@@ -1,7 +1,8 @@
 <template>
 	<div class="backup-restore">
 		<div class="settings-section">
-			<h2>{{ t('metavox', 'Backup & Restore') }}</h2>
+			<!-- TRANSLATORS Heading of the settings section for metadata backups -->
+			<h2>{{ t('metavox', 'Backup and restore') }}</h2>
 			<p class="settings-section-desc">
 				{{ t('metavox', 'Automatic daily backups of all metadata. You can also create manual backups and restore from any backup.') }}
 			</p>
@@ -10,12 +11,12 @@
 			<div v-if="operationStatus && operationStatus.status === 'running'" class="progress-section">
 				<div class="progress-header">
 					<span class="progress-label">
-						{{ operationStatus.operation === 'export' ? t('metavox', 'Creating backup...') : t('metavox', 'Restoring backup...') }}
+						{{ progressLabel }}
 					</span>
 					<span class="progress-detail">
 						{{ formatNumber(operationStatus.progress) }} / {{ formatNumber(operationStatus.total) }}
 						<template v-if="operationStatus.table">
-							&middot; {{ operationStatus.table }}
+							&middot; {{ tableLabel(operationStatus.table) }}
 						</template>
 					</span>
 				</div>
@@ -28,8 +29,9 @@
 			<!-- Completion message -->
 			<div v-if="operationStatus && operationStatus.status === 'completed'" class="progress-section completed">
 				<NcNoteCard type="success">
-					{{ operationStatus.operation === 'export' ? t('metavox', 'Backup completed') : t('metavox', 'Restore completed') }}
-					&middot; {{ operationStatus.duration }}s
+					{{ completedLabel }}
+					<!-- TRANSLATORS: Duration of a backup or restore, {seconds} is a number, "s" abbreviates seconds. -->
+					&middot; {{ t('metavox', '{seconds} s', { seconds: formatNumber(operationStatus.duration) }) }}
 					<template v-if="operationStatus.size">
 						&middot; {{ formatSize(operationStatus.size) }}
 					</template>
@@ -39,8 +41,7 @@
 			<!-- Error message -->
 			<div v-if="operationStatus && operationStatus.status === 'error'" class="progress-section">
 				<NcNoteCard type="error">
-					{{ operationStatus.operation === 'export' ? t('metavox', 'Backup failed') : t('metavox', 'Restore failed') }}:
-					{{ operationStatus.error }}
+					{{ errorLabel }}
 				</NcNoteCard>
 			</div>
 
@@ -49,13 +50,15 @@
 				<NcButton type="primary"
 					:disabled="isOperationRunning"
 					@click="createBackup">
+					<!-- TRANSLATORS Button that starts a manual backup of all metadata -->
 					{{ t('metavox', 'Create backup now') }}
 				</NcButton>
 			</div>
 
 			<!-- Backup list -->
 			<div v-if="loading" class="loading">
-				{{ t('metavox', 'Loading backups...') }}
+				<!-- TRANSLATORS Status text while the list of backups loads -->
+				{{ t('metavox', 'Loading backups …') }}
 			</div>
 
 			<div v-else-if="backups.length === 0" class="no-backups">
@@ -72,7 +75,8 @@
 						<span class="backup-date">{{ formatDate(backup.created_at) }}</span>
 						<span class="backup-meta">
 							v{{ backup.version }} &middot;
-							{{ totalEntries(backup) }} {{ t('metavox', 'entries') }} &middot;
+							<!-- TRANSLATORS %n is the number of metadata records in a backup, shown in the backup list -->
+							{{ n('metavox', '%n entry', '%n entries', totalEntries(backup)) }} &middot;
 							{{ formatSize(backup.size) }}
 							<template v-if="backup.compressed"> &middot; gz</template>
 						</span>
@@ -80,11 +84,13 @@
 					<div class="backup-actions-row">
 						<NcButton type="secondary"
 							@click="downloadBackup(backup.filename)">
+							<!-- TRANSLATORS Verb: button that downloads this backup file; keep it short -->
 							{{ t('metavox', 'Download') }}
 						</NcButton>
 						<NcButton type="secondary"
 							:disabled="isOperationRunning"
 							@click="confirmRestore(backup)">
+							<!-- TRANSLATORS Verb: button that restores the metadata from this backup; keep it short -->
 							{{ t('metavox', 'Restore') }}
 						</NcButton>
 					</div>
@@ -93,21 +99,27 @@
 		</div>
 
 		<!-- Restore confirmation dialog -->
-		<NcDialog v-if="showConfirmDialog"
-			:name="t('metavox', 'Restore backup')"
+		<!-- TRANSLATORS Title of the dialog that asks to confirm restoring a backup -->
+		<NcDialog v-if="showConfirmDialog" :name="t('metavox', 'Restore backup')"
 			@closing="showConfirmDialog = false">
 			<p>{{ t('metavox', 'Are you sure you want to restore this backup? This will replace all current metadata with the backup data.') }}</p>
-			<p><strong>{{ t('metavox', 'Backup from') }}: {{ formatDate(selectedBackup?.created_at) }}</strong></p>
-			<p v-if="selectedBackup">
-				{{ selectedBackup.counts?.metavox_gf_fields || 0 }} {{ t('metavox', 'field definitions') }},
-				{{ selectedBackup.counts?.metavox_gf_metadata || 0 }} {{ t('metavox', 'groupfolder metadata') }},
-				{{ selectedBackup.counts?.metavox_file_gf_meta || 0 }} {{ t('metavox', 'file metadata entries') }}
-			</p>
+			<!-- TRANSLATORS {date} is the date and time the backup was made, e.g. "9 October 2026, 02:00" -->
+			<p><strong>{{ t('metavox', 'Backup from: {date}', { date: formatDate(selectedBackup?.created_at) }, undefined, PLAIN_TEXT) }}</strong></p>
+			<ul v-if="selectedBackup" class="backup-counts">
+				<!-- TRANSLATORS %n is the number of metadata field definitions in the backup -->
+				<li>{{ n('metavox', '%n field definition', '%n field definitions', selectedBackup.counts?.metavox_gf_fields || 0) }}</li>
+				<!-- TRANSLATORS %n is the number of metadata values of Team folders in the backup -->
+				<li>{{ n('metavox', '%n Team folder value', '%n Team folder values', selectedBackup.counts?.metavox_gf_metadata || 0) }}</li>
+				<!-- TRANSLATORS %n is the number of metadata values of files in the backup -->
+				<li>{{ n('metavox', '%n file value', '%n file values', selectedBackup.counts?.metavox_file_gf_meta || 0) }}</li>
+			</ul>
 			<template #actions>
 				<NcButton type="tertiary" @click="showConfirmDialog = false">
+					<!-- TRANSLATORS Button that closes the restore dialog without restoring -->
 					{{ t('metavox', 'Cancel') }}
 				</NcButton>
 				<NcButton type="error" @click="doRestore">
+					<!-- TRANSLATORS Verb: confirm button of the restore dialog; keep it short -->
 					{{ t('metavox', 'Restore') }}
 				</NcButton>
 			</template>
@@ -116,12 +128,19 @@
 </template>
 
 <script>
+import { translate, translatePlural, getCanonicalLocale } from '@nextcloud/l10n'
+import { PLAIN_TEXT } from '../utils/fieldValue.js'
 import { NcButton, NcDialog, NcNoteCard } from '@nextcloud/vue'
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 
 export default {
 	name: 'BackupRestore',
+
+	// Templates read the t() options from the component.
+	setup() {
+		return { PLAIN_TEXT }
+	},
 
 	components: {
 		NcButton,
@@ -141,6 +160,36 @@ export default {
 	},
 
 	computed: {
+		// The server stores a fixed reason with its English text; say the
+		// reason in the reader's language.
+		statusError() {
+			if (this.operationStatus?.reason === 'internal_error') {
+				// TRANSLATORS Reason shown after "Backup failed:" or "Restore failed:" when the server hit an unexpected error
+				return this.t('metavox', 'Internal server error')
+			}
+			return this.operationStatus?.error
+		},
+		progressLabel() {
+			return this.operationStatus?.operation === 'export'
+				// TRANSLATORS Progress text while a backup is being made
+				? this.t('metavox', 'Creating backup …')
+				// TRANSLATORS Progress text while a backup is being restored
+				: this.t('metavox', 'Restoring backup …')
+		},
+		completedLabel() {
+			return this.operationStatus?.operation === 'export'
+				// TRANSLATORS Notice after a backup finished; the duration follows it
+				? this.t('metavox', 'Backup completed')
+				// TRANSLATORS Notice after a restore finished; the duration follows it
+				: this.t('metavox', 'Restore completed')
+		},
+		errorLabel() {
+			return this.operationStatus?.operation === 'export'
+				// TRANSLATORS {error} is the reason the backup failed, e.g. "Internal server error"
+				? this.t('metavox', 'Backup failed: {error}', { error: this.statusError }, undefined, PLAIN_TEXT)
+				// TRANSLATORS {error} is the reason the restore failed, e.g. "Internal server error"
+				: this.t('metavox', 'Restore failed: {error}', { error: this.statusError }, undefined, PLAIN_TEXT)
+		},
 		isOperationRunning() {
 			return this.operationStatus?.status === 'running'
 		},
@@ -276,6 +325,7 @@ export default {
 		},
 
 		formatDate(dateStr) {
+			// TRANSLATORS Shown instead of a date when a backup has no creation date
 			if (!dateStr) return this.t('metavox', 'Unknown')
 			const date = new Date(dateStr)
 			return date.toLocaleString(undefined, {
@@ -287,6 +337,21 @@ export default {
 			})
 		},
 
+		// The progress line names the part being copied, not its table.
+		tableLabel(table) {
+			switch (table) {
+			// TRANSLATORS Progress step shown before copying starts
+			case 'preparing': return this.t('metavox', 'Preparing …')
+			// TRANSLATORS Noun: progress step, the metadata field definitions are being copied
+			case 'metavox_gf_fields': return this.t('metavox', 'Field definitions')
+			// TRANSLATORS Noun: progress step, the metadata values of Team folders are being copied
+			case 'metavox_gf_metadata': return this.t('metavox', 'Team folder values')
+			// TRANSLATORS Noun: progress step, the metadata values of files are being copied
+			case 'metavox_file_gf_meta': return this.t('metavox', 'File values')
+			default: return table
+			}
+		},
+
 		formatSize(bytes) {
 			if (!bytes) return '0 B'
 			const units = ['B', 'KB', 'MB', 'GB']
@@ -296,7 +361,8 @@ export default {
 				size /= 1024
 				i++
 			}
-			return size.toFixed(i > 0 ? 1 : 0) + ' ' + units[i]
+			const number = size.toLocaleString(getCanonicalLocale(), { maximumFractionDigits: i > 0 ? 1 : 0 })
+			return number + ' ' + units[i]
 		},
 
 		formatNumber(n) {
@@ -304,17 +370,8 @@ export default {
 			return Number(n).toLocaleString()
 		},
 
-		t(app, text, vars) {
-			if (typeof OC !== 'undefined' && OC.L10N) {
-				return OC.L10N.translate(app, text, vars)
-			}
-			if (vars) {
-				return Object.keys(vars).reduce((result, key) => {
-					return result.replace(`{${key}}`, vars[key])
-				}, text)
-			}
-			return text
-		},
+		t: translate,
+		n: translatePlural,
 	},
 }
 </script>
@@ -372,6 +429,11 @@ export default {
 .backup-date {
 	font-weight: 500;
 	color: var(--color-main-text);
+}
+
+.backup-counts {
+	list-style: disc;
+	padding-inline-start: calc(var(--default-grid-baseline, 4px) * 5);
 }
 
 .backup-meta {

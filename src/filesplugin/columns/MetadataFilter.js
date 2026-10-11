@@ -7,7 +7,8 @@
 
 import './MetaVoxFilterElement.js'
 import { createApp, h } from 'vue'
-import { translate, translatePlural } from '@nextcloud/l10n'
+import { translate, translate as t, translatePlural, translatePlural as n } from '@nextcloud/l10n'
+import { PLAIN_TEXT } from '../../utils/fieldValue.js'
 import MetaVoxFilterPanel from './MetaVoxFilterPanel.vue'
 import { ensureSortBypass, reorderDomRows } from './Sorting.js'
 
@@ -475,10 +476,13 @@ class MetaVoxMetadataFilter extends EventTarget {
 			if (values.length <= MAX_DISPLAY) {
 				valuesText = values.join(', ')
 			} else {
-				valuesText = values.slice(0, MAX_DISPLAY).join(', ') + ` (+${values.length - MAX_DISPLAY})`
+				const more = values.length - MAX_DISPLAY
+				// TRANSLATORS: A filter chip that lists two values, e.g. "Draft, Final and 3 others".
+				valuesText = n('metavox', '{values} and %n other', '{values} and %n others', more, { values: values.slice(0, MAX_DISPLAY).join(', ') }, PLAIN_TEXT)
 			}
 			chips.push({
-				text: `${label}: ${valuesText}`,
+				// TRANSLATORS: Text of a filter chip, e.g. "Status: Approved".
+				text: t('metavox', '{field}: {value}', { field: label, value: valuesText }, undefined, PLAIN_TEXT),
 				onclick: () => {
 					this._activeFilters.delete(fieldName)
 					this._emitChips()
@@ -489,7 +493,8 @@ class MetaVoxMetadataFilter extends EventTarget {
 		// Add "Clear all" chip when multiple fields are active
 		if (chips.length > 1) {
 			chips.push({
-				text: '✕ Clear all',
+				// TRANSLATORS Button chip in the filter bar that removes all active filters; keep it short
+				text: '✕ ' + t('metavox', 'Clear all'),
 				onclick: () => this.reset(),
 			})
 		}

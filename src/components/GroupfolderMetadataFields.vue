@@ -3,29 +3,33 @@
     <!-- Loading state -->
     <div v-if="loading" class="loading-container">
       <div class="icon-loading"></div>
-      <p>{{ t('metavox', 'Loading metadata fields...') }}</p>
+      <p>{{ t('metavox', 'Loading metadata fields …') }}</p>
     </div>
 
     <div v-else>
       <!-- Page Header -->
       <div class="page-header">
-        <h2>{{ t('metavox', 'Team Folder Metadata Fields') }}</h2>
+        <!-- TRANSLATORS Heading of the settings section for metadata fields of Team folders -->
+        <h2>{{ t('metavox', 'Team folder metadata fields') }}</h2>
         <p class="page-description">
-          {{ t('metavox', 'Configure custom metadata fields that will be available for all team folders. These fields help organize and categorize your team folders.') }}
+          {{ t('metavox', 'Configure custom metadata fields that will be available for all Team folders. These fields help organize and categorize your Team folders.') }}
         </p>
       </div>
 
       <!-- Import/Export Section -->
       <div class="settings-section">
         <div class="section-header">
-          <h3>{{ t('metavox', 'Import & Export') }}</h3>
+          <!-- TRANSLATORS Accessible name of the menu button with the import and export actions -->
+          <h3>{{ t('metavox', 'Import and export') }}</h3>
         </div>
 
         <div class="import-export-container">
           <div class="import-export-row">
             <div class="import-section">
-              <h4>{{ t('metavox', 'Import Fields from JSON') }}</h4>
+              <!-- TRANSLATORS Heading of the import section; JSON is a file format, keep it as it is -->
+              <h4>{{ t('metavox', 'Import fields from JSON') }}</h4>
               <p class="import-description">
+                <!-- TRANSLATORS Description of the import section; JSON is a file format, keep it as it is -->
                 {{ t('metavox', 'Upload a JSON file to import metadata fields.') }}
               </p>
               
@@ -45,7 +49,8 @@
                   <template #icon>
                     <UploadIcon :size="20" />
                   </template>
-                  {{ t('metavox', 'Select JSON File') }}
+                  <!-- TRANSLATORS Button that opens the file picker to choose the JSON file to import; keep it short -->
+                  {{ t('metavox', 'Select JSON file') }}
                 </NcButton>
                 
                 <span v-if="selectedFile" class="selected-file">
@@ -63,13 +68,15 @@
                   <div v-if="importing" class="icon-loading-small"></div>
                   <ImportIcon v-else :size="20" />
                 </template>
-                {{ importing ? t('metavox', 'Importing...') : t('metavox', 'Import Fields') }}
+                {{ importing ? uiText.importing : uiText.importFields }}
               </NcButton>
             </div>
             
             <div class="export-section">
-              <h4>{{ t('metavox', 'Export Fields to JSON') }}</h4>
+              <!-- TRANSLATORS Heading of the export section; JSON is a file format, keep it as it is -->
+              <h4>{{ t('metavox', 'Export fields to JSON') }}</h4>
               <p class="export-description">
+                <!-- TRANSLATORS Description of the export section; JSON is a file format, keep it as it is -->
                 {{ t('metavox', 'Download all metadata fields as a JSON file.') }}
               </p>
               
@@ -81,7 +88,7 @@
                   <div v-if="exporting" class="icon-loading-small"></div>
                   <ExportIcon v-else :size="20" />
                 </template>
-                {{ exporting ? t('metavox', 'Exporting...') : t('metavox', 'Export Fields') }}
+                {{ exporting ? uiText.exporting : uiText.exportFields }}
               </NcButton>
             </div>
           </div>
@@ -91,7 +98,8 @@
       <!-- Add New Field Section -->
       <div class="settings-section">
         <div class="section-header">
-          <h3>{{ t('metavox', 'Add New Metadata Field') }}</h3>
+          <!-- TRANSLATORS Heading of the section with the form that creates a metadata field -->
+          <h3>{{ t('metavox', 'Add new metadata field') }}</h3>
           <NcButton 
             v-if="!showAddForm"
             @click="showAddForm = true" 
@@ -99,7 +107,8 @@
             <template #icon>
               <PlusIcon :size="20" />
             </template>
-            {{ t('metavox', 'Add Field') }}
+            <!-- TRANSLATORS Title of the dialog that creates a metadata field -->
+            {{ t('metavox', 'Add field') }}
           </NcButton>
         </div>
 
@@ -110,9 +119,9 @@
             <NcTextField
               :model-value="formData.name"
               @update:model-value="formData.name = $event"
-              :label="t('metavox', 'Field Name')"
-              :placeholder="t('metavox', 'e.g., department, project_type, priority')"
-              :helper-text="fieldNameError || t('metavox', 'Only lowercase letters (a-z), numbers (0-9) and underscores (_)')"
+              :label="uiText.fieldName"
+              :placeholder="uiText.fieldNameExample"
+              :helper-text="fieldNameError || uiText.fieldNameRules"
               :error="!!fieldNameError"
               :show-trailing-button="!!formData.name"
               trailing-button-icon="check"
@@ -124,9 +133,9 @@
             <NcTextField
               :model-value="formData.label"
               @update:model-value="formData.label = $event"
-              :label="t('metavox', 'Field Label')"
-              :placeholder="t('metavox', 'e.g., Department, Project Type, Priority')"
-              :helper-text="t('metavox', 'Display name shown to users')"
+              :label="uiText.fieldLabel"
+              :placeholder="t('metavox', 'e.g. Department, Project type, Priority')"
+              :helper-text="t('metavox', 'Display name shown to people')"
               :show-trailing-button="!!formData.label"
               trailing-button-icon="check"
               required />
@@ -134,7 +143,8 @@
 
           <!-- Field Type -->
           <div class="form-row">
-            <label class="field-label">{{ t('metavox', 'Field Type') }}</label>
+            <!-- TRANSLATORS Label of the picker that sets the type of a field (text, number, date …) -->
+            <label class="field-label">{{ t('metavox', 'Field type') }}</label>
             <NcSelect
               :model-value="selectedFieldType"
               :options="selectOptions"
@@ -150,9 +160,9 @@
             <NcTextField
               :model-value="formData.description"
               @update:model-value="formData.description = $event"
-              :label="t('metavox', 'Description')"
+              :label="uiText.description"
               :placeholder="t('metavox', 'Optional description for this field')"
-              :helper-text="t('metavox', 'Description')"
+              :helper-text="uiText.description"
               :rows="2" />
           </div>
 
@@ -162,6 +172,7 @@
               :model-value="formData.required"
               @update:model-value="formData.required = $event"
               type="checkbox">
+              <!-- TRANSLATORS Checkbox label: the field must be filled in -->
               {{ t('metavox', 'Required field') }}
             </NcCheckboxRadioSwitch>
           </div>
@@ -172,6 +183,7 @@
               :model-value="formData.includeTime"
               @update:model-value="formData.includeTime = $event"
               type="checkbox">
+              <!-- TRANSLATORS Checkbox label for a date field: also store the time of day -->
               {{ t('metavox', 'Include time component') }}
             </NcCheckboxRadioSwitch>
             <p class="helper-text">
@@ -181,17 +193,18 @@
 
           <!-- Options for select/multiselect fields -->
           <div v-if="showOptionsField" class="form-row">
-            <label class="field-label">{{ t('metavox', 'Dropdown Options') }}</label>
+            <!-- TRANSLATORS Heading above the list of choices of a dropdown or multi-select field -->
+            <label class="field-label">{{ t('metavox', 'Dropdown options') }}</label>
             <div class="options-container">
               <div v-for="(option, index) in formData.options" :key="`option-add-${index}`" class="option-row">
                 <NcTextField
                   :model-value="option.value"
                   @update:model-value="option.value = $event"
-                  :placeholder="t('metavox', 'Option value')" />
+                  :placeholder="t('metavox', 'Option value')" /> <!-- TRANSLATORS Placeholder of the input for one choice of a dropdown field -->
                 <NcButton
                   type="tertiary"
                   @click="removeOption(index)"
-                  :aria-label="t('metavox', 'Remove option')">
+                  :aria-label="t('metavox', 'Remove option')"> <!-- TRANSLATORS Accessible name of the button that removes one choice from a dropdown field -->
                   <template #icon>
                     <CloseIcon :size="20" />
                   </template>
@@ -203,7 +216,8 @@
                 <template #icon>
                   <PlusIcon :size="20" />
                 </template>
-                {{ t('metavox', 'Add Option') }}
+                <!-- TRANSLATORS Button that adds a choice to a dropdown field -->
+                {{ t('metavox', 'Add option') }}
               </NcButton>
             </div>
           </div>
@@ -218,38 +232,31 @@
                 <div v-if="saving" class="icon-loading-small"></div>
                 <CheckIcon v-else :size="20" />
               </template>
-              {{ saving ? t('metavox', 'Saving...') : t('metavox', 'Add Field') }}
+              {{ saving ? uiText.saving : uiText.addField }}
             </NcButton>
             <NcButton @click="cancelAdd" type="secondary" :disabled="saving">
+              <!-- TRANSLATORS Button that closes a dialog without saving -->
               {{ t('metavox', 'Cancel') }}
             </NcButton>
           </div>
 
-          <!-- Debug Info -->
-          <div v-if="debugMode" class="debug-info">
-            <h4>Debug Info:</h4>
-            <p><strong>Selected Type:</strong> {{ selectedFieldType ? selectedFieldType.id : 'none' }}</p>
-            <p><strong>Form Type:</strong> {{ formData.type }}</p>
-            <p><strong>Show Options:</strong> {{ showOptionsField }}</p>
-            <p><strong>Is Valid:</strong> {{ isFormValid }}</p>
-            <pre>{{ JSON.stringify(formData, null, 2) }}</pre>
-          </div>
         </div>
       </div>
 
       <!-- Existing Fields List -->
       <div class="settings-section">
         <div class="section-header">
-          <h3>{{ t('metavox', 'Existing Metadata Fields') }}</h3>
+          <!-- TRANSLATORS Heading of the list of metadata fields -->
+          <h3>{{ t('metavox', 'Existing metadata fields') }}</h3>
           <span class="field-count">{{ filteredFieldsCount }}</span>
         </div>
         
         <!-- Search Field -->
         <div class="search-container">
-          <NcTextField
+          <!-- TRANSLATORS Placeholder of the search box that filters the field list -->
+          <NcTextField :placeholder="t('metavox', 'Search fields …')"
             :model-value="searchQuery"
             @update:model-value="searchQuery = $event"
-            :placeholder="t('metavox', 'Search fields...')"
             :show-trailing-button="!!searchQuery"
             trailing-button-icon="close"
             @trailing-button-click="searchQuery = ''">
@@ -261,16 +268,16 @@
         
         <!-- Search Results Info -->
         <div v-if="searchQuery && filteredFields.length > 0" class="search-results-info">
-          <p>{{ t('metavox', 'Found {count} fields matching "{query}"', { 
-            count: filteredFields.length, 
-            query: searchQuery 
-          }) }}</p>
+          <!-- TRANSLATORS %n is the number of fields that match the search, {query} is the text typed in the search box -->
+          <p>{{ n('metavox', 'Found %n field matching "{query}"', 'Found %n fields matching "{query}"', filteredFields.length, { query: searchQuery }) }}</p>
         </div>
         
         <!-- Empty Search Results -->
         <div v-if="searchQuery && filteredFields.length === 0" class="empty-search">
+          <!-- TRANSLATORS {query} is the text typed in the search box -->
           <p>{{ t('metavox', 'No fields found matching "{query}"', { query: searchQuery }) }}</p>
           <NcButton @click="searchQuery = ''" type="secondary">
+            <!-- TRANSLATORS Button that empties the search box -->
             {{ t('metavox', 'Clear search') }}
           </NcButton>
         </div>
@@ -279,7 +286,7 @@
         <div v-if="fields.length === 0 && !searchQuery" class="empty-content">
           <FolderIcon :size="64" class="empty-icon" />
           <h4>{{ t('metavox', 'No metadata fields configured') }}</h4>
-          <p>{{ t('metavox', 'Add your first metadata field to get started organizing your team folders.') }}</p>
+          <p>{{ t('metavox', 'Add your first metadata field to get started organizing your Team folders.') }}</p>
         </div>
 
         <!-- Fields List -->
@@ -296,26 +303,31 @@
                   <h4 class="field-name">{{ getDisplayName(field) }}</h4>
                   <div class="field-badges">
                     <span class="field-type-badge">{{ getFieldTypeLabel(field.field_type || field.type) }}</span>
+                    <!-- TRANSLATORS Badge on a field that must be filled in; keep it short -->
                     <span v-if="field.is_required || field.required" class="required-badge">{{ t('metavox', 'Required') }}</span>
                   </div>
                 </div>
                 
                 <p class="field-internal-name">
-                  <strong>{{ t('metavox', 'Internal Name:') }}</strong> {{ field.field_name || field.name }}
+                  <!-- TRANSLATORS Label before the internal name of a field in the import preview, e.g. "Internal name: status" -->
+                  <strong>{{ t('metavox', 'Internal name:') }}</strong> {{ field.field_name || field.name }}
                 </p>
                 
                 <p v-if="field.field_description || field.description" class="field-description">
+                  <!-- TRANSLATORS Label before the description of a field in the import preview -->
                   <strong>{{ t('metavox', 'Description:') }}</strong> {{ field.field_description || field.description }}
                 </p>
                 
                 <div v-if="hasFieldOptions(field)" class="field-options">
+                  <!-- TRANSLATORS Label before the list of choices of a dropdown field, e.g. "Options: High, Low" -->
                   <strong>{{ t('metavox', 'Options:') }}</strong>
                   <span class="options-preview">{{ formatFieldOptions(field.field_options || field.options) }}</span>
                 </div>
                 
                 <div class="field-meta">
                   <span class="field-usage">
-                    {{ t('metavox', 'Used in {count} team folders', { count: getUsageCount(field) }) }}
+                    <!-- TRANSLATORS %n is the number of Team folders that use this field -->
+                    {{ n('metavox', 'Used in %n Team folder', 'Used in %n Team folders', getUsageCount(field)) }}
                   </span>
                 </div>
               </div>
@@ -326,6 +338,7 @@
                     <template #icon>
                       <EditIcon :size="20" />
                     </template>
+                    <!-- TRANSLATORS Menu action that opens the dialog to edit a field; keep it short -->
                     {{ t('metavox', 'Edit field') }}
                   </NcActionButton>
                   
@@ -336,7 +349,7 @@
                       <div v-if="deleting === field.id" class="icon-loading-small"></div>
                       <DeleteIcon v-else :size="20" />
                     </template>
-                    {{ getUsageCount(field) > 0 ? t('metavox', 'Cannot delete (in use)') : t('metavox', 'Delete field') }}
+                    {{ getUsageCount(field) > 0 ? uiText.cannotDelete : uiText.deleteField }}
                   </NcActionButton>
                 </NcActions>
               </div>
@@ -347,10 +360,10 @@
     </div>
 
     <!-- Edit Field Modal -->
-    <NcModal 
+    <!-- TRANSLATORS Title of the dialog that edits a field; {name} is the field label, e.g. "Edit field: Status" -->
+    <NcModal :name="t('metavox', 'Edit field: {name}', { name: getDisplayName(editingField) })"
       v-if="editingField"
       @close="cancelEdit"
-      :name="t('metavox', 'Edit Field: {name}', { name: getDisplayName(editingField) })"
       :can-close="!saving"
       size="normal">
       
@@ -361,13 +374,14 @@
             <NcTextField
               :model-value="editData.name"
               @update:model-value="editData.name = $event"
-              :label="t('metavox', 'Internal Field Name')"
-              :placeholder="t('metavox', 'e.g., department, project_type, priority')"
+              :label="uiText.internalFieldName"
+              :placeholder="uiText.fieldNameExample"
               :helper-text="t('metavox', 'Internal identifier used in the system')"
               required
               :disabled="getUsageCount(editingField) > 0" />
             
             <p v-if="getUsageCount(editingField) > 0" class="field-help-text warning">
+              <!-- TRANSLATORS Error message under the "Internal name" box of a metadata field that already has values -->
               {{ t('metavox', 'Internal name cannot be changed when field is in use') }}
             </p>
           </div>
@@ -377,9 +391,9 @@
             <NcTextField
               :model-value="editData.label"
               @update:model-value="editData.label = $event"
-              :label="t('metavox', 'Display Name')"
-              :placeholder="t('metavox', 'e.g., Department, Project Type, Priority')"
-              :helper-text="t('metavox', 'Name shown to users')"
+              :label="uiText.displayName"
+              :placeholder="t('metavox', 'e.g. Department, Project type, Priority')"
+              :helper-text="t('metavox', 'Name shown to people')"
               required />
           </div>
 
@@ -388,8 +402,8 @@
             <NcTextField
               :model-value="editData.description"
               @update:model-value="editData.description = $event"
-              :label="t('metavox', 'Description')"
-              :helper-text="t('metavox', 'Description')"
+              :label="uiText.description"
+              :helper-text="uiText.description"
               :rows="3" />
           </div>
 
@@ -400,6 +414,7 @@
               @update:model-value="editData.required = $event"
               type="checkbox"
               :disabled="getUsageCount(editingField) > 0">
+              <!-- TRANSLATORS Checkbox label: the field must be filled in -->
               {{ t('metavox', 'Required field') }}
             </NcCheckboxRadioSwitch>
           </div>
@@ -410,6 +425,7 @@
               :model-value="editData.includeTime"
               @update:model-value="editData.includeTime = $event"
               type="checkbox">
+              <!-- TRANSLATORS Checkbox label for a date field: also store the time of day -->
               {{ t('metavox', 'Include time component') }}
             </NcCheckboxRadioSwitch>
             <p class="helper-text">
@@ -419,17 +435,18 @@
 
           <!-- Edit Options for select/multiselect fields -->
           <div v-if="(editingField.field_type || editingField.type) === 'select' || (editingField.field_type || editingField.type) === 'multiselect'" class="form-row">
-            <label class="field-label">{{ t('metavox', 'Dropdown Options') }}</label>
+            <!-- TRANSLATORS Heading above the list of choices of a dropdown or multi-select field -->
+            <label class="field-label">{{ t('metavox', 'Dropdown options') }}</label>
             <div class="options-container">
               <div v-for="(option, index) in editData.options" :key="`option-edit-${index}`" class="option-row">
                 <NcTextField
                   :model-value="option.value"
                   @update:model-value="option.value = $event"
-                  :placeholder="t('metavox', 'Option value')" />
+                  :placeholder="t('metavox', 'Option value')" /> <!-- TRANSLATORS Placeholder of the input for one choice of a dropdown field -->
                 <NcButton
                   type="tertiary"
                   @click="removeEditOption(index)"
-                  :aria-label="t('metavox', 'Remove option')">
+                  :aria-label="t('metavox', 'Remove option')"> <!-- TRANSLATORS Accessible name of the button that removes one choice from a dropdown field -->
                   <template #icon>
                     <CloseIcon :size="20" />
                   </template>
@@ -441,15 +458,18 @@
                 <template #icon>
                   <PlusIcon :size="20" />
                 </template>
-                {{ t('metavox', 'Add Option') }}
+                <!-- TRANSLATORS Button that adds a choice to a dropdown field -->
+                {{ t('metavox', 'Add option') }}
               </NcButton>
             </div>
           </div>
           
           <div v-if="getUsageCount(editingField) > 0" class="warning-box">
             <p>
+              <!-- TRANSLATORS Label in bold before the warning text in the edit dialog -->
               <strong>{{ t('metavox', 'Warning:') }}</strong> 
-              {{ t('metavox', 'This field is used in {count} team folders. Some changes may be restricted.', { count: getUsageCount(editingField) }) }}
+              <!-- TRANSLATORS Warning in the edit dialog; %n is the number of Team folders that use the field -->
+              {{ n('metavox', 'This field is used in %n Team folder. Some changes may be restricted.', 'This field is used in %n Team folders. Some changes may be restricted.', getUsageCount(editingField)) }}
             </p>
           </div>
         </div>
@@ -463,9 +483,10 @@
               <div v-if="saving" class="icon-loading-small"></div>
               <CheckIcon v-else :size="20" />
             </template>
-            {{ saving ? t('metavox', 'Saving...') : t('metavox', 'Save Changes') }}
+            {{ saving ? uiText.saving : uiText.saveChanges }}
           </NcButton>
           <NcButton @click="cancelEdit" type="secondary" :disabled="saving">
+            <!-- TRANSLATORS Button that closes the edit dialog without saving; keep it short -->
             {{ t('metavox', 'Cancel') }}
           </NcButton>
         </div>
@@ -473,16 +494,18 @@
     </NcModal>
 
     <!-- Import Preview Modal -->
-    <NcModal 
+    <!-- TRANSLATORS Title of the dialog that lists the fields of a JSON file before they are imported -->
+    <NcModal :name="t('metavox', 'Import preview')"
       v-if="importPreviewData"
       @close="cancelImportPreview"
-      :name="t('metavox', 'Import Preview')"
       size="large">
       
       <div class="modal-content">
         <div class="import-preview-header">
-          <h3>{{ t('metavox', 'Import Preview') }}</h3>
-          <p>{{ t('metavox', 'Found {count} fields to import', { count: importPreviewData.length }) }}</p>
+          <!-- TRANSLATORS Title of the dialog that lists the fields of a JSON file before they are imported -->
+          <h3>{{ t('metavox', 'Import preview') }}</h3>
+          <!-- TRANSLATORS %n is the number of fields found in the JSON file that will be imported -->
+          <p>{{ n('metavox', 'Found %n field to import', 'Found %n fields to import', importPreviewData.length) }}</p>
         </div>
         
         <div class="import-preview-list">
@@ -491,15 +514,19 @@
               <component :is="getFieldIcon(field.field_type || 'text')" :size="20" />
             </div>
             <div class="preview-field-info">
-              <h4>{{ field.field_label || field.name || t('metavox', 'Unnamed Field') }}</h4>
+              <!-- TRANSLATORS Shown in place of the name of a field that has no label or name -->
+              <h4>{{ field.field_label || field.name || t('metavox', 'Unnamed field') }}</h4>
               <p>
-                <strong>{{ t('metavox', 'Internal Name:') }}</strong> {{ field.field_name || field.name }}
+                <!-- TRANSLATORS Label before the internal name of a field in the import preview, e.g. "Internal name: status" -->
+                <strong>{{ t('metavox', 'Internal name:') }}</strong> {{ field.field_name || field.name }}
               </p>
               <p>
                 <span class="preview-field-type">{{ getFieldTypeLabel(field.field_type) }}</span>
+                <!-- TRANSLATORS Badge on a field that must be filled in; keep it short -->
                 <span v-if="field.is_required" class="preview-required-badge">{{ t('metavox', 'Required') }}</span>
               </p>
               <p v-if="field.field_description" class="preview-description">
+                <!-- TRANSLATORS Label before the description of a field in the import preview -->
                 <strong>{{ t('metavox', 'Description:') }}</strong> {{ field.field_description }}
               </p>
             </div>
@@ -515,12 +542,13 @@
               <div v-if="importing" class="icon-loading-small"></div>
               <ImportIcon v-else :size="20" />
             </template>
-            {{ importing ? t('metavox', 'Importing...') : t('metavox', 'Confirm Import') }}
+            {{ importing ? uiText.importing : uiText.confirmImport }}
           </NcButton>
           <NcButton 
             @click="cancelImportPreview" 
             type="secondary"
             :disabled="importing">
+            <!-- TRANSLATORS Button that closes the dialog without saving; keep it short -->
             {{ t('metavox', 'Cancel') }}
           </NcButton>
         </div>
@@ -530,6 +558,10 @@
 </template>
 
 <script>
+import { translate, translatePlural } from '@nextcloud/l10n'
+import { errorText } from '../utils/errorText.js'
+import { PLAIN_TEXT } from '../utils/fieldValue.js'
+import { fieldTypeLabel, fieldTypeOptions } from '../utils/fieldTypes.js'
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 
@@ -613,7 +645,6 @@ export default {
       editingField: null,
       fields: [],
       searchQuery: '',
-      debugMode: false,
       selectedFile: null,
       importPreviewData: null,
       
@@ -648,16 +679,59 @@ export default {
   },
   
   computed: {
+    // Texts used in more than one place or inside a ternary in the template; each needs its own line here
+    uiText() {
+      return {
+        // TRANSLATORS Dialog button label while the fields from the JSON file are being imported
+        importing: this.t('metavox', 'Importing …'),
+        // TRANSLATORS Button that imports the fields listed in the preview
+        importFields: this.t('metavox', 'Import fields'),
+        // TRANSLATORS Label of the export button while the export file is being made; keep it short
+        exporting: this.t('metavox', 'Exporting …'),
+        // TRANSLATORS Button that downloads all fields as a JSON file; keep it short
+        exportFields: this.t('metavox', 'Export fields'),
+        // TRANSLATORS Label of the input for the internal name of a field
+        fieldName: this.t('metavox', 'Field name'),
+        // TRANSLATORS Label of the internal name of a field, the identifier stored in the data
+        internalFieldName: this.t('metavox', 'Internal field name'),
+        // TRANSLATORS Placeholder of the internal field name input. The example names may be translated but must stay lowercase a-z, 0-9 and _ without spaces
+        fieldNameExample: this.t('metavox', 'e.g., department, project_type, priority'),
+        // TRANSLATORS Help text under the internal field name input; keep "a-z", "0-9" and "_" as they are
+        fieldNameRules: this.t('metavox', 'Only lowercase letters (a-z), numbers (0-9) and underscores (_)'),
+        // TRANSLATORS Label of the input for the name of a field that people see
+        fieldLabel: this.t('metavox', 'Field label'),
+        // TRANSLATORS Label of the input for the name of a field that people see
+        displayName: this.t('metavox', 'Display name'),
+        // TRANSLATORS Noun: label of the input for the description of a field
+        description: this.t('metavox', 'Description'),
+        // TRANSLATORS Dialog button label while the changes are being saved
+        saving: this.t('metavox', 'Saving …'),
+        // TRANSLATORS Title of the dialog that creates a metadata field
+        addField: this.t('metavox', 'Add field'),
+        // TRANSLATORS Button that saves the changes to the field; keep it short
+        saveChanges: this.t('metavox', 'Save changes'),
+        // TRANSLATORS Button that imports the fields listed in the preview; keep it short
+        confirmImport: this.t('metavox', 'Confirm import'),
+        // TRANSLATORS Disabled menu action of a field that is used in a Team folder and so cannot be deleted; keep it short
+        cannotDelete: this.t('metavox', 'Cannot delete (in use)'),
+        // TRANSLATORS Menu action that deletes a field; keep it short
+        deleteField: this.t('metavox', 'Delete field'),
+      }
+    },
+
     fieldsCount() {
       const count = this.fields.length
-      return this.t('metavox', '{count} fields configured', { count })
+      // TRANSLATORS %n is the number of metadata fields set up for Team folders
+      return this.n('metavox', '%n field configured', '%n fields configured', count)
     },
     
     filteredFieldsCount() {
       const count = this.filteredFields.length
       return this.searchQuery 
-        ? this.t('metavox', '{count} fields found', { count })
-        : this.t('metavox', '{count} fields configured', { count })
+        // TRANSLATORS %n is the number of fields that match the search; shown beside the list heading
+        ? this.n('metavox', '%n field found', '%n fields found', count)
+        // TRANSLATORS %n is the number of metadata fields set up for Team folders
+        : this.n('metavox', '%n field configured', '%n fields configured', count)
     },
     
     // Filter fields based on search query
@@ -682,18 +756,7 @@ export default {
     
     // Field type options for NcSelect
     selectOptions() {
-      return [
-        { id: 'text', label: this.t('metavox', 'Text') },
-        { id: 'textarea', label: this.t('metavox', 'Long Text') },
-        { id: 'number', label: this.t('metavox', 'Number') },
-        { id: 'date', label: this.t('metavox', 'Date') },
-        { id: 'select', label: this.t('metavox', 'Dropdown') },
-        { id: 'multiselect', label: this.t('metavox', 'Multi-select') },
-        { id: 'checkbox', label: this.t('metavox', 'Checkbox') },
-        { id: 'url', label: this.t('metavox', 'URL') },
-        { id: 'user', label: this.t('metavox', 'User') },
-        { id: 'filelink', label: this.t('metavox', 'File Link') }
-      ]
+      return fieldTypeOptions()
     },
     
     showOptionsField() {
@@ -705,10 +768,12 @@ export default {
       if (!name) return ''
       if (/\s/.test(name)) return this.t('metavox', 'Spaces are not allowed — use underscores instead')
       if (/[A-Z]/.test(name)) return this.t('metavox', 'Uppercase letters are not allowed — use lowercase only')
+      // TRANSLATORS Error under the field name input; keep "a-z" as it is
       if (/^[0-9_]/.test(name)) return this.t('metavox', 'Must start with a lowercase letter (a-z)')
       if (/[^a-z0-9_]/.test(name)) {
         const invalid = name.match(/[^a-z0-9_]/)[0]
-        return this.t('metavox', 'Invalid character "%s" — only a-z, 0-9 and _ allowed').replace('%s', invalid)
+        // TRANSLATORS Error under the field name input. {char} is the character that is not allowed, e.g. "#"; keep "a-z", "0-9" and "_" as they are
+        return this.t('metavox', 'Invalid character "{char}" — only a-z, 0-9 and _ allowed', { char: invalid }, undefined, PLAIN_TEXT)
       }
       return ''
     },
@@ -932,6 +997,7 @@ export default {
 
         this.resetForm()
         this.showAddForm = false
+        // TRANSLATORS {name} is the label of the new field, e.g. "Status"
         showSuccess(this.t('metavox', 'Field "{name}" added successfully', { name: fieldLabel }))
       } catch (error) {
         console.error('Failed to add field:', error)
@@ -1076,8 +1142,7 @@ export default {
     },
     
     getFieldTypeLabel(type) {
-      const option = this.selectOptions.find(opt => opt.id === type)
-      return option ? option.label : type
+      return fieldTypeLabel(type)
     },
     
     getFieldIcon(type) {
@@ -1109,7 +1174,7 @@ export default {
       }
       
       // Last fallback
-      return field.name || 'Unnamed Field'
+      return field.name || 'Unnamed field'
     },
     
     getUsageCount(field) {
@@ -1166,6 +1231,7 @@ export default {
           
           // Validate JSON structure
           if (!Array.isArray(jsonData)) {
+            // TRANSLATORS Error when an imported file is not a list of fields; JSON is a file format, keep it as it is
             throw new Error(this.t('metavox', 'JSON must be an array of field definitions'))
           }
           
@@ -1173,6 +1239,7 @@ export default {
           this.importPreviewData = jsonData
         } catch (error) {
           console.error('JSON parse error:', error)
+          // TRANSLATORS {error} is the technical reason the file could not be read, e.g. "Unexpected token"; JSON is a file format
           showError(this.t('metavox', 'Invalid JSON file: {error}', { error: error.message }))
           this.selectedFile = null
         }
@@ -1182,6 +1249,7 @@ export default {
 
     async importFields() {
       if (!this.selectedFile) {
+        // TRANSLATORS Error when the import is started without a file; JSON is a file format, keep it as it is
         showError(this.t('metavox', 'Please select a JSON file to import'))
         return
       }
@@ -1192,6 +1260,7 @@ export default {
         
         // Validate the JSON structure
         if (!Array.isArray(parsedData)) {
+          // TRANSLATORS Error when an imported file is not a list of fields; JSON is a file format, keep it as it is
           throw new Error(this.t('metavox', 'Invalid JSON format. Expected an array of field definitions.'))
         }
         
@@ -1199,6 +1268,7 @@ export default {
         this.importPreviewData = parsedData
       } catch (error) {
         console.error('Failed to parse JSON file:', error)
+        // TRANSLATORS {error} is the technical reason the file could not be read, e.g. "Unexpected token"; JSON is a file format, keep it as it is
         showError(this.t('metavox', 'Failed to parse JSON file: {error}', { error: error.message }))
       }
     },
@@ -1252,8 +1322,10 @@ export default {
         
         // Show results
         if (errorCount === 0) {
-          showSuccess(this.t('metavox', 'Successfully imported {count} fields', { count: importedCount }))
+          // TRANSLATORS Notification after an import; %n is the number of fields imported
+          showSuccess(this.n('metavox', 'Imported %n field', 'Imported %n fields', importedCount))
         } else {
+          // TRANSLATORS {imported} is the number of fields imported, {errors} the number of fields that failed
           showSuccess(this.t('metavox', 'Import completed: {imported} imported, {errors} errors', 
             { imported: importedCount, errors: errorCount }))
         }
@@ -1267,8 +1339,10 @@ export default {
         
       } catch (error) {
         console.error('Import failed:', error)
+        // TRANSLATORS {error} is the reason the import failed, e.g. a server message or "Please try again."
         showError(this.t('metavox', 'Failed to import fields: {error}', { 
-          error: error.response?.data?.message || error.message 
+          // TRANSLATORS Fallback reason shown after "Failed to import fields:" when the server gave none
+          error: errorText(error, this.t('metavox', 'Please try again.')) 
         }))
       } finally {
         this.importing = false
@@ -1323,7 +1397,8 @@ export default {
         document.body.removeChild(link)
         URL.revokeObjectURL(url)
         
-        showSuccess(this.t('metavox', 'Exported {count} fields', { count: this.fields.length }))
+        // TRANSLATORS Notification after an export; %n is the number of fields written to the JSON file
+        showSuccess(this.n('metavox', 'Exported %n field', 'Exported %n fields', this.fields.length))
       } catch (error) {
         console.error('Export failed:', error)
         showError(this.t('metavox', 'Failed to export fields'))
@@ -1336,24 +1411,14 @@ export default {
       return new Promise((resolve, reject) => {
         const reader = new FileReader()
         reader.onload = e => resolve(e.target.result)
-        reader.onerror = e => reject(new Error('Failed to read file'))
+        reader.onerror = e => reject(new Error(this.t('metavox', 'Failed to read file')))
         reader.readAsText(file)
       })
     },
     
     // Translation helper
-    t(app, text, vars) {
-      if (typeof OC !== 'undefined' && OC.L10N) {
-        return OC.L10N.translate(app, text, vars)
-      }
-      // Fallback for development
-      if (vars) {
-        return Object.keys(vars).reduce((result, key) => {
-          return result.replace(`{${key}}`, vars[key])
-        }, text)
-      }
-      return text
-    }
+    t: translate,
+    n: translatePlural,
   }
 }
 </script>

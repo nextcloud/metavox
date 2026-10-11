@@ -27,3 +27,18 @@ vendor/
 # Internal docs and deploy scripts (push to Gitea only with: git add -f)
 internal-docs/
 deploy.sh
+
+# Translations: the POT template and the seeded per-language PO files are
+# tracked (the PO files carry the hand-made translations into the Transifex
+# resource); anything else in translationfiles/ is scratch. The bot deletes
+# the POT on every sync, so these negations must stay, or a re-added POT is
+# silently ignored. Check with: git check-ignore -q --no-index <file> (exit 1).
+translationfiles/*/*
+!translationfiles/templates/metavox.pot
+!translationfiles/*/metavox.po
+
+# l10n/en.json + en.js are generated build artifacts (scripts/extract-en-json.js
+# / generate-l10n.js). The NC bot deletes en.json after each sync.
+# NOTE: l10n/.source-count.json and l10n/.source-strings.json ARE committed.
+l10n/en.json
+l10n/en.js

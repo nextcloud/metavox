@@ -5,85 +5,68 @@
  * Uses Vue 2 render function (createElement) — no template compilation needed.
  */
 import axios from '@nextcloud/axios'
+import { translate as t } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
 import { dateFieldIncludesTime, padDatetimeLocal } from '../utils/dateField.js'
+import { PLAIN_TEXT } from '../utils/fieldValue.js'
 
-// Operators per field type
+// Operators per field type, as the ids MetadataCheck.php evaluates.
 const OPERATORS_BY_TYPE = {
-	text: [
-		{ operator: 'is', name: 'equals' },
-		{ operator: 'contains', name: 'contains' },
-		{ operator: '!contains', name: 'does not contain' },
-		{ operator: '!empty', name: 'is not empty' },
-		{ operator: 'empty', name: 'is empty' },
-	],
-	textarea: [
-		{ operator: 'is', name: 'equals' },
-		{ operator: 'contains', name: 'contains' },
-		{ operator: '!empty', name: 'is not empty' },
-		{ operator: 'empty', name: 'is empty' },
-	],
-	date: [
-		{ operator: 'is', name: 'equals' },
-		{ operator: 'before', name: 'is before' },
-		{ operator: 'after', name: 'is after' },
-		{ operator: '!empty', name: 'is not empty' },
-		{ operator: 'empty', name: 'is empty' },
-	],
-	number: [
-		{ operator: 'is', name: 'equals' },
-		{ operator: 'greater', name: 'greater than' },
-		{ operator: 'less', name: 'less than' },
-		{ operator: '!empty', name: 'is not empty' },
-		{ operator: 'empty', name: 'is empty' },
-	],
-	select: [
-		{ operator: 'is', name: 'equals' },
-		{ operator: 'oneOf', name: 'is one of' },
-		{ operator: '!empty', name: 'is not empty' },
-		{ operator: 'empty', name: 'is empty' },
-	],
-	dropdown: [
-		{ operator: 'is', name: 'equals' },
-		{ operator: 'oneOf', name: 'is one of' },
-		{ operator: '!empty', name: 'is not empty' },
-		{ operator: 'empty', name: 'is empty' },
-	],
-	multiselect: [
-		{ operator: 'contains', name: 'contains' },
-		{ operator: 'containsAll', name: 'contains all' },
-		{ operator: '!empty', name: 'is not empty' },
-		{ operator: 'empty', name: 'is empty' },
-	],
-	checkbox: [
-		{ operator: 'is', name: 'equals' },
-		{ operator: '!empty', name: 'is not empty' },
-		{ operator: 'empty', name: 'is empty' },
-	],
-	boolean: [
-		{ operator: 'is', name: 'equals' },
-		{ operator: '!empty', name: 'is not empty' },
-		{ operator: 'empty', name: 'is empty' },
-	],
-	url: [
-		{ operator: 'is', name: 'equals' },
-		{ operator: 'contains', name: 'contains' },
-		{ operator: '!empty', name: 'is not empty' },
-		{ operator: 'empty', name: 'is empty' },
-	],
-	user: [
-		{ operator: 'is', name: 'equals' },
-		{ operator: '!empty', name: 'is not empty' },
-		{ operator: 'empty', name: 'is empty' },
-	],
+	text: ['is', 'contains', '!contains', '!empty', 'empty'],
+	textarea: ['is', 'contains', '!empty', 'empty'],
+	date: ['is', 'before', 'after', '!empty', 'empty'],
+	number: ['is', 'greater', 'less', '!empty', 'empty'],
+	select: ['is', 'oneOf', '!empty', 'empty'],
+	dropdown: ['is', 'oneOf', '!empty', 'empty'],
+	multiselect: ['contains', 'containsAll', '!empty', 'empty'],
+	checkbox: ['is', '!empty', 'empty'],
+	boolean: ['is', '!empty', 'empty'],
+	url: ['is', 'contains', '!empty', 'empty'],
+	user: ['is', '!empty', 'empty'],
 }
 
-const DEFAULT_OPERATORS = [
-	{ operator: 'is', name: 'equals' },
-	{ operator: 'contains', name: 'contains' },
-	{ operator: '!empty', name: 'is not empty' },
-	{ operator: 'empty', name: 'is empty' },
-]
+const DEFAULT_OPERATORS = ['is', 'contains', '!empty', 'empty']
+
+/**
+ * The label of an operator. One literal t() per id, so the Transifex bot
+ * extracts every label.
+ *
+ * @param {string} operator
+ * @return {string}
+ */
+function operatorName(operator) {
+	switch (operator) {
+	// TRANSLATORS: Flow check operator, read as "<field> equals <value>".
+	case 'is': return t('metavox', 'equals')
+	// TRANSLATORS: Flow check operator, read as "<field> is not <value>".
+	case '!is': return t('metavox', 'is not')
+	// TRANSLATORS: Flow check operator, read as "<field> contains <value>".
+	case 'contains': return t('metavox', 'contains')
+	// TRANSLATORS: Flow check operator, read as "<field> does not contain <value>".
+	case '!contains': return t('metavox', 'does not contain')
+	// TRANSLATORS: Flow check operator for a multi-select field, read as "<field> contains all <values>".
+	case 'containsAll': return t('metavox', 'contains all')
+	// TRANSLATORS: Flow check operator for a dropdown field, read as "<field> is one of <values>".
+	case 'oneOf': return t('metavox', 'is one of')
+	// TRANSLATORS: Flow check operator for a date field, read as "<field> is before <date>".
+	case 'before': return t('metavox', 'is before')
+	// TRANSLATORS: Flow check operator for a date field, read as "<field> is after <date>".
+	case 'after': return t('metavox', 'is after')
+	// TRANSLATORS: Flow check operator for a number field, read as "<field> greater than <number>".
+	case 'greater': return t('metavox', 'greater than')
+	// TRANSLATORS: Flow check operator for a number field, read as "<field> less than <number>".
+	case 'less': return t('metavox', 'less than')
+	// TRANSLATORS: Flow check operator for a number field, read as "<field> greater or equal <number>"; keep it short.
+	case 'greaterOrEqual': return t('metavox', 'greater or equal')
+	// TRANSLATORS: Flow check operator for a number field, read as "<field> less or equal <number>"; keep it short.
+	case 'lessOrEqual': return t('metavox', 'less or equal')
+	// TRANSLATORS: Flow check operator without a value, read as "<field> is empty".
+	case 'empty': return t('metavox', 'is empty')
+	// TRANSLATORS: Flow check operator without a value, read as "<field> is not empty".
+	case '!empty': return t('metavox', 'is not empty')
+	default: return operator
+	}
+}
 
 const CSS = `
 .metavox-check { padding: 0; width: 100%; display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end; }
@@ -159,7 +142,8 @@ export default {
 	render(h) {
 		const self = this
 		const field = this.fields.find(f => f.name === this.selectedFieldName)
-		const operators = OPERATORS_BY_TYPE[field?.type] || DEFAULT_OPERATORS
+		const operators = (OPERATORS_BY_TYPE[field?.type] || DEFAULT_OPERATORS)
+			.map(operator => ({ operator, name: operatorName(operator) }))
 		const noValueOps = ['empty', '!empty']
 		const showValue = !noValueOps.includes(this.selectedOperator)
 		const isCheckbox = field?.type === 'checkbox' || field?.type === 'boolean'
@@ -170,23 +154,27 @@ export default {
 
 		// Field selector
 		children.push(h('div', { class: 'check-field' }, [
-			h('label', 'Metadata field'),
+			// TRANSLATORS Noun: label of the dropdown that picks the metadata field the Flow rule checks
+			h('label', t('metavox', 'Metadata field')),
 			h('select', {
 				domProps: { value: this.selectedFieldName },
 				on: { change(e) { self.selectedFieldName = e.target.value; self.onFieldChange(operators) } },
 			}, [
-				h('option', { attrs: { value: '', disabled: true } }, 'Select a metadata field'),
+				// TRANSLATORS Placeholder entry of the field dropdown in the Flow rule
+				h('option', { attrs: { value: '', disabled: true } }, t('metavox', 'Select a metadata field')),
 				...this.fields.map(f =>
 					h('option', { attrs: { value: f.name }, key: f.name }, f.label)
 				),
 			]),
-			this.loadingFields ? h('span', { style: 'font-size:12px;color:var(--color-text-lighter);margin-left:8px' }, 'Loading...') : null,
+			// TRANSLATORS Shown next to the field dropdown while the fields load
+			this.loadingFields ? h('span', { style: 'font-size:12px;color:var(--color-text-lighter);margin-left:8px' }, t('metavox', 'Loading …')) : null,
 		]))
 
 		// Operator selector
 		if (field) {
 			children.push(h('div', { class: 'check-field' }, [
-				h('label', 'Operator'),
+				// TRANSLATORS Noun: label of the dropdown that picks how the field is compared, e.g. equals, contains
+				h('label', t('metavox', 'Operator')),
 				h('select', {
 					domProps: { value: this.selectedOperator },
 					on: { change(e) { self.selectedOperator = e.target.value; self.updateValue() } },
@@ -204,16 +192,20 @@ export default {
 					domProps: { value: this.checkValue },
 					on: { change(e) { self.checkValue = e.target.value; self.updateValue() } },
 				}, [
-					h('option', { attrs: { value: '', disabled: true } }, 'Select a value'),
-					h('option', { attrs: { value: '1' } }, 'Yes (checked)'),
-					h('option', { attrs: { value: '0' } }, 'No (unchecked)'),
+					// TRANSLATORS Placeholder entry of the value dropdown in the Flow rule
+					h('option', { attrs: { value: '', disabled: true } }, t('metavox', 'Select a value')),
+					// TRANSLATORS Value choice for a checkbox field: the box is ticked
+					h('option', { attrs: { value: '1' } }, t('metavox', 'Yes (checked)')),
+					// TRANSLATORS Value choice for a checkbox field: the box is not ticked
+					h('option', { attrs: { value: '0' } }, t('metavox', 'No (unchecked)')),
 				])
 			} else if ((isSelect || isMultiselect) && field.options?.length > 0) {
 				valueEl = h('select', {
 					domProps: { value: this.checkValue },
 					on: { change(e) { self.checkValue = e.target.value; self.updateValue() } },
 				}, [
-					h('option', { attrs: { value: '', disabled: true } }, 'Select a value'),
+					// TRANSLATORS Placeholder entry of the value dropdown in the Flow rule
+					h('option', { attrs: { value: '', disabled: true } }, t('metavox', 'Select a value')),
 					...field.options.map(opt => {
 						const val = typeof opt === 'string' ? opt : (opt.value || opt.label)
 						const label = typeof opt === 'string' ? opt : (opt.label || opt.value)
@@ -229,19 +221,22 @@ export default {
 				})
 			} else if (field.type === 'number') {
 				valueEl = h('input', {
-					attrs: { type: 'number', placeholder: 'Enter a number' },
+					// TRANSLATORS Placeholder of the value box for a number field in the Flow rule
+					attrs: { type: 'number', placeholder: t('metavox', 'Enter a number') },
 					domProps: { value: this.checkValue },
 					on: { input(e) { self.checkValue = e.target.value; self.updateValue() } },
 				})
 			} else {
 				valueEl = h('input', {
-					attrs: { type: 'text', placeholder: 'Enter expected value' },
+					// TRANSLATORS Placeholder of the value box for a text field in the Flow rule
+					attrs: { type: 'text', placeholder: t('metavox', 'Enter expected value') },
 					domProps: { value: this.checkValue },
 					on: { input(e) { self.checkValue = e.target.value; self.updateValue() } },
 				})
 			}
 			children.push(h('div', { class: 'check-field' }, [
-				h('label', 'Value to check'),
+				// TRANSLATORS Label of the input for the value the field is compared with in the Flow rule
+				h('label', t('metavox', 'Value to check')),
 				valueEl,
 			]))
 		}
@@ -249,26 +244,34 @@ export default {
 		// Groupfolder selector
 		if (field) {
 			children.push(h('div', { class: 'check-field' }, [
-				h('label', 'Team folder (optional)'),
+				// TRANSLATORS Label of the dropdown that limits the Flow rule to one Team folder; it may stay empty
+				h('label', t('metavox', 'Team folder (optional)')),
 				h('select', {
 					domProps: { value: this.selectedGroupfolderId },
 					on: { change(e) { self.selectedGroupfolderId = e.target.value; self.updateValue() } },
 				}, [
-					h('option', { attrs: { value: '' } }, 'Auto-detect'),
+					// TRANSLATORS Entry of the Team folder dropdown: the Team folder is found from where the file is
+					h('option', { attrs: { value: '' } }, t('metavox', 'Auto-detect')),
 					...this.groupfolders.map(gf =>
 						h('option', { attrs: { value: gf.id }, key: gf.id }, gf.label)
 					),
 				]),
-				h('p', { class: 'hint' }, 'Leave empty to auto-detect from file location'),
+				h('p', { class: 'hint' }, t('metavox', 'Leave empty to auto-detect from file location')),
 			]))
 		}
 
 		// Preview
 		if (field && (this.checkValue || !showValue)) {
-			const opLabel = operators.find(o => o.operator === this.selectedOperator)?.name || this.selectedOperator
+			const vars = { field: field.label, operator: operatorName(this.selectedOperator), value: this.checkValue }
 			children.push(h('div', { class: 'check-preview' }, [
-				h('span', { class: 'preview-label' }, 'Check configuration:'),
-				h('code', `${field.label} ${opLabel}${showValue ? ` "${this.checkValue}"` : ''}`),
+				// TRANSLATORS Label before a preview of the Flow check, e.g. Status equals "Approved"
+				h('span', { class: 'preview-label' }, t('metavox', 'Check configuration:')),
+				// The rule read as a sentence, e.g. Status equals "Approved".
+				h('code', showValue
+					// TRANSLATORS: Preview of a Flow check, e.g. Status equals "Approved".
+					? t('metavox', '{field} {operator} "{value}"', vars, undefined, PLAIN_TEXT)
+					// TRANSLATORS: Preview of a Flow check without a value, e.g. Status is empty.
+					: t('metavox', '{field} {operator}', vars, undefined, PLAIN_TEXT)),
 			]))
 		}
 
@@ -299,7 +302,8 @@ export default {
 				const resp = await axios.get(generateUrl('/apps/metavox/api/groupfolders'))
 				this.groupfolders = (resp.data || []).map(gf => ({
 					id: gf.id,
-					label: gf.mount_point || `Team folder ${gf.id}`,
+					// TRANSLATORS Name of a Team folder that has no name; {id} is its number, e.g. "Team folder 4"
+					label: gf.mount_point || t('metavox', 'Team folder {id}', { id: gf.id }),
 				}))
 			} catch (e) {
 				this.groupfolders = []

@@ -1,26 +1,27 @@
 <template>
   <div class="url-field-wrapper">
     <div class="url-input-container">
-      <NcTextField
+      <!-- TRANSLATORS Placeholder of a web address field. {example} is a sample address, e.g. "https://example.com"; URL is a web address -->
+      <NcTextField :placeholder="placeholder || t('metavox', 'Enter URL ({example})', { example: 'https://example.com' })"
         :id="inputId"
         :model-value="modelValue || ''"
         :disabled="disabled"
         :required="required"
-        :placeholder="placeholder || t('metavox', 'Enter URL (https://...)')"
         :error="!isValidUrl && modelValue !== ''"
         type="url"
         @update:model-value="onInput" />
-      <a
+      <!-- TRANSLATORS Tooltip of the icon button that opens the web address in a new browser tab -->
+      <a :title="t('metavox', 'Open link in new tab')"
         v-if="modelValue && isValidUrl"
         :href="normalizedUrl"
         target="_blank"
         rel="noopener noreferrer"
-        class="url-open-button"
-        :title="t('metavox', 'Open link in new tab')">
+        class="url-open-button">
         <OpenInNew :size="20" />
       </a>
     </div>
     <p v-if="!isValidUrl && modelValue !== ''" class="url-error">
+      <!-- TRANSLATORS Error under a web address field; URL is a web address -->
       {{ t('metavox', 'Please enter a valid URL') }}
     </p>
     <a
@@ -35,6 +36,7 @@
 </template>
 
 <script>
+import { translate } from '@nextcloud/l10n'
 import { NcTextField } from '@nextcloud/vue'
 import OpenInNew from 'vue-material-design-icons/OpenInNew.vue'
 
@@ -87,9 +89,7 @@ export default {
     }
   },
   methods: {
-    t(app, text) {
-      return window.t ? window.t(app, text) : text
-    },
+    t: translate,
     onInput(value) {
       this.$emit('update:modelValue', value)
       this.$emit('input', value)

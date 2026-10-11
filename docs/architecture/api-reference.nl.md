@@ -2,7 +2,7 @@
 
 De MetaVox-API biedt endpoints voor metadata-beheer, veld-configuratie, weergaven, kolom-configuratie en batch-operaties.
 
-> **Volledige endpoint-documentatie**: zie de [Engelse versie](../../en/metavox/architecture/api-reference/) — alle endpoint-paden, JSON-payloads en field-namen zijn intrinsiek Engels in de Nextcloud-API en worden niet vertaald.
+> **Volledige endpoint-documentatie**: zie de [Engelse versie](api-reference.md) — alle endpoint-paden, JSON-payloads en field-namen zijn intrinsiek Engels in de Nextcloud-API en worden niet vertaald.
 
 ## Route-typen
 
@@ -63,7 +63,7 @@ MetaVox gebruikt prefixes om veld-scopes te onderscheiden:
 
 ## Endpoint-categorieën
 
-De volledige API is georganiseerd in deze groepen — zie de [EN-volledige referentie](../../en/metavox/architecture/api-reference/) voor exacte paden, methoden, payloads en response-codes:
+De volledige API is georganiseerd in deze groepen — zie de [EN-volledige referentie](api-reference.md) voor exacte paden, methoden, payloads en response-codes:
 
 ### Velden
 
@@ -179,6 +179,6 @@ De API is op `/v1/` gepind. Backward-compatibele wijzigingen worden binnen v1 to
 
 ## Zie ook
 
-- [Volledige EN-API-referentie](../../en/metavox/architecture/api-reference/) — alle endpoint-details
+- [Volledige EN-API-referentie](api-reference.md) — alle endpoint-details
 - [Integratie-gids](integration.md) — Voorbeelden van externe systeem-integratie
 - [Architectuur-overzicht](overview.md) — Hoe de API in het systeem past

@@ -6,7 +6,7 @@
 
 import axios from '@nextcloud/axios'
 import { showUndo } from '@nextcloud/dialogs'
-import { translate } from '@nextcloud/l10n'
+import { translate as t, translatePlural as n } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
 import {
 	metadataCache,
@@ -39,10 +39,11 @@ export function pushUndo(entries) {
 	const prev = getPendingUndo()
 	if (prev?.toast) prev.toast.hideToast()
 
-	const t = translate
 	const text = entries.length === 1
+		// TRANSLATORS Message with an Undo button after one cell value was changed
 		? t('metavox', 'Metadata updated')
-		: t('metavox', '{count} cells updated', { count: entries.length })
+		// TRANSLATORS Message with an Undo button; {count} is the number of cells that were changed at once, e.g. "5 cells updated"
+		: n('metavox', '{count} cell updated', '{count} cells updated', entries.length, { count: entries.length })
 
 	const toast = showUndo(text, () => {
 		for (const { fileId, fieldName, oldValue } of entries) {

@@ -14,7 +14,9 @@ style('metavox', 'admin');
     <!-- Vue app will mount here -->
     <div class="loading-state" style="text-align: center; padding: 60px;">
         <div class="icon icon-loading-dark" style="display: inline-block;"></div>
-        <p><?php p($l->t('Loading MetaVox...')); ?></p>
+        <p><?php
+        // TRANSLATORS Shown while the MetaVox administration settings page loads; MetaVox is the app name, do not translate it
+        p($l->t('Loading MetaVox …')); ?></p>
     </div>
 </div>
 

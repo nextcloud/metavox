@@ -3,20 +3,21 @@
 		<!-- Loading State -->
 		<div v-if="loading" class="loading-container">
 			<div class="icon-loading"></div>
-			<p>{{ aiGenerating ? t('metavox', 'Generating metadata with AI...') : t('metavox', 'Loading metadata...') }}</p>
+			<p>{{ loadingText }}</p>
 		</div>
 
 		<!-- Error State -->
 		<div v-else-if="error" class="error-container">
 			<p class="error-message">{{ error }}</p>
 			<NcButton @click="reload">
+				<!-- TRANSLATORS Button that tries to load the metadata again after an error -->
 				{{ t('metavox', 'Retry') }}
 			</NcButton>
 		</div>
 
 		<!-- No Groupfolder -->
 		<div v-else-if="!groupfolderId" class="info-container">
-			<p>{{ t('metavox', 'This file is not in a team folder. Metadata is only available for team folder files.') }}</p>
+			<p>{{ t('metavox', 'This file is not in a Team folder. Metadata is only available for Team folder files.') }}</p>
 		</div>
 
 		<!-- No Permission -->
@@ -30,7 +31,7 @@
 			<div v-if="isGroupfolderRoot">
 				<div v-if="groupfolderFields.length > 0">
 					<div class="admin-notice">
-						<p>{{ t('metavox', 'This metadata applies to the entire Team folder and can only be edited by administrators in the admin settings.') }}</p>
+						<p>{{ t('metavox', 'This metadata applies to the entire Team folder and can only be edited by administrators in the administration settings.') }}</p>
 					</div>
 					<!-- Read-only display as text -->
 					<div
@@ -53,7 +54,8 @@
 					<div
 						class="teamfolder-info-header teamfolder-info-header--collapsible"
 						@click="teamfolderInfoExpanded = !teamfolderInfoExpanded">
-						<h3>{{ t('metavox', 'Team folder Information') }}</h3>
+						<!-- TRANSLATORS Noun: heading of the collapsible section in the sidebar that shows the read-only metadata of the Team folder -->
+						<h3>{{ t('metavox', 'Team folder information') }}</h3>
 						<span class="collapse-icon">{{ teamfolderInfoExpanded ? "▼" : "▶" }}</span>
 					</div>
 					<div v-show="teamfolderInfoExpanded" class="teamfolder-info-content">
@@ -73,7 +75,7 @@
 				<!-- Item Metadata Section (editable if permissions allow) -->
 				<div v-if="itemFields.length > 0" class="metadata-section">
 					<div class="item-metadata-header">
-						<h3>{{ itemType === 'Folder' ? t('metavox', 'Folder Metadata') : t('metavox', 'File Metadata') }}</h3>
+						<h3>{{ itemMetadataHeading }}</h3>
 						<NcButton v-if="(aiAvailable || aiGenerating) && canEdit && !isGroupfolderRoot"
 							type="tertiary"
 							:disabled="aiGenerating"
@@ -82,7 +84,7 @@
 								<NcLoadingIcon v-if="aiGenerating" :size="20" />
 								<CreationIcon v-else :size="20" />
 							</template>
-							{{ aiGenerating ? t('metavox', 'Generating...') : t('metavox', 'Generate with AI') }}
+							{{ aiButtonLabel }}
 						</NcButton>
 					</div>
 					<div v-if="aiError" class="ai-error">
@@ -110,7 +112,7 @@
 								<ContentSaveIcon v-if="!saving" :size="20" />
 								<LoadingIcon v-else :size="20" />
 							</template>
-							{{ saving ? t('metavox', 'Saving...') : t('metavox', 'Save') }}
+							{{ saveButtonLabel }}
 						</NcButton>
 					</div>
 				</div>
@@ -120,6 +122,7 @@
 
 				<!-- Referenced by (backlinks) -->
 				<div v-if="backlinks.length > 0" class="metadata-section backlinks-section">
+					<!-- TRANSLATORS Noun: heading of the sidebar section that lists the files whose metadata links to this file -->
 					<h3>{{ t('metavox', 'Referenced by') }}</h3>
 					<ul class="backlinks-list">
 						<li v-for="link in backlinks" :key="`${link.referringFileId}-${link.fieldName}`" class="backlink-item">
@@ -145,6 +148,7 @@ import { NcButton, NcLoadingIcon } from '@nextcloud/vue'
 import { generateUrl } from '@nextcloud/router'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
+import { errorText } from '../utils/errorText.js'
 import axios from '@nextcloud/axios'
 import ContentSaveIcon from 'vue-material-design-icons/ContentSave.vue'
 import LoadingIcon from 'vue-material-design-icons/Loading.vue'
@@ -267,6 +271,42 @@ export default {
 		itemType() {
 			if (!this.currentFileInfo) return 'File'
 			return this.currentFileInfo.type === 'dir' ? 'Folder' : 'File'
+		},
+
+		loadingText() {
+			if (this.aiGenerating) {
+				// TRANSLATORS Shown in the sidebar while AI fills in the metadata of the file
+				return t('metavox', 'Generating metadata with AI …')
+			}
+			// TRANSLATORS Shown in the sidebar while the metadata of the file loads
+			return t('metavox', 'Loading metadata …')
+		},
+
+		itemMetadataHeading() {
+			if (this.itemType === 'Folder') {
+				// TRANSLATORS Noun: heading of the metadata of the selected folder in the sidebar
+				return t('metavox', 'Folder metadata')
+			}
+			// TRANSLATORS Noun: heading of the metadata of the selected file in the sidebar
+			return t('metavox', 'File metadata')
+		},
+
+		aiButtonLabel() {
+			if (this.aiGenerating) {
+				// TRANSLATORS Label of the AI button while AI fills in the metadata; keep it short
+				return t('metavox', 'Generating …')
+			}
+			// TRANSLATORS Button in the edit dialog that lets AI fill in the metadata of the file; AI = artificial intelligence
+			return t('metavox', 'Generate with AI')
+		},
+
+		saveButtonLabel() {
+			if (this.saving) {
+				// TRANSLATORS Label of the save button while the metadata is being saved; keep it short
+				return t('metavox', 'Saving …')
+			}
+			// TRANSLATORS Button that saves the metadata in the edit dialog; keep it short
+			return t('metavox', 'Save')
 		},
 	},
 
@@ -392,7 +432,7 @@ export default {
 					return
 				}
 				console.error('Error loading metadata:', error)
-				this.error = error.response?.data?.error || error.message || this.t('metavox', 'Failed to load metadata')
+				this.error = errorText(error, this.t('metavox', 'Failed to load metadata'))
 			} finally {
 				this.loading = false
 				this.loadCancelToken = null
@@ -652,6 +692,7 @@ export default {
 				)
 
 				this.originalMetadata = { ...this.metadata }
+				// TRANSLATORS Confirmation message after the metadata of the file was saved in the sidebar
 				showSuccess(this.t('metavox', 'Metadata saved successfully!'))
 				window.dispatchEvent(new CustomEvent('metavox:metadata:saved', {
 					detail: { fileId: this.currentFileInfo.id, metadata: { ...this.metadata } },
@@ -665,7 +706,7 @@ export default {
 				}
 			} catch (error) {
 				console.error('Error saving metadata:', error)
-				this.error = error.response?.data?.error || this.t('metavox', 'Failed to save metadata')
+				this.error = errorText(error, this.t('metavox', 'Failed to save metadata'))
 				showError(this.error)
 			} finally {
 				this.saving = false
@@ -727,7 +768,8 @@ export default {
 				}
 			} catch (error) {
 				console.error('AI autofill error:', error)
-				this.aiError = error.response?.data?.error || this.t('metavox', 'AI generation failed. Please try again.')
+				// TRANSLATORS Error message in the sidebar when AI could not fill in the metadata; AI = artificial intelligence
+				this.aiError = errorText(error, this.t('metavox', 'AI generation failed. Please try again.'))
 			} finally {
 				this.aiGenerating = false
 				this._aiGeneratePromise = null
@@ -798,7 +840,8 @@ export default {
 				}
 			} catch (error) {
 				console.error('AI regenerate error:', error)
-				this.aiError = error.response?.data?.error || this.t('metavox', 'Failed to regenerate suggestion.')
+				// TRANSLATORS Error message in the sidebar when AI could not make a new suggestion for a field
+				this.aiError = errorText(error, this.t('metavox', 'Failed to regenerate suggestion.'))
 			} finally {
 				this.regeneratingField = null
 			}
@@ -820,7 +863,11 @@ export default {
 
 			// Handle checkbox
 			if (field.field_type === 'checkbox') {
-				return value === '1' || value === true ? this.t('metavox', 'Yes') : this.t('metavox', 'No')
+				return value === '1' || value === true
+					// TRANSLATORS Value of a checkbox field that is ticked, shown in cells and lists
+					? this.t('metavox', 'Yes')
+					// TRANSLATORS Value of a checkbox field that is not ticked, shown in cells and lists
+					: this.t('metavox', 'No')
 			}
 
 			// Handle date (optionally with time component)

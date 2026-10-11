@@ -5,9 +5,8 @@
  * This enables metadata-based conditions in Flow rules for access control.
  */
 
+import { translate as t } from '@nextcloud/l10n'
 import MetadataCheck from './MetadataCheck.js'
-
-const t = window.t || ((app, text) => text)
 
 // Wait for the WorkflowEngine to be ready
 window.addEventListener('DOMContentLoaded', () => {
@@ -31,8 +30,10 @@ window.addEventListener('DOMContentLoaded', () => {
 function registerFlowComponents() {
 	OCA.WorkflowEngine.registerCheck({
 		class: 'OCA\\MetaVox\\Flow\\MetadataCheck',
+		// TRANSLATORS Name of the check in the Flow (workflow) rule editor; MetaVox is the app name, do not translate it
 		name: t('metavox', 'MetaVox metadata'),
 		operators: [
+			// TRANSLATORS Operator of the Flow check, read as "MetaVox metadata where <field> equals <value>"; keep it short
 			{ operator: 'matches', name: t('metavox', 'where') },
 		],
 		component: MetadataCheck,

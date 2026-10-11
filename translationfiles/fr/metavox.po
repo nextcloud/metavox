@@ -1,0 +1,1527 @@
+# MetaVox fr translation.
+# Carried over from the pre-Transifex l10n/fr.json bundle.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: MetaVox 2.2.3\n"
+"Report-Msgid-Bugs-To: translations@nextcloud.com\n"
+"PO-Revision-Date: 2026-10-09 00:00+0000\n"
+"Last-Translator: MetaVox <translations@nextcloud.com>\n"
+"Language-Team: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: fr\n"
+"Plural-Forms: nplurals=3; plural=(n == 0 || n == 1) ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;\n"
+
+msgid "— no sorting —"
+msgstr "— aucun tri —"
+
+msgid "{field} {operator}"
+msgstr ""
+
+msgid "{field} {operator} \"{value}\""
+msgstr "{field} {operator} « {value} »"
+
+msgid "{field}: {value}"
+msgstr "{field} : {value}"
+
+msgid "{seconds} s"
+msgstr ""
+
+msgid "+ add value"
+msgstr "+ ajouter une valeur"
+
+msgid "A subscription includes: guaranteed Nextcloud compatibility, email support, priority bug fixes, and active development."
+msgstr ""
+
+msgid "Accept"
+msgstr "Accepter"
+
+msgid "Access denied"
+msgstr "Accès refusé"
+
+msgid "Account"
+msgstr "Compte"
+
+msgid "Account names or email addresses"
+msgstr "Noms de compte ou adresses e-mail"
+
+msgid "Actions"
+msgstr ""
+
+msgid "Active permissions"
+msgstr "Autorisations actives"
+
+msgid "Add field"
+msgstr "Ajouter un champ"
+
+msgid "Add file"
+msgstr "Ajouter un fichier"
+
+msgid "Add new metadata field"
+msgstr "Ajouter un nouveau champ de métadonnées"
+
+msgid "Add option"
+msgstr "Ajouter une option"
+
+msgid "Add permission"
+msgstr "Ajouter une autorisation"
+
+msgid "Add your first metadata field to get started organizing your files."
+msgstr "Ajoutez votre premier champ de métadonnées pour commencer à organiser vos fichiers."
+
+msgid "Add your first metadata field to get started organizing your Team folders."
+msgstr "Ajoutez votre premier champ de métadonnées pour commencer à organiser vos dossiers d'équipe."
+
+msgid "AI could not generate a new suggestion for this field."
+msgstr "L'IA n'a pas pu générer de nouvelle suggestion pour ce champ."
+
+msgid "AI could not generate any suggestions for this file."
+msgstr "L'IA n'a pu générer aucune suggestion pour ce fichier."
+
+msgid "AI generation failed. Please try again."
+msgstr "La génération par IA a échoué. Veuillez réessayer."
+
+msgid "AI metadata generation"
+msgstr "Génération de métadonnées par IA"
+
+msgid "AI metadata generation disabled."
+msgstr "Génération de métadonnées par IA désactivée."
+
+msgid "AI metadata generation enabled."
+msgstr "Génération de métadonnées par IA activée."
+
+msgid "AI suggests:"
+msgstr "Suggestion de l'IA :"
+
+msgid "AI task failed"
+msgstr "La tâche d'IA a échoué"
+
+msgid "AI task timed out"
+msgstr "La tâche d'IA a expiré"
+
+msgid "All types"
+msgstr "Tous les types"
+
+msgid "Allow people to generate metadata suggestions using AI. Requires an AI provider to be configured in Nextcloud."
+msgstr "Permettre aux personnes de générer des suggestions de métadonnées avec l'IA. Nécessite qu'un fournisseur d'IA soit configuré dans Nextcloud."
+
+msgid "Anonymous instance identifier (hashed URL)"
+msgstr "Identifiant anonyme de l'instance (URL hachée)"
+
+msgid "Anonymous usage statistics"
+msgstr "Statistiques d'utilisation anonymes"
+
+msgid "Anonymous usage statistics disabled."
+msgstr "Statistiques d'utilisation anonymes désactivées."
+
+msgid "Any personal or sensitive data"
+msgstr "Données personnelles ou sensibles"
+
+msgid "Apply defaults now"
+msgstr "Appliquer les valeurs par défaut"
+
+msgid "Apply filter"
+msgstr "Appliquer le filtre"
+
+msgid "Apply the configured default values to existing files in this Team folder that do not yet have a value for these fields."
+msgstr "Appliquer les valeurs par défaut configurées aux fichiers existants de ce dossier d'équipe qui n'ont pas encore de valeur pour ces champs."
+
+msgid "Applying defaults …"
+msgstr "Application des valeurs par défaut …"
+
+msgid "Applying defaults is taking longer than expected. It will continue in the background."
+msgstr "L'application des valeurs par défaut prend plus de temps que prévu. Elle se poursuivra en arrière-plan."
+
+msgid "Are you sure you want to delete the view \"{name}\"?"
+msgstr "Voulez-vous vraiment supprimer la vue « {name} » ?"
+
+msgid "Are you sure you want to restore this backup? This will replace all current metadata with the backup data."
+msgstr "Voulez-vous vraiment restaurer cette sauvegarde ? Toutes les métadonnées actuelles seront remplacées par les données de la sauvegarde."
+
+msgid "Are you sure you want to revoke this permission?"
+msgstr "Voulez-vous vraiment révoquer cette autorisation ?"
+
+msgid "Ascending"
+msgstr "Croissant"
+
+msgid "Auto-detect"
+msgstr "Détection automatique"
+
+msgid "Automatic daily backups of all metadata. You can also create manual backups and restore from any backup."
+msgstr "Sauvegardes quotidiennes automatiques de toutes les métadonnées. Vous pouvez aussi créer des sauvegardes manuelles et restaurer n'importe quelle sauvegarde."
+
+msgid "Backup and restore"
+msgstr "Sauvegarde & Restauration"
+
+msgid "Backup completed"
+msgstr "Sauvegarde terminée"
+
+msgid "Backup failed: {error}"
+msgstr "Échec de la sauvegarde : {error}"
+
+msgid "Backup from: {date}"
+msgstr "Sauvegarde du : {date}"
+
+msgid "Basic server configuration (database, OS, web server, language, timezone, country)"
+msgstr "Configuration de base du serveur (base de données, système d'exploitation, serveur web, langue, fuseau horaire, pays)"
+
+msgid "Being edited by {user}"
+msgstr "En cours de modification par {user}"
+
+msgid "Being edited by someone else"
+msgstr "En cours de modification par une autre personne"
+
+msgid "Cancel"
+msgstr "Annuler"
+
+msgid "Cannot delete (in use)"
+msgstr "Suppression impossible (en cours d'utilisation)"
+
+msgid "Cannot delete field - it is currently in use"
+msgstr "Impossible de supprimer le champ : il est actuellement utilisé"
+
+msgid "Change account"
+msgstr "Changer de compte"
+
+msgid "Check configuration:"
+msgstr "Configuration de la vérification :"
+
+msgid "Checkbox"
+msgstr "Case à cocher"
+
+msgid "Choose an option …"
+msgstr "Choisir une option …"
+
+msgid "Choose options …"
+msgstr "Choisir des options …"
+
+msgid "Choose which columns to show and in what order."
+msgstr "Choisissez les colonnes à afficher et leur ordre."
+
+msgid "Clear"
+msgstr "Effacer"
+
+msgid "Clear all"
+msgstr "Tout effacer"
+
+msgid "Clear search"
+msgstr "Effacer la recherche"
+
+msgid "Clear selection"
+msgstr "Annuler la sélection"
+
+msgid "Clearing …"
+msgstr "Effacement …"
+
+msgid "Close"
+msgstr "Fermer"
+
+msgid "Columns"
+msgstr "Colonnes"
+
+msgid "Comparison value is required"
+msgstr "Une valeur de comparaison est requise"
+
+msgid "Configure custom metadata fields that will be available for all Team folders. These fields help organize and categorize your Team folders."
+msgstr "Configurez des champs de métadonnées personnalisés qui seront disponibles pour tous les dossiers d'équipe. Ces champs aident à organiser et à classer vos dossiers d'équipe."
+
+msgid "Configure custom metadata fields that will be available for files within Team folders. These fields help organize and categorize your files."
+msgstr "Configurez des champs de métadonnées personnalisés disponibles pour les fichiers des dossiers d'équipe. Ces champs aident à organiser et catégoriser vos fichiers."
+
+msgid "Configure fields"
+msgstr "Configurer les champs"
+
+msgid "Configure fields for this Team folder"
+msgstr "Configurer les champs de ce dossier d'équipe"
+
+msgid "Configure fields: Choose which fields are available for each Team folder"
+msgstr "Configurer les champs : choisissez les champs disponibles pour chaque dossier d'équipe"
+
+msgid "Configure metadata fields and manage metadata for your Team folders."
+msgstr "Configurez les champs de métadonnées et gérez les métadonnées de vos dossiers d'équipe."
+
+msgid "Configure which metadata fields are available for your Team folders"
+msgstr "Configurez les champs de métadonnées disponibles pour vos dossiers d'équipe"
+
+msgid "Configure which metadata search fields are available for each Team folder and manage Team folder-specific metadata."
+msgstr "Configurez les champs de recherche de métadonnées disponibles pour chaque dossier d'équipe et gérez les métadonnées propres à chaque dossier d'équipe."
+
+msgid "Confirm import"
+msgstr "Confirmer l'importation"
+
+msgid "contains"
+msgstr "contient"
+
+msgid "contains all"
+msgstr "contient tous"
+
+msgid "Could not connect to license server"
+msgstr "Impossible de se connecter au serveur de licences"
+
+msgid "Could not delete the view: {reason}"
+msgstr "Impossible de supprimer la vue : {reason}"
+
+msgid "Could not reach the telemetry server. Please try again later."
+msgstr "Impossible de joindre le serveur de télémétrie. Veuillez réessayer plus tard."
+
+msgid "Could not save the view: {reason}"
+msgstr "Impossible d’enregistrer la vue : {reason}"
+
+msgid "Create backup now"
+msgstr "Créer une sauvegarde maintenant"
+
+msgid "Create new view"
+msgstr "Créer une nouvelle vue"
+
+msgid "Create predefined filter, column and sort combinations for this Team folder."
+msgstr "Créez des combinaisons prédéfinies de filtres, de colonnes et de tri pour ce dossier d'équipe."
+
+msgid "Created"
+msgstr "Créée"
+
+msgid "Creating backup …"
+msgstr "Création de la sauvegarde …"
+
+msgid "Date"
+msgstr ""
+
+msgid "Default"
+msgstr "Par défaut"
+
+msgid "Default value"
+msgstr "Valeur par défaut"
+
+msgid "Delete"
+msgstr "Supprimer"
+
+msgid "Delete field"
+msgstr "Supprimer le champ"
+
+msgid "Delete this view?"
+msgstr "Supprimer cette vue ?"
+
+msgid "Delete view"
+msgstr "Supprimer la vue"
+
+msgid "Descending"
+msgstr "Décroissant"
+
+msgid "Description"
+msgstr ""
+
+msgid "Description:"
+msgstr "Description :"
+
+msgid "Dismiss"
+msgstr "Ignorer"
+
+msgid "Display name"
+msgstr "Nom d'affichage"
+
+msgid "Display name shown to people"
+msgstr "Nom affiché aux personnes"
+
+msgid "does not contain"
+msgstr "ne contient pas"
+
+msgid "Download"
+msgstr "Télécharger"
+
+msgid "Download all metadata fields as a JSON file."
+msgstr "Télécharger tous les champs de métadonnées en fichier JSON."
+
+msgid "Drag to reorder"
+msgstr "Glisser pour réorganiser"
+
+msgid "Dropdown"
+msgstr "Liste déroulante"
+
+msgid "Dropdown options"
+msgstr "Options de la liste déroulante"
+
+msgid "e.g. Author, Document type, Status"
+msgstr "e.g., Author, Document Type, Status"
+
+msgid "e.g. Department, Project type, Priority"
+msgstr "ex. Département, Type de projet, Priorité"
+
+msgid "e.g. MVOX-XXXX-XXXX-XXXX-XXXX"
+msgstr "ex. MVOX-XXXX-XXXX-XXXX-XXXX"
+
+msgid "e.g. Value 1, Value 2"
+msgstr "p. ex. Valeur 1, Valeur 2"
+
+msgid "e.g., author, document_type, status"
+msgstr "ex. auteur, type_document, statut"
+
+msgid "e.g., department, project_type, priority"
+msgstr "ex. departement, type_projet, priorite"
+
+msgid "Edit field"
+msgstr "Modifier le champ"
+
+msgid "Edit field: {name}"
+msgstr "Modifier le champ : {name}"
+
+msgid "Edit metadata"
+msgstr "Modifier les métadonnées"
+
+msgid "Edit metadata fields for selected files"
+msgstr "Modifier les champs de métadonnées des fichiers sélectionnés"
+
+msgid "Edit metadata for {folder}"
+msgstr "Modifier les métadonnées de {folder}"
+
+msgid "Edit metadata: Set Team folder-specific metadata values (admin only)"
+msgstr "Modifier les métadonnées : définissez les valeurs de métadonnées propres au dossier d'équipe (administrateurs uniquement)"
+
+msgid "Edit Team folder metadata values"
+msgstr "Modifier les valeurs de métadonnées du dossier d'équipe"
+
+msgid "Edit the metadata values for this Team folder"
+msgstr "Modifier les valeurs de métadonnées de ce dossier d'équipe"
+
+msgid "Edit view"
+msgstr "Modifier la vue"
+
+msgid "Enable AI metadata generation"
+msgstr "Activer la génération de métadonnées par IA"
+
+msgid "Enter a name for the view"
+msgstr "Donnez un nom à la vue"
+
+msgid "Enter a number"
+msgstr "Saisissez un nombre"
+
+msgid "Enter expected value"
+msgstr "Saisissez la valeur attendue"
+
+msgid "Enter URL ({example})"
+msgstr "Saisir une URL ({example})"
+
+msgid "equals"
+msgstr "est égal à"
+
+msgid "Error loading metadata"
+msgstr "Erreur lors du chargement des métadonnées"
+
+msgid "Error saving metadata: {error}"
+msgstr "Erreur lors de l'enregistrement des métadonnées : {error}"
+
+msgid "Existing metadata fields"
+msgstr "Champs de métadonnées existants"
+
+msgid "Export CSV"
+msgstr "Exporter en CSV"
+
+msgid "Export fields"
+msgstr "Exporter les champs"
+
+msgid "Export fields to JSON"
+msgstr "Exporter les champs en JSON"
+
+msgid "Exporting …"
+msgstr "Exportation …"
+
+msgid "Failed to add field"
+msgstr "Échec de l'ajout du champ"
+
+msgid "Failed to apply defaults"
+msgstr "Échec de l'application des valeurs par défaut"
+
+msgid "Failed to clear metadata"
+msgstr "Échec de l'effacement des métadonnées"
+
+msgid "Failed to delete field"
+msgstr "Échec de la suppression du champ"
+
+msgid "Failed to export fields"
+msgstr "Échec de l'exportation des champs"
+
+msgid "Failed to export metadata"
+msgstr "Échec de l'exportation des métadonnées"
+
+msgid "Failed to grant permission"
+msgstr "Échec de l'attribution de l'autorisation"
+
+msgid "Failed to import fields: {error}"
+msgstr "Échec de l'importation des champs : {error}"
+
+msgid "Failed to load groups"
+msgstr "Échec du chargement des groupes"
+
+msgid "Failed to load metadata"
+msgstr "Échec du chargement des métadonnées"
+
+msgid "Failed to load metadata fields"
+msgstr "Échec du chargement des champs de métadonnées"
+
+msgid "Failed to load permissions"
+msgstr "Échec du chargement des autorisations"
+
+msgid "Failed to load Team folders"
+msgstr "Échec du chargement des dossiers d'équipe"
+
+msgid "Failed to parse JSON file: {error}"
+msgstr "Échec de l'analyse du fichier JSON : {error}"
+
+msgid "Failed to read file"
+msgstr "Échec de la lecture du fichier"
+
+msgid "Failed to regenerate suggestion."
+msgstr "Échec de la régénération de la suggestion."
+
+msgid "Failed to remove subscription key"
+msgstr "Échec de la suppression de la clé d'abonnement"
+
+msgid "Failed to revoke permission"
+msgstr "Échec de la révocation de l'autorisation"
+
+msgid "Failed to save default value for {field}"
+msgstr "Échec de l'enregistrement de la valeur par défaut pour {field}"
+
+msgid "Failed to save field configuration"
+msgstr "Échec de l'enregistrement de la configuration des champs"
+
+msgid "Failed to save metadata"
+msgstr "Échec de l'enregistrement des métadonnées"
+
+msgid "Failed to save subscription key"
+msgstr "Échec de l'enregistrement de la clé d'abonnement"
+
+msgid "Failed to save view"
+msgstr "Échec de l'enregistrement de la vue"
+
+msgid "Failed to send report"
+msgstr "Échec de l'envoi du rapport"
+
+msgid "Failed to update field"
+msgstr "Échec de la mise à jour du champ"
+
+msgid "Failed to update settings"
+msgstr "Échec de la mise à jour des paramètres"
+
+msgid "Field"
+msgstr "Champ"
+
+msgid "Field \"{name}\" added successfully"
+msgstr "Champ « {name} » ajouté"
+
+msgid "Field configuration saved successfully"
+msgstr "Configuration des champs enregistrée"
+
+msgid "Field definitions"
+msgstr "Définitions des champs"
+
+msgid "Field deleted successfully"
+msgstr "Champ supprimé"
+
+msgid "Field label"
+msgstr "Libellé du champ"
+
+msgid "Field name"
+msgstr "Nom du champ"
+
+msgid "Field name may only contain lowercase letters, numbers and underscores, and must start with a letter"
+msgstr "Un nom de champ ne peut contenir que des lettres minuscules, des chiffres et des tirets bas, et doit commencer par une lettre"
+
+msgid "Field name, label, and type are required"
+msgstr "Le nom, le libellé et le type du champ sont obligatoires"
+
+msgid "Field type"
+msgstr "Type de champ"
+
+msgid "Field type:"
+msgstr "Type de champ :"
+
+msgid "Field updated successfully"
+msgstr "Champ mis à jour"
+
+msgid "File fields"
+msgstr "Champs de fichier"
+
+msgid "File link"
+msgstr "Lien vers un fichier"
+
+msgid "File metadata"
+msgstr "Métadonnées de fichier"
+
+msgid "File metadata can be edited by people within the Files app"
+msgstr "Les métadonnées des fichiers peuvent être modifiées par les personnes dans l'application Fichiers"
+
+msgid "File metadata fields"
+msgstr "Champs de métadonnées de fichier"
+
+msgid "File name"
+msgstr "Nom du fichier"
+
+msgid "File names or paths"
+msgstr "Noms ou chemins de fichiers"
+
+msgid "File path"
+msgstr "Chemin du fichier"
+
+msgid "File values"
+msgstr "Valeurs des fichiers"
+
+msgid "Files matching all selected options are shown."
+msgstr "Les fichiers correspondant à toutes les options sélectionnées sont affichés."
+
+msgid "Filter by metadata"
+msgstr "Filtrer par métadonnées"
+
+msgid "Filterable"
+msgstr "Filtrable"
+
+msgid "Filters"
+msgstr "Filtres"
+
+msgid "Filters (preset values)"
+msgstr "Filtres (valeurs prédéfinies)"
+
+msgid "Folder metadata"
+msgstr "Métadonnées de dossier"
+
+msgid "Generate with AI"
+msgstr "Générer avec l'IA"
+
+msgid "Generating …"
+msgstr "Génération …"
+
+msgid "Generating metadata with AI …"
+msgstr "Génération des métadonnées par IA …"
+
+msgid "Grant permission"
+msgstr "Accorder l'autorisation"
+
+msgid "Grant permissions to accounts or groups to allow them to view or edit metadata."
+msgstr "Accordez des autorisations à des comptes ou à des groupes pour leur permettre de consulter ou de modifier les métadonnées."
+
+msgid "greater or equal"
+msgstr "supérieur ou égal à"
+
+msgid "greater than"
+msgstr "supérieur à"
+
+msgid "Group"
+msgstr "Groupe"
+
+msgid "Help improve MetaVox by sharing anonymous usage statistics."
+msgstr "Aidez à améliorer MetaVox en partageant des statistiques d'utilisation anonymes."
+
+msgid "How it works:"
+msgstr "Fonctionnement :"
+
+msgid "Idle"
+msgstr "Inactif"
+
+msgid "Import and export"
+msgstr "Import & Export"
+
+msgid "Import completed: {imported} imported, {errors} errors"
+msgstr "Importation terminée — importés : {imported}, erreurs : {errors}"
+
+msgid "Import fields"
+msgstr "Importer des champs"
+
+msgid "Import fields from JSON"
+msgstr "Importer des champs depuis JSON"
+
+msgid "Import preview"
+msgstr "Aperçu de l'importation"
+
+msgid "Importing …"
+msgstr "Importation …"
+
+msgid "Include time component"
+msgstr "Inclure l'heure"
+
+msgid "Internal field name"
+msgstr "Nom interne du champ"
+
+msgid "Internal identifier used in the system"
+msgstr "Identifiant interne utilisé par le système"
+
+msgid "Internal name cannot be changed when field is in use"
+msgstr "Le nom interne ne peut pas être modifié lorsque le champ est utilisé"
+
+msgid "Internal name:"
+msgstr "Nom interne :"
+
+msgid "Internal server error"
+msgstr "Erreur interne du serveur"
+
+msgid "Invalid character \"{char}\" — only a-z, 0-9 and _ allowed"
+msgstr "Caractère invalide \"{char}\" — seuls a-z, 0-9 et _ sont autorisés"
+
+msgid "Invalid configuration format"
+msgstr "Format de configuration non valide"
+
+msgid "Invalid JSON file: {error}"
+msgstr "Fichier JSON non valide : {error}"
+
+msgid "Invalid JSON format. Expected an array of field definitions."
+msgstr "Format JSON non valide. Un tableau de définitions de champs est attendu."
+
+msgid "Invalid operator"
+msgstr "Opérateur non valide"
+
+msgid "is after"
+msgstr "est après"
+
+msgid "is before"
+msgstr "est avant"
+
+msgid "is empty"
+msgstr "est vide"
+
+msgid "is not"
+msgstr "n’est pas"
+
+msgid "is not empty"
+msgstr "n’est pas vide"
+
+msgid "is one of"
+msgstr "est l’un de"
+
+msgid "JSON must be an array of field definitions"
+msgstr "Le JSON doit être un tableau de définitions de champs"
+
+msgid "Last report sent: {date}"
+msgstr "Dernier rapport envoyé : {date}"
+
+msgid "Learn more"
+msgstr "En savoir plus"
+
+msgid "Leave empty to auto-detect from file location"
+msgstr "Laissez vide pour détecter automatiquement selon l’emplacement du fichier"
+
+msgid "less or equal"
+msgstr "inférieur ou égal à"
+
+msgid "less than"
+msgstr "inférieur à"
+
+msgid "Loading …"
+msgstr "Chargement …"
+
+msgid "Loading backups …"
+msgstr "Chargement des sauvegardes …"
+
+msgid "Loading field configuration …"
+msgstr "Chargement de la configuration des champs …"
+
+msgid "Loading metadata …"
+msgstr "Chargement des métadonnées …"
+
+msgid "Loading metadata fields …"
+msgstr "Chargement des champs de métadonnées …"
+
+msgid "Loading MetaVox …"
+msgstr "Chargement de MetaVox …"
+
+msgid "Loading permissions …"
+msgstr "Chargement des autorisations …"
+
+msgid "Loading Team folders …"
+msgstr "Chargement des dossiers d'équipe …"
+
+msgid "Loading your Team folders …"
+msgstr "Chargement de vos dossiers d'équipe …"
+
+msgid "Long text"
+msgstr "Texte long"
+
+msgid "Make sure the Team Folders app is installed and you have created some Team folders."
+msgstr "Vérifiez que l'application Dossiers d'équipe est installée et que vous avez créé des dossiers d'équipe."
+
+msgid "Manage account and group permissions for metadata fields and views"
+msgstr "Gérer les autorisations des comptes et des groupes pour les champs de métadonnées et les vues"
+
+msgid "Manage fields permission required"
+msgstr "Droit de gérer les champs requis"
+
+msgid "Manage metadata fields & views"
+msgstr "Gérer les champs de métadonnées et les vues"
+
+msgid "Manage Team folders"
+msgstr "Gérer les dossiers d'équipe"
+
+msgid "Metadata content or values"
+msgstr "Contenu ou valeurs des métadonnées"
+
+msgid "Metadata field"
+msgstr "Champ de métadonnées"
+
+msgid "Metadata field name is required"
+msgstr "Le nom du champ de métadonnées est requis"
+
+msgid "Metadata fields"
+msgstr "Champs de métadonnées"
+
+msgid "Metadata saved successfully"
+msgstr "Métadonnées enregistrées"
+
+msgid "Metadata saved successfully!"
+msgstr "Métadonnées enregistrées !"
+
+msgid "Metadata statistics"
+msgstr "Statistiques des métadonnées"
+
+msgid "Metadata updated"
+msgstr "Métadonnées mises à jour"
+
+msgid "MetaVox"
+msgstr ""
+
+msgid "MetaVox - Custom metadata fields"
+msgstr "MetaVox - Champs de métadonnées personnalisés"
+
+msgid "MetaVox · Filter by field …"
+msgstr "MetaVox · Filtrer par champ …"
+
+msgid "MetaVox is free and open source (AGPL-3.0). All features work without a subscription. If MetaVox is valuable to your organization, a subscription supports active development and gives you guaranteed Nextcloud compatibility and email support."
+msgstr ""
+
+msgid "MetaVox metadata"
+msgstr "Métadonnées MetaVox"
+
+msgid "MetaVox, Nextcloud and PHP versions"
+msgstr "Versions de MetaVox, Nextcloud et PHP"
+
+msgid "Move down"
+msgstr "Déplacer vers le bas"
+
+msgid "Move up"
+msgstr "Déplacer vers le haut"
+
+msgid "Multi-select"
+msgstr "Sélection multiple"
+
+msgid "Must start with a lowercase letter (a-z)"
+msgstr "Doit commencer par une lettre minuscule (a-z)"
+
+msgid "My Team folders"
+msgstr "Mes dossiers d'équipe"
+
+msgid "Name"
+msgstr "Nom"
+
+msgid "Name is required"
+msgstr "Le nom est requis"
+
+msgid "Name shown to people"
+msgstr "Nom affiché aux personnes"
+
+msgid "Never"
+msgstr "Jamais"
+
+msgid "New view"
+msgstr "Nouvelle vue"
+
+msgid "Nextcloud Enterprise subscription detected on this instance. MetaVox subscriptions are sold through Nextcloud — contact your Nextcloud account manager or {email}."
+msgstr "Abonnement Nextcloud Enterprise détecté sur cette instance. Les abonnements MetaVox sont vendus via Nextcloud — contactez votre gestionnaire de compte Nextcloud ou {email}."
+
+msgid "No"
+msgstr "Non"
+
+msgid "No (unchecked)"
+msgstr "Non (décoché)"
+
+msgid "No accessible Team folders"
+msgstr "Aucun dossier d'équipe accessible"
+
+msgid "No accounts found"
+msgstr "Aucun compte trouvé"
+
+msgid "No AI text generation provider available"
+msgstr "Aucun fournisseur de génération de texte par IA n'est disponible"
+
+msgid "No backups available yet. Backups are created automatically every 24 hours, or you can create one manually."
+msgstr "Aucune sauvegarde disponible pour l'instant. Les sauvegardes sont créées automatiquement toutes les 24 heures, ou vous pouvez en créer une manuellement."
+
+msgid "No columns configured. Configure columns first."
+msgstr "Aucune colonne configurée. Configurez d'abord les colonnes."
+
+msgid "No fields available"
+msgstr "Aucun champ disponible"
+
+msgid "No fields available. Contact your administrator to create metadata fields."
+msgstr "Aucun champ disponible. Contactez votre administrateur pour créer des champs de métadonnées."
+
+msgid "No fields available. Create some fields first in the field management tabs."
+msgstr "Aucun champ disponible. Créez d'abord des champs dans les onglets de gestion des champs."
+
+msgid "No fields configured"
+msgstr "Aucun champ configuré"
+
+msgid "No fields found matching \"{query}\""
+msgstr "Aucun champ ne correspond à « {query} »"
+
+msgid "No fields match {query}"
+msgstr "Aucun champ ne correspond à {query}"
+
+msgid "No fields match the selected filter"
+msgstr "Aucun champ ne correspond au filtre sélectionné"
+
+msgid "No fields to import"
+msgstr "Aucun champ à importer"
+
+msgid "No file IDs provided"
+msgstr "Aucun ID de fichier fourni"
+
+msgid "No file metadata fields are configured for items in this Team folder. Contact your administrator to set up metadata fields."
+msgstr "Aucun champ de métadonnées de fichier n'est configuré pour les éléments de ce dossier d'équipe. Contactez votre administrateur pour configurer les champs de métadonnées."
+
+msgid "No files selected"
+msgstr "Aucun fichier sélectionné"
+
+msgid "No files specified"
+msgstr "Aucun fichier indiqué"
+
+msgid "No filterable columns available. Mark columns as filterable in the column settings."
+msgstr "Aucune colonne filtrable. Marquez des colonnes comme filtrables dans les paramètres des colonnes."
+
+msgid "No filterable fields"
+msgstr "Aucun champ filtrable"
+
+msgid "No filterable fields in this folder"
+msgstr "Aucun champ filtrable dans ce dossier"
+
+msgid "No folder metadata fields are configured for items in this Team folder. Contact your administrator to set up metadata fields."
+msgstr "Aucun champ de métadonnées de dossier n'est configuré pour les éléments de ce dossier d'équipe. Contactez votre administrateur pour configurer les champs de métadonnées."
+
+msgid "No groups found"
+msgstr "Aucun groupe trouvé"
+
+msgid "No license key configured"
+msgstr "Aucune clé de licence configurée"
+
+msgid "No matching values in this folder"
+msgstr "Aucune valeur correspondante dans ce dossier"
+
+msgid "No metadata fields are configured for this Team folder."
+msgstr "Aucun champ de métadonnées n'est configuré pour ce dossier d'équipe."
+
+msgid "No metadata fields available for these files."
+msgstr "Aucun champ de métadonnées disponible pour ces fichiers."
+
+msgid "No metadata fields configured"
+msgstr "Aucun champ de métadonnées configuré"
+
+msgid "No metadata provided"
+msgstr "Aucune métadonnée fournie"
+
+msgid "No metadata to export"
+msgstr "Aucune métadonnée à exporter"
+
+msgid "No metadata values to save"
+msgstr "Aucune valeur de métadonnées à enregistrer"
+
+msgid "No options available"
+msgstr "Aucune option disponible"
+
+msgid "No permissions configured"
+msgstr "Aucune autorisation configurée"
+
+msgid "No permissions found matching \"{query}\""
+msgstr "Aucune autorisation ne correspond à « {query} »"
+
+msgid "No Team folder metadata fields are configured for this Team folder. Contact your administrator to set up Team folder metadata fields."
+msgstr "Aucun champ de métadonnées de dossier d'équipe n'est configuré pour ce dossier d'équipe. Contactez votre administrateur pour configurer les champs de métadonnées de dossier d'équipe."
+
+msgid "No Team folders found"
+msgstr "Aucun dossier d'équipe trouvé"
+
+msgid "No views configured yet."
+msgstr "Aucune vue configurée pour l'instant."
+
+msgid "Not logged in"
+msgstr "Non connecté"
+
+msgid "Number"
+msgstr "Nombre"
+
+msgid "Number of metadata fields and their types"
+msgstr "Nombre de champs de métadonnées et leurs types"
+
+msgid "Number of Team folders using MetaVox"
+msgstr "Nombre de dossiers d'équipe utilisant MetaVox"
+
+msgid "Only fill empty fields"
+msgstr "Remplir uniquement les champs vides"
+
+msgid "Only lowercase letters (a-z), numbers (0-9) and underscores (_)"
+msgstr "Uniquement des lettres minuscules (a-z), chiffres (0-9) et tirets bas (_)"
+
+msgid "Open link"
+msgstr "Ouvrir le lien"
+
+msgid "Open link in new tab"
+msgstr "Ouvrir le lien dans un nouvel onglet"
+
+msgid "Operator"
+msgstr "Opérateur"
+
+msgid "Option value"
+msgstr "Valeur de l'option"
+
+msgid "Optional description for this field"
+msgstr "Description facultative de ce champ"
+
+msgid "Options:"
+msgstr "Options :"
+
+msgid "Organization name or contact email"
+msgstr "Nom de l'organisation ou adresse e-mail de contact"
+
+msgid "Overview of metadata fields and usage in your MetaVox installation."
+msgstr "Vue d'ensemble des champs de métadonnées et de leur utilisation dans votre installation MetaVox."
+
+msgid "Overwrite existing values"
+msgstr "Remplacer les valeurs existantes"
+
+msgid "People in the selected groups will be able to manage metadata fields and views"
+msgstr "Les personnes des groupes sélectionnés pourront gérer les champs de métadonnées et les vues"
+
+msgid "Permission"
+msgstr "Autorisation"
+
+msgid "Permission revoked successfully"
+msgstr "Autorisation révoquée"
+
+msgid "Permissions"
+msgstr "Autorisations"
+
+msgid "Please add at least one option for dropdown fields"
+msgstr "Veuillez ajouter au moins une option pour les champs de liste déroulante"
+
+msgid "Please configure some fields first using the \"Configure fields\" button."
+msgstr "Veuillez d'abord configurer des champs avec le bouton « Configurer les champs »."
+
+msgid "Please enter a field label"
+msgstr "Veuillez saisir un libellé de champ"
+
+msgid "Please enter a field name"
+msgstr "Veuillez saisir un nom de champ"
+
+msgid "Please enter a subscription key"
+msgstr "Veuillez entrer une clé d'abonnement"
+
+msgid "Please enter a valid URL"
+msgstr "Veuillez saisir une URL valide"
+
+msgid "Please select a JSON file to import"
+msgstr "Veuillez sélectionner un fichier JSON à importer"
+
+msgid "Please try again."
+msgstr "Veuillez réessayer."
+
+msgid "Preparing …"
+msgstr "Préparation …"
+
+msgid "Pricing details"
+msgstr "Informations tarifaires"
+
+msgid "Questions?"
+msgstr ""
+
+msgid "Referenced by"
+msgstr "Référencé par"
+
+msgid "Regenerate"
+msgstr "Régénérer"
+
+msgid "Remove"
+msgstr "Supprimer"
+
+msgid "Remove option"
+msgstr "Supprimer l'option"
+
+msgid "Remove subscription key"
+msgstr "Supprimer la clé d'abonnement"
+
+msgid "Report sent successfully"
+msgstr "Rapport envoyé avec succès"
+
+msgid "Required"
+msgstr "Obligatoire"
+
+msgid "Required field"
+msgstr "Champ obligatoire"
+
+msgid "Restore"
+msgstr "Restaurer"
+
+msgid "Restore backup"
+msgstr "Restaurer la sauvegarde"
+
+msgid "Restore completed"
+msgstr "Restauration terminée"
+
+msgid "Restore failed: {error}"
+msgstr "Échec de la restauration : {error}"
+
+msgid "Restoring backup …"
+msgstr "Restauration de la sauvegarde …"
+
+msgid "Retry"
+msgstr "Réessayer"
+
+msgid "Revoke"
+msgstr "Révoquer"
+
+msgid "Save"
+msgstr "Enregistrer"
+
+msgid "Save & activate"
+msgstr "Enregistrer et activer"
+
+msgid "Save changes"
+msgstr "Enregistrer les modifications"
+
+msgid "Save configuration"
+msgstr "Enregistrer la configuration"
+
+msgid "Save view"
+msgstr "Enregistrer la vue"
+
+msgid "Saving …"
+msgstr "Enregistrement …"
+
+msgid "Search and select groups …"
+msgstr "Rechercher et sélectionner des groupes …"
+
+msgid "Search fields"
+msgstr "Rechercher des champs"
+
+msgid "Search fields …"
+msgstr "Rechercher des champs …"
+
+msgid "Search permissions …"
+msgstr "Rechercher des autorisations …"
+
+msgid "Search Team folders"
+msgstr "Rechercher des dossiers d'équipe"
+
+msgid "Select a field"
+msgstr "Sélectionner un champ"
+
+msgid "Select a file or folder"
+msgstr "Sélectionner un fichier ou un dossier"
+
+msgid "Select a metadata field"
+msgstr "Sélectionnez un champ de métadonnées"
+
+msgid "Select a Team folder"
+msgstr "Sélectionner un dossier d'équipe"
+
+msgid "Select a value"
+msgstr "Sélectionner une valeur"
+
+msgid "Select groups"
+msgstr "Sélectionner des groupes"
+
+msgid "Select JSON file"
+msgstr "Sélectionner un fichier JSON"
+
+msgid "Send report now"
+msgstr "Envoyer le rapport maintenant"
+
+msgid "Sending …"
+msgstr "Envoi …"
+
+msgid "Set as default view"
+msgstr "Définir comme vue par défaut"
+
+msgid "Set preset filter values (comma-separated) per field."
+msgstr "Définissez des valeurs de filtre prédéfinies (séparées par des virgules) par champ."
+
+msgid "Share anonymous usage statistics"
+msgstr "Partager des statistiques d'utilisation anonymes"
+
+msgid "Sort"
+msgstr "Tri"
+
+msgid "Sorting"
+msgstr "Tri"
+
+msgid "Spaces are not allowed — use underscores instead"
+msgstr "Les espaces ne sont pas autorisés — utilisez des tirets bas"
+
+msgid "Standard Nextcloud file view"
+msgstr "Vue standard des fichiers de Nextcloud"
+
+msgid "Standard view"
+msgstr "Vue par défaut"
+
+msgid "Standard view — loads automatically when opening this folder"
+msgstr "Vue par défaut — se charge automatiquement à l’ouverture de ce dossier"
+
+msgid "Statistics"
+msgstr "Statistiques"
+
+msgid "Subscription activated!"
+msgstr "Abonnement activé !"
+
+msgid "Subscription active — thank you for supporting MetaVox!"
+msgstr "Abonnement actif — merci de soutenir MetaVox !"
+
+msgid "Subscription key"
+msgstr "Clé d'abonnement"
+
+msgid "Subscription key is invalid or expired."
+msgstr "La clé d'abonnement est invalide ou expirée."
+
+msgid "Subscription key removed."
+msgstr "Clé d'abonnement supprimée."
+
+msgid "Subscription key saved but validation failed: {reason}"
+msgstr "Clé d'abonnement enregistrée mais validation échouée : {reason}"
+
+msgid "Support"
+msgstr ""
+
+msgid "Support MetaVox"
+msgstr "Soutenir MetaVox"
+
+msgid "Team folder"
+msgstr "Dossier d'équipe"
+
+msgid "Team folder (optional)"
+msgstr "Dossier d’équipe (facultatif)"
+
+msgid "Team folder {id}"
+msgstr "Dossier d’équipe {id}"
+
+msgid "Team folder fields"
+msgstr "Champs de dossier d'équipe"
+
+msgid "Team folder information"
+msgstr "Informations sur le dossier d'équipe"
+
+msgid "Team folder metadata"
+msgstr "Métadonnées du dossier d'équipe"
+
+msgid "Team folder metadata fields"
+msgstr "Champs de métadonnées des dossiers d'équipe"
+
+msgid "Team folder values"
+msgstr "Valeurs des dossiers d'équipe"
+
+msgid "Team folders"
+msgstr "Dossiers d'équipe"
+
+msgid "Team folders with metadata"
+msgstr "Dossiers d'équipe avec métadonnées"
+
+msgid "Text"
+msgstr "Texte"
+
+msgid "Thank you for helping improve MetaVox!"
+msgstr "Merci de nous aider à améliorer MetaVox !"
+
+msgid "Thank you! Anonymous usage statistics enabled."
+msgstr "Merci ! Statistiques d'utilisation anonymes activées."
+
+msgid "The telemetry server returned an error: {error}"
+msgstr "Le serveur de télémétrie a renvoyé une erreur : {error}"
+
+msgid "These fields apply to the Team folder itself"
+msgstr "Ces champs s'appliquent au dossier d'équipe lui-même"
+
+msgid "These fields can be set on individual files"
+msgstr "Ces champs peuvent être définis sur chaque fichier"
+
+msgid "This file is already linked"
+msgstr "Ce fichier est déjà lié"
+
+msgid "This file is not in a Team folder. Metadata is only available for Team folder files."
+msgstr "Ce fichier ne se trouve pas dans un dossier d'équipe. Les métadonnées ne sont disponibles que pour les fichiers des dossiers d'équipe."
+
+msgid "This metadata applies to the entire Team folder and can only be edited by administrators in the administration settings."
+msgstr "Ces métadonnées s'appliquent à tout le dossier d'équipe et ne peuvent être modifiées que par les administrateurs dans les paramètres d'administration."
+
+msgid "Total accounts"
+msgstr "Utilisateurs au total"
+
+msgid "Total metadata entries"
+msgstr "Total des entrées de métadonnées"
+
+msgid "Total metadata entries count"
+msgstr "Nombre total d'entrées de métadonnées"
+
+msgid "Total number of accounts and active accounts"
+msgstr "Nombre total de comptes et de comptes actifs"
+
+msgid "Type at least 2 characters …"
+msgstr "Saisissez au moins 2 caractères …"
+
+msgid "Type to search accounts …"
+msgstr "Saisissez pour rechercher des comptes …"
+
+msgid "Unknown"
+msgstr "Inconnue"
+
+msgid "Unknown error"
+msgstr "Erreur inconnue"
+
+msgid "Unknown field type: {type}"
+msgstr "Type de champ inconnu : {type}"
+
+msgid "Unnamed field"
+msgstr "Champ sans nom"
+
+msgid "Upload a JSON file to import metadata fields."
+msgstr "Téléversez un fichier JSON pour importer des champs de métadonnées."
+
+msgid "Uppercase letters are not allowed — use lowercase only"
+msgstr "Les majuscules ne sont pas autorisées — utilisez uniquement des minuscules"
+
+msgid "URL"
+msgstr ""
+
+msgid "Value"
+msgstr "Valeur"
+
+msgid "Value to check"
+msgstr "Valeur à vérifier"
+
+msgid "View details"
+msgstr "Détails de la vue"
+
+msgid "View name"
+msgstr "Nom de la vue"
+
+msgid "View name is required"
+msgstr "Le nom de la vue est obligatoire"
+
+msgid "View not found"
+msgstr "Vue introuvable"
+
+msgid "Views"
+msgstr "Vues"
+
+msgid "Visible"
+msgstr ""
+
+msgid "Visit Support"
+msgstr "Visiter le support"
+
+msgid "Warning:"
+msgstr "Avertissement :"
+
+msgid "We collect: field counts, Team folder counts, entry counts, version info (MetaVox, Nextcloud, PHP), and basic server configuration. No personal data or file contents are ever shared."
+msgstr "Nous collectons : le nombre de champs, de dossiers d'équipe et d'entrées, les versions (MetaVox, Nextcloud, PHP) et la configuration de base du serveur. Aucune donnée personnelle ni aucun contenu de fichier n'est jamais partagé."
+
+msgid "What we collect:"
+msgstr "Ce que nous collectons :"
+
+msgid "What we never collect:"
+msgstr "Ce que nous ne collectons jamais :"
+
+msgid "What you can do:"
+msgstr "Ce que vous pouvez faire :"
+
+msgid "When enabled, people see a \"Generate with AI\" button in the metadata sidebar. The AI reads file content and suggests values for metadata fields."
+msgstr "Une fois activé, les personnes voient un bouton « Générer avec l'IA » dans la barre latérale des métadonnées. L'IA lit le contenu du fichier et suggère des valeurs pour les champs de métadonnées."
+
+msgid "When enabled, this field stores both date and time (e.g. meetings, deadlines)."
+msgstr "Lorsque cette option est activée, le champ enregistre la date et l'heure (par exemple pour les réunions et les échéances)."
+
+msgid "where"
+msgstr "où"
+
+msgid "Whether your Nextcloud has an Extended Support / Enterprise subscription (a single yes/no, sourced from Nextcloud's public API)"
+msgstr "Si votre Nextcloud dispose d'un abonnement Extended Support ou Enterprise (uniquement oui ou non, issu de l'API publique de Nextcloud)"
+
+msgid "Yes"
+msgstr "Oui"
+
+msgid "Yes (checked)"
+msgstr "Oui (coché)"
+
+msgid "You can only link files inside this Team folder"
+msgstr "Vous ne pouvez lier que des fichiers dans ce dossier d’équipe"
+
+msgid "You do not have access to any Team folders yet. Contact your administrator if you need access."
+msgstr "Vous n'avez pas encore accès aux dossiers d'équipe. Contactez votre administrateur si vous avez besoin d'un accès."
+
+msgid "You do not have permission to view or edit metadata for this file."
+msgstr "Vous n'avez pas l'autorisation de consulter ou de modifier les métadonnées de ce fichier."
+
+msgid "Your actual server URL"
+msgstr "L'URL réelle de votre serveur"
+
+msgid "Your installation"
+msgstr "Votre installation"
+
+msgid "Your MetaVox subscription key needs attention."
+msgstr "Votre clé d'abonnement MetaVox nécessite votre attention."
+
+msgid "Your Team folders"
+msgstr "Vos dossiers d'équipe"
+
+msgid "{count} cell updated"
+msgid_plural "{count} cells updated"
+msgstr[0] "{count} cellule mise à jour"
+msgstr[1] "{count} cellules mises à jour"
+msgstr[2] "{count} cellules mises à jour"
+
+msgid "{values} and %n other"
+msgid_plural "{values} and %n others"
+msgstr[0] "{values} et %n autre"
+msgstr[1] "{values} et %n autres"
+msgstr[2] "{values} et %n autres"
+
+msgid "%n column"
+msgid_plural "%n columns"
+msgstr[0] "%n colonne"
+msgstr[1] "%n colonnes"
+msgstr[2] "%n colonnes"
+
+msgid "%n entry"
+msgid_plural "%n entries"
+msgstr[0] "%n entrée"
+msgstr[1] "%n entrées"
+msgstr[2] "%n entrées"
+
+msgid "%n field configured"
+msgid_plural "%n fields configured"
+msgstr[0] "%n champ configuré"
+msgstr[1] "%n champs configurés"
+msgstr[2] "%n champs configurés"
+
+msgid "%n field definition"
+msgid_plural "%n field definitions"
+msgstr[0] "%n définition de champ"
+msgstr[1] "%n définitions de champs"
+msgstr[2] "%n définitions de champs"
+
+msgid "%n field found"
+msgid_plural "%n fields found"
+msgstr[0] "%n champ trouvé"
+msgstr[1] "%n champs trouvés"
+msgstr[2] "%n champs trouvés"
+
+msgid "%n file value"
+msgid_plural "%n file values"
+msgstr[0] "%n valeur de fichier"
+msgstr[1] "%n valeurs de fichiers"
+msgstr[2] "%n valeurs de fichiers"
+
+msgid "%n filter"
+msgid_plural "%n filters"
+msgstr[0] "%n filtre"
+msgstr[1] "%n filtres"
+msgstr[2] "%n filtres"
+
+msgid "%n folder"
+msgid_plural "%n folders"
+msgstr[0] "%n dossier"
+msgstr[1] "%n dossiers"
+msgstr[2] "%n dossiers"
+
+msgid "%n Team folder value"
+msgid_plural "%n Team folder values"
+msgstr[0] "%n valeur de dossier d'équipe"
+msgstr[1] "%n valeurs de dossiers d'équipe"
+msgstr[2] "%n valeurs de dossiers d'équipe"
+
+msgid "Clear all metadata from this file? This cannot be undone."
+msgid_plural "Clear all metadata from {count} files? This cannot be undone."
+msgstr[0] "Effacer toutes les métadonnées de ce fichier ? Cette action est irréversible."
+msgstr[1] "Effacer toutes les métadonnées de {count} fichiers ? Cette action est irréversible."
+msgstr[2] "Effacer toutes les métadonnées de {count} fichiers ? Cette action est irréversible."
+
+msgid "Edit metadata ({count} item)"
+msgid_plural "Edit metadata ({count} items)"
+msgstr[0] "Modifier les métadonnées ({count} élément)"
+msgstr[1] "Modifier les métadonnées ({count} éléments)"
+msgstr[2] "Modifier les métadonnées ({count} éléments)"
+
+msgid "Exported %n field"
+msgid_plural "Exported %n fields"
+msgstr[0] "%n champ exporté"
+msgstr[1] "%n champs exportés"
+msgstr[2] "%n champs exportés"
+
+msgid "Found %n field matching \"{query}\""
+msgid_plural "Found %n fields matching \"{query}\""
+msgstr[0] "%n champ correspond à « {query} »"
+msgstr[1] "%n champs correspondent à « {query} »"
+msgstr[2] "%n champs correspondent à « {query} »"
+
+msgid "Found %n field to import"
+msgid_plural "Found %n fields to import"
+msgstr[0] "%n champ à importer trouvé"
+msgstr[1] "%n champs à importer trouvés"
+msgstr[2] "%n champs à importer trouvés"
+
+msgid "Found %n Team folder matching \"{query}\""
+msgid_plural "Found %n Team folders matching \"{query}\""
+msgstr[0] "%n dossier d'équipe correspond à « {query} »"
+msgstr[1] "%n dossiers d'équipe correspondent à « {query} »"
+msgstr[2] "%n dossiers d'équipe correspondent à « {query} »"
+
+msgid "Imported %n field"
+msgid_plural "Imported %n fields"
+msgstr[0] "%n champ importé"
+msgstr[1] "%n champs importés"
+msgstr[2] "%n champs importés"
+
+msgid "Metadata cleared for {count} file"
+msgid_plural "Metadata cleared for {count} files"
+msgstr[0] "Métadonnées effacées pour {count} fichier"
+msgstr[1] "Métadonnées effacées pour {count} fichiers"
+msgstr[2] "Métadonnées effacées pour {count} fichiers"
+
+msgid "Metadata exported for {count} file"
+msgid_plural "Metadata exported for {count} files"
+msgstr[0] "Métadonnées exportées pour {count} fichier"
+msgstr[1] "Métadonnées exportées pour {count} fichiers"
+msgstr[2] "Métadonnées exportées pour {count} fichiers"
+
+msgid "Metadata saved for {count} file"
+msgid_plural "Metadata saved for {count} files"
+msgstr[0] "Métadonnées enregistrées pour {count} fichier"
+msgstr[1] "Métadonnées enregistrées pour {count} fichiers"
+msgstr[2] "Métadonnées enregistrées pour {count} fichiers"
+
+msgid "MetaVox is running for {count} account here and keeps working in full without a subscription. If your organization gets value from it, a subscription is much appreciated — it funds the maintenance. Sold through Nextcloud: contact your account manager or {email}."
+msgid_plural "MetaVox is running for {count} accounts here and keeps working in full without a subscription. If your organization gets value from it, a subscription is much appreciated — it funds the maintenance. Sold through Nextcloud: contact your account manager or {email}."
+msgstr[0] "MetaVox fonctionne ici pour {count} compte et reste pleinement fonctionnel sans abonnement. Si votre organisation en tire de la valeur, un abonnement est très apprécié — il finance la maintenance. Vendu via Nextcloud : contactez votre gestionnaire de compte ou {email}."
+msgstr[1] "MetaVox fonctionne ici pour {count} comptes et reste pleinement fonctionnel sans abonnement. Si votre organisation en tire de la valeur, un abonnement est très apprécié — il finance la maintenance. Vendu via Nextcloud : contactez votre gestionnaire de compte ou {email}."
+msgstr[2] "MetaVox fonctionne ici pour {count} comptes et reste pleinement fonctionnel sans abonnement. Si votre organisation en tire de la valeur, un abonnement est très apprécié — il finance la maintenance. Vendu via Nextcloud : contactez votre gestionnaire de compte ou {email}."
+
+msgid "Permission granted to %n group"
+msgid_plural "Permission granted to %n groups"
+msgstr[0] "Autorisation accordée à %n groupe"
+msgstr[1] "Autorisation accordée à %n groupes"
+msgstr[2] "Autorisation accordée à %n groupes"
+
+msgid "Show %n more folder"
+msgid_plural "Show %n more folders"
+msgstr[0] "Afficher %n dossier de plus"
+msgstr[1] "Afficher %n dossiers de plus"
+msgstr[2] "Afficher %n dossiers de plus"
+
+msgid "Showing {displayed} of {total} folder"
+msgid_plural "Showing {displayed} of {total} folders"
+msgstr[0] "Affichage de {displayed} sur {total} dossier"
+msgstr[1] "Affichage de {displayed} sur {total} dossiers"
+msgstr[2] "Affichage de {displayed} sur {total} dossiers"
+
+msgid "This field is used in %n Team folder. Some changes may be restricted."
+msgid_plural "This field is used in %n Team folders. Some changes may be restricted."
+msgstr[0] "Ce champ est utilisé dans %n dossier d'équipe. Certaines modifications peuvent être limitées."
+msgstr[1] "Ce champ est utilisé dans %n dossiers d'équipe. Certaines modifications peuvent être limitées."
+msgstr[2] "Ce champ est utilisé dans %n dossiers d'équipe. Certaines modifications peuvent être limitées."
+
+msgid "Used in %n Team folder"
+msgid_plural "Used in %n Team folders"
+msgstr[0] "Utilisé dans %n dossier d'équipe"
+msgstr[1] "Utilisé dans %n dossiers d'équipe"
+msgstr[2] "Utilisé dans %n dossiers d'équipe"

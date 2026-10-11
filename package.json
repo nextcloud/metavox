@@ -6,10 +6,19 @@
   "license": "AGPL-3.0-or-later",
   "private": true,
   "scripts": {
+    "prebuild": "node scripts/check-l10n-sync.js",
     "build": "npx webpack --mode production",
     "dev": "npx webpack --mode development",
     "watch": "npx webpack --mode development --watch",
-    "serve": "npx webpack serve --mode development"
+    "serve": "npx webpack serve --mode development",
+    "l10n:extract": "node scripts/extract-en-json.js",
+    "l10n:lint": "node scripts/lint-l10n-strings.js",
+    "l10n:check": "node scripts/check-l10n-sync.js",
+    "test:l10n": "node --test tests/js/",
+    "l10n:generate-js": "node scripts/generate-l10n.js",
+    "l10n:po": "node scripts/json-to-po.js",
+    "pot": "npm run l10n:extract && node scripts/generate-pot.js",
+    "l10n:push": "npm run l10n:extract && node scripts/lint-l10n-strings.js && node scripts/generate-pot.js"
   },
   "dependencies": {
     "@nextcloud/auth": "^2.5.0",

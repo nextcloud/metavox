@@ -70,7 +70,8 @@ class ViewController extends BaseController {
 
             $name = $this->request->getParam('name');
             if (empty($name)) {
-                return new JSONResponse(['error' => 'View name is required'], Http::STATUS_BAD_REQUEST);
+                // TRANSLATORS Error message shown to the user when a view is saved without a name; a view is a saved combination of columns, filters and sort order
+                return new JSONResponse(['error' => $this->l10n()->t('View name is required')], Http::STATUS_BAD_REQUEST);
             }
 
             $isDefault = (bool)$this->request->getParam('is_default', false);
@@ -97,12 +98,14 @@ class ViewController extends BaseController {
 
             $name = $this->request->getParam('name');
             if (empty($name)) {
-                return new JSONResponse(['error' => 'View name is required'], Http::STATUS_BAD_REQUEST);
+                // TRANSLATORS Error message shown to the user when a view is saved without a name; a view is a saved combination of columns, filters and sort order
+                return new JSONResponse(['error' => $this->l10n()->t('View name is required')], Http::STATUS_BAD_REQUEST);
             }
 
             $existing = $this->viewService->getView($viewId, $gfId);
             if ($existing === null) {
-                return new JSONResponse(['error' => 'View not found'], Http::STATUS_NOT_FOUND);
+                // TRANSLATORS Error message shown to the user when the view no longer exists; a view is a saved combination of columns, filters and sort order
+                return new JSONResponse(['error' => $this->l10n()->t('View not found')], Http::STATUS_NOT_FOUND);
             }
 
             $isDefault = (bool)$this->request->getParam('is_default', false);
@@ -152,7 +155,8 @@ class ViewController extends BaseController {
 
             $existing = $this->viewService->getView($viewId, $gfId);
             if ($existing === null) {
-                return new JSONResponse(['error' => 'View not found'], Http::STATUS_NOT_FOUND);
+                // TRANSLATORS Error message shown to the user when the view no longer exists; a view is a saved combination of columns, filters and sort order
+                return new JSONResponse(['error' => $this->l10n()->t('View not found')], Http::STATUS_NOT_FOUND);
             }
 
             $this->viewService->deleteView($viewId, $gfId);

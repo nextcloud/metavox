@@ -6,6 +6,11 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Changed
+- **The English texts use American spelling** ("organization", not "organisation"), as Nextcloud's own do.
+
 ## [2.2.3] - 2026-09-23
 
 ### Changed

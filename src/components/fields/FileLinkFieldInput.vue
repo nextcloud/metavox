@@ -7,8 +7,8 @@
         <NcButton
           type="tertiary"
           :disabled="disabled"
-          :aria-label="t('metavox', 'Remove')"
-          :title="t('metavox', 'Remove')"
+          :aria-label="removeLabel"
+          :title="removeLabel"
           @click="removeAt(index)">
           <template #icon>
             <CloseIcon :size="16" />
@@ -17,6 +17,7 @@
       </li>
     </ul>
     <p v-else class="file-link-empty">
+      <!-- TRANSLATORS Shown in a file link field that does not link to any file yet -->
       {{ placeholder || t('metavox', 'No files selected') }}
     </p>
 
@@ -28,6 +29,7 @@
       <template #icon>
         <PlusIcon :size="20" />
       </template>
+      <!-- TRANSLATORS Button that opens the file picker to link a file to the field -->
       {{ t('metavox', 'Add file') }}
     </NcButton>
 
@@ -38,6 +40,7 @@
 </template>
 
 <script>
+import { translate } from '@nextcloud/l10n'
 import { NcButton } from '@nextcloud/vue'
 import PlusIcon from 'vue-material-design-icons/Plus.vue'
 import CloseIcon from 'vue-material-design-icons/Close.vue'
@@ -124,6 +127,10 @@ export default {
     }
   },
   computed: {
+    removeLabel() {
+      // TRANSLATORS Accessible name and tooltip of the button that removes a linked file from the field
+      return this.t('metavox', 'Remove')
+    },
     // The stored value is one or more "<id>:path" tokens joined with ';#'.
     // A single legacy/single value is simply a one-element list.
     tokens() {
@@ -141,9 +148,7 @@ export default {
     }
   },
   methods: {
-    t(app, text) {
-      return window.t ? window.t(app, text) : text
-    },
+    t: translate,
     nameFor(token) {
       return displayName(token, this.resolvedNames)
     },
@@ -193,6 +198,7 @@ export default {
       // so addPath() enforces the boundary on selection.
       const startPath = this.basePath && this.basePath !== '' ? this.basePath : '/'
       OC.dialogs.filepicker(
+        // TRANSLATORS Title of the file picker dialog for a file-link field
         this.t('metavox', 'Select a file or folder'),
         (path) => {
           if (path) {
@@ -220,7 +226,8 @@ export default {
       // also drops out-of-folder tokens, but a toast is clearer than a link
       // that silently disappears on save.
       if (!this.isWithinBase(path)) {
-        showWarning(this.t('metavox', 'You can only link files inside this team folder'))
+        // TRANSLATORS Warning when a picked file lies outside the current folder; "Team folder" is the Nextcloud feature name, use its official translation
+        showWarning(this.t('metavox', 'You can only link files inside this Team folder'))
         return
       }
       // Don't add the same path twice. The server also dedups on the resolved

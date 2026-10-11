@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Service;
 
+use OCA\MetaVox\L10n\Translatable;
 use OCP\App\IAppManager;
 use OCP\Files\IRootFolder;
 use OCP\IAppConfig;
@@ -89,7 +90,8 @@ class AiAutofillService {
                 return $type;
             }
         }
-        throw new \RuntimeException('No AI text generation provider available');
+        // TRANSLATORS Error message shown to the user when no AI text generation is set up on the server; AI = artificial intelligence
+        throw new \RuntimeException(Translatable::t('No AI text generation provider available'));
     }
 
     /**
@@ -155,7 +157,8 @@ class AiAutofillService {
             if ($status === Task::STATUS_FAILED || $status === Task::STATUS_CANCELLED) {
                 $errorMsg = $task->getErrorMessage() ?? 'Unknown error';
                 $this->logger->error('MetaVox: AI task failed', ['taskId' => $taskId, 'error' => $errorMsg]);
-                throw new \RuntimeException('AI task failed: ' . $errorMsg);
+                // TRANSLATORS Error message shown to the user when AI could not fill in the metadata; AI = artificial intelligence
+                throw new \RuntimeException(Translatable::t('AI task failed'));
             }
 
             // Increase poll interval after first few seconds
@@ -166,7 +169,8 @@ class AiAutofillService {
 
         if ($task->getStatus() !== Task::STATUS_SUCCESSFUL) {
             $this->logger->error('MetaVox: AI task timed out', ['taskId' => $taskId, 'waitedSeconds' => $waited]);
-            throw new \RuntimeException('AI task timed out');
+            // TRANSLATORS Error message shown to the user when AI took too long to fill in the metadata; AI = artificial intelligence
+            throw new \RuntimeException(Translatable::t('AI task timed out'));
         }
 
         $output = $task->getOutput();

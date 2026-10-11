@@ -3,26 +3,29 @@
     <!-- Loading state -->
     <div v-if="loading" class="loading-container">
       <div class="icon-loading"></div>
-      <p>{{ t('metavox', 'Loading your team folders...') }}</p>
+      <!-- TRANSLATORS Status text while the list of Team folders loads -->
+      <p>{{ t('metavox', 'Loading your Team folders …') }}</p>
     </div>
 
     <div v-else>
       <!-- Page Header -->
       <div class="page-header">
-        <h2>{{ t('metavox', 'My Team Folders') }}</h2>
+        <!-- TRANSLATORS Heading of the MetaVox section in the personal settings -->
+        <h2>{{ t('metavox', 'My Team folders') }}</h2>
         <p class="page-description">
-          {{ t('metavox', 'Configure metadata fields and manage metadata for your team folders.') }}
+          {{ t('metavox', 'Configure metadata fields and manage metadata for your Team folders.') }}
         </p>
       </div>
 
       <!-- Info Box -->
       <div class="settings-section">
         <div class="info-box">
+          <!-- TRANSLATORS Lead-in above a short list of what this page offers; keep the colon -->
           <h4>💡 {{ t('metavox', 'What you can do:') }}</h4>
           <ul>
-            <li>{{ t('metavox', 'Configure which metadata fields are available for your team folders') }}</li>
-            <li>{{ t('metavox', 'Edit team folder metadata values') }}</li>
-            <li>{{ t('metavox', 'File metadata can be edited by users within the Files app') }}</li>
+            <li>{{ t('metavox', 'Configure which metadata fields are available for your Team folders') }}</li>
+            <li>{{ t('metavox', 'Edit Team folder metadata values') }}</li>
+            <li>{{ t('metavox', 'File metadata can be edited by people within the Files app') }}</li>
           </ul>
         </div>
       </div>
@@ -30,10 +33,10 @@
       <!-- Search Section -->
       <div class="settings-section" v-if="accessibleGroupfolders.length > 0">
         <div class="search-container">
-          <NcTextField
+          <!-- TRANSLATORS Label of the search field above the list of Team folders -->
+          <NcTextField :label="t('metavox', 'Search Team folders')"
             :model-value="searchQuery"
             @update:model-value="searchQuery = $event"
-            :label="t('metavox', 'Search team folders')"
             :show-trailing-button="!!searchQuery"
             @trailing-button-click="searchQuery = ''">
             <MagnifyIcon slot="icon" :size="20" />
@@ -41,25 +44,25 @@
         </div>
         
         <div v-if="searchQuery" class="search-results-info">
-          <p>{{ t('metavox', 'Found {count} team folders matching "{query}"', { 
-            count: filteredGroupfolders.length, 
-            query: searchQuery 
-          }) }}</p>
+          <!-- TRANSLATORS Shown above the search results; %n is the number of Team folders found, {query} the text typed in the search field -->
+          <p>{{ n('metavox', 'Found %n Team folder matching "{query}"', 'Found %n Team folders matching "{query}"', filteredGroupfolders.length, { query: searchQuery }) }}</p>
         </div>
       </div>
 
       <!-- Empty State -->
       <div v-if="accessibleGroupfolders.length === 0" class="empty-content">
         <FolderIcon :size="64" class="empty-icon" />
-        <h4>{{ t('metavox', 'No accessible team folders') }}</h4>
-        <p>{{ t('metavox', 'You don\'t have access to any team folders yet. Contact your administrator if you need access.') }}</p>
+        <h4>{{ t('metavox', 'No accessible Team folders') }}</h4>
+        <p>{{ t('metavox', 'You do not have access to any Team folders yet. Contact your administrator if you need access.') }}</p>
       </div>
 
       <!-- Groupfolders List -->
       <div v-else class="settings-section">
         <div class="section-header">
-          <h3>{{ t('metavox', 'Your Team Folders') }}</h3>
-          <span class="field-count">{{ t('metavox', '{count} folders', { count: accessibleGroupfolders.length }) }}</span>
+          <!-- TRANSLATORS Heading of the list of Team folders this account can open -->
+          <h3>{{ t('metavox', 'Your Team folders') }}</h3>
+          <!-- TRANSLATORS %n is the number of Team folders in the list; shown beside the list heading -->
+          <span class="field-count">{{ n('metavox', '%n folder', '%n folders', accessibleGroupfolders.length) }}</span>
         </div>
 
         <div class="groupfolders-list">
@@ -78,9 +81,11 @@
                 <h4 class="groupfolder-name">{{ groupfolder.mount_point }}</h4>
                 <p class="groupfolder-info">
                   <span v-if="getAssignedFieldsCount(groupfolder.id) > 0" class="field-count-badge">
-                    {{ t('metavox', '{count} fields configured', { count: getAssignedFieldsCount(groupfolder.id) }) }}
+                    <!-- TRANSLATORS Badge in a Team folder row; %n is the number of metadata fields assigned to the folder -->
+                    {{ n('metavox', '%n field configured', '%n fields configured', getAssignedFieldsCount(groupfolder.id)) }}
                   </span>
                   <span v-else class="no-fields-badge">
+                    <!-- TRANSLATORS Shown in a Team folder row when no metadata fields are assigned to it -->
                     {{ t('metavox', 'No fields configured') }}
                   </span>
                 </p>
@@ -93,7 +98,8 @@
                   <template #icon>
                     <CogIcon :size="20" />
                   </template>
-                  {{ t('metavox', 'Configure Fields') }}
+                  <!-- TRANSLATORS Menu item that opens the dialog to choose the metadata fields of a Team folder -->
+                  {{ t('metavox', 'Configure fields') }}
                 </NcButton>
                 <NcButton 
                   @click="editGroupfolderMetadata(groupfolder)"
@@ -102,7 +108,8 @@
                   <template #icon>
                     <EditIcon :size="20" />
                   </template>
-                  {{ t('metavox', 'Edit Metadata') }}
+                  <!-- TRANSLATORS Menu item that opens the dialog to edit the metadata values of a Team folder -->
+                  {{ t('metavox', 'Edit metadata') }}
                 </NcButton>
               </div>
             </div>
@@ -111,11 +118,12 @@
             <div v-if="expandedFields[groupfolder.id]" class="expanded-panel">
               <div v-if="loadingFields[groupfolder.id]" class="loading-section">
                 <div class="icon-loading-small"></div>
-                <span>{{ t('metavox', 'Loading field configuration...') }}</span>
+                <!-- TRANSLATORS Status text while the field settings of the Team folder load -->
+                <span>{{ t('metavox', 'Loading field configuration …') }}</span>
               </div>
               
               <div v-else class="fields-config-content">
-                <h4>{{ t('metavox', 'Configure Fields for this Team Folder') }}</h4>
+                <h4>{{ t('metavox', 'Configure fields for this Team folder') }}</h4>
                 
                 <div v-if="allFields.length === 0" class="no-fields-available">
                   <p>{{ t('metavox', 'No fields available. Contact your administrator to create metadata fields.') }}</p>
@@ -124,10 +132,10 @@
                 <div v-else class="fields-config-form">
                   <!-- Search for Fields -->
                   <div class="field-search-section">
-                    <NcTextField
+                    <!-- TRANSLATORS Label of the search box that filters the field list -->
+                    <NcTextField :label="t('metavox', 'Search fields')"
                       :model-value="fieldSearchQuery[groupfolder.id]"
                       @update:model-value="fieldSearchQuery[groupfolder.id] = $event"
-                      :label="t('metavox', 'Search fields')"
                       :show-trailing-button="!!fieldSearchQuery[groupfolder.id]"
                       @trailing-button-click="fieldSearchQuery[groupfolder.id] = ''">
                       <MagnifyIcon slot="icon" :size="16" />
@@ -135,25 +143,29 @@
                     
                     <!-- Field Type Filter -->
                     <div class="field-type-filter">
-                      <label>{{ t('metavox', 'Field Type:') }}</label>
+                      <!-- TRANSLATORS Label in front of the buttons that filter the fields by type; keep the colon -->
+                      <label>{{ t('metavox', 'Field type:') }}</label>
                       <div class="filter-button-group">
                         <button 
                           type="button"
                           @click="fieldTypeFilter[groupfolder.id] = 'all'"
                           :class="['filter-btn', { active: (fieldTypeFilter[groupfolder.id] || 'all') === 'all' }]">
-                          {{ t('metavox', 'All Types') }}
+                          <!-- TRANSLATORS Filter button that shows fields of all types; keep it short -->
+                          {{ t('metavox', 'All types') }}
                         </button>
                         <button 
                           type="button"
                           @click="fieldTypeFilter[groupfolder.id] = 'groupfolder'"
                           :class="['filter-btn', { active: fieldTypeFilter[groupfolder.id] === 'groupfolder' }]">
-                          {{ t('metavox', 'Team Folder Fields') }} ({{ groupfolderMetadataFields.length }})
+                          <!-- TRANSLATORS Filter button that shows only the fields set on the Team folder itself; keep it short -->
+                          {{ t('metavox', 'Team folder fields') }} ({{ groupfolderMetadataFields.length }})
                         </button>
                         <button 
                           type="button"
                           @click="fieldTypeFilter[groupfolder.id] = 'file'"
                           :class="['filter-btn', { active: fieldTypeFilter[groupfolder.id] === 'file' }]">
-                          {{ t('metavox', 'File Fields') }} ({{ fileMetadataFields.length }})
+                          <!-- TRANSLATORS Filter button that shows only the fields set on files; keep it short -->
+                          {{ t('metavox', 'File fields') }} ({{ fileMetadataFields.length }})
                         </button>
                       </div>
                     </div>
@@ -161,8 +173,9 @@
 
                   <!-- Groupfolder Metadata Fields Section -->
                   <div v-if="getFilteredGroupfolderFields(groupfolder.id).length > 0" class="field-section">
-                    <h5>{{ t('metavox', 'Team Folder Metadata Fields') }}</h5>
-                    <p class="section-description">{{ t('metavox', 'These fields apply to the team folder itself') }}</p>
+                    <!-- TRANSLATORS Heading above the fields that describe the Team folder itself -->
+                    <h5>{{ t('metavox', 'Team folder metadata fields') }}</h5>
+                    <p class="section-description">{{ t('metavox', 'These fields apply to the Team folder itself') }}</p>
                     <div class="checkbox-group">
                       <NcCheckboxRadioSwitch
                         v-for="field in getFilteredGroupfolderFields(groupfolder.id)"
@@ -171,14 +184,15 @@
                         @update:model-value="updateFieldAssignment(groupfolder.id, field.id, $event)"
                         type="checkbox">
                         {{ field.field_label }}
-                        <span class="field-type-label">({{ field.field_type }})</span>
+                        <span class="field-type-label">({{ fieldTypeLabel(field.field_type) }})</span>
                       </NcCheckboxRadioSwitch>
                     </div>
                   </div>
 
                   <!-- File Metadata Fields Section -->
                   <div v-if="getFilteredFileFields(groupfolder.id).length > 0" class="field-section">
-                    <h5>{{ t('metavox', 'File Metadata Fields') }}</h5>
+                    <!-- TRANSLATORS Heading above the fields that can be set on files in the Team folder -->
+                    <h5>{{ t('metavox', 'File metadata fields') }}</h5>
                     <p class="section-description">{{ t('metavox', 'These fields can be set on individual files') }}</p>
                     <div class="checkbox-group">
                       <div
@@ -190,7 +204,7 @@
                           @update:model-value="updateFieldAssignment(groupfolder.id, field.id, $event)"
                           type="checkbox">
                           {{ field.field_label }}
-                          <span class="field-type-label">({{ field.field_type }})</span>
+                          <span class="field-type-label">({{ fieldTypeLabel(field.field_type) }})</span>
                         </NcCheckboxRadioSwitch>
 
                         <!-- Default value (only when the field is assigned) -->
@@ -207,19 +221,21 @@
                   <!-- No fields found message -->
                   <div v-if="getFilteredGroupfolderFields(groupfolder.id).length === 0 && getFilteredFileFields(groupfolder.id).length === 0" class="no-search-results">
                     <p v-if="fieldSearchQuery[groupfolder.id]">
+                      <!-- TRANSLATORS {query} is the text typed in the search box -->
                       {{ t('metavox', 'No fields found matching "{query}"', { query: fieldSearchQuery[groupfolder.id] }) }}
                     </p>
                     <p v-else-if="fieldTypeFilter[groupfolder.id] && fieldTypeFilter[groupfolder.id] !== 'all'">
                       {{ t('metavox', 'No fields match the selected filter') }}
                     </p>
                     <p v-else>
+                      <!-- TRANSLATORS Shown in place of the field list when there are no fields to choose from -->
                       {{ t('metavox', 'No fields available') }}
                     </p>
                   </div>
 
                   <!-- Apply defaults now -->
                   <div class="apply-defaults-section">
-                    <p class="section-description">{{ t('metavox', 'Apply the configured default values to existing files in this team folder that do not yet have a value for these fields.') }}</p>
+                    <p class="section-description">{{ t('metavox', 'Apply the configured default values to existing files in this Team folder that do not yet have a value for these fields.') }}</p>
                     <div class="apply-defaults-actions">
                       <NcButton
                         type="secondary"
@@ -229,10 +245,11 @@
                           <div v-if="defaultsStatus[groupfolder.id] === 'running'" class="icon-loading-small"></div>
                           <PlayIcon v-else :size="20" />
                         </template>
+                        <!-- TRANSLATORS Button that fills in the default values on existing files of the Team folder -->
                         {{ t('metavox', 'Apply defaults now') }}
                       </NcButton>
                       <span class="apply-defaults-status">
-                        {{ defaultsStatus[groupfolder.id] === 'running' ? t('metavox', 'Applying defaults…') : t('metavox', 'Idle') }}
+                        {{ defaultsStatusText(groupfolder.id) }}
                       </span>
                     </div>
                   </div>
@@ -247,11 +264,12 @@
                         <div v-if="savingFields[groupfolder.id]" class="icon-loading-small"></div>
                         <ContentSaveIcon v-else :size="20" />
                       </template>
-                      {{ savingFields[groupfolder.id] ? t('metavox', 'Saving...') : t('metavox', 'Save Configuration') }}
+                      {{ saveFieldsLabel(groupfolder.id) }}
                     </NcButton>
                     <NcButton
                       @click="closeFieldsConfig(groupfolder.id)"
                       type="secondary">
+                      <!-- TRANSLATORS Button that closes a dialog without saving -->
                       {{ t('metavox', 'Cancel') }}
                     </NcButton>
                   </div>
@@ -271,17 +289,19 @@
       :size="'large'"
       :title="modalTitle">
       <div class="modal-content">
-        <p class="modal-description">{{ t('metavox', 'Edit the metadata values for this team folder') }}</p>
+        <p class="modal-description">{{ t('metavox', 'Edit the metadata values for this Team folder') }}</p>
         
         <div class="metadata-form-container">
           <div v-if="loadingMetadata" class="loading-container">
             <div class="icon-loading"></div>
-            <p>{{ t('metavox', 'Loading metadata...') }}</p>
+            <!-- TRANSLATORS Status text while the metadata values of the Team folder load -->
+            <p>{{ t('metavox', 'Loading metadata …') }}</p>
           </div>
           
           <div v-else-if="currentMetadataFields.length === 0" class="no-fields-message">
-            <p>{{ t('metavox', 'No metadata fields are configured for this team folder.') }}</p>
-            <p>{{ t('metavox', 'Please configure some fields first using the "Configure Fields" button.') }}</p>
+            <p>{{ t('metavox', 'No metadata fields are configured for this Team folder.') }}</p>
+            <!-- TRANSLATORS "Configure fields" names the menu item of a Team folder row; translate it the same way -->
+            <p>{{ t('metavox', 'Please configure some fields first using the "Configure fields" button.') }}</p>
           </div>
           
           <form v-else @submit.prevent="saveGroupfolderMetadata" class="metadata-form">
@@ -318,13 +338,13 @@
                 rows="4"></textarea>
               
               <!-- Select input -->
-              <NcSelect
+              <!-- TRANSLATORS Placeholder of a dropdown field before a value is picked -->
+              <NcSelect :placeholder="t('metavox', 'Choose an option …')"
                 v-else-if="field.field_type === 'select'"
                 :id="'field-' + field.id"
                 :key="`select-${field.field_name}-${selectKey}`"
                 v-model="selectValues[field.field_name]"
                 :options="getFieldOptions(field)"
-                :placeholder="t('metavox', 'Choose an option...')"
                 class="field-input select-field"
                 :clearable="!field.is_required"
                 :reduce="option => option.value"
@@ -332,14 +352,14 @@
                 @update:model-value="handleSelectChange(field.field_name, $event)" />
               
               <!-- MultiSelect input -->
-              <NcSelect
+              <!-- TRANSLATORS Placeholder of a multi-select field before any value is picked -->
+              <NcSelect :placeholder="t('metavox', 'Choose options …')"
                 v-else-if="field.field_type === 'multiselect'"
                 :id="'field-' + field.id"
                 :key="`multiselect-${field.field_name}-${selectKey}`"
                 v-model="multiSelectValues[field.field_name]"
                 :options="getFieldOptions(field)"
                 :multiple="true"
-                :placeholder="t('metavox', 'Choose options...')"
                 class="field-input select-field"
                 :clearable="!field.is_required"
                 :reduce="option => option.value"
@@ -395,6 +415,7 @@
             <!-- Modal Actions within form -->
             <div class="modal-actions">
               <NcButton @click="closeMetadataModal" type="tertiary">
+                <!-- TRANSLATORS Button that closes the edit dialog without saving; keep it short -->
                 {{ t('metavox', 'Cancel') }}
               </NcButton>
               <NcButton 
@@ -405,7 +426,7 @@
                   <div v-if="savingMetadata" class="icon-loading-small"></div>
                   <ContentSaveIcon v-else :size="20" />
                 </template>
-                {{ savingMetadata ? t('metavox', 'Saving...') : t('metavox', 'Save') }}
+                {{ saveMetadataLabel() }}
               </NcButton>
             </div>
           </form>
@@ -416,9 +437,13 @@
 </template>
 
 <script>
+import { translate, translatePlural } from '@nextcloud/l10n'
+import { fieldTypeLabel } from '../utils/fieldTypes.js'
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 import { dateFieldIncludesTime, padDatetimeLocal } from '../utils/dateField.js'
+import { errorText } from '../utils/errorText.js'
+import { PLAIN_TEXT } from '../utils/fieldValue.js'
 
 // Simple notification helpers using OC.Notification
 const showSuccess = (message) => {
@@ -592,7 +617,7 @@ async loadAccessibleGroupfolders() {
         }
       } catch (error) {
         console.error('Failed to load groupfolders:', error)
-        showError(this.t('metavox', 'Failed to load team folders'))
+        showError(this.t('metavox', 'Failed to load Team folders'))
       } finally {
         this.loading = false
       }
@@ -650,6 +675,7 @@ async loadAccessibleGroupfolders() {
         // Persist default values for assigned file fields (shared mixin).
         await this.saveFolderDefaults(groupfolderId)
 
+        // TRANSLATORS Confirmation after the field choice of a Team folder was saved
         showSuccess(this.t('metavox', 'Field configuration saved successfully'))
         if (!keepOpen) {
           this.expandedFields[groupfolderId] = false
@@ -781,7 +807,8 @@ async loadAccessibleGroupfolders() {
     async editGroupfolderMetadata(groupfolder) {
       this.showMetadataModal = true
       this.currentGroupfolderId = groupfolder.id
-      this.modalTitle = this.t('metavox', 'Edit metadata for {groupfolder}', { groupfolder: groupfolder.mount_point })
+      // TRANSLATORS Dialog title; {folder} is the name of a Team folder, e.g. "Edit metadata for Finance"
+      this.modalTitle = this.t('metavox', 'Edit metadata for {folder}', { folder: groupfolder.mount_point }, undefined, PLAIN_TEXT)
       this.loadingMetadata = true
       
       // Pre-initialize reactive objects
@@ -816,6 +843,7 @@ async loadAccessibleGroupfolders() {
         })
       } catch (error) {
         console.error('Error loading metadata:', error)
+        // TRANSLATORS Error notice when the metadata values of a Team folder could not be loaded
         showError(this.t('metavox', 'Error loading metadata'))
         this.currentMetadataFields = []
         this.currentMetadataValues = {}
@@ -892,6 +920,7 @@ async loadAccessibleGroupfolders() {
         if (response.data.success) {
           this.metadataValues[this.currentGroupfolderId] = {...this.currentMetadataValues}
           
+          // TRANSLATORS Confirmation after the metadata values of a Team folder were saved
           showSuccess(this.t('metavox', 'Metadata saved successfully'))
           this.closeMetadataModal()
           
@@ -904,12 +933,12 @@ async loadAccessibleGroupfolders() {
         
       } catch (error) {
         console.error('Error saving metadata:', error)
-        if (error.response) {
-          console.error('Error response:', error.response.data)
-          showError(this.t('metavox', 'Error saving metadata: ') + (error.response.data.message || error.response.statusText))
-        } else {
-          showError(this.t('metavox', 'Error saving metadata'))
-        }
+        // The server's reason is in `error` (ExceptionMiddleware), not `message`.
+        // TRANSLATORS {error} is the reason the server gave, or "Please try again." when it gave none
+        showError(this.t('metavox', 'Error saving metadata: {error}', {
+          // TRANSLATORS Shown after "Error saving metadata:" when the server gave no reason
+          error: errorText(error, this.t('metavox', 'Please try again.')),
+        }, undefined, PLAIN_TEXT))
         return false
       } finally {
         this.savingMetadata = false
@@ -945,18 +974,37 @@ async loadAccessibleGroupfolders() {
       return formattedOptions
     },
 
+    defaultsStatusText(groupfolderId) {
+      if (this.defaultsStatus[groupfolderId] === 'running') {
+        // TRANSLATORS Status beside the "Apply defaults now" button while default values are being written to files
+        return this.t('metavox', 'Applying defaults …')
+      }
+      // TRANSLATORS Status beside the "Apply defaults now" button when nothing is running
+      return this.t('metavox', 'Idle')
+    },
+
+    saveFieldsLabel(groupfolderId) {
+      if (this.savingFields[groupfolderId]) {
+        // TRANSLATORS Dialog button label while the changes are being saved
+        return this.t('metavox', 'Saving …')
+      }
+      // TRANSLATORS Button that saves which fields a Team folder uses
+      return this.t('metavox', 'Save configuration')
+    },
+
+    saveMetadataLabel() {
+      if (this.savingMetadata) {
+        // TRANSLATORS Label of the save button while the metadata is being saved; keep it short
+        return this.t('metavox', 'Saving …')
+      }
+      // TRANSLATORS Button that saves the metadata in the edit dialog; keep it short
+      return this.t('metavox', 'Save')
+    },
+
     // Translation helper
-    t(app, text, vars) {
-      if (typeof OC !== 'undefined' && OC.L10N) {
-        return OC.L10N.translate(app, text, vars)
-      }
-      if (vars) {
-        return Object.keys(vars).reduce((result, key) => {
-          return result.replace(`{${key}}`, vars[key])
-        }, text)
-      }
-      return text
-    }
+    fieldTypeLabel,
+    t: translate,
+    n: translatePlural,
   }
 }
 </script>

@@ -9,6 +9,7 @@ use OCP\Http\Client\IClientService;
 use OCP\IAppConfig;
 use OCP\IConfig;
 use OCP\IDBConnection;
+use OCP\IL10N;
 use OCP\IUserManager;
 use OCP\Support\Subscription\IRegistry;
 use Psr\Log\LoggerInterface;
@@ -33,6 +34,7 @@ class LicenseService {
 		private IDBConnection $db,
 		private IUserManager $userManager,
 		private LoggerInterface $logger,
+		private IL10N $l,
 		private ?IRegistry $subscriptionRegistry = null,
 	) {
 	}
@@ -126,7 +128,7 @@ class LicenseService {
 	public function validateLicense(): array {
 		$licenseKey = $this->getLicenseKey();
 		if (empty($licenseKey)) {
-			return ['valid' => false, 'reason' => 'No license key configured', 'isFree' => true];
+			return ['valid' => false, 'reason' => $this->l->t('No license key configured'), 'isFree' => true];
 		}
 
 		try {
@@ -169,7 +171,7 @@ class LicenseService {
 				return array_merge($cachedInfo, ['valid' => true, 'cached' => true]);
 			}
 
-			return ['valid' => false, 'reason' => 'Could not connect to license server', 'cached' => false];
+			return ['valid' => false, 'reason' => $this->l->t('Could not connect to license server'), 'cached' => false];
 		}
 	}
 
@@ -178,7 +180,7 @@ class LicenseService {
 	public function updateUsage(): array {
 		$licenseKey = $this->getLicenseKey();
 		if (empty($licenseKey)) {
-			return ['success' => false, 'reason' => 'No license key configured'];
+			return ['success' => false, 'reason' => $this->l->t('No license key configured')];
 		}
 
 		try {
@@ -216,7 +218,7 @@ class LicenseService {
 			$this->logger->warning('LicenseService: Failed to update usage', [
 				'error' => $e->getMessage(),
 			]);
-			return ['success' => false, 'reason' => 'Could not connect to license server'];
+			return ['success' => false, 'reason' => $this->l->t('Could not connect to license server')];
 		}
 	}
 

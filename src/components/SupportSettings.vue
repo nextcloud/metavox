@@ -2,8 +2,10 @@
 	<div class="support-settings">
 		<!-- Section 1: About MetaVox + CTA -->
 		<div class="settings-section">
+			<!-- TRANSLATORS Heading of the settings section about subscriptions and support; MetaVox is the app name, do not translate it -->
 			<h2>{{ t('metavox', 'Support MetaVox') }}</h2>
 			<p class="settings-section-desc">
+				<!-- TRANSLATORS MetaVox is the app name and AGPL-3.0 the name of its license; keep both unchanged -->
 				{{ t('metavox', 'MetaVox is free and open source (AGPL-3.0). All features work without a subscription. If MetaVox is valuable to your organization, a subscription supports active development and gives you guaranteed Nextcloud compatibility and email support.') }}
 			</p>
 			<p class="settings-section-desc subscription-includes">
@@ -14,9 +16,11 @@
 					:href="pricingUrl"
 					target="_blank"
 					rel="noopener noreferrer">
+					<!-- TRANSLATORS Button that opens the subscription pricing page in a new tab; keep it short -->
 					{{ t('metavox', 'Pricing details') }}
 				</NcButton>
 				<p class="cta-contact">
+					<!-- TRANSLATORS Text in front of the contact email address, asking if the reader has questions -->
 					{{ t('metavox', 'Questions?') }}
 					<a href="mailto:info@voxcloud.nl">info@voxcloud.nl</a>
 				</p>
@@ -25,12 +29,14 @@
 
 		<!-- Section 4: Your installation -->
 		<div class="settings-section">
+			<!-- TRANSLATORS Heading of the block with usage counts of this server -->
 			<h2>{{ t('metavox', 'Your installation') }}</h2>
 
 			<div v-if="licenseStats" class="stats-overview">
 				<div class="stat-row">
 					<div class="stat-info">
 						<span class="stat-icon">📁</span>
+						<!-- TRANSLATORS Label next to the number of Team folders that have metadata fields -->
 						<span class="stat-label">{{ t('metavox', 'Team folders with metadata') }}</span>
 					</div>
 					<span class="stat-value">{{ licenseStats.teamFoldersWithFields }}</span>
@@ -38,6 +44,7 @@
 				<div class="stat-row">
 					<div class="stat-info">
 						<span class="stat-icon">📝</span>
+						<!-- TRANSLATORS Label next to the total number of metadata values on this server -->
 						<span class="stat-label">{{ t('metavox', 'Total metadata entries') }}</span>
 					</div>
 					<span class="stat-value">{{ (licenseStats.totalEntries || 0).toLocaleString() }}</span>
@@ -45,7 +52,8 @@
 				<div class="stat-row">
 					<div class="stat-info">
 						<span class="stat-icon">👥</span>
-						<span class="stat-label">{{ t('metavox', 'Total users') }}</span>
+						<!-- TRANSLATORS Label next to the number of accounts on this server -->
+						<span class="stat-label">{{ t('metavox', 'Total accounts') }}</span>
 					</div>
 					<span class="stat-value">{{ licenseStats.totalUsers || 0 }}</span>
 				</div>
@@ -62,13 +70,14 @@
 
 		<!-- Section 6: Subscription key -->
 		<div class="settings-section">
+			<!-- TRANSLATORS Heading of the section where the subscription key is entered -->
 			<h2>{{ t('metavox', 'Subscription key') }}</h2>
 
 			<div class="field-row">
-				<input id="license-key"
+				<!-- TRANSLATORS Placeholder of the subscription key field; keep MVOX-XXXX-XXXX-XXXX-XXXX unchanged, it shows the key format -->
+				<input id="license-key" :placeholder="t('metavox', 'e.g. MVOX-XXXX-XXXX-XXXX-XXXX')"
 					v-model="licenseKey"
 					type="text"
-					:placeholder="t('metavox', 'e.g. MVOX-XXXX-XXXX-XXXX-XXXX')"
 					class="contact-input"
 					@input="_userEditedLicenseKey = true">
 			</div>
@@ -76,12 +85,13 @@
 				<NcButton type="primary"
 					:disabled="savingLicense"
 					@click="saveLicenseKey">
-					{{ savingLicense ? t('metavox', 'Saving...') : t('metavox', 'Save & activate') }}
+					{{ saveLicenseLabel }}
 				</NcButton>
 				<NcButton v-if="licenseStats && licenseStats.hasLicense"
 					type="tertiary"
 					:disabled="savingLicense"
 					@click="removeLicenseKey">
+					<!-- TRANSLATORS Button that deletes the saved subscription key -->
 					{{ t('metavox', 'Remove subscription key') }}
 				</NcButton>
 			</div>
@@ -94,6 +104,8 @@
 </template>
 
 <script>
+import { translate } from '@nextcloud/l10n'
+import { PLAIN_TEXT } from '../utils/fieldValue.js'
 import { NcButton, NcCheckboxRadioSwitch, NcNoteCard } from '@nextcloud/vue'
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
@@ -143,6 +155,14 @@ export default {
 			return lang === 'nl' ? 'https://voxcloud.nl/pricing/#metavox' : 'https://voxcloud.nl/en/pricing/#metavox'
 		},
 
+		saveLicenseLabel() {
+			return this.savingLicense
+				// TRANSLATORS Button text while the subscription key is being saved; keep it short
+				? this.t('metavox', 'Saving …')
+				// TRANSLATORS Button that saves and activates the subscription key; keep it short
+				: this.t('metavox', 'Save & activate')
+		},
+
 	},
 
 	mounted() {
@@ -187,9 +207,14 @@ export default {
 				if (valRes.data.success && valRes.data.validation?.valid) {
 					// Report usage to bind instance to license
 					await axios.post(generateUrl('/apps/metavox/api/license/update-usage'))
+					// TRANSLATORS Confirmation after the subscription key was saved and found valid
 					this.showMessage(this.t('metavox', 'Subscription activated!'), 'success')
 				} else {
-					this.showMessage(this.t('metavox', 'Subscription key saved but validation failed: {reason}', { reason: valRes.data.validation?.reason || 'unknown' }), 'error')
+					const reason = valRes.data.validation?.reason
+						// TRANSLATORS Used as the reason when the subscription server gave none
+						|| this.t('metavox', 'Unknown error')
+					// TRANSLATORS {reason} is the explanation from the subscription server, e.g. that the key has expired
+					this.showMessage(this.t('metavox', 'Subscription key saved but validation failed: {reason}', { reason }, undefined, PLAIN_TEXT), 'error')
 				}
 
 				await this.loadLicenseStats()
@@ -210,6 +235,7 @@ export default {
 				this.licenseKey = ''
 				this._userEditedLicenseKey = false
 				await this.loadLicenseStats()
+				// TRANSLATORS Confirmation after the subscription key was deleted
 				this.showMessage(this.t('metavox', 'Subscription key removed.'), 'success')
 			} catch (error) {
 				this.showMessage(this.t('metavox', 'Failed to remove subscription key'), 'error')
@@ -227,6 +253,7 @@ export default {
 		},
 
 		formatDate(timestamp) {
+			// TRANSLATORS Shown instead of a date when no usage report has been sent yet
 			if (!timestamp) return this.t('metavox', 'Never')
 			const date = new Date(timestamp * 1000)
 			return date.toLocaleString(undefined, {
@@ -238,17 +265,7 @@ export default {
 			})
 		},
 
-		t(app, text, vars) {
-			if (typeof OC !== 'undefined' && OC.L10N) {
-				return OC.L10N.translate(app, text, vars)
-			}
-			if (vars) {
-				return Object.keys(vars).reduce((result, key) => {
-					return result.replace(`{${key}}`, vars[key])
-				}, text)
-			}
-			return text
-		},
+		t: translate,
 	},
 }
 </script>

@@ -68,6 +68,7 @@ class PersonalSection implements IIconSection {
     }
 
     public function getName(): string {
+        // TRANSLATORS Name of the section in the personal settings menu; MetaVox is the app name, do not translate it
         return $this->l->t('MetaVox');
     }
 

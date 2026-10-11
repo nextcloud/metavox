@@ -3,38 +3,38 @@
 		<div class="metavox-filter-picker">
 			<h2 class="picker-title">
 				<MetadataIcon :size="20" class="picker-title__icon" />
-				{{ t('Filter by metadata') }}
+				{{ t('metavox', 'Filter by metadata') }} <!-- TRANSLATORS Title of the dialog that adds a metadata filter to the unified search -->
 			</h2>
 
 			<div class="picker-field">
-				<label class="picker-field__label" for="mv-filter-folder">{{ t('Team folder') }}</label>
+				<label class="picker-field__label" for="mv-filter-folder">{{ t('metavox', 'Team folder') }}</label> <!-- TRANSLATORS Noun: label of the dropdown that picks the Team folder to search in -->
 				<NcSelect
 					input-id="mv-filter-folder"
 					v-model="selectedFolder"
 					:options="folders"
 					label="mount_point"
-					:placeholder="t('Select a team folder')"
+					:placeholder="folderPlaceholder"
 					:loading="loadingFolders"
 					:searchable="false"
 					@update:model-value="onFolderChange" />
 			</div>
 
 			<div v-if="selectedFolder" class="picker-field">
-				<label class="picker-field__label" for="mv-filter-field">{{ t('Field') }}</label>
+				<label class="picker-field__label" for="mv-filter-field">{{ t('metavox', 'Field') }}</label> <!-- TRANSLATORS Noun: label of the dropdown that picks the metadata field to filter on -->
 				<NcSelect
 					input-id="mv-filter-field"
 					v-model="selectedField"
 					:options="fields"
 					label="field_label"
-					:placeholder="t('Select a field')"
+					:placeholder="fieldPlaceholder"
 					:loading="loadingFields"
 					:searchable="false"
-					:no-options="t('No filterable fields in this folder')"
+					:no-options="t('metavox', 'No filterable fields in this folder')"
 					@update:model-value="onFieldChange" />
 			</div>
 
 			<div v-if="selectedField" class="picker-field">
-				<label class="picker-field__label" for="mv-filter-value">{{ t('Value') }}</label>
+				<label class="picker-field__label" for="mv-filter-value">{{ t('metavox', 'Value') }}</label> <!-- TRANSLATORS Noun: label of the input for the field value to filter on -->
 				<!-- Value step is driven by the values that ACTUALLY occur for this
 				     field in this folder, so a chosen filter can never land on an
 				     empty result set. text/url/number stay taggable (pick a known
@@ -50,9 +50,9 @@
 					:taggable="suggestionsTaggable"
 					:searchable="suggestionsTaggable"
 					:create-option="(v) => v"
-					:placeholder="t('Select a value')"
+					:placeholder="valuePlaceholder"
 					:loading="loadingValues"
-					:no-options="loadingValues ? t('Loading...') : t('No matching values in this folder')" />
+					:no-options="noValuesText" />
 				<DynamicFieldInput
 					v-else
 					id="mv-filter-value"
@@ -60,16 +60,16 @@
 					:type="selectedField.field_type"
 					:field="selectedField" />
 				<p v-if="isMultiselect" class="picker-field__hint">
-					{{ t('Files matching all selected options are shown.') }}
+					{{ t('metavox', 'Files matching all selected options are shown.') }}
 				</p>
 			</div>
 
 			<div class="picker-actions">
 				<NcButton type="tertiary" @click="cancel">
-					{{ t('Cancel') }}
+					{{ t('metavox', 'Cancel') }} <!-- TRANSLATORS Button that closes the search filter dialog without adding a filter; keep it short -->
 				</NcButton>
 				<NcButton type="primary" :disabled="!canApply" @click="apply">
-					{{ t('Apply filter') }}
+					{{ t('metavox', 'Apply filter') }} <!-- TRANSLATORS Button that adds the chosen filter to the search; keep it short -->
 				</NcButton>
 			</div>
 		</div>
@@ -78,10 +78,12 @@
 
 <script>
 import axios from '@nextcloud/axios'
+import { translate as t } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
 import { NcModal, NcSelect, NcButton } from '@nextcloud/vue'
 import MetadataIcon from 'vue-material-design-icons/Tag.vue'
 import DynamicFieldInput from '../components/fields/DynamicFieldInput.vue'
+import { PLAIN_TEXT } from '../utils/fieldValue.js'
 
 // Field types whose stored value can't be filtered meaningfully by value.
 // File-link values are opaque "<fileid>:<path>" tokens (path goes stale on
@@ -107,24 +109,42 @@ export default {
 	},
 	computed: {
 		isMultiselect() {
-			const t = this.selectedField?.field_type
-			return t === 'multiselect' || t === 'multi_select'
+			const type = this.selectedField?.field_type
+			return type === 'multiselect' || type === 'multi_select'
+		},
+		folderPlaceholder() {
+			// TRANSLATORS Placeholder of the Team folder dropdown in the search filter dialog
+			return t('metavox', 'Select a Team folder')
+		},
+		fieldPlaceholder() {
+			// TRANSLATORS Placeholder of the field dropdown in the search filter dialog
+			return t('metavox', 'Select a field')
+		},
+		valuePlaceholder() {
+			// TRANSLATORS Placeholder of the value dropdown in the search filter dialog
+			return t('metavox', 'Select a value')
+		},
+		noValuesText() {
+			return this.loadingValues
+				// TRANSLATORS Shown in a dropdown while its entries load
+				? t('metavox', 'Loading …')
+				: t('metavox', 'No matching values in this folder')
 		},
 		// Fields whose value step is driven by the values occurring in the
 		// folder. Includes select/multiselect so we only offer options that are
 		// actually used (never a defined-but-unused option → empty results).
 		// date/checkbox/user/file keep their specialised DynamicFieldInput.
 		useValueSuggestions() {
-			const t = this.selectedField?.field_type
-			return t === 'text' || t === 'textarea' || t === 'number' || t === 'url'
-				|| t === 'select' || t === 'multiselect' || t === 'multi_select'
+			const type = this.selectedField?.field_type
+			return type === 'text' || type === 'textarea' || type === 'number' || type === 'url'
+				|| type === 'select' || type === 'multiselect' || type === 'multi_select'
 		},
 		// Free-text types may still introduce a new value by typing; select-style
 		// fields must pick from the values that exist (typing a new one is
 		// meaningless and would filter to nothing).
 		suggestionsTaggable() {
-			const t = this.selectedField?.field_type
-			return t === 'text' || t === 'textarea' || t === 'number' || t === 'url'
+			const type = this.selectedField?.field_type
+			return type === 'text' || type === 'textarea' || type === 'number' || type === 'url'
 		},
 		// Raw value array (for multiselect) normalized to a token list.
 		valueTokens() {
@@ -160,9 +180,7 @@ export default {
 		await this.loadFolders()
 	},
 	methods: {
-		t(text) {
-			return window.t ? window.t('metavox', text) : text
-		},
+		t,
 		async loadFolders() {
 			this.loadingFolders = true
 			try {
@@ -239,7 +257,8 @@ export default {
 				field: this.selectedField.field_name,
 				value: this.normalizedValue,
 				// Readable label for the chip: "Field label: value(s)".
-				label: `${this.selectedField.field_label}: ${this.displayValue}`,
+				// TRANSLATORS: Text of a search filter chip, e.g. "Status: Approved".
+				label: t('metavox', '{field}: {value}', { field: this.selectedField.field_label, value: this.displayValue }, undefined, PLAIN_TEXT),
 				groupfolderId: this.selectedFolder.id,
 			})
 			this.show = false

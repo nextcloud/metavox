@@ -4,6 +4,7 @@
  * Extracted from MetaVoxColumns.js
  */
 
+import { translate as t } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
 import { MARKER_CLASS, HEADER_MARKER, RESIZE_HANDLE } from './ColumnStyles.js'
 import { getActiveColumnConfigs, metadataCache, getFilelinkName } from './MetaVoxState.js'
@@ -256,6 +257,8 @@ export function setCellValue(td, value, config) {
 		link.rel = 'noopener noreferrer'
 		link.textContent = '↗'
 		link.title = value
+		// TRANSLATORS Accessible name of the small button in a cell that opens the link in a new tab
+		link.setAttribute('aria-label', t('metavox', 'Open link'))
 		link.addEventListener('click', (e) => e.stopPropagation())
 		wrapper.appendChild(link)
 

@@ -2,7 +2,7 @@
 	<div class="statistics-settings">
 		<!-- Metadata Statistics Section -->
 		<div class="settings-section">
-			<h2>{{ t('metavox', 'Metadata Statistics') }}</h2>
+			<h2>{{ labels.metadataStatistics }}</h2>
 			<p class="settings-section-desc">
 				{{ t('metavox', 'Overview of metadata fields and usage in your MetaVox installation.') }}
 			</p>
@@ -11,21 +11,21 @@
 				<div class="stat-row">
 					<div class="stat-info">
 						<span class="stat-icon">📋</span>
-						<span class="stat-label">{{ t('metavox', 'Metadata Fields') }}</span>
+						<span class="stat-label">{{ labels.metadataFields }}</span>
 					</div>
 					<span class="stat-value">{{ stats.totalFields }}</span>
 				</div>
 				<div class="stat-row">
 					<div class="stat-info">
 						<span class="stat-icon">📁</span>
-						<span class="stat-label">{{ t('metavox', 'Team Folders with Metadata') }}</span>
+						<span class="stat-label">{{ labels.teamFoldersWithMetadata }}</span>
 					</div>
 					<span class="stat-value">{{ stats.groupfoldersWithMetadata }}</span>
 				</div>
 				<div class="stat-row">
 					<div class="stat-info">
 						<span class="stat-icon">📝</span>
-						<span class="stat-label">{{ t('metavox', 'Total Metadata Entries') }}</span>
+						<span class="stat-label">{{ labels.totalEntries }}</span>
 					</div>
 					<span class="stat-value">{{ stats.totalEntries }}</span>
 				</div>
@@ -35,9 +35,9 @@
 
 		<!-- AI Autofill Section -->
 		<div class="settings-section">
-			<h2>{{ t('metavox', 'AI Metadata Generation') }}</h2>
+			<h2>{{ labels.aiHeading }}</h2>
 			<p class="settings-section-desc">
-				{{ t('metavox', 'Allow users to generate metadata suggestions using AI. Requires an AI provider to be configured in Nextcloud.') }}
+				{{ t('metavox', 'Allow people to generate metadata suggestions using AI. Requires an AI provider to be configured in Nextcloud.') }}
 			</p>
 
 			<div class="telemetry-settings">
@@ -47,8 +47,8 @@
 						:model-value="aiEnabled"
 						@update:model-value="toggleAi">
 						<div class="option-info">
-							<span class="option-label">{{ t('metavox', 'Enable AI metadata generation') }}</span>
-							<span class="option-desc">{{ t('metavox', 'When enabled, users see a "Generate with AI" button in the metadata sidebar. The AI reads file content and suggests values for metadata fields.') }}</span>
+							<span class="option-label">{{ labels.aiSwitch }}</span>
+							<span class="option-desc">{{ labels.aiSwitchDescription }}</span>
 						</div>
 					</NcCheckboxRadioSwitch>
 				</div>
@@ -57,7 +57,7 @@
 
 		<!-- Telemetry Section -->
 		<div class="settings-section">
-			<h2>{{ t('metavox', 'Anonymous Usage Statistics') }}</h2>
+			<h2>{{ labels.telemetryHeading }}</h2>
 			<p class="settings-section-desc">
 				{{ t('metavox', 'Help improve MetaVox by sharing anonymous usage statistics.') }}
 			</p>
@@ -69,8 +69,8 @@
 						:model-value="telemetryEnabled"
 						@update:model-value="toggleTelemetry">
 						<div class="option-info">
-							<span class="option-label">{{ t('metavox', 'Share anonymous usage statistics') }}</span>
-							<span class="option-desc">{{ t('metavox', 'We collect: field counts, team folder counts, entry counts, version info (MetaVox, Nextcloud, PHP), and basic server configuration. No personal data or file contents are ever shared.') }}</span>
+							<span class="option-label">{{ labels.telemetrySwitch }}</span>
+							<span class="option-desc">{{ t('metavox', 'We collect: field counts, Team folder counts, entry counts, version info (MetaVox, Nextcloud, PHP), and basic server configuration. No personal data or file contents are ever shared.') }}</span>
 						</div>
 					</NcCheckboxRadioSwitch>
 				</div>
@@ -79,12 +79,12 @@
 					<NcNoteCard type="success">
 						<p>{{ t('metavox', 'Thank you for helping improve MetaVox!') }}</p>
 						<p v-if="lastReport">
-							{{ t('metavox', 'Last report sent') }}: {{ formatDate(lastReport) }}
+							{{ lastReportLabel }}
 						</p>
 						<NcButton type="secondary"
 							:disabled="sendingTelemetry"
 							@click="sendTelemetryNow">
-							{{ sendingTelemetry ? t('metavox', 'Sending...') : t('metavox', 'Send report now') }}
+							{{ sendingTelemetry ? labels.sending : labels.sendReport }}
 						</NcButton>
 					</NcNoteCard>
 					<NcNoteCard v-if="telemetryMessage" :type="telemetryMessageType" class="telemetry-result">
@@ -93,22 +93,22 @@
 				</div>
 
 				<div class="telemetry-details">
-					<h4>{{ t('metavox', 'What we collect') }}:</h4>
+					<h4>{{ labels.collected }}</h4>
 					<ul>
 						<li>{{ t('metavox', 'Number of metadata fields and their types') }}</li>
-						<li>{{ t('metavox', 'Number of groupfolders using MetaVox') }}</li>
+						<li>{{ t('metavox', 'Number of Team folders using MetaVox') }}</li>
 						<li>{{ t('metavox', 'Total metadata entries count') }}</li>
-						<li>{{ t('metavox', 'Total user count and active users') }}</li>
+						<li>{{ t('metavox', 'Total number of accounts and active accounts') }}</li>
 						<li>{{ t('metavox', 'MetaVox, Nextcloud and PHP versions') }}</li>
 						<li>{{ t('metavox', 'Anonymous instance identifier (hashed URL)') }}</li>
 						<li>{{ t('metavox', 'Basic server configuration (database, OS, web server, language, timezone, country)') }}</li>
 						<li>{{ t('metavox', 'Whether your Nextcloud has an Extended Support / Enterprise subscription (a single yes/no, sourced from Nextcloud\'s public API)') }}</li>
 					</ul>
-					<h4>{{ t('metavox', 'What we never collect') }}:</h4>
+					<h4>{{ labels.notCollected }}</h4>
 					<ul class="not-collected">
 						<li>{{ t('metavox', 'Metadata content or values') }}</li>
 						<li>{{ t('metavox', 'File names or paths') }}</li>
-						<li>{{ t('metavox', 'User names or email addresses') }}</li>
+						<li>{{ t('metavox', 'Account names or email addresses') }}</li>
 						<li>{{ t('metavox', 'Organization name or contact email') }}</li>
 						<li>{{ t('metavox', 'Your actual server URL') }}</li>
 						<li>{{ t('metavox', 'Any personal or sensitive data') }}</li>
@@ -124,12 +124,19 @@
 </template>
 
 <script>
+import { translate } from '@nextcloud/l10n'
+import { PLAIN_TEXT } from '../utils/fieldValue.js'
 import { NcButton, NcCheckboxRadioSwitch, NcNoteCard } from '@nextcloud/vue'
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 
 export default {
 	name: 'StatisticsSettings',
+
+	// Templates read the t() options from the component.
+	setup() {
+		return { PLAIN_TEXT }
+	},
 
 	components: {
 		NcButton,
@@ -153,6 +160,44 @@ export default {
 				totalEntries: 0,
 			},
 		}
+	},
+
+	computed: {
+		labels() {
+			return {
+				// TRANSLATORS Heading of the section with usage counts of metadata on this server
+				metadataStatistics: this.t('metavox', 'Metadata statistics'),
+				// TRANSLATORS Noun: label next to the number of metadata fields on this server
+				metadataFields: this.t('metavox', 'Metadata fields'),
+				// TRANSLATORS Label next to the number of Team folders that have metadata fields
+				teamFoldersWithMetadata: this.t('metavox', 'Team folders with metadata'),
+				// TRANSLATORS Label next to the total number of metadata values on this server
+				totalEntries: this.t('metavox', 'Total metadata entries'),
+				// TRANSLATORS Heading of the settings section for metadata suggestions made by AI; AI is artificial intelligence
+				aiHeading: this.t('metavox', 'AI metadata generation'),
+				// TRANSLATORS Switch label in the admin settings; AI is artificial intelligence
+				aiSwitch: this.t('metavox', 'Enable AI metadata generation'),
+				// TRANSLATORS "Generate with AI" is the name of a button in the Files sidebar; use the same translation as that button
+				aiSwitchDescription: this.t('metavox', 'When enabled, people see a "Generate with AI" button in the metadata sidebar. The AI reads file content and suggests values for metadata fields.'),
+				// TRANSLATORS Heading of the section about sending anonymous usage statistics
+				telemetryHeading: this.t('metavox', 'Anonymous usage statistics'),
+				// TRANSLATORS Label of the switch that turns sending anonymous usage statistics on or off
+				telemetrySwitch: this.t('metavox', 'Share anonymous usage statistics'),
+				// TRANSLATORS Button text while the usage report is being sent; keep it short
+				sending: this.t('metavox', 'Sending …'),
+				// TRANSLATORS Button that sends the anonymous usage report right away; keep it short
+				sendReport: this.t('metavox', 'Send report now'),
+				// TRANSLATORS Heading above the list of data that is sent; keep the colon
+				collected: this.t('metavox', 'What we collect:'),
+				// TRANSLATORS Heading above the list of data that is never sent; keep the colon
+				notCollected: this.t('metavox', 'What we never collect:'),
+			}
+		},
+
+		lastReportLabel() {
+			// TRANSLATORS {date} is the date and time of the last usage report, e.g. "9 October 2026, 14:30"
+			return this.t('metavox', 'Last report sent: {date}', { date: this.formatDate(this.lastReport) }, undefined, PLAIN_TEXT)
+		},
 	},
 
 	mounted() {
@@ -202,16 +247,21 @@ export default {
 				const data = response.data
 				if (data.success) {
 					this.lastReport = Math.floor(Date.now() / 1000)
+					// TRANSLATORS Notification after the usage report was sent
 					this.telemetryMessage = this.t('metavox', 'Report sent successfully')
 					this.telemetryMessageType = 'success'
 				} else if (data.reason === 'server_error' || data.reason === 'error') {
 					const serverMsg = data.message || ''
 					if (serverMsg.startsWith('HTTP ') || serverMsg.includes('error')) {
-						this.telemetryMessage = this.t('metavox', 'The telemetry server returned an error:') + ' ' + serverMsg
+						// TRANSLATORS {error} is the error text returned by the usage statistics server, often in English
+						this.telemetryMessage = this.t('metavox', 'The telemetry server returned an error: {error}', { error: serverMsg }, undefined, PLAIN_TEXT)
 					} else if (serverMsg.includes('cURL') || serverMsg.includes('connect') || serverMsg.includes('timeout') || serverMsg.includes('resolve')) {
 						this.telemetryMessage = this.t('metavox', 'Could not reach the telemetry server. Please try again later.')
 					} else {
-						this.telemetryMessage = this.t('metavox', 'Failed to send report') + (serverMsg ? ': ' + serverMsg : '')
+						this.telemetryMessage = serverMsg
+							// TRANSLATORS {error} is the error text returned by the usage statistics server, often in English
+							? this.t('metavox', 'The telemetry server returned an error: {error}', { error: serverMsg }, undefined, PLAIN_TEXT)
+							: this.t('metavox', 'Failed to send report')
 					}
 					this.telemetryMessageType = 'error'
 				} else {
@@ -235,7 +285,9 @@ export default {
 				this.aiEnabled = enabled
 				this.showMessage(
 					enabled
+						// TRANSLATORS Notification after the AI metadata switch was turned on; AI is artificial intelligence
 						? this.t('metavox', 'AI metadata generation enabled.')
+						// TRANSLATORS Notification after the AI metadata switch was turned off; AI is artificial intelligence
 						: this.t('metavox', 'AI metadata generation disabled.'),
 					'success',
 				)
@@ -272,6 +324,7 @@ export default {
 		},
 
 		formatDate(timestamp) {
+			// TRANSLATORS Shown instead of a date when no usage report has been sent yet
 			if (!timestamp) return this.t('metavox', 'Never')
 			const date = new Date(timestamp * 1000)
 			return date.toLocaleString(undefined, {
@@ -283,17 +336,7 @@ export default {
 			})
 		},
 
-		t(app, text, vars) {
-			if (typeof OC !== 'undefined' && OC.L10N) {
-				return OC.L10N.translate(app, text, vars)
-			}
-			if (vars) {
-				return Object.keys(vars).reduce((result, key) => {
-					return result.replace(`{${key}}`, vars[key])
-				}, text)
-			}
-			return text
-		}
+		t: translate,
 	},
 }
 </script>

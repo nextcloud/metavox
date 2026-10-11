@@ -9,3 +9,6 @@ push-to-github.sh
 RELEASE_CHECKLIST.md
 CLAUDE.md
 ROADMAP.md
+
+# Forgejo Actions: interne hostnamen en namen van secrets. GitHub draait .github/workflows/.
+.forgejo/

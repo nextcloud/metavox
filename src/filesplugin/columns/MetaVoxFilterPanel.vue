@@ -1,7 +1,7 @@
 <template>
 	<div class="metavox-filter-panel">
 		<div v-if="!filter || configs.length === 0" class="empty-msg">
-			{{ t('metavox', 'No filterable fields') }}
+			{{ t('metavox', 'No filterable fields') }} <!-- TRANSLATORS Shown in the filter panel when the view has no column to filter on -->
 		</div>
 		<template v-else>
 			<div v-for="config in configs" :key="config.field_name"
@@ -56,7 +56,9 @@ const configs = computed(() => {
 
 function formatOptionLabel(value, fieldType) {
 	if (fieldType === 'checkbox' || fieldType === 'boolean') {
+		// TRANSLATORS Filter option for a checkbox field: files where the box is ticked
 		if (value === '1' || value === 'true') return t('metavox', 'Yes')
+		// TRANSLATORS Filter option for a checkbox field: files where the box is not ticked
 		if (value === '0' || value === 'false') return t('metavox', 'No')
 	}
 	return value

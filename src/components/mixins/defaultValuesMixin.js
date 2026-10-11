@@ -75,6 +75,7 @@ export default {
             { fieldId: field.id, value }
           ).catch(error => {
             console.error(`Failed to save default for field ${field.id}:`, error)
+            // TRANSLATORS {field} is the label of a metadata field, e.g. "Status"
             showError(t('metavox', 'Failed to save default value for {field}', { field: field.field_label }))
           })
         })

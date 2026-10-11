@@ -1,0 +1,12 @@
+node_modules/
+js/
+tests/
+docs/
+internal-docs/
+vendor/
+screenshots/
+img/
+scripts/
+metavox/
+tasks/
+*.tar.gz
