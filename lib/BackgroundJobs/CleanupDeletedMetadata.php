@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\BackgroundJobs;
 
+use OCA\MetaVox\Service\MetadataVersions;
+use OCA\MetaVox\Service\SearchWordsService;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\TimedJob;
 use OCP\DB\QueryBuilder\IQueryBuilder;
@@ -13,7 +15,7 @@ use Psr\Log\LoggerInterface;
 /**
  * Periodic cleanup of orphaned metadata entries. Runs once per day.
  *
- * Removes metadata and search index entries for files that no longer exist in filecache.
+ * Removes metadata and search words of files that no longer exist in filecache.
  * Real-time cleanup on file deletion is handled by CacheCleanupListener.
  */
 class CleanupDeletedMetadata extends TimedJob {
@@ -21,6 +23,8 @@ class CleanupDeletedMetadata extends TimedJob {
     public function __construct(
         ITimeFactory $time,
         private readonly IDBConnection $db,
+        private readonly SearchWordsService $searchWords,
+        private readonly MetadataVersions $versions,
         private readonly LoggerInterface $logger,
     ) {
         parent::__construct($time);
@@ -29,9 +33,7 @@ class CleanupDeletedMetadata extends TimedJob {
 
     protected function run(mixed $argument): void {
         try {
-            $totalCleaned = 0;
-            $totalCleaned += $this->cleanupDeletedFiles();
-            $totalCleaned += $this->cleanupOrphanedSearchEntries();
+            $totalCleaned = $this->cleanupDeletedFiles();
 
             if ($totalCleaned > 0) {
                 $this->logger->info('MetaVox cleanup: removed {count} orphaned entries', [
@@ -65,44 +67,20 @@ class CleanupDeletedMetadata extends TimedJob {
         return $this->deleteMetadataForFiles($orphanedIds);
     }
 
-    /**
-     * Remove orphaned search index entries.
-     */
-    private function cleanupOrphanedSearchEntries(): int {
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('si.file_id')
-           ->from('metavox_search_index', 'si')
-           ->leftJoin('si', 'filecache', 'fc', $qb->expr()->eq('si.file_id', 'fc.fileid'))
-           ->where($qb->expr()->isNull('fc.fileid'))
-           ->setMaxResults(10000);
-
-        $result = $qb->executeQuery();
-        $orphanedIds = [];
-        while ($row = $result->fetch()) {
-            $orphanedIds[] = (int)$row['file_id'];
-        }
-        $result->closeCursor();
-
-        if (empty($orphanedIds)) {
-            return 0;
-        }
-
-        $qb = $this->db->getQueryBuilder();
-        $qb->delete('metavox_search_index')
-           ->where($qb->expr()->in('file_id', $qb->createNamedParameter($orphanedIds, IQueryBuilder::PARAM_INT_ARRAY)));
-
-        return $qb->executeStatement();
-    }
-
     private function deleteMetadataForFiles(array $fileIds): int {
         if (empty($fileIds)) {
             return 0;
         }
 
+        $this->searchWords->removeFiles($fileIds);
         $qb = $this->db->getQueryBuilder();
         $qb->delete('metavox_file_gf_meta')
            ->where($qb->expr()->in('file_id', $qb->createNamedParameter($fileIds, IQueryBuilder::PARAM_INT_ARRAY)));
 
-        return $qb->executeStatement();
+        $deleted = $qb->executeStatement();
+        if ($deleted > 0) {
+            $this->versions->bumpAll();
+        }
+        return $deleted;
     }
 }

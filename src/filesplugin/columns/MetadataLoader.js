@@ -1,163 +1,126 @@
 /**
- * MetaVox — Metadata Batch Loading
+ * MetaVox — Metadata loading through the API
  *
- * Extracted from MetaVoxColumns.js. Handles debounced bulk metadata loading
- * for file rows, including the queue/flush mechanism and the full directory
- * metadata loader used during folder initialisation.
+ * The fallback for what the listing's nc:metavox property did not deliver.
+ * Requests are bundled (debounced) and never duplicated while one is running;
+ * answers go into the store through fillFromApi.
  */
 
-import {
-	metadataCache,
-	loadQueue,
-	getLoadTimer,
-	setLoadTimer,
-	getActiveGroupfolderId,
-	getFlushDeadline,
-	setFlushDeadline,
-	permissionCache,
-} from './MetaVoxState.js'
 import { fetchDirectoryMetadata } from './MetaVoxAPI.js'
-import { updateAllRowCells } from './ColumnDOM.js'
-import { updateFilterCache } from './MetadataFilter.js'
+import { getActiveGroupfolderId } from './MetaVoxState.js'
+import { currentEpoch, fillFromApi, isTruncated, now } from './MetadataStore.js'
 
-// ── Callback for _findFilesList ────────────────────────────────
+// Files per request: the server's limit (FilterController).
+const CHUNK = 200
 
-/** @type {function|null} */
-let _findFilesList = null
+const inFlight = new Map() // fileId -> promise of the request that covers it
+const queued = new Set()
+let timer = null
+let deadline = 0
+let waiters = []
 
-/**
- * Register the _findFilesList function so loadAllMetadata can access
- * the NC33 FilesList Vue instance.
- *
- * @param {function} fn
- */
-export function setFindFilesList(fn) { _findFilesList = fn }
-
-// ── Callback for ensureSortBypass ──────────────────────────────
-
-/** @type {function|null} */
-let _ensureSortBypass = null
-
-/**
- * Register the ensureSortBypass function.
- *
- * @param {function} fn
- */
-export function setEnsureSortBypass(fn) { _ensureSortBypass = fn }
-
-// ── Queue / flush mechanism ────────────────────────────────────
-
-/**
- * Queue a file ID for metadata loading. If the file's metadata is already
- * cached, the call is a no-op.
- *
- * Uses debouncing: waits 50 ms after the last add, but never longer than
- * 200 ms total before flushing.
- *
- * @param {number} fileId
- */
-export function queueMetadataLoad(fileId) {
-	if (metadataCache.has(fileId)) return
-	loadQueue.add(fileId)
-
-	// Debounce: wait 50ms after last add, but never longer than 200ms total
-	const timer = getLoadTimer()
-	if (timer) clearTimeout(timer)
-	const now = Date.now()
-	if (!getFlushDeadline()) setFlushDeadline(now + 200)
-	const remaining = Math.max(0, getFlushDeadline() - now)
-	setLoadTimer(setTimeout(flushLoadQueue, Math.min(50, remaining)))
+// Set by MetaVoxColumns: redraw the cells and re-apply filters and sorting.
+let afterLoad = () => {}
+export function setAfterLoad(fn) {
+	afterLoad = fn
 }
 
 /**
- * Flush the pending load queue: fetch metadata for all queued file IDs
- * in one batch, update the cache, refresh the DOM, and re-apply
- * filters/sort.
+ * Queue files for loading: 50 ms after the last call, at most 200 ms after
+ * the first. Pass only files that need loading.
+ *
+ * @param {number|number[]} ids
+ * @return {Promise<void>} resolves once the load that includes these files is done
  */
-export async function flushLoadQueue() {
-	if (loadQueue.size === 0 || !getActiveGroupfolderId()) return
-
-	const ids = [...loadQueue]
-	loadQueue.clear()
-	setLoadTimer(null)
-	setFlushDeadline(0)
-
-	const data = await fetchDirectoryMetadata(getActiveGroupfolderId(), ids)
-
-	for (const [fileId, fields] of Object.entries(data)) {
-		const id = Number(fileId)
-		if (fields._permissions !== undefined) {
-			const NC_PERMISSION_UPDATE = 2
-			permissionCache.set(id, (fields._permissions & NC_PERMISSION_UPDATE) !== 0)
-			delete fields._permissions
-		}
-		metadataCache.set(id, fields)
-	}
-
-	for (const id of ids) {
-		if (!metadataCache.has(id)) {
-			metadataCache.set(id, {})
+export function queueMetadataLoad(ids) {
+	for (const id of [].concat(ids)) {
+		if (id) {
+			queued.add(Number(id))
 		}
 	}
-
-	updateAllRowCells()
-
-	// Re-apply filters and sort after new metadata loaded
-	if (_ensureSortBypass) _ensureSortBypass()
-	updateFilterCache(metadataCache)
-
-	// Clear loading indicator — visible row metadata is now loaded
-	document.querySelector('.files-list')?.classList.remove('metavox-loading')
-
+	const done = new Promise((resolve) => waiters.push(resolve))
+	const time = Date.now()
+	if (!deadline) {
+		deadline = time + 200
+	}
+	clearTimeout(timer)
+	timer = setTimeout(flush, Math.min(50, Math.max(0, deadline - time)))
+	return done
 }
 
-// ── Full directory metadata loader ─────────────────────────────
+function flush() {
+	const ids = [...queued]
+	const done = waiters
+	queued.clear()
+	waiters = []
+	timer = null
+	deadline = 0
+	loadViaApi(ids).finally(() => done.forEach((resolve) => resolve()))
+}
 
 /**
- * Load metadata for ALL files in the current folder.
+ * Load files now. Waits for requests already running for them, and never
+ * resolves before every request it depends on is done.
  *
- * Tries to get file IDs from the NC33 FilesList Vue instance's dirContents
- * first, falling back to DOM rows. Fetches in chunks of 200.
- *
- * @param {number} gfId Groupfolder ID
+ * @param {number[]} ids
+ * @param {{force?: boolean}} options force: request again even if one is running
+ * @return {Promise<{started: boolean}>}
  */
-export async function loadAllMetadata(gfId) {
-	const filesList = _findFilesList ? _findFilesList() : null
-	let fileIds = []
-	let source = 'none'
-	if (filesList?.dirContents) {
-		fileIds = filesList.dirContents.map(n => n.fileid).filter(Boolean)
-		source = 'dirContents'
+export async function loadViaApi(ids, { force = false } = {}) {
+	const groupfolderId = getActiveGroupfolderId()
+	const wanted = [...new Set(ids.map(Number))].filter(Boolean)
+	if (!groupfolderId || wanted.length === 0) {
+		return { started: false }
 	}
-	if (fileIds.length === 0) {
-		const rows = document.querySelectorAll('tr[data-cy-files-list-row]')
-		fileIds = [...rows].map(r => Number(r.getAttribute('data-cy-files-list-row-fileid'))).filter(Boolean)
-		source = 'DOM rows'
-	}
-	// Filter out already cached
-	const totalFound = fileIds.length
-	fileIds = fileIds.filter(id => !metadataCache.has(id))
-	if (fileIds.length === 0) return
 
-	const CHUNK = 200
-	for (let i = 0; i < fileIds.length; i += CHUNK) {
-		const chunk = fileIds.slice(i, i + CHUNK)
-		try {
-			const data = await fetchDirectoryMetadata(gfId, chunk)
-			const NC_PERMISSION_UPDATE = 2
-			for (const [fileId, fields2] of Object.entries(data)) {
-				const id = Number(fileId)
-				if (fields2._permissions !== undefined) {
-					permissionCache.set(id, (fields2._permissions & NC_PERMISSION_UPDATE) !== 0)
-					delete fields2._permissions
+	const waits = new Set()
+	const fresh = []
+	for (const id of wanted) {
+		if (!force && inFlight.has(id)) {
+			waits.add(inFlight.get(id))
+		} else {
+			fresh.push(id)
+		}
+	}
+	// One request per chunk, one after the other, each shown as soon as it is
+	// in: big folders fill progressively instead of all at the end.
+	const startedAt = now()
+	const epoch = currentEpoch()
+	let previous = Promise.resolve()
+	for (let i = 0; i < fresh.length; i += CHUNK) {
+		const chunk = fresh.slice(i, i + CHUNK)
+		const request = previous.then(() => fetchDirectoryMetadata(groupfolderId, chunk)).then(({ data, okIds }) => {
+			fillFromApi(data, okIds, startedAt, epoch)
+			afterLoad()
+		})
+		previous = request.catch(() => {})
+		chunk.forEach((id) => inFlight.set(id, request))
+		previous.finally(() => {
+			chunk.forEach((id) => {
+				if (inFlight.get(id) === request) {
+					inFlight.delete(id)
 				}
-				metadataCache.set(id, fields2)
-			}
-			for (const id of chunk) {
-				if (!metadataCache.has(id)) metadataCache.set(id, {})
-			}
-			updateAllRowCells()
-			updateFilterCache(metadataCache)
-		} catch (e) { /* ignore */ }
+			})
+		})
+		waits.add(request)
 	}
+	await Promise.allSettled([...waits])
+	return { started: true }
+}
+
+/** For the editor, fill handle and save: load right away. */
+export const ensureFull = (ids) => loadViaApi(ids)
+
+/**
+ * The gate for every write: make sure the field's value is complete.
+ *
+ * @return {Promise<boolean>} false when a value is still cut off; the caller must refuse
+ */
+export async function requireFull(ids, fieldName) {
+	const cutOff = ids.filter((id) => isTruncated(id, fieldName))
+	if (cutOff.length === 0) {
+		return true
+	}
+	await ensureFull(cutOff)
+	return cutOff.every((id) => !isTruncated(id, fieldName))
 }

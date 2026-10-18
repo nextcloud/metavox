@@ -23,6 +23,8 @@ MetaVox registreert zich bij de Workflow Engine voor metadata-gebaseerde automat
 3. Levert Vue-component voor voorwaarde-configuratie
 4. Evalueert metadata-voorwaarden wanneer Flow triggert
 
+De controle is alleen beschikbaar in admin-Flow-regels, en matcht alleen bestanden in een teammap (geen mappen, geen persoonlijke bestanden).
+
 **Voorbeeld Flow-regel:**
 
 ```
@@ -35,7 +37,7 @@ Zie [Flow-integratie](../admin/flow-integration.md) voor configuratie-details.
 
 ### Nextcloud Search
 
-Metadata-waarden worden geïndexeerd en doorzoekbaar via Nextcloud's unified search. Gebruikers kunnen documenten vinden op basis van metadata-waarden.
+Metadata-waarden zijn doorzoekbaar via Nextcloud's unified search. Vrij zoeken gebruikt een woordindex per teammap, zodat elk lid bestanden vindt op hun metadata; resultaten bevatten alleen bestanden die de gebruiker mag lezen. Datum-, nummer-, selectievakje- en bestandslinkvelden staan niet in de woordindex; die vind je met een veldfilter of een `field:value`-zoekopdracht. Zie [Architectuur-overzicht](overview.md#unified-search).
 
 ## SharePoint-migratie
 
@@ -64,7 +66,7 @@ SharePoint          MetaVox API              Nextcloud
 | SharePoint-veld | MetaVox-equivalent |
 |-----------------|---------------------|
 | Content Type | `select`-veld met opties |
-| Modified By | `usergroup`-veld |
+| Modified By | `user`-veld |
 | Retention Label | `select`-veld |
 | Custom-kolommen | Diverse veldtypen |
 
@@ -130,19 +132,59 @@ Voorbeeld: notificeer document-management-systeem wanneer documentstatus naar "G
 
 ### Custom-app-integratie
 
-PHP-apps kunnen MetaVox-services direct gebruiken:
+PHP-apps kunnen MetaVox-services direct gebruiken. Deze services controleren
+de rechten van de gebruiker niet; dat doet de aanroepende app.
 
 ```php
 use OCA\MetaVox\Service\FieldService;
 
-$fieldService = \OC::$server->get(FieldService::class);
+$fieldService = \OCP\Server::get(FieldService::class);
 
 // Haal metadata op voor een bestand
-$metadata = $fieldService->getGroupfolderFileMetadata($fileId, $groupfolderId);
+$metadata = $fieldService->getGroupfolderFileMetadata($groupfolderId, $fileId);
 
-// Update metadata
-$fieldService->saveFileGfMetadata($fileId, $groupfolderId, $fieldName, $value);
+// Update metadata: bestands-id => [veldnaam => waarde]
+$fieldService->saveValues($groupfolderId, [$fileId => [$fieldName => $value]]);
 ```
+
+### Het metadatapaneel insluiten
+
+Een andere app kan het eigen metadatapaneel van MetaVox tonen, hetzelfde als in
+de zijbalk van Bestanden, als custom element `<metavox-metadata-form>`. De
+host krijgt de veldkiezers, het bewerkvenster, de teammapvelden en de lijst
+"Gelinkt vanuit", zonder afhankelijk te zijn van de Vue-versie van MetaVox.
+
+Laad de bundel tijdens het opbouwen van de pagina. MetaVox is optioneel voor
+de host, dus bewaak de aanroep:
+
+```php
+if (class_exists(\OCA\MetaVox\Embed\MetadataFormEmbed::class)) {
+    \OCP\Server::get(\OCA\MetaVox\Embed\MetadataFormEmbed::class)->load();
+}
+```
+
+`isAvailable($userId)` zegt of MetaVox voor een gebruiker aan staat.
+
+Plaats daarna het element met een bestands-id:
+
+```js
+const el = document.createElement('metavox-metadata-form')
+el.fileId = node.fileid
+container.appendChild(el)
+```
+
+Het attribuut `file-id` werkt ook. MetaVox zoekt zelf de teammap en bepaalt of
+de gebruiker mag bewerken, met dezelfde regel als bij elke opslag: de host geeft
+geen teammap of rechten mee. Een bestand buiten een teammap toont een melding in
+plaats van velden.
+
+Events borrelen op vanaf het element:
+
+| Event | Detail |
+|---|---|
+| `metavox:loaded` | `{ fileId, fields }` |
+| `metavox:saved` | `{ fileId, metadata }` (de gewijzigde velden) |
+| `metavox:error` | `{ message }` |
 
 ## Data-uitwisselings-formaten
 
@@ -168,10 +210,10 @@ $fieldService->saveFileGfMetadata($fileId, $groupfolderId, $fieldName, $value);
 
 ### CSV-export
 
-Bulk-editor exporteert metadata als CSV:
+Bulk-editor exporteert metadata als CSV. De kolommen zijn het bestandspad, de bestandsnaam en één kolom per veld, met het veldlabel als kop (in de taal van de gebruiker):
 
 ```csv
-file_path,file_name,status,afdeling,herzieningsdatum
+Bestandspad,Bestandsnaam,Status,Afdeling,Herzieningsdatum
 /Documenten/rapport.pdf,rapport.pdf,Goedgekeurd,Juridisch,2025-01-15
 /Documenten/memo.docx,memo.docx,Concept,HR,
 ```

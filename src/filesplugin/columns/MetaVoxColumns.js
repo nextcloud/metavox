@@ -7,6 +7,7 @@
  */
 
 import axios from '@nextcloud/axios'
+import { getCurrentUser } from '@nextcloud/auth'
 import { loadState } from '@nextcloud/initial-state'
 import { generateUrl } from '@nextcloud/router'
 
@@ -24,43 +25,49 @@ import {
 	setRowObserver,
 	columnWidths,
 	setActiveViews,
+	getActiveView,
 	setActiveView,
+	getDefaultChosen,
+	setDefaultChosen,
 	setCanManageViews,
 	setAvailableFields,
-	getPrefetchedFilterValues,
-	setPrefetchedFilterValues,
 	getInitialStateConsumed,
 	setInitialStateConsumed,
 	setMetavoxGroupfolders,
 	getMetavoxGroupfolders,
 	setMetavoxAllGfData,
 	getMetavoxAllGfData,
-	getViewCleared,
-	setViewCleared,
-	permissionCache,
-	mergeFilelinkNames,
 } from './MetaVoxState.js'
+import { onFilelinkNames } from './FilelinkNames.js'
+import { leaveOnClose, showingTeamFolder } from './Presence.js'
 
 import { formatValue, getColWidth } from './ColumnUtils.js'
 
-import { setUpdateAllRowCells as setUndoUpdateAllRowCells } from './UndoSupport.js'
 
 import {
 	loadGroupfolders,
 	detectCurrentGroupfolder,
 	fetchAvailableFields,
-	fetchDirectoryMetadata,
 	fetchViews,
-	fetchAllFilterValues,
 	setUpdateAllRowCells as setApiUpdateAllRowCells,
 } from './MetaVoxAPI.js'
 
 import {
 	queueMetadataLoad,
-	loadAllMetadata,
-	setFindFilesList,
-	setEnsureSortBypass,
+	loadViaApi,
+	setAfterLoad,
 } from './MetadataLoader.js'
+import { invalidateAll, switchGroupfolder, touch } from './MetadataStore.js'
+import {
+	catchUp,
+	getListingIds,
+	getListingNode,
+	isListingLoading,
+	refreshListing,
+	reseedListing,
+	setListingHandler,
+} from './ListingSync.js'
+import { decideMetadataPush, shouldRefreshOnReturn } from './SyncRules.js'
 
 import { injectColumnStyles, removeColumnStyles } from './ColumnStyles.js'
 
@@ -73,6 +80,7 @@ import {
 	updateAllRowCells,
 	injectRowColumns,
 	_refreshRowCells,
+	clearCellLock,
 } from './ColumnDOM.js'
 
 import {
@@ -80,7 +88,9 @@ import {
 	setGetActiveColumnConfigs,
 	setSetCellValue,
 	setupCellEditing,
+	updateCellAccessibleName,
 	closeInlineEditor,
+	getActiveEditorCell,
 } from './InlineEditor.js'
 
 import {
@@ -93,17 +103,16 @@ import {
 	handleSort,
 	ensureSortBypass,
 	uninstallSortBypass,
-	_findFilesList,
 } from './Sorting.js'
+import { _findFilesList } from './FilesListRef.js'
 
 import {
-	injectViewTabs,
 	removeViewTabs,
 	closeViewEditor,
-	applyView,
-	restoreViewFromUrl,
 	buildDefaultFilterConfigs,
+	openFolderView,
 } from './ViewManager.js'
+import { takeLink, watchFolder } from './UrlState.js'
 
 import {
 	registerMetaVoxFilter,
@@ -113,6 +122,10 @@ import {
 } from './MetadataFilter.js'
 
 import { setCellValue } from './ColumnDOM.js'
+import { setDependencies as setCellFormatDeps, watchDayChange } from './CellFormat.js'
+import { listenForPushes } from './PushListener.js'
+import { stopStickyOffsets, watchStickyOffsets } from './StickyOffsets.js'
+import { watchRows } from './RowWatch.js'
 
 // ========================================
 // Dependency Wiring
@@ -132,27 +145,60 @@ function wireDependencies() {
 		getColWidth,
 		queueMetadataLoad,
 		setupCellEditing,
+		updateCellAccessibleName,
 		startResize,
 		handleSort,
+		getActiveEditorCell,
+		closeInlineEditor,
 	})
+
+	setCellFormatDeps({ getActiveEditorCell, updateCellAccessibleName, currentUserId: () => getCurrentUser()?.uid ?? null })
 
 	// ColumnResize needs columnWidths
 	setResizeDeps({ columnWidths })
 
-	// UndoSupport needs updateAllRowCells callback
-	setUndoUpdateAllRowCells(updateAllRowCells)
-
 	// MetaVoxAPI needs updateAllRowCells callback
 	setApiUpdateAllRowCells(updateAllRowCells)
+
+	// Current names of linked files arrive after the cells are drawn
+	onFilelinkNames(() => updateAllRowCells())
 
 	// InlineEditor needs updateAllRowCells, getActiveColumnConfigs, setCellValue
 	setInlineEditorUpdateAllRowCells(updateAllRowCells)
 	setGetActiveColumnConfigs(() => getActiveColumnConfigs())
 	setSetCellValue(setCellValue)
 
-	// MetadataLoader needs _findFilesList and ensureSortBypass
-	setFindFilesList(_findFilesList)
-	setEnsureSortBypass(ensureSortBypass)
+	// After an API load: redraw the cells, re-apply sorting and filters.
+	setAfterLoad(() => {
+		updateAllRowCells()
+		ensureSortBypass()
+		updateFilterCache(metadataCache)
+	})
+
+	// Every listing: its values are in the store already (nc:metavox). Redraw,
+	// and load through the API only what the listing did not deliver.
+	setListingHandler(({ gf, loading }) => {
+		if (!loading) {
+			document.querySelector('.files-list')?.classList.remove('metavox-loading')
+		}
+		if (!getColumnsActive()) {
+			return
+		}
+		if (gf !== null && gf !== getActiveGroupfolderId()) {
+			// The server says this listing is in another team folder: detect again.
+			scheduleInjection()
+			return
+		}
+		updateAllRowCells()
+		updateFilterCache(metadataCache)
+		if (loading) {
+			return
+		}
+		const missing = getListingIds().filter((id) => !metadataCache.has(id))
+		if (missing.length) {
+			queueMetadataLoad(missing)
+		}
+	})
 }
 
 // Wire immediately on module load
@@ -174,60 +220,15 @@ function startRowObserver() {
 	// FilesList is now guaranteed to be mounted — install sort bypass
 	ensureSortBypass()
 
-	const observer = new MutationObserver((mutations) => {
-		if (!getColumnsActive()) return
-
-		for (const mutation of mutations) {
-			// New rows added to tbody
-			if (mutation.type === 'childList') {
-				for (const node of mutation.addedNodes) {
-					if (node.nodeType === 1 && node.matches?.('tr[data-cy-files-list-row]')) {
-						injectRowColumns(node)
-					}
-				}
-			}
-			// Virtual scroll: NC33 recycles rows by changing the fileid attribute
-			if (mutation.type === 'attributes' && mutation.attributeName === 'data-cy-files-list-row-fileid') {
-				const row = mutation.target
-				if (row.matches?.('tr[data-cy-files-list-row]')) {
-					_refreshRowCells(row)
-				}
-			}
-		}
-	})
-
-	observer.observe(tbody, {
-		childList: true,
-		subtree: true,
-		attributes: true,
-		attributeFilter: ['data-cy-files-list-row-fileid'],
+	const observer = watchRows(tbody, {
+		added: (row) => { if (getColumnsActive()) injectRowColumns(row) },
+		// Virtual scroll: NC33 recycles rows by changing the fileid attribute
+		reused: (row) => { if (getColumnsActive()) _refreshRowCells(row) },
 	})
 
 	setRowObserver(observer)
 
-	// Dynamically compute sticky offsets for the stacked headers:
-	// tabs (top:0) -> filters (top: tabs height) -> thead (top: tabs + filters height)
-	const VIEW_TABS_ID = 'metavox-view-tabs'
-
-	function updateStickyOffsets() {
-		const tabs = document.querySelector('#' + VIEW_TABS_ID)
-		const filters = document.querySelector('.files-list__filters')
-		const filesList = document.querySelector('.files-list')
-		if (!filesList) return
-		const tabsH = tabs ? Math.round(tabs.getBoundingClientRect().height) : 0
-		const filtersH = filters ? Math.round(filters.getBoundingClientRect().height) : 0
-		filesList.style.setProperty('--mv-filters-top', tabsH + 'px')
-		filesList.style.setProperty('--mv-thead-top', (tabsH + filtersH) + 'px')
-	}
-	updateStickyOffsets()
-	const filtersEl = document.querySelector('.files-list__filters')
-	if (filtersEl) {
-		new ResizeObserver(updateStickyOffsets).observe(filtersEl)
-	}
-	const tabsEl = document.querySelector('#' + VIEW_TABS_ID)
-	if (tabsEl) {
-		new ResizeObserver(updateStickyOffsets).observe(tabsEl)
-	}
+	watchStickyOffsets()
 }
 
 function stopRowObserver() {
@@ -236,6 +237,7 @@ function stopRowObserver() {
 		observer.disconnect()
 		setRowObserver(null)
 	}
+	stopStickyOffsets()
 }
 
 // ========================================
@@ -243,6 +245,14 @@ function stopRowObserver() {
 // ========================================
 
 export async function updateColumnsForCurrentFolder(prefetched = null) {
+	try {
+		await activateColumns(prefetched)
+	} finally {
+		document.querySelector('.files-list')?.classList.remove('metavox-loading')
+	}
+}
+
+async function activateColumns(prefetched) {
 	await loadGroupfolders()
 
 	const groupfolderId = prefetched?.gfId ?? detectCurrentGroupfolder()
@@ -269,30 +279,38 @@ export async function updateColumnsForCurrentFolder(prefetched = null) {
 		setAvailableFields([])
 		setActiveViews([])
 		setActiveView(null)
-		metadataCache.clear()
-		setPrefetchedFilterValues(null)
+		switchGroupfolder(null)
+		showingTeamFolder(null)
 		const _fi = getFilterInstance()
 		if (_fi) _fi.setSortState(null)
 		document.querySelector('.files-list')?.classList.remove('metavox-loading')
 		return
 	}
+	// A link from the page or from back/forward waits for a team folder.
+	const link = takeLink()
+
+	// Opening a subfolder keeps the view you were in, and "Default" when you
+	// chose it; another team folder opens in its own default view.
+	const sameFolder = groupfolderId === getActiveGroupfolderId()
+	const stayed = !sameFolder ? null
+		: getActiveView() ? { viewId: getActiveView().id }
+			: getDefaultChosen() ? { viewId: null } : null
+	if (!sameFolder) setDefaultChosen(false)
 
 	setActiveGroupfolderId(groupfolderId)
-	setViewCleared(false) // Reset on folder switch — new folder can apply its default view
+	switchGroupfolder(groupfolderId)
+	showingTeamFolder(groupfolderId)
 
 	// Use prefetched data if available, otherwise fetch fields + views
 	let fields, viewsResult
 	if (prefetched && prefetched.gfId === groupfolderId) {
 		fields = prefetched.fields
 		viewsResult = prefetched.viewsResult
-		const fv = prefetched.filterValues
-		setPrefetchedFilterValues((fv && Object.keys(fv).length > 0) ? fv : null)
 	} else {
 		[fields, viewsResult] = await Promise.all([
 			fetchAvailableFields(groupfolderId),
 			fetchViews(groupfolderId),
 		])
-		setPrefetchedFilterValues(null) // Will be lazy-loaded when needed
 	}
 
 	setAvailableFields(fields)
@@ -316,79 +334,23 @@ export async function updateColumnsForCurrentFolder(prefetched = null) {
 	injectAllExistingRows()
 	startRowObserver()
 
-	// Inject view tabs and restore view/filter state from URL immediately
-	const filterInstance = getFilterInstance()
-	if (viewsResult.views.length > 0 || viewsResult.canManage) {
-		injectViewTabs(viewsResult.views)
-		const params = new URLSearchParams(window.location.search)
-		if (params.has('mvview')) {
-			restoreViewFromUrl(viewsResult.views, filterInstance)
-		} else if (!getViewCleared()) {
-			const defaultView = viewsResult.views.find(v => v.is_default)
-			if (defaultView) {
-				applyView(defaultView, filterInstance)
-			}
-		}
-	}
+	// The view tabs, and the view and filters to open with.
+	openFolderView(viewsResult, { link, stayed })
 
-	// Use prefetched directory metadata if available (IInitialState — instant, no API call)
-	let metadataPrefetched = false
-	if (prefetched?.directoryMetadata && Object.keys(prefetched.directoryMetadata).length > 0) {
-		const NC_PERMISSION_UPDATE = 2
-		for (const [fileId, fields2] of Object.entries(prefetched.directoryMetadata)) {
-			const id = Number(fileId)
-			if (fields2._permissions !== undefined) {
-				permissionCache.set(id, (fields2._permissions & NC_PERMISSION_UPDATE) !== 0)
-				delete fields2._permissions
-			}
-			metadataCache.set(id, fields2)
-		}
-		updateAllRowCells()
-		updateFilterCache(metadataCache)
-		document.querySelector('.files-list')?.classList.remove('metavox-loading')
-		metadataPrefetched = true
+	// Values come with the listing (nc:metavox). Take over a listing that came
+	// before we subscribed, seed it now that its team folder is active, and
+	// load through the API only what it did not deliver.
+	if (getListingIds().length === 0) {
+		catchUp(_findFilesList())
 	}
-
-	// Only fetch metadata via API if not already prefetched
-	if (!metadataPrefetched) {
-		loadAllMetadata(groupfolderId)
-	}
-
-	// Always render cached metadata into cells (covers back-navigation with push-updated cache)
+	reseedListing()
 	updateAllRowCells()
-
-	// Watch dirContents for changes — NC33 populates it asynchronously.
-	// When it grows, load any new uncached files in one batch.
-	const fl = _findFilesList()
-	if (fl) {
-		let lastCount = fl.dirContents?.length || 0
-		const unwatchTimer = setInterval(() => {
-			if (!getColumnsActive() || getActiveGroupfolderId() !== groupfolderId) {
-				clearInterval(unwatchTimer)
-				return
-			}
-			const currentCount = fl.dirContents?.length || 0
-			if (currentCount > lastCount) {
-				lastCount = currentCount
-				loadAllMetadata(groupfolderId)
-			}
-		}, 500)
-		// Stop after 10s — dirContents should be stable by then
-		setTimeout(() => clearInterval(unwatchTimer), 10000)
-	}
-
-	// Background: prefetch filter values scoped to current directory
-	if (!getPrefetchedFilterValues() && groupfolderId) {
-		// Delay slightly so dirContents is populated
-		setTimeout(() => {
-			const fl2 = _findFilesList()
-			const ids = fl2?.dirContents?.map(n => n.fileid).filter(Boolean) || [...metadataCache.keys()]
-			fetchAllFilterValues(groupfolderId, ids).then(values => {
-				if (values && Object.keys(values).length > 0) {
-					setPrefetchedFilterValues(values)
-				}
-			}).catch(() => {})
-		}, 2000)
+	updateFilterCache(metadataCache)
+	if (!isListingLoading()) {
+		const missing = getListingIds().filter((id) => !metadataCache.has(id))
+		if (missing.length) {
+			queueMetadataLoad(missing)
+		}
 	}
 
 	// Clear loading state — everything is injected, metadata loads in background
@@ -426,13 +388,10 @@ function scheduleInjection() {
 		// Use cached data if available (inline or background prefetch)
 		const cached = getMetavoxAllGfData()?.[gfId]
 		if (cached) {
-			mergeFilelinkNames(cached.filelink_resolved)
 			return {
 				gfId,
 				fields: cached.fields || [],
 				viewsResult: { views: cached.views || [], canManage: cached.can_manage === true },
-				filterValues: cached.filter_values || {},
-				directoryMetadata: cached.directory_metadata || null,
 			}
 		}
 
@@ -455,14 +414,12 @@ function scheduleInjection() {
 				fields: data.fields || [],
 				views: data.views || [],
 				can_manage: data.can_manage === true,
-				filter_values: data.filter_values || {},
 			}
 
 			return {
 				gfId,
 				fields: data.fields || [],
 				viewsResult: { views: data.views || [], canManage: data.can_manage === true },
-				filterValues: data.filter_values || {},
 			}
 		} catch (e) {
 			console.error('MetaVox: init failed', e)
@@ -502,95 +459,51 @@ function scheduleInjection() {
 // ========================================
 
 export function startColumnWatcher() {
-	// Track only the `dir` param — our own URL updates (mvfilter/mvview) must not
-	// trigger a full column teardown.
-	const getDirParam = () => new URLSearchParams(window.location.search).get('dir') || ''
-	let lastDir = getDirParam()
+	// Only a change of folder tears the columns down; our own URL updates
+	// (mvview, mvfilter) do not.
+	const onFolderChange = () => {
+		// Show loading state while new folder loads
+		document.querySelector('.files-list')?.classList.add('metavox-loading')
 
-	const checkNavigation = () => {
-		const currentDir = getDirParam()
-		if (currentDir !== lastDir) {
-			lastDir = currentDir
-			// Show loading state while new folder loads
-			document.querySelector('.files-list')?.classList.add('metavox-loading')
+		// Detect if we're switching groupfolders or navigating within the same one
+		const newGfId = detectCurrentGroupfolder()
+		const prevGfId = getActiveGroupfolderId()
+		const switchingGroupfolder = newGfId !== prevGfId
 
-			// Detect if we're switching groupfolders or navigating within the same one
-			const newGfId = detectCurrentGroupfolder()
-			const prevGfId = getActiveGroupfolderId()
-			const switchingGroupfolder = newGfId !== prevGfId
-
-			if (getColumnsActive()) {
-				uninstallSortBypass()
-				removeAllInjectedColumns()
-				removeColumnStyles()
-				removeFilters()
-				removeViewTabs()
-				closeViewEditor()
-				stopRowObserver()
-				setColumnsActive(false)
-				// Only clear groupfolder ID when switching teamfolders.
-				// Keep it set during submap navigation so push events keep working.
-				if (switchingGroupfolder) {
-					setActiveGroupfolderId(null)
-				}
-			}
-
-			// Only clear metadata cache when switching groupfolders.
-			// Within the same teamfolder, keep cached metadata (notify_push keeps it fresh).
-			if (switchingGroupfolder) {
-				metadataCache.clear()
-			}
-
-			const _fi2 = getFilterInstance()
-			if (_fi2) _fi2.setSortState(null)
-			if (switchingGroupfolder) {
-				setActiveViews([])
-				setActiveView(null)
-				setAvailableFields([])
-			}
-
-			// Early metadata prefetch: start API call as soon as file IDs are known,
-			// parallel with scheduleInjection (don't wait for columns to be ready).
-			// Try dirContents first (Vue data, available before DOM renders),
-			// then fall back to DOM rows.
-			if (newGfId) {
-				const earlyFetch = () => {
-					// Prefer dirContents (available before DOM rows render)
-					const fl = _findFilesList()
-					const dirIds = fl?.dirContents?.map(n => n.fileid).filter(Boolean) || []
-					if (dirIds.length > 0) {
-						loadAllMetadata(newGfId)
-						return true
-					}
-					// Fallback: DOM rows
-					const rows = document.querySelectorAll('tr[data-cy-files-list-row]')
-					const rowIds = [...rows].map(r => Number(r.getAttribute('data-cy-files-list-row-fileid'))).filter(Boolean)
-					if (rowIds.length > 0) {
-						loadAllMetadata(newGfId)
-						return true
-					}
-					return false
-				}
-				// Try immediately, then retry every 30ms for up to 300ms
-				if (!earlyFetch()) {
-					let attempts = 0
-					const retryTimer = setInterval(() => {
-						if (earlyFetch() || ++attempts >= 10) clearInterval(retryTimer)
-					}, 30)
-				}
-			}
-
-			scheduleInjection()
+		if (getColumnsActive()) {
+			uninstallSortBypass()
+			removeAllInjectedColumns()
+			removeColumnStyles()
+			removeFilters()
+			removeViewTabs()
+			closeViewEditor()
+			stopRowObserver()
+			setColumnsActive(false)
 		}
+		// Only clear groupfolder ID when switching teamfolders, also when there
+		// were no columns to tear down. Keep it set during submap navigation so
+		// push events keep working.
+		if (switchingGroupfolder) {
+			setActiveGroupfolderId(null)
+		}
+
+		// Only clear metadata cache when switching groupfolders.
+		// Within the same teamfolder, keep cached metadata (notify_push keeps it fresh).
+		if (switchingGroupfolder) {
+			switchGroupfolder(newGfId)
+		}
+
+		const _fi2 = getFilterInstance()
+		if (_fi2) _fi2.setSortState(null)
+		if (switchingGroupfolder) {
+			setActiveViews([])
+			setActiveView(null)
+			setAvailableFields([])
+		}
+
+		scheduleInjection()
 	}
-
-	window.addEventListener('popstate', checkNavigation)
-
-	window.addEventListener('metavox:metadata:saved', (e) => {
-		const { fileId, metadata } = e.detail
-		metadataCache.set(Number(fileId), metadata)
-		updateAllRowCells()
-	})
+	watchFolder(onFolderChange)
 
 	// Cancel active editor when user leaves — covers tab switch, window switch, and alt-tab
 	const cancelEditorOnLeave = () => closeInlineEditor(true)
@@ -599,94 +512,60 @@ export function startColumnWatcher() {
 	})
 	window.addEventListener('blur', cancelEditorOnLeave)
 
-	// When user returns to tab after being away, check if WebSocket disconnected
-	// and refresh metadata if events may have been missed
+	watchDayChange()
+
+	// Back on the tab: changes can only have been missed when notify_push was
+	// connected and dropped while we were away. Then reload the listing once.
+	let hiddenAt = 0
+	let wsWasOpen = false
+	let lastRefresh = 0
 	document.addEventListener('visibilitychange', () => {
-		if (document.visibilityState === 'visible' && getActiveGroupfolderId()) {
-			const ws = window._notify_push_ws
-			if (!ws || ws.readyState !== 1) {
-				// WebSocket was disconnected — we may have missed push events
-				metadataCache.clear()
-				loadAllMetadata(getActiveGroupfolderId())
-			}
+		const wsOpen = window._notify_push_ws?.readyState === 1
+		if (wsOpen) {
+			wsWasOpen = true
+		}
+		if (document.visibilityState === 'hidden') {
+			hiddenAt = Date.now()
+			return
+		}
+		const time = Date.now()
+		if (!getActiveGroupfolderId()
+			|| !shouldRefreshOnReturn({ wsOpen, wsWasOpen, hiddenMs: time - hiddenAt, sinceRefreshMs: time - lastRefresh })) {
+			return
+		}
+		lastRefresh = time
+		invalidateAll()
+		if (!refreshListing()) {
+			queueMetadataLoad(getListingIds())
 		}
 	})
 
-	// Explicit presence cleanup when tab/window is closed
-	window.addEventListener('pagehide', () => {
-		const gfId = getActiveGroupfolderId()
-		if (gfId) {
-			const url = generateUrl('/apps/metavox/api/presence/leave')
-			const token = document.querySelector('head[data-requesttoken]')?.dataset?.requesttoken || ''
-			const formData = new FormData()
-			formData.append('gf_id', gfId)
-			formData.append('requesttoken', token)
-			navigator.sendBeacon(url, formData)
-		}
-	})
+	// Leave the team folder's presence when the tab closes.
+	window.addEventListener('pagehide', leaveOnClose)
 
-	const origPush = history.pushState.bind(history)
-	const origReplace = history.replaceState.bind(history)
-
-	history.pushState = function(...args) {
-		origPush(...args)
-		setTimeout(checkNavigation, 100)
-	}
-
-	history.replaceState = function(...args) {
-		origReplace(...args)
-		setTimeout(checkNavigation, 100)
-	}
-
-	setInterval(checkNavigation, 2000)
-
-	// Real-time metadata sync via notify_push (never crash the app)
-	try { _startPushListener() } catch (e) { /* push not available */ }
+	// Real-time sync via notify_push, when the server has it.
+	try { listenForPushes(_handlePushEvent) } catch (e) { /* push not available */ }
 
 	scheduleInjection()
 }
 
-/**
- * Listen for push notifications when other users change metadata.
- * Uses Nextcloud's global _notify_push_listeners to register a callback.
- * Polls for availability since notify_push may load after MetaVox.
- */
+/** What a push from another user changes in the grid. */
 function _handlePushEvent(eventName, body) {
 	const gfId = body.gfId || 0
 	const fileId = body.fileId || 0
 
 	if (eventName === 'metavox_metadata_changed') {
-		if (gfId && gfId !== getActiveGroupfolderId()) return
-
-		if (fileId && body.fieldName) {
-			// Single field change — direct cache update (no API call)
-			const existing = metadataCache.get(fileId) || {}
-			existing[body.fieldName] = body.value ?? ''
-			metadataCache.set(fileId, existing)
-			updateAllRowCells()
-		} else if (body.fileIds && Array.isArray(body.fileIds) && getActiveGroupfolderId()) {
-			// Batch change — multiple files changed, refetch from server
-			fetchDirectoryMetadata(getActiveGroupfolderId(), body.fileIds).then(data => {
-				for (const [fid, fields] of Object.entries(data)) {
-					const id = Number(fid)
-					if (fields._permissions !== undefined) delete fields._permissions
-					metadataCache.set(id, fields)
-				}
-				updateAllRowCells()
-			})
-		} else if (fileId && getActiveGroupfolderId()) {
-			// Single file without field data — fetch from server
-			fetchDirectoryMetadata(getActiveGroupfolderId(), [fileId]).then(data => {
-				for (const [fid, fields] of Object.entries(data)) {
-					const id = Number(fid)
-					if (fields._permissions !== undefined) delete fields._permissions
-					metadataCache.set(id, fields)
-				}
-				updateAllRowCells()
-			})
-		} else {
-			metadataCache.clear()
-			loadAllMetadata(getActiveGroupfolderId())
+		const action = decideMetadataPush(body, getActiveGroupfolderId())
+		if (action.type === 'reload') {
+			// Only files we show; older answers for them lose from now on.
+			const known = action.ids.filter((id) => getListingNode(id) || metadataCache.has(id))
+			touch(known)
+			loadViaApi(known, { force: true })
+		} else if (action.type === 'refresh') {
+			invalidateAll()
+			if (!refreshListing()) {
+				queueMetadataLoad(getListingIds())
+			}
 		}
 	} else if (eventName === 'metavox_cell_locked' || eventName === 'metavox_cell_unlocked') {
 		if (gfId && gfId !== getActiveGroupfolderId()) return
@@ -727,75 +606,9 @@ function _handlePushEvent(eventName, body) {
 			cell._lockScrollHandler = () => positionBadge()
 			document.addEventListener('scroll', cell._lockScrollHandler, { capture: true })
 		} else {
-			cell.style.backgroundColor = ''
-			cell.style.boxShadow = ''
-			cell.style.cursor = ''
-			cell.style.position = ''
-			cell.style.overflow = ''
-			delete cell.dataset.lockedBy
-			delete cell._metavoxLocked
-			if (cell._lockBadge) {
-				cell._lockBadge.remove()
-				delete cell._lockBadge
-			}
-			if (cell._lockScrollHandler) {
-				document.removeEventListener('scroll', cell._lockScrollHandler, { capture: true })
-				delete cell._lockScrollHandler
-			}
+			clearCellLock(cell)
 		}
 	}
-}
-
-function _startPushListener() {
-	const patchWs = (ws) => {
-		if (!ws || typeof ws !== 'object' || ws._metavoxPatched) return
-		ws._metavoxPatched = true
-		const origOnMessage = ws.onmessage
-		ws.onmessage = (event) => {
-			const raw = event.data || ''
-			if (typeof raw === 'string' && raw.startsWith('metavox_')) {
-				const spaceIdx = raw.indexOf(' ')
-				const evtName = spaceIdx > 0 ? raw.substring(0, spaceIdx) : raw
-				let body = {}
-				if (spaceIdx > 0) {
-					try { body = JSON.parse(raw.substring(spaceIdx + 1)) } catch (e) { /* */ }
-				}
-				_handlePushEvent(evtName, body)
-			}
-			if (origOnMessage) origOnMessage.call(ws, event)
-		}
-	}
-
-	const register = () => {
-		const ws = window._notify_push_ws
-		if (!ws || typeof ws !== 'object') return false
-		patchWs(ws)
-
-		// Also watch for WebSocket replacements (reconnects)
-		if (!window._metavoxWsWatcher) {
-			window._metavoxWsWatcher = true
-			let currentWs = ws
-			setInterval(() => {
-				if (window._notify_push_ws && window._notify_push_ws !== currentWs) {
-					currentWs = window._notify_push_ws
-					patchWs(currentWs)
-				}
-			}, 2000)
-		}
-
-		return true
-	}
-
-	if (register()) return
-
-	// Poll until notify_push is available (loads async)
-	let attempts = 0
-	const poll = setInterval(() => {
-		attempts++
-		if (register() || attempts > 30) {
-			clearInterval(poll)
-		}
-	}, 1000)
 }
 
 // ========================================
@@ -807,15 +620,4 @@ export {
 	getNcVersion,
 	getActiveColumnConfigs,
 	getActiveGroupfolderId,
-	getPrefetchedFilterValues,
 } from './MetaVoxState.js'
-
-export async function ensureFilterValues() {
-	if (!getPrefetchedFilterValues() && getActiveGroupfolderId()) {
-		const fl = _findFilesList()
-		const fileIds = fl?.dirContents?.map(n => n.fileid).filter(Boolean) || [...metadataCache.keys()]
-		const values = await fetchAllFilterValues(getActiveGroupfolderId(), fileIds)
-		setPrefetchedFilterValues(values)
-	}
-	return getPrefetchedFilterValues()
-}

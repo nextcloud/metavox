@@ -129,18 +129,15 @@ class TelemetryService {
 
             return ['success' => false, 'reason' => 'server_error', 'message' => 'HTTP ' . $statusCode];
         } catch (\Exception $e) {
-            $message = $e->getMessage();
+            $this->logger->warning('TelemetryService: Failed to send report', ['exception' => $e]);
+            // Only the license server's own error text is meant to be shown.
             if (method_exists($e, 'getResponse') && $e->getResponse() !== null) {
-                $body = (string) $e->getResponse()->getBody();
-                $json = json_decode($body, true);
-                if (isset($json['error'])) {
-                    $message = $json['error'];
-                } elseif (!empty($body) && strlen($body) < 200) {
-                    $message = $body;
+                $json = json_decode((string)$e->getResponse()->getBody(), true);
+                if (is_array($json) && is_string($json['error'] ?? null)) {
+                    return ['success' => false, 'reason' => 'server_error', 'message' => mb_substr($json['error'], 0, 200)];
                 }
             }
-            $this->logger->warning('TelemetryService: Failed to send report: ' . $message);
-            return ['success' => false, 'reason' => 'error', 'message' => $message];
+            return ['success' => false, 'reason' => 'unreachable'];
         }
     }
 

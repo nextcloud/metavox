@@ -4,6 +4,14 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Controller;
 
+use OCA\MetaVox\Access\Access;
+use OCA\MetaVox\Access\RequireAccess;
+use OCA\MetaVox\Exception\RequestException;
+use OCA\MetaVox\L10n\Translatable;
+use OCA\MetaVox\Service\BackupReader;
+use OCA\MetaVox\Service\FileLinkPathCleanup;
+use OCA\MetaVox\Service\MetadataVersions;
+use OCA\MetaVox\Service\SearchWordsService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\JSONResponse;
@@ -17,6 +25,8 @@ use OCP\IRequest;
 use Psr\Log\LoggerInterface;
 
 class BackupController extends Controller {
+
+    use ReadsParams;
 
     private const TABLES = ['metavox_gf_fields', 'metavox_gf_metadata', 'metavox_file_gf_meta'];
     private const CHUNK_SIZE = 5000;
@@ -35,6 +45,9 @@ class BackupController extends Controller {
         private readonly IConfig $config,
         private readonly LoggerInterface $logger,
         ICacheFactory $cacheFactory,
+        private readonly FileLinkPathCleanup $fileLinkCleanup,
+        private readonly SearchWordsService $searchWords,
+        private readonly MetadataVersions $versions,
     ) {
         parent::__construct($appName, $request);
         $this->cache = $cacheFactory->createDistributed('metavox')
@@ -48,12 +61,27 @@ class BackupController extends Controller {
     /**
      * Get current backup/restore operation status.
      */
+    #[RequireAccess(Access::NcAdmin)]
     public function status(): JSONResponse {
         $status = $this->cache->get(self::STATUS_KEY);
         if (!$status) {
             return new JSONResponse(['status' => 'idle']);
         }
         return new JSONResponse($status);
+    }
+
+    /**
+     * Refused before anything starts, so the one that runs keeps its status:
+     * an error there would show it as failed, and let the next one start.
+     *
+     * @throws RequestException
+     */
+    private function refuseWhileRunning(): void {
+        $current = $this->cache->get(self::STATUS_KEY);
+        if (is_array($current) && ($current['status'] ?? null) === 'running') {
+            // TRANSLATORS Error when a backup or restore is started while another one is still running
+            throw RequestException::conflict(Translatable::t('A backup or restore is already running'));
+        }
     }
 
     private function setStatus(array $status): void {
@@ -71,75 +99,71 @@ class BackupController extends Controller {
     /**
      * List available backups (supports both .json and .json.gz).
      */
+    #[RequireAccess(Access::NcAdmin)]
     public function list(): JSONResponse {
-        try {
-            $dir = $this->getBackupDir();
-            $files = array_merge(
-                glob($dir . '/metavox_backup_*.json.gz') ?: [],
-                glob($dir . '/metavox_backup_*.json') ?: []
-            );
-            rsort($files);
+        $dir = $this->getBackupDir();
+        $files = array_merge(
+            glob($dir . '/metavox_backup_*.json.gz') ?: [],
+            glob($dir . '/metavox_backup_*.json') ?: []
+        );
+        rsort($files);
 
-            $backups = [];
-            foreach ($files as $filepath) {
-                $filename = basename($filepath);
-                $isGz = str_ends_with($filepath, '.gz');
+        $backups = [];
+        foreach ($files as $filepath) {
+            $filename = basename($filepath);
+            $isGz = str_ends_with($filepath, '.gz');
 
-                if ($isGz) {
-                    $gz = gzopen($filepath, 'r');
-                    $header = gzread($gz, 500);
-                    gzclose($gz);
-                } else {
-                    $fh = fopen($filepath, 'r');
-                    $header = fread($fh, 500);
-                    fclose($fh);
-                }
-
-                $meta = $this->parseHeader($header);
-
-                $backups[] = [
-                    'filename' => $filename,
-                    'created_at' => $meta['created_at'] ?? null,
-                    'version' => $meta['version'] ?? 'unknown',
-                    'size' => filesize($filepath),
-                    'counts' => $meta['counts'] ?? [],
-                    'compressed' => $isGz,
-                ];
+            if ($isGz) {
+                $gz = gzopen($filepath, 'r');
+                $header = gzread($gz, 500);
+                gzclose($gz);
+            } else {
+                $fh = fopen($filepath, 'r');
+                $header = fread($fh, 500);
+                fclose($fh);
             }
 
-            return new JSONResponse(['backups' => $backups]);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
+            $meta = $this->parseHeader($header);
+
+            $backups[] = [
+                'filename' => $filename,
+                'created_at' => $meta['created_at'] ?? null,
+                'version' => $meta['version'] ?? 'unknown',
+                'size' => filesize($filepath),
+                'counts' => $meta['counts'] ?? [],
+                'compressed' => $isGz,
+            ];
         }
+
+        return new JSONResponse(['backups' => $backups]);
     }
 
     /**
      * Download a backup file.
      */
     #[NoCSRFRequired]
+    #[RequireAccess(Access::NcAdmin)]
     public function download() {
-        $filename = $this->request->getParam('filename');
-        if (!$filename || !preg_match('/^metavox_backup_[\w-]+\.json(\.gz)?$/', $filename)) {
-            return new JSONResponse(['error' => 'Invalid filename'], 400);
+        $filename = $this->textParam('filename') ?? '';
+        if (!preg_match('/^metavox_backup_[\w-]+\.json(\.gz)?$/', $filename)) {
+            // TRANSLATORS Error when a backup is asked for by a file name that no MetaVox backup can have
+            throw RequestException::invalid(Translatable::t('This is no MetaVox backup file name'));
         }
 
-        try {
-            $path = $this->getBackupDir() . '/' . $filename;
-            if (!file_exists($path)) {
-                return new JSONResponse(['error' => 'Backup not found'], 404);
-            }
-
-            $isGz = str_ends_with($filename, '.gz');
-            $contentType = $isGz ? 'application/gzip' : 'application/json';
-
-            header('Content-Type: ' . $contentType);
-            header('Content-Disposition: attachment; filename="' . $filename . '"');
-            header('Content-Length: ' . filesize($path));
-            readfile($path);
-            exit;
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
+        $path = $this->getBackupDir() . '/' . $filename;
+        if (!file_exists($path)) {
+            // TRANSLATORS Error when the backup file to download or restore no longer exists
+            throw RequestException::notFound(Translatable::t('Backup not found'));
         }
+
+        $isGz = str_ends_with($filename, '.gz');
+        $contentType = $isGz ? 'application/gzip' : 'application/json';
+
+        header('Content-Type: ' . $contentType);
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Content-Length: ' . filesize($path));
+        readfile($path);
+        exit;
     }
 
     // ========================================
@@ -149,14 +173,10 @@ class BackupController extends Controller {
     /**
      * Trigger a manual backup with progress tracking.
      */
+    #[RequireAccess(Access::NcAdmin)]
     public function trigger(): JSONResponse {
+        $this->refuseWhileRunning();
         try {
-            // Prevent concurrent operations
-            $currentStatus = $this->cache->get(self::STATUS_KEY);
-            if ($currentStatus && $currentStatus['status'] === 'running') {
-                return new JSONResponse(['error' => 'Another backup/restore operation is already running'], 409);
-            }
-
             $dir = $this->getBackupDir();
             $filename = 'metavox_backup_' . date('Y-m-d_H-i-s') . '.json.gz';
             $path = $dir . '/' . $filename;
@@ -217,8 +237,7 @@ class BackupController extends Controller {
                 // Read by the admin page, which says it in the reader's language.
                 'reason' => 'internal_error',
             ]);
-            $this->logger->error('MetaVox backup failed', ['exception' => $e]);
-            return new JSONResponse(['error' => $e->getMessage()], 500);
+            throw $e;
         }
     }
 
@@ -229,23 +248,20 @@ class BackupController extends Controller {
     /**
      * Restore metadata from a backup file with progress tracking.
      */
+    #[RequireAccess(Access::NcAdmin)]
     public function restore(): JSONResponse {
-        $filename = $this->request->getParam('filename');
-        if (!$filename || !preg_match('/^metavox_backup_[\w-]+\.json(\.gz)?$/', $filename)) {
-            return new JSONResponse(['error' => 'Invalid filename'], 400);
+        $filename = $this->textParam('filename') ?? '';
+        if (!preg_match('/^metavox_backup_[\w-]+\.json(\.gz)?$/', $filename)) {
+            throw RequestException::invalid(Translatable::t('This is no MetaVox backup file name'));
+        }
+
+        $this->refuseWhileRunning();
+        $path = $this->getBackupDir() . '/' . $filename;
+        if (!file_exists($path)) {
+            throw RequestException::notFound(Translatable::t('Backup not found'));
         }
 
         try {
-            // Prevent concurrent operations
-            $currentStatus = $this->cache->get(self::STATUS_KEY);
-            if ($currentStatus && $currentStatus['status'] === 'running') {
-                return new JSONResponse(['error' => 'Another backup/restore operation is already running'], 409);
-            }
-
-            $path = $this->getBackupDir() . '/' . $filename;
-            if (!file_exists($path)) {
-                return new JSONResponse(['error' => 'Backup not found'], 404);
-            }
 
             // Read header to get total counts
             $isGz = str_ends_with($path, '.gz');
@@ -276,6 +292,10 @@ class BackupController extends Controller {
 
             $start = microtime(true);
             $restored = $this->doRestore($path, $isGz, $totalRows);
+            // An older backup still has paths in its file links.
+            $this->fileLinkCleanup->run();
+            $this->searchWords->rebuildAll();
+            $this->versions->bumpAll();
             $duration = round(microtime(true) - $start, 1);
 
             $restoredTotal = array_sum($restored);
@@ -310,8 +330,7 @@ class BackupController extends Controller {
                 // Read by the admin page, which says it in the reader's language.
                 'reason' => 'internal_error',
             ]);
-            $this->logger->error('MetaVox restore failed', ['exception' => $e]);
-            return new JSONResponse(['error' => $e->getMessage()], 500);
+            throw $e;
         }
     }
 
@@ -438,81 +457,54 @@ class BackupController extends Controller {
         $batchColumns = null;
         $uncommitted = 0;
         $totalProcessed = 0;
+        $lines = (function () use ($readLine) {
+            while (($line = $readLine()) !== false) {
+                yield $line;
+            }
+        })();
 
         $this->db->beginTransaction();
 
         try {
-            while (($line = $readLine()) !== false) {
-                $line = trim($line);
-
-                // Detect table start
-                foreach (self::TABLES as $table) {
-                    if (str_contains($line, '"' . $table . '":[')) {
-                        if (!empty($batch)) {
-                            $this->flushBatch($currentTable, $batch, $batchColumns, $restored);
-                            $totalProcessed += count($batch);
-                            $batch = [];
-                        }
-                        $currentTable = $table;
-                        $batchColumns = null;
-
-                        $bracketPos = strpos($line, ':[');
-                        if ($bracketPos !== false) {
-                            $afterBracket = trim(substr($line, $bracketPos + 2));
-                            if ($afterBracket && $afterBracket !== ']' && $afterBracket !== ']}' && $afterBracket !== ']}}') {
-                                $row = $this->parseLine($currentTable, $afterBracket);
-                                if ($row) {
-                                    if ($batchColumns === null) $batchColumns = array_keys($row);
-                                    $batch[] = $row;
-                                }
-                            }
-                        }
-                        continue 2;
-                    }
-                }
-
-                // Detect table end
-                if ($currentTable && (str_starts_with($line, ']') || $line === ']' || $line === '],')) {
+            foreach (BackupReader::rows($lines, self::TABLES) as [$table, $data]) {
+                if ($table !== $currentTable) {
                     if (!empty($batch)) {
                         $this->flushBatch($currentTable, $batch, $batchColumns, $restored);
                         $totalProcessed += count($batch);
                         $batch = [];
                     }
-                    $currentTable = null;
+                    $currentTable = $table;
                     $batchColumns = null;
-                    continue;
                 }
 
-                // Process row
-                if ($currentTable && $line) {
-                    $row = $this->parseLine($currentTable, $line);
-                    if ($row) {
-                        if ($batchColumns === null) $batchColumns = array_keys($row);
-                        $batch[] = $row;
-                        $uncommitted++;
+                $row = $this->restorableColumns($table, $data);
+                if ($row === null) {
+                    continue;
+                }
+                if ($batchColumns === null) $batchColumns = array_keys($row);
+                $batch[] = $row;
+                $uncommitted++;
 
-                        if (count($batch) >= self::RESTORE_BATCH_SIZE) {
-                            $this->flushBatch($currentTable, $batch, $batchColumns, $restored);
-                            $totalProcessed += count($batch);
-                            $batch = [];
+                if (count($batch) >= self::RESTORE_BATCH_SIZE) {
+                    $this->flushBatch($currentTable, $batch, $batchColumns, $restored);
+                    $totalProcessed += count($batch);
+                    $batch = [];
 
-                            // Update progress
-                            $this->setStatus([
-                                'status' => 'running',
-                                'operation' => 'import',
-                                'progress' => $totalProcessed,
-                                'total' => $totalRows,
-                                'table' => $currentTable,
-                                'started_at' => $this->cache->get(self::STATUS_KEY)['started_at'] ?? date('c'),
-                            ]);
-                        }
+                    // Update progress
+                    $this->setStatus([
+                        'status' => 'running',
+                        'operation' => 'import',
+                        'progress' => $totalProcessed,
+                        'total' => $totalRows,
+                        'table' => $currentTable,
+                        'started_at' => $this->cache->get(self::STATUS_KEY)['started_at'] ?? date('c'),
+                    ]);
+                }
 
-                        if ($uncommitted >= self::RESTORE_COMMIT_SIZE) {
-                            $this->db->commit();
-                            $this->db->beginTransaction();
-                            $uncommitted = 0;
-                        }
-                    }
+                if ($uncommitted >= self::RESTORE_COMMIT_SIZE) {
+                    $this->db->commit();
+                    $this->db->beginTransaction();
+                    $uncommitted = 0;
                 }
             }
 
@@ -553,19 +545,9 @@ class BackupController extends Controller {
     // Internal: Helpers
     // ========================================
 
-    private function parseLine(string $table, string $line): ?array {
-        $line = rtrim($line, ',');
-        if (!$line || $line === ']' || $line === ']}' || $line === ']}}') {
-            return null;
-        }
-
-        $row = json_decode($line, true);
-        if (!$row || !is_array($row)) {
-            return null;
-        }
-
-        $allowedColumns = $this->getAllowedColumns($table);
-        $row = array_intersect_key($row, array_flip($allowedColumns));
+    /** The row with only the columns a restore may write, or null when none is left. */
+    private function restorableColumns(string $table, array $row): ?array {
+        $row = array_intersect_key($row, array_flip($this->getAllowedColumns($table)));
         return !empty($row) ? $row : null;
     }
 

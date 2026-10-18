@@ -46,11 +46,15 @@ Technologie: Vue 3, Nextcloud Vue componentbibliotheek
 
 | Component | Verantwoordelijkheid |
 |-----------|----------------------|
-| `FieldService` | Core metadata-operaties (CRUD), kolom-config, gedistribueerde cache |
+| `FieldService` | Core metadata-operaties (CRUD), gedistribueerde cache |
 | `ViewService` | Weergave-CRUD met gedistribueerde cache |
 | `ApiFieldService` | Batch-operaties voor API |
 | `ApiFieldController` | OCS API request-handling |
 | `ViewController` | Weergaven-API (list, create, update, delete) |
+| `MetadataPropertyPlugin` | WebDAV-plugin: levert de property `nc:metavox` in maplijsten |
+| `AccessMiddleware` | Controleert de `#[RequireAccess]`-regel van elke route voordat de controller draait; een route zonder regel wordt geweigerd |
+| `PushService`, `PresenceService` | Push-events naar de gebruikers die een teammap open hebben |
+| `SearchWordsService` | Woordindex voor vrij zoeken |
 | `MetadataCheck` | Flow-integratie (ICheck-implementatie) |
 
 ### Database-schema
@@ -68,16 +72,21 @@ MetaVox gebruikt Nextcloud's database-abstractie-laag met de volgende tabellen:
 - Bestand-ID, groupfolder-ID, veldnaam, veld-waarde
 - Geïndexeerd voor snelle bulk-lookup en filter-queries
 
-**`metavox_gf_column_config`** — kolom-display-configuratie per groupfolder
+**`metavox_gf_assigns`** — welke velden elke groupfolder gebruikt
 
-- Welke velden als kolommen verschijnen in de bestandenlijst
-- Kolom-volgorde en filterbaar-vlag per veld
+**`metavox_gf_metadata`** — metadata-waarden van de groupfolder zelf
 
 **`metavox_gf_views`** — opgeslagen weergaven per groupfolder
 
 - Naam, standaard-vlag
-- Kolom-zichtbaarheid en -volgorde (JSON)
+- Kolom-zichtbaarheid en -volgorde (JSON); hier staat ook de kolomconfiguratie
 - Preset-filters (JSON) en sort-configuratie
+
+**`metavox_search_words`** — woordindex voor vrij zoeken
+
+- Eén rij per woord, veld, bestand en groupfolder, opgezocht op de eerste drie letters van het woord
+
+**`metavox_permissions`** — gebruikers en groepen met het beheerrecht per groupfolder
 
 ## Integratiepunten
 
@@ -93,7 +102,15 @@ MetaVox vereist de Group Folders-app en integreert op deze punten:
 
 - Zijbalk-integratie via Files-app-hooks
 - Bestandsactie voor bulk-bewerken
-- Metadata-weergave in bestandsweergaven
+- Metadata-weergave in bestandsweergaven: de waarden komen mee met de eigen WebDAV-maplijst van de Files-app (zie [Performance-overwegingen](#performance-overwegingen))
+
+### Unified search
+
+Vrij zoeken zoekt woorden op in een woordindex per teammap (`metavox_search_words`), zodat elk lid bestanden vindt op hun metadata. Een zoekopdracht gebruikt maximaal vijf woorden, begint bij het zeldzaamste en leest maximaal 2.000 rijen per woord, zodat de kosten niet meegroeien met de grootte van de teammap. Is elk woord zo algemeen, dan komen de resultaten uit de 2.000 nieuwste bestanden van het zeldzaamste woord. Een achtergrondtaak vult de index voor bestaande waarden, maximaal 20 seconden per cron-run. Datum-, nummer-, selectievakje- en bestandslinkvelden staan niet in de woordindex; die vind je met een veldfilter of een `field:value`-zoekopdracht.
+
+### Setup-checks
+
+MetaVox voegt checks toe aan **Beheerinstellingen → Overzicht**: "MetaVox-teammappen" (Teammappen-app ingeschakeld), "MetaVox-achtergrondtaken" (systeem-cron, en of die het afgelopen uur heeft gedraaid), "MetaVox-zoekindex" (voortgang van de woordindex), "MetaVox live-updates" (notify_push), "MetaVox-aanwezigheid" (Gebruikersstatus-app) en "MetaVox gedeelde cache" (gedistribueerde cache anders dan APCu).
 
 ### Workflow Engine (Flow)
 
@@ -119,6 +136,15 @@ Gebruiker opent bestand → Files-app-zijbalk laadt
                        → FieldService bevraagt database
                        → Geeft veld-definities + waarden terug
                        → Vue rendert metadata-formulier
+```
+
+```
+Gebruiker opent een teammap → Files-app stuurt zijn PROPFIND (Depth 1)
+                            → MetadataPropertyPlugin controleert toegang per bestand
+                              en leest alle waarden in één query per 1.000 bestanden
+                            → nc:metavox-property per bestand in de maplijst
+                            → Grid-kolommen vullen zich vanuit de maplijst
+                            → Bestanden die de maplijst niet dekte: API als fallback
 ```
 
 ### Metadata bewerken
@@ -154,8 +180,9 @@ Zie [Privacy & beveiliging](privacy.md) voor details.
 
 - Metadata-queries zijn geïndexeerd op `file_id`, `groupfolder_id`, en `(groupfolder_id, field_name, field_value)` voor snelle filter-lookups
 - Batch-operaties gebruiken database-transacties
-- Frontend laadt metadata in debounced batches (max 200 bestanden per request) terwijl bestanden in de lijst verschijnen
-- Stabiele data (veld-definities, kolom-config, weergaven, filter-waarden) wordt gecached in gedistribueerde cache (Redis/APCu) met automatische invalidatie bij write
+- Grid-waarden komen mee met de WebDAV-maplijst van de Files-app (`PROPFIND`, property `nc:metavox`): geen apart request per map. Elke waarde wordt daar afgekapt op 512 tekens; een afgekapte waarde is gemarkeerd, en de volledige waarde laadt als de cel wordt bewerkt
+- Wat de maplijst niet levert, wordt als fallback via de API geladen, in debounced batches van maximaal 200 bestanden per request
+- Stabiele data (veld-definities, weergaven, filter-waarden) wordt gecached in gedistribueerde cache (Redis/APCu) met automatische invalidatie bij write
 - HTTP `Cache-Control: private`-headers op read-only API-endpoints verminderen redundante requests
 - Huidige filtering is client-side; server-side filtering is de geplande volgende stap voor folders met >5.000 bestanden
 
@@ -164,9 +191,9 @@ Zie [Privacy & beveiliging](privacy.md) voor details.
 | Laag | Technologie |
 |------|-------------|
 | Frontend | Vue 3, Nextcloud Vue, Webpack |
-| Backend | PHP 8.x, Nextcloud App API |
-| Database | MySQL/MariaDB/PostgreSQL (via Nextcloud) |
-| API | OCS REST API |
+| Backend | PHP 8.1+, Nextcloud 31–35 App API |
+| Database | MySQL/MariaDB/PostgreSQL (via Nextcloud); SQLite alleen om te testen |
+| API | OCS REST API, WebDAV-property `nc:metavox` |
 
 ## Zie ook
 

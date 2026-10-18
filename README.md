@@ -1,125 +1,98 @@
-# 📘 MetaVox – Metadata for Nextcloud
+# MetaVox – Metadata for Nextcloud Team folders
 
-**MetaVox** ("Vox” = voice. Metadata as 'the voice of the document’.) is an open-source Nextcloud app developed by the University of Amsterdam and the Amsterdam University of Applied Sciences.  
-Originally built for education, MetaVox is broadly applicable across government, non-profit, and other professional sectors.
+MetaVox brings structured metadata to Nextcloud Team folders. Define the fields your team needs, fill them in right in the file list, and filter, sort, highlight and search on them, even in folders with hundreds of thousands of files. Your files stay untouched: the metadata is stored separately.
 
-It adds metadata to documents stored in Nextcloud, making them easier to organize, interpret, and retrieve.
+MetaVox ("vox" is Latin for voice: metadata as the voice of the document) is open source. It started at the University of Amsterdam and the Amsterdam University of Applied Sciences, and is used by universities, government organizations and enterprises.
 
-<img width="1503" height="832" alt="image" src="https://github.com/nextcloud/metavox/blob/main/screenshots/MetaVox%20v1.0.0.png" />
+![Metadata columns in Files, with a view picker, highlighted cells and a missing required value](screenshots/grid-highlights.png)
 
+## Features
 
-## 🎯 Purpose
+### Work in the file list
 
-The goal of MetaVox is to enrich digital documents with contextual metadata — such as topic, author intent, relevance, or classification — in a way that is:
+- **Metadata columns.** Your fields appear as columns in Files. Double-click a cell to edit it, or edit many files at once.
+- **Ten field types.** Text, long text, number, date and time, checkbox, dropdown, multi-select, URL, account and file link.
+- **Values you can trust.** Required fields stay filled, and every value is checked, however it arrives.
 
-- **Structured** and machine-readable  
-- **Non-intrusive** (no changes to file content)  
-- **Compatible** with existing Nextcloud workflows  
-- **Designed for flexible use across education, government, and other document-driven environments**
+![Editing a cell in the grid](screenshots/inline-editing.gif)
 
-## 👥 Target Users
+### See what matters
 
-MetaVox is suitable for:
+- **Views.** Save columns, filters and sorting per Team folder, and switch between them in one click.
+- **Highlights.** Color cells by their value: overdue in red, due soon in orange, approved in green.
+- **Instant filter and sort.** Search a filter's values and narrow down thousands of files at once.
 
-- **Universities and educational institutions**  
-- **Government organizations**  
-- **Knowledge workers in research, legal, and administrative fields**  
-- **IT admins and architects deploying metadata-enhanced cloud infrastructure**
+![The view editor, with a live preview of a highlight rule](screenshots/view-editor.png)
 
-## 🌱 Why MetaVox?
+### Find it again
 
-While Nextcloud provides basic metadata capabilities (tags, comments, etc.), MetaVox introduces **rich, structured semantic metadata** to support use cases such as:
+- **Search by field.** Filter Nextcloud's search bar on a field value, in one Team folder or all of them.
+- **Saved searches as folders.** Keep a search as a folder in Files, always up to date. Nextcloud 33 and newer; an administrator turns it on.
 
-- Curriculum and course tagging  
-- Policy and compliance classification  
-- Research annotation  
-- Document lifecycle and role-specific categorization  
+![A saved search under Metadata searches in Files](screenshots/metadata-searches.png)
 
-# MetaVox - Metadata Management Requirements
+### Work together
 
-## Scope
-MetaVox is a Nextcloud app designed to manage metadata specifically for **Team folders**. The goal is to offer controlled, role-based metadata definition and editing, with a clear distinction between **Team folder metadata** and **Document-specific metadata**.
+- **Live updates.** Changes appear for everyone at once, and a cell someone is editing is locked.
+- **Nextcloud's permissions.** You see and change the metadata of exactly the files you can, ACL included.
 
----
+### Automate and connect
 
-## Functional Requirements
+- **Default values.** New files get their Team folder's defaults.
+- **AI suggestions.** Let AI read a file and suggest its metadata, through the AI provider your Nextcloud uses.
+- **Flow.** Act on metadata: notifications, access control, retention.
+- **WebDAV and REST API.** Ask for `<nc:metavox/>` in a PROPFIND to get every file's metadata with the folder listing, or use the OCS API.
+- **Backup and restore.** Daily backups, restored with one click.
 
-### 1. Metadata Scope and Visibility
-- [ ] Metadata can only be assigned to **Team folders** and documents **within Team folders**.
-- [ ] Metadata must **not** be assignable to personal folders or files.
-- [ ] For each document inside a Team folder, the following must be shown:
-  - [ ] Team folder metadata (read-only).
-    - [ ] Not stored with the document
-  - [ ] Document-specific metadata (editable depending on permissions).
+## Who does what
 
-### 2. Team folder Metadata Management
-- [ ] Only **administrators** can define or modify Team folder metadata.
-- [ ] Metadata types for Team folders must be configurable per folder.
-- [ ] Team folder metadata definitions are created independently of document metadata definitions.
-- [ ] Admins can import Team folder metadata definitions via a predefined `.json` format.
-- [ ] Admins can export Team folder metadata definitions into a predefined `.json` format.
+MetaVox follows Nextcloud's own permissions, and adds one right of its own.
 
-### 3. Document Metadata within Team folders
-- [ ] Metadata can be assigned to individual documents inside Team folders.
-- [ ] Only users with **edit permissions** on the document may edit document-specific metadata.
-- [ ] Users with **read-only access** may view but **not** modify metadata.
-- [ ] Metadata editing rights should **inherit the document’s permissions**.
-- [ ] Admins can import Document metadata definitions via a predefined `.json` format.
-- [ ] Admins can export Document metadata definitions into a predefined `.json` format.
+| Action | Who |
+|--------|-----|
+| See the metadata of a file | Anyone who can open the file in its Team folder |
+| Change the metadata of a file | Anyone who may change the file in its Team folder |
+| Create and change views, change the Team folder's own metadata | Members who may change the Team folder |
+| Assign fields to a Team folder, set default values | Members with the MetaVox manage permission who may change the Team folder |
+| Create, change and delete field definitions; app settings | Nextcloud administrators |
 
----
+An administrator gives the manage permission to groups on the MetaVox admin page. See [Permissions](docs/admin/permissions.md).
 
-## Permissions & Roles
-- [ ] Metadata definitions (Team folder and document level) can only be created/modified by users with the **admin role**.
-- [ ] Regular users may only **view or edit** document metadata based on their **access level** to the document.
+![The Files pane of the MetaVox admin page](screenshots/admin-fields.png)
 
----
+## Requirements
 
-## User Interface Requirements
-- [ ] Metadata associated with a Team folder must be **clearly visible** when browsing the folder.
-- [ ] When viewing a document, the interface must distinguish between:
-  - [ ] Metadata shown from the Team folder (read-only).
-  - [ ] Metadata specific to the document (editable if user has permission).
+- Nextcloud 31 to 35
+- PHP 8.1 or newer
+- The Team folders app (`groupfolders`)
+- MySQL, MariaDB or PostgreSQL. SQLite is for trying MetaVox out.
 
----
+Recommended: system cron, Redis, and the Client Push app (`notify_push`) for live updates. See [Installation](docs/admin/installation.md).
 
-## Technical Requirements
-- [ ] JSON schema must be defined for importing metadata definitions
-- [ ] App must ensure metadata integrity and prevent unauthorized changes.
-- [ ] Integration with Nextcloud’s permission system is required.
-
----
-
-## Non-Functional Requirements
-- [ ] Compatibility with the latest stable version of Nextcloud.
-- [ ] Localization-ready (multi-language support).
-- [ ] Performance should not be significantly impacted by large metadata sets.
-
----
-
-## Future Considerations
-- [ ] Each metadata field may have an optional **default value**.
-  - [ ] JSON import support for default values  
-- [ ] Versioning of metadata definitions.
-- [ ] Audit logs for metadata changes.
-- [ ] Metadata must be **searchable** via Nextcloud’s global search.
-- [ ] Metadata must be **filterable** in search results (e.g., by metadata field values).
-
-## Visuals
-<img alt="image" src="https://github.com/nextcloud/metavox/blob/main/screenshots/Teamfolder%20metadata.png" />
-<img alt="image" src="https://github.com/nextcloud/metavox/blob/main/screenshots/File%20metadata.png" />
-<img alt="image" src="https://github.com/nextcloud/metavox/blob/main/screenshots/Manage%20team%20metadata.png" />
+MetaVox is available in English, Dutch, French, German and Swedish.
 
 ## Installation
-Add the app via the Nextcloud app store under Office & text apps
 
-## Roadmap
-Retention policies
+Install MetaVox from the Nextcloud App Store: Apps → Files, or search for "MetaVox". Then open Administration settings → MetaVox to create your first fields. See the [Getting Started guide](docs/getting-started.md).
 
-## Authors and acknowledgment
-Initial version created by Sam Ditmeijer and Rik Dekker
+## Documentation
 
-## 🛡 License
+The full documentation starts at [docs/index.md](docs/index.md):
 
-This project is licensed under the [GNU Affero General Public License v3 (AGPLv3)](https://www.gnu.org/licenses/agpl-3.0.html).  
-You are free to use, modify, and distribute this software under the terms of the AGPL license.
+- [For users](docs/user/overview.md): working with metadata, views, highlights, search, bulk editing
+- [For administrators](docs/admin/installation.md): installation, permissions, settings, backup and restore, compliance templates
+- [For architects](docs/architecture/overview.md): architecture, privacy and security, API reference, performance
+
+## Support
+
+- **Issues and feature requests:** [GitHub Issues](https://github.com/nextcloud/metavox/issues)
+- **Questions and ideas:** [GitHub Discussions](https://github.com/nextcloud/metavox/discussions)
+- **Subscriptions and support:** [voxcloud.nl](https://voxcloud.nl), see [Support & Subscriptions](docs/admin/licensing.md)
+
+## Authors
+
+Sam Ditmeijer and Rik Dekker. See [AUTHORS.md](AUTHORS.md).
+
+## License
+
+MetaVox is licensed under the [GNU Affero General Public License v3.0 or later](LICENSE).

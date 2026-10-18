@@ -4,31 +4,10 @@
  * Provides pushUndo() and revertField() extracted from MetaVoxColumns.js.
  */
 
-import axios from '@nextcloud/axios'
-import { showUndo } from '@nextcloud/dialogs'
+import { showUndo } from '../../utils/toast.js'
 import { translate as t, translatePlural as n } from '@nextcloud/l10n'
-import { generateUrl } from '@nextcloud/router'
-import {
-	metadataCache,
-	getActiveGroupfolderId,
-	getPendingUndo,
-	setPendingUndo,
-} from './MetaVoxState.js'
-
-// NOTE: saveSingleField import will be added later when it is extracted to
-// its own module.  For now these two functions are self-contained — revertField
-// performs its own API call directly.
-
-/** @type {function|null} Callback set by the columns module so revertField can refresh the DOM. */
-let _updateAllRowCells = null
-
-/**
- * Register the callback that refreshes every visible row cell from the cache.
- * Called once from MetaVoxColumns.js during initialisation.
- *
- * @param {function} fn
- */
-export function setUpdateAllRowCells(fn) { _updateAllRowCells = fn }
+import { getPendingUndo, setPendingUndo } from './MetaVoxState.js'
+import { saveFileFields } from './MetaVoxAPI.js'
 
 /**
  * Show an undo toast for one or more metadata edits.
@@ -39,13 +18,12 @@ export function pushUndo(entries) {
 	const prev = getPendingUndo()
 	if (prev?.toast) prev.toast.hideToast()
 
-	const text = entries.length === 1
+	// A toast: its text is HTML, so the placeholder keeps the default escaping.
+	const toast = showUndo(entries.length === 1
 		// TRANSLATORS Message with an Undo button after one cell value was changed
 		? t('metavox', 'Metadata updated')
 		// TRANSLATORS Message with an Undo button; {count} is the number of cells that were changed at once, e.g. "5 cells updated"
-		: n('metavox', '{count} cell updated', '{count} cells updated', entries.length, { count: entries.length })
-
-	const toast = showUndo(text, () => {
+		: n('metavox', '{count} cell updated', '{count} cells updated', entries.length, { count: entries.length }), () => {
 		for (const { fileId, fieldName, oldValue } of entries) {
 			revertField(fileId, fieldName, oldValue)
 		}
@@ -62,20 +40,9 @@ export function pushUndo(entries) {
  * @param {*}      oldValue
  */
 export async function revertField(fileId, fieldName, oldValue) {
-	const meta = metadataCache.get(fileId) || {}
-	meta[fieldName] = oldValue
-	metadataCache.set(fileId, meta)
-	if (_updateAllRowCells) _updateAllRowCells()
-
 	try {
-		const activeGroupfolderId = getActiveGroupfolderId()
-		await axios.post(
-			generateUrl(`/apps/metavox/api/groupfolders/${activeGroupfolderId}/files/${fileId}/metadata`),
-			{ metadata: { [fieldName]: oldValue } },
-		)
-		window.dispatchEvent(new CustomEvent('metavox:metadata:saved', {
-			detail: { fileId, metadata: { ...meta } },
-		}))
+		// Saved like an edit: the grid follows at once and goes back if it fails.
+		await saveFileFields(fileId, { [fieldName]: oldValue ?? '' })
 	} catch (e) {
 		console.error('MetaVox: Failed to undo', e)
 	}

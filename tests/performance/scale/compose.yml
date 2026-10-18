@@ -1,0 +1,45 @@
+# The scale test: Nextcloud 35 with groupfolders and MetaVox, on MariaDB with a
+# deliberately small buffer pool, so the data does not fit in memory, as at a
+# large customer. Only on 127.0.0.1. See README.md.
+#   METAVOX_SRC  the app to run (default: this working tree)
+#   SCALE_PORT   the port (default 8035)
+# A second instance, another version side by side: docker compose -p <name>.
+name: metavox-scale
+
+services:
+  db:
+    image: mariadb:10.11
+    command:
+      - --innodb-buffer-pool-size=256M
+      - --skip-log-bin
+      - --innodb-flush-log-at-trx-commit=2
+      - --max-allowed-packet=256M
+    environment:
+      MARIADB_ROOT_PASSWORD: scale-root
+      MARIADB_DATABASE: nextcloud
+      MARIADB_USER: nextcloud
+      MARIADB_PASSWORD: scale-db
+    volumes:
+      - db:/var/lib/mysql
+
+  app:
+    image: nextcloud:35-apache
+    depends_on: [db]
+    ports:
+      - "127.0.0.1:${SCALE_PORT:-8035}:80"
+    environment:
+      MYSQL_HOST: db
+      MYSQL_DATABASE: nextcloud
+      MYSQL_USER: nextcloud
+      MYSQL_PASSWORD: scale-db
+      NEXTCLOUD_TRUSTED_DOMAINS: localhost 127.0.0.1
+    volumes:
+      - html:/var/www/html
+      # MetaVox read-only, by default as in the working tree.
+      - ${METAVOX_SRC:-../../..}:/var/www/html/custom_apps/metavox:ro
+      # The scripts of this directory, whatever version runs.
+      - .:/scale:ro
+
+volumes:
+  db:
+  html:

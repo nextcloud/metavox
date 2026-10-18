@@ -29,6 +29,7 @@ class AdminSection implements IIconSection {
     }
 
     public function getIcon(): string {
-        return $this->urlGenerator->imagePath('metavox', 'app.svg');
+        // The dark glyph, as core's sections use: the settings list inverts it in a dark theme.
+        return $this->urlGenerator->imagePath('metavox', 'app-dark.svg');
     }
 }

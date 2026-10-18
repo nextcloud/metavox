@@ -5,23 +5,15 @@
  */
 
 import { HEADER_MARKER } from './ColumnStyles.js'
+import { _findFilesList } from './FilesListRef.js'
 import { getFilterInstance } from './MetadataFilter.js'
-import { metadataCache } from './MetaVoxState.js'
 
 // ── Sort icon SVGs ──────────────────────────────────────────────
 const SORT_ICON_ASC = '<svg fill="currentColor" width="24" height="24" viewBox="0 0 24 24"><path d="M7,15L12,10L17,15H7Z"></path></svg>'
 const SORT_ICON_DESC = '<svg fill="currentColor" width="24" height="24" viewBox="0 0 24 24"><path d="M7,10L12,15L17,10H7Z"></path></svg>'
 
-// ── Current sort state ──────────────────────────────────────────
-let currentSort = null
-
-export function getCurrentSort() {
-	return currentSort
-}
-
-export function setCurrentSort(v) {
-	currentSort = v
-}
+// Values for the sort are still loading.
+let _sortPending = false
 
 // ========================================
 // Sorting
@@ -38,57 +30,17 @@ export function handleSort(fieldName, fieldType) {
 		fi.setSortState({ fieldName, fieldType, direction: 'asc' })
 	}
 
-	// Client-side sort using metadataCache — no server call needed.
-	// Build sorted file IDs from the cache.
-	const sortState = fi.getSortState()
-	const ids = [...metadataCache.keys()]
-	ids.sort((a, b) => {
-		const metaA = metadataCache.get(a) || {}
-		const metaB = metadataCache.get(b) || {}
-		const valA = metaA[fieldName] ?? ''
-		const valB = metaB[fieldName] ?? ''
-
-		// Push empty values to bottom
-		if (!valA && valB) return 1
-		if (valA && !valB) return -1
-		if (!valA && !valB) return 0
-
-		let cmp = 0
-		if (fieldType === 'number' || fieldType === 'integer' || fieldType === 'float') {
-			cmp = parseFloat(valA) - parseFloat(valB)
-		} else if (fieldType === 'date') {
-			cmp = new Date(valA).getTime() - new Date(valB).getTime()
-		} else if (fieldType === 'checkbox' || fieldType === 'boolean') {
-			cmp = (valA === '1' ? 0 : 1) - (valB === '1' ? 0 : 1)
-		} else {
-			cmp = String(valA).localeCompare(String(valB))
-		}
-		return sortState.direction === 'desc' ? -cmp : cmp
-	})
-
-	// Set the sorted IDs on the filter instance so NC uses our order
-	fi._serverFileIds = ids
-	fi._serverFileIdSet = new Set(ids)
-	fi._serverFileIdMap = new Map()
-	for (let i = 0; i < ids.length; i++) {
-		fi._serverFileIdMap.set(ids[i], i)
-	}
-
-	// NC33: patch Vue computed to bypass re-sort
-	// NC32: Vue internals not accessible — reorder DOM rows directly
-	const bypassInstalled = ensureSortBypass()
+	// Sorting happens in the filter, in the browser, on the cached values.
 	updateSortIndicators()
-	fi._emitFilterUpdate()
-
-	if (!bypassInstalled) {
-		reorderDomRows(ids)
-	}
+	fi.reapply()
 }
 
 export function updateSortIndicators() {
 	const sortState = getFilterInstance()?.getSortState()
 	document.querySelectorAll('.' + HEADER_MARKER).forEach(th => {
 		const fieldName = th.dataset.metavoxField
+		// The loading sign goes with the sort.
+		th.classList.toggle('metavox-sort-pending', _sortPending && sortState?.fieldName === fieldName)
 		const iconEl = th.querySelector('.files-list__column-sort-button-icon')
 		if (!iconEl) return
 
@@ -100,6 +52,14 @@ export function updateSortIndicators() {
 			iconEl.style.opacity = '0'
 		}
 	})
+}
+
+/**
+ * Show on the sorted column that its values are still loading; the rows stay usable.
+ */
+export function setSortPending(pending) {
+	_sortPending = pending
+	updateSortIndicators()
 }
 
 // ========================================
@@ -115,20 +75,10 @@ export function updateSortIndicators() {
  */
 let _origSortGetter = null
 let _bypassedFilesList = null // track which instance we patched
-
-export function _findFilesList() {
-	const filesListEl = document.querySelector('.files-list')
-	if (!filesListEl) return null
-	const vm = filesListEl['__vue__']
-	if (!vm) return null
-
-	let current = vm
-	for (let i = 0; i < 8 && current; i++) {
-		if (current.$options && current.$options.name === 'FilesList') return current
-		current = current.$parent
-	}
-	return null
-}
+let _unwatchNcSort = null
+// Whether the list was last sorted in the MetaVox order: only then does the
+// shown order differ from the one the Files app would show.
+let _usedOurs = false
 
 /**
  * @returns {boolean} true if the bypass was installed or already active
@@ -149,37 +99,66 @@ export function ensureSortBypass(retries) {
 
 	// Install the bypass if not yet patched on this instance
 	if (_bypassedFilesList !== filesList) {
+		_unwatchNcSort?.()
 		_origSortGetter = watcher.getter
 		_bypassedFilesList = filesList
+		_usedOurs = false
 
 		watcher.getter = function () {
+			// Read the filtered list first: that runs filter(), which knows whether it sorted.
+			const filtered = filesList.dirContentsFiltered
 			const fi = getFilterInstance()
-			if (fi?.getSortState()) {
-				return filesList.dirContentsFiltered
+			if (fi?.getSortState() && !fi.isHeld()) {
+				_usedOurs = true
+				// A copy, like NC's own sort: the filtered list is reactive data in NC35, and
+				// rows reading an observed array make Vue walk every node on each read.
+				return filtered.slice()
 			}
+			// No MetaVox sort, or its values are still loading: NC keeps its own order.
+			_usedOurs = false
 			return _origSortGetter.call(filesList)
 		}
+
+		// Sorting on a column of the Files app ends the MetaVox sort; until
+		// now the MetaVox order kept winning. A string, so only a real change
+		// of column or direction counts.
+		_unwatchNcSort = filesList.$watch?.(() => `${filesList.sortingMode}:${filesList.isAscSorting}`, () => {
+			const fi = getFilterInstance()
+			if (!fi?.getSortState()) return
+			fi.setSortState(null)
+			updateSortIndicators()
+			fi.reapply()
+		}) ?? null
 	}
 
-	// Force the computed to re-evaluate with the (potentially new) sort state
-	watcher.dirty = true
-	watcher.evaluate()
-	filesList.$forceUpdate()
+	// Only when the MetaVox order is or was in use can the order change.
+	// Marked, not computed: Vue sorts once when it draws, with the filter as
+	// it is by then (whether values are still loading included). Computing
+	// here sorted all nodes for an order that was stale before it was shown.
+	if (_usedOurs || getFilterInstance()?.getSortState()) {
+		watcher.dirty = true
+		filesList.$forceUpdate()
+	}
 	return true
 }
 
 export function uninstallSortBypass() {
 	if (!_bypassedFilesList || !_origSortGetter) return
 
+	_unwatchNcSort?.()
+	_unwatchNcSort = null
 	const watcher = _bypassedFilesList._computedWatchers?.dirContentsSorted
 	if (watcher) {
 		watcher.getter = _origSortGetter
-		watcher.dirty = true
-		watcher.evaluate()
-		_bypassedFilesList.$forceUpdate()
+		// Only an order of ours needs replacing.
+		if (_usedOurs) {
+			watcher.dirty = true
+			_bypassedFilesList.$forceUpdate()
+		}
 	}
 	_bypassedFilesList = null
 	_origSortGetter = null
+	_usedOurs = false
 }
 
 // ========================================

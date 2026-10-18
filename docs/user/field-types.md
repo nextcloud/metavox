@@ -17,7 +17,7 @@ A simple single-line text input for short values.
 
 ---
 
-### Textarea
+### Long Text (Textarea)
 A multi-line text input for longer content.
 
 **Use cases:** Descriptions, notes, summaries, comments
@@ -79,6 +79,8 @@ A boolean yes/no toggle.
 
 **Options:** None
 
+A checkbox is never required: it always has an answer, checked or not. The **Required field** switch does not appear for it.
+
 ---
 
 ### Select (Dropdown)
@@ -88,7 +90,7 @@ A dropdown menu with predefined options. Users can select one value.
 
 **Example:** "In Review" (from options: Draft, In Review, Approved, Archived)
 
-**Options:** Define the available choices as comma-separated values in the field configuration.
+**Options:** Enter the choices one per row under **Dropdown options** in the field configuration. Click **Add option** for each extra choice. A field needs at least one option.
 
 ---
 
@@ -99,7 +101,7 @@ Similar to Select, but allows multiple selections.
 
 **Example:** "Legal, Finance" (from options: Legal, Finance, HR, IT)
 
-**Options:** Define the available choices as comma-separated values in the field configuration.
+**Options:** Enter the choices one per row under **Dropdown options** in the field configuration. Click **Add option** for each extra choice. A field needs at least one option.
 
 ---
 
@@ -118,8 +120,8 @@ A URL input field with validation and a clickable external link button.
 
 ---
 
-### User Picker
-Select a Nextcloud user from a searchable dropdown. Shows user avatars.
+### Account
+Select a Nextcloud account from a searchable dropdown. Shows avatars.
 
 **Use cases:** Document owner, reviewer, responsible person, author
 
@@ -128,7 +130,7 @@ Select a Nextcloud user from a searchable dropdown. Shows user avatars.
 - Displays user avatar and display name
 - Integrates with Nextcloud user database
 
-![User Picker Field](../../screenshots/Fields-User.png)
+![Account field](../../screenshots/Fields-User.png)
 
 ---
 
@@ -141,9 +143,12 @@ Browse and link to one or more files or folders within Nextcloud using the nativ
 - Native Nextcloud file picker integration
 - **Multiple files per field** — use **Add file** to link several files; remove any with the **×** button
 - Links are stored by **file ID**, so a reference keeps working after the target file is renamed or moved
+- Only files and folders inside the same Team folder can be linked
+- A file can't be linked to itself
 - The same file can't be added twice (duplicates are rejected)
 - Click a linked file to open it
-- **Referenced by** — on a linked file you can see which items reference it (backlinks)
+- If a linked file was deleted or you no longer have access to it, it shows as **Unavailable file**
+- **Linked from** — in the sidebar of a linked file you can see which files link to it (backlinks)
 
 ![File Link field with multiple linked files](../../screenshots/fields-filelink-multiselect.png)
 
@@ -157,12 +162,12 @@ When creating a field in the admin settings, you can configure:
 
 | Setting | Description |
 |---------|-------------|
-| **Field Name** | Internal identifier (no spaces, lowercase recommended) |
-| **Field Label** | Display name shown to users |
-| **Field Type** | One of the types described above |
+| **Field name** | Internal identifier. Only lowercase letters (a-z), numbers (0-9) and underscores (_), starting with a letter |
+| **Field label** | Display name shown to users |
+| **Field type** | One of the types described above |
 | **Description** | Help text shown below the field |
-| **Required** | Whether the field must be filled in |
-| **Options** | For Select and Multi-select fields: comma-separated list of choices |
+| **Required field** | Whether the field must be filled in. Not shown for a Checkbox, which is never required |
+| **Dropdown options** | For Select and Multi-select fields: one choice per row, added with **Add option** |
 
 ---
 
@@ -174,7 +179,7 @@ are back-filled in the background — so a folder's documents start out consiste
 classified without manual data entry.
 
 Defaults are configured **per Team folder**, with a type-correct input for every
-field type (text, number, date/time, dropdown, multi-select, checkbox, URL, user,
+field type (text, number, date/time, dropdown, multi-select, checkbox, URL, account,
 file link):
 
 ![Setting default values per field on a Team folder](../../screenshots/manage-teamfolders-defaultvalue.png)
@@ -184,8 +189,8 @@ file link):
 - After saving, use **Apply defaults now** to back-fill existing files immediately
   (otherwise a background job applies them within a few minutes).
 
-**Who can set defaults:** administrators (for any folder) and users who have the
-per-folder **Manage fields** permission. The latter configure fields and defaults
+**Who can set defaults:** administrators (for any folder) and members with the
+MetaVox manage permission who may change the folder. The latter configure fields and defaults
 for their folder from **Settings → Personal → MetaVox**, which lists only the
 folders they may manage. See [Permissions](../admin/permissions.md).
 
@@ -207,5 +212,6 @@ Metadata specific to individual documents within a Team folder. Editable by user
 
 - [User Overview](overview.md) - Getting started with metadata
 - [Views](views.md) - Filtering and sorting by field values
+- [Highlight Rules](highlight-rules.md) - Coloring cells by their value
 - [Bulk Editing](bulk-editing.md) - Edit fields for multiple files
 - [Exporting Data](exporting-data.md) - Export metadata to CSV

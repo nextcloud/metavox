@@ -1,0 +1,2542 @@
+{
+ "_comment": "Written from the description of the rules only, without seeing the code: value + rule + ctx -> true, false or null. Each rule must also pass compileRules.",
+ "vectors": [
+  {
+   "name": "date-before-today-yesterday-late-time",
+   "type": "date",
+   "value": "2026-10-05T23:59:59",
+   "rule": {
+    "op": "before",
+    "value": {
+     "today": 0
+    },
+    "tone": "error"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "Day 2026-10-05 < today; the time part is ignored."
+  },
+  {
+   "name": "date-before-today-same-day-midnight",
+   "type": "date",
+   "value": "2026-10-06T00:00",
+   "rule": {
+    "op": "before",
+    "value": {
+     "today": 0
+    },
+    "tone": "error"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "Same day as today, so not before, even at 00:00 (a timestamp comparison would get this wrong)."
+  },
+  {
+   "name": "date-after-today-same-day-late-space-time",
+   "type": "date",
+   "value": "2026-10-06 23:59:00",
+   "rule": {
+    "op": "after",
+    "value": {
+     "today": 0
+    },
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "Late time today is still today, not after; the space-separated time form is valid."
+  },
+  {
+   "name": "date-after-today-tomorrow",
+   "type": "date",
+   "value": "2026-10-07",
+   "rule": {
+    "op": "after",
+    "value": {
+     "today": 0
+    },
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "2026-10-07 > 2026-10-06."
+  },
+  {
+   "name": "date-is-today-space-seconds",
+   "type": "date",
+   "value": "2026-10-06 08:00:00",
+   "rule": {
+    "op": "is",
+    "value": {
+     "today": 0
+    },
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "The first 10 chars equal ctx.today; the ' HH:MM:SS' suffix is allowed."
+  },
+  {
+   "name": "date-is-fixed-T-minutes",
+   "type": "date",
+   "value": "2026-10-06T08:00",
+   "rule": {
+    "op": "is",
+    "value": "2026-10-06",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "The legacy 16-char 'THH:MM' form matches the fixed day."
+  },
+  {
+   "name": "date-nextDays-today-counts",
+   "type": "date",
+   "value": "2026-10-06T00:00:00",
+   "rule": {
+    "op": "nextDays",
+    "value": 7,
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "Lower bound T <= d is inclusive, even when the time has already passed."
+  },
+  {
+   "name": "date-nextDays-upper-inclusive-late-time",
+   "type": "date",
+   "value": "2026-10-13T23:59:59",
+   "rule": {
+    "op": "nextDays",
+    "value": 7,
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "d = T+7 = 2026-10-13; the upper bound is inclusive and the time is ignored."
+  },
+  {
+   "name": "date-nextDays-day-after-upper",
+   "type": "date",
+   "value": "2026-10-14",
+   "rule": {
+    "op": "nextDays",
+    "value": 7,
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "2026-10-14 > T+7."
+  },
+  {
+   "name": "date-nextDays-yesterday-excluded",
+   "type": "date",
+   "value": "2026-10-05",
+   "rule": {
+    "op": "nextDays",
+    "value": 7,
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "Past dates are not 'within the next N days'."
+  },
+  {
+   "name": "date-nextDays-month-crossing",
+   "type": "date",
+   "value": "2026-02-01",
+   "rule": {
+    "op": "nextDays",
+    "value": 1,
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-01-31",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "T+1 from Jan 31 rolls over to Feb 1."
+  },
+  {
+   "name": "date-nextDays-year-crossing-upper",
+   "type": "date",
+   "value": "2027-01-04",
+   "rule": {
+    "op": "nextDays",
+    "value": 5,
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-12-30",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "2026-12-30 + 5 days = 2027-01-04 (inclusive)."
+  },
+  {
+   "name": "date-nextDays-year-crossing-past-upper",
+   "type": "date",
+   "value": "2027-01-05",
+   "rule": {
+    "op": "nextDays",
+    "value": 5,
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-12-30",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "2027-01-05 is one day past T+5."
+  },
+  {
+   "name": "date-nextDays-leap-day",
+   "type": "date",
+   "value": "2028-02-29",
+   "rule": {
+    "op": "nextDays",
+    "value": 1,
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2028-02-28",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "2028 is a leap year, so T+1 = 2028-02-29."
+  },
+  {
+   "name": "date-nextDays-leap-skips-march1",
+   "type": "date",
+   "value": "2028-03-01",
+   "rule": {
+    "op": "nextDays",
+    "value": 1,
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2028-02-28",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "In a leap year T+1 is Feb 29, so Mar 1 is outside the window."
+  },
+  {
+   "name": "date-nextDays-nonleap-march1",
+   "type": "date",
+   "value": "2027-03-01",
+   "rule": {
+    "op": "nextDays",
+    "value": 1,
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2027-02-28",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "2027 is not a leap year, so T+1 = 2027-03-01."
+  },
+  {
+   "name": "date-nextDays-3650-upper",
+   "type": "date",
+   "value": "2036-10-03",
+   "rule": {
+    "op": "nextDays",
+    "value": 3650,
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "2026-10-06 + 3650 days = 2036-10-03 (three leap days fall in between); the upper bound is inclusive."
+  },
+  {
+   "name": "date-olderThanDays-exact-boundary",
+   "type": "date",
+   "value": "2026-09-06",
+   "rule": {
+    "op": "olderThanDays",
+    "value": 30,
+    "tone": "error"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "T-30 = 2026-09-06 and the rule is strict d < T-30."
+  },
+  {
+   "name": "date-olderThanDays-one-beyond-with-time",
+   "type": "date",
+   "value": "2026-09-05T23:59",
+   "rule": {
+    "op": "olderThanDays",
+    "value": 30,
+    "tone": "error"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "2026-09-05 < 2026-09-06; the time is ignored."
+  },
+  {
+   "name": "date-olderThanDays-yesterday-not-older-than-1",
+   "type": "date",
+   "value": "2026-10-05",
+   "rule": {
+    "op": "olderThanDays",
+    "value": 1,
+    "tone": "error"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "T-1 = 2026-10-05 and d < T-1 is strict, so yesterday does not match."
+  },
+  {
+   "name": "date-olderThanDays-leap-feb28",
+   "type": "date",
+   "value": "2028-02-28",
+   "rule": {
+    "op": "olderThanDays",
+    "value": 1,
+    "tone": "error"
+   },
+   "ctx": {
+    "today": "2028-03-01",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "T-1 = 2028-02-29 (leap year); Feb 28 < Feb 29."
+  },
+  {
+   "name": "date-olderThanDays-leap-feb29",
+   "type": "date",
+   "value": "2028-02-29",
+   "rule": {
+    "op": "olderThanDays",
+    "value": 1,
+    "tone": "error"
+   },
+   "ctx": {
+    "today": "2028-03-01",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "d = T-1 = 2028-02-29, which fails the strict d < T-1."
+  },
+  {
+   "name": "date-olderThanDays-dst-boundary",
+   "type": "date",
+   "value": "2026-03-29",
+   "rule": {
+    "op": "olderThanDays",
+    "value": 1,
+    "tone": "error"
+   },
+   "ctx": {
+    "today": "2026-03-30",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "T-1 = 2026-03-29 (the EU DST day of 23 hours); ms arithmetic in local time could shift it a day."
+  },
+  {
+   "name": "date-olderThanDays-3650-true",
+   "type": "date",
+   "value": "2016-10-07",
+   "rule": {
+    "op": "olderThanDays",
+    "value": 3650,
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "T-3650 = 2016-10-08 (two leap days fall in between); 2016-10-07 < that."
+  },
+  {
+   "name": "date-olderThanDays-3650-boundary",
+   "type": "date",
+   "value": "2016-10-08",
+   "rule": {
+    "op": "olderThanDays",
+    "value": 3650,
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "d = T-3650 exactly; the comparison is strict."
+  },
+  {
+   "name": "date-before-fixed-year-crossing",
+   "type": "date",
+   "value": "2026-12-31",
+   "rule": {
+    "op": "before",
+    "value": "2027-01-01",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "2026-12-31 < 2027-01-01 against a fixed operand; ctx.today is irrelevant."
+  },
+  {
+   "name": "date-impossible-feb30",
+   "type": "date",
+   "value": "2026-02-30",
+   "rule": {
+    "op": "before",
+    "value": {
+     "today": 0
+    },
+    "tone": "error"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "Impossible date gives unknown; a plain string compare would wrongly say true."
+  },
+  {
+   "name": "date-nonleap-feb29",
+   "type": "date",
+   "value": "2026-02-29",
+   "rule": {
+    "op": "after",
+    "value": "2026-01-01",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "2026 is not a leap year, so Feb 29 is impossible."
+  },
+  {
+   "name": "date-1900-feb29",
+   "type": "date",
+   "value": "1900-02-29",
+   "rule": {
+    "op": "before",
+    "value": {
+     "today": 0
+    },
+    "tone": "error"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "1900 is divisible by 100 but not by 400, so it is not a leap year."
+  },
+  {
+   "name": "date-2000-feb29-valid",
+   "type": "date",
+   "value": "2000-02-29",
+   "rule": {
+    "op": "before",
+    "value": {
+     "today": 0
+    },
+    "tone": "error"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "2000 is a leap year (divisible by 400), so the date is valid and in the past."
+  },
+  {
+   "name": "date-leap-is-fixed-with-time",
+   "type": "date",
+   "value": "2028-02-29T12:00:00",
+   "rule": {
+    "op": "is",
+    "value": "2028-02-29",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "A valid leap-day datetime equals the fixed leap-day operand."
+  },
+  {
+   "name": "date-month13",
+   "type": "date",
+   "value": "2026-13-01",
+   "rule": {
+    "op": "after",
+    "value": {
+     "today": 0
+    },
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "Month 13 is impossible, so unknown (a string compare would say after)."
+  },
+  {
+   "name": "date-april31",
+   "type": "date",
+   "value": "2026-04-31",
+   "rule": {
+    "op": "before",
+    "value": {
+     "today": 0
+    },
+    "tone": "error"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "April has 30 days; Date.UTC would roll this to May 1 without a round-trip check."
+  },
+  {
+   "name": "date-impossible-with-time",
+   "type": "date",
+   "value": "2026-02-30T08:00:00",
+   "rule": {
+    "op": "is",
+    "value": "2026-02-28",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "An impossible day with a time part is still invalid; rollover to Mar 2 must not happen."
+  },
+  {
+   "name": "date-dmy-format",
+   "type": "date",
+   "value": "06-10-2026",
+   "rule": {
+    "op": "is",
+    "value": {
+     "today": 0
+    },
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "DD-MM-YYYY is not the stored format, so unknown."
+  },
+  {
+   "name": "date-slash-format",
+   "type": "date",
+   "value": "2026/10/06",
+   "rule": {
+    "op": "is",
+    "value": {
+     "today": 0
+    },
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "Slash separators are another format, so unknown."
+  },
+  {
+   "name": "date-unpadded",
+   "type": "date",
+   "value": "2026-10-6",
+   "rule": {
+    "op": "is",
+    "value": {
+     "today": 0
+    },
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "A day without zero padding does not match YYYY-MM-DD; a lenient parser would wrongly match today."
+  },
+  {
+   "name": "date-space-value",
+   "type": "date",
+   "value": " ",
+   "rule": {
+    "op": "before",
+    "value": {
+     "today": 0
+    },
+    "tone": "error"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "' ' is a value (not empty) but not a date, so unknown rather than false."
+  },
+  {
+   "name": "date-zero-value",
+   "type": "date",
+   "value": "0",
+   "rule": {
+    "op": "olderThanDays",
+    "value": 1,
+    "tone": "error"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "'0' is a value, not empty, and not a parsable date."
+  },
+  {
+   "name": "date-impossible-notEmpty",
+   "type": "date",
+   "value": "2026-02-30",
+   "rule": {
+    "op": "!empty",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "!empty only checks presence; an unparsable date is still a value."
+  },
+  {
+   "name": "date-impossible-empty",
+   "type": "date",
+   "value": "2026-02-30",
+   "rule": {
+    "op": "empty",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "An invalid date is not empty; empty must not return null for it."
+  },
+  {
+   "name": "date-empty-before",
+   "type": "date",
+   "value": "",
+   "rule": {
+    "op": "before",
+    "value": {
+     "today": 0
+    },
+    "tone": "error"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "An empty value gives false for every date comparison (not null; '' < '2026-10-06' as strings would be true)."
+  },
+  {
+   "name": "date-null-nextDays",
+   "type": "date",
+   "value": null,
+   "rule": {
+    "op": "nextDays",
+    "value": 7,
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "A null value is empty, so the date comparison is false."
+  },
+  {
+   "name": "date-missing-olderThanDays",
+   "type": "date",
+   "rule": {
+    "op": "olderThanDays",
+    "value": 30,
+    "tone": "error"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "A missing (undefined) value is empty, so false."
+  },
+  {
+   "name": "date-missing-empty",
+   "type": "date",
+   "rule": {
+    "op": "empty",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "Undefined counts as empty on a file row."
+  },
+  {
+   "name": "date-no-today-before",
+   "type": "date",
+   "value": "2026-10-05",
+   "rule": {
+    "op": "before",
+    "value": {
+     "today": 0
+    },
+    "tone": "error"
+   },
+   "ctx": {
+    "today": null,
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "{today:0} cannot be resolved without ctx.today, so unknown."
+  },
+  {
+   "name": "date-no-today-nextDays",
+   "type": "date",
+   "value": "2026-10-06",
+   "rule": {
+    "op": "nextDays",
+    "value": 7,
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": null,
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "nextDays needs ctx.today, so unknown."
+  },
+  {
+   "name": "date-far-future-after",
+   "type": "date",
+   "value": "9999-12-31",
+   "rule": {
+    "op": "after",
+    "value": {
+     "today": 0
+    },
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "Valid far-future date, after today."
+  },
+  {
+   "name": "date-year-0099-valid",
+   "type": "date",
+   "value": "0099-01-01",
+   "rule": {
+    "op": "before",
+    "value": {
+     "today": 0
+    },
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "0099-01-01 is a real calendar date (not impossible) and before today. Date.UTC maps years 0-99 to 19xx, so a naive round-trip check returns null. Low-stakes edge case."
+  },
+  {
+   "name": "folder-empty-date-empty",
+   "type": "date",
+   "value": "",
+   "rule": {
+    "op": "empty",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": true
+   },
+   "expected": true,
+   "why": "A folder counts like a file: an empty value is empty."
+  },
+  {
+   "name": "folder-missing-checkbox-isFalse",
+   "type": "checkbox",
+   "rule": {
+    "op": "isFalse",
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": true
+   },
+   "expected": true,
+   "why": "A folder counts like a file: no value is not checked."
+  },
+  {
+   "name": "folder-null-text-notIs",
+   "type": "text",
+   "value": null,
+   "rule": {
+    "op": "!is",
+    "value": "x",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": true
+   },
+   "expected": true,
+   "why": "A folder counts like a file: !is on an empty value is true."
+  },
+  {
+   "name": "folder-empty-number-notIs",
+   "type": "number",
+   "value": "",
+   "rule": {
+    "op": "!is",
+    "value": "5",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": true
+   },
+   "expected": true,
+   "why": "A folder counts like a file: number !is on an empty value is true."
+  },
+  {
+   "name": "folder-multiselect-emptylist-empty",
+   "type": "multiselect",
+   "value": ";#",
+   "rule": {
+    "op": "empty",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": true
+   },
+   "expected": true,
+   "why": "A folder counts like a file: \";#\" without items is empty."
+  },
+  {
+   "name": "folder-date-value-before",
+   "type": "date",
+   "value": "2026-10-01",
+   "rule": {
+    "op": "before",
+    "value": {
+     "today": 0
+    },
+    "tone": "error"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": true
+   },
+   "expected": true,
+   "why": "A folder with a value is evaluated normally."
+  },
+  {
+   "name": "folder-checkbox-zero-isFalse",
+   "type": "checkbox",
+   "value": "0",
+   "rule": {
+    "op": "isFalse",
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": true
+   },
+   "expected": true,
+   "why": "'0' is a value (unchecked), so a folder row is evaluated normally."
+  },
+  {
+   "name": "folder-impossible-date",
+   "type": "date",
+   "value": "2026-02-30",
+   "rule": {
+    "op": "before",
+    "value": {
+     "today": 0
+    },
+    "tone": "error"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": true
+   },
+   "expected": null,
+   "why": "A folder with a non-empty value is evaluated normally, and an impossible date gives null."
+  },
+  {
+   "name": "checkbox-missing-isFalse",
+   "type": "checkbox",
+   "rule": {
+    "op": "isFalse",
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "On a file row isFalse matches 'never set' (empty)."
+  },
+  {
+   "name": "text-empty-notContains",
+   "type": "text",
+   "value": "",
+   "rule": {
+    "op": "!contains",
+    "value": "draft",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "!contains on an empty value is true (as in Flow)."
+  },
+  {
+   "name": "multiselect-emptylist-empty",
+   "type": "multi_select",
+   "value": ";#",
+   "rule": {
+    "op": "empty",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "A ';#' list without items is empty for multi_select."
+  },
+  {
+   "name": "multiselect-double-delim-notEmpty",
+   "type": "multiselect",
+   "value": ";#;#",
+   "rule": {
+    "op": "!empty",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "';#;#' splits into no real items, so it is empty and !empty is false."
+  },
+  {
+   "name": "text-delim-is-a-value",
+   "type": "text",
+   "value": ";#",
+   "rule": {
+    "op": "empty",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "The empty-list rule only applies to multiselect/filelink; for text ';#' is ordinary content."
+  },
+  {
+   "name": "truncated-text-contains",
+   "type": "text",
+   "value": "Lorem ipsum dolor sit amet",
+   "rule": {
+    "op": "contains",
+    "value": "Lorem",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": true,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "A truncated value cannot be read reliably, so content operators give null even when the prefix matches."
+  },
+  {
+   "name": "truncated-text-notIs",
+   "type": "textarea",
+   "value": "Lorem ipsum dolor sit amet",
+   "rule": {
+    "op": "!is",
+    "value": "x",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": true,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "Negated content operators also read the content, so null."
+  },
+  {
+   "name": "truncated-text-notEmpty",
+   "type": "text",
+   "value": "Lorem ipsum dolor sit amet",
+   "rule": {
+    "op": "!empty",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": true,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "!empty is evaluated normally on a truncated value."
+  },
+  {
+   "name": "truncated-date-is-today",
+   "type": "date",
+   "value": "2026-10-06",
+   "rule": {
+    "op": "is",
+    "value": {
+     "today": 0
+    },
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": true,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "The date comparison reads the content, so a truncated value gives null even when it looks like today."
+  },
+  {
+   "name": "truncated-checkbox-isTrue",
+   "type": "checkbox",
+   "value": "1",
+   "rule": {
+    "op": "isTrue",
+    "tone": "success"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": true,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "Cut off: only empty/!empty are decided; isTrue reads the value (spec decision, 10-2026)."
+  },
+  {
+   "name": "truncated-folder-contains",
+   "type": "text",
+   "value": "Lorem ipsum dolor sit amet",
+   "rule": {
+    "op": "contains",
+    "value": "ipsum",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": true,
+    "isFolder": true
+   },
+   "expected": null,
+   "why": "A folder with a value is evaluated normally, and a content rule on a truncated value gives null."
+  },
+  {
+   "name": "truncated-multiselect-oneOf",
+   "type": "multiselect",
+   "value": "Alpha;#Beta",
+   "rule": {
+    "op": "oneOf",
+    "value": [
+     "alpha"
+    ],
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": true,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "oneOf reads the items; the list may be cut off, so null."
+  },
+  {
+   "name": "num-numeric-not-string-compare",
+   "type": "number",
+   "value": "10",
+   "rule": {
+    "op": "greater",
+    "value": "9",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "10 > 9 numerically; a string compare would say \"10\" < \"9\""
+  },
+  {
+   "name": "num-operand-json-number",
+   "type": "number",
+   "value": "9",
+   "rule": {
+    "op": "less",
+    "value": 10,
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "JSON-number operand counts as numeric 10; 9 < 10"
+  },
+  {
+   "name": "num-is-1.0-equals-1",
+   "type": "number",
+   "value": "1.0",
+   "rule": {
+    "op": "is",
+    "value": "1",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "is compares as numbers, not strings"
+  },
+  {
+   "name": "num-surrounding-spaces",
+   "type": "number",
+   "value": " 7 ",
+   "rule": {
+    "op": "is",
+    "value": "7",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "PHP 8 is_numeric accepts leading and trailing whitespace"
+  },
+  {
+   "name": "num-trailing-dot",
+   "type": "number",
+   "value": "5.",
+   "rule": {
+    "op": "greater",
+    "value": "4",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "PHP is_numeric(\"5.\") is true (verified on PHP 8.5); a too-strict regex would reject it"
+  },
+  {
+   "name": "num-plus-dot",
+   "type": "number",
+   "value": "+.5",
+   "rule": {
+    "op": "greaterOrEqual",
+    "value": "0.5",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "sign plus leading dot is numeric (PHP is_numeric true)"
+  },
+  {
+   "name": "num-exponent",
+   "type": "number",
+   "value": "1e3",
+   "rule": {
+    "op": "greater",
+    "value": "999",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "1e3 = 1000 > 999"
+  },
+  {
+   "name": "num-comma-decimal",
+   "type": "number",
+   "value": "1,5",
+   "rule": {
+    "op": "greater",
+    "value": "1",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "\"1,5\" is not is_numeric, so unknown"
+  },
+  {
+   "name": "num-trailing-garbage",
+   "type": "number",
+   "value": "12abc",
+   "rule": {
+    "op": "less",
+    "value": "100",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "parseFloat would give 12; is_numeric rejects it"
+  },
+  {
+   "name": "num-hex",
+   "type": "number",
+   "value": "0x1A",
+   "rule": {
+    "op": "greater",
+    "value": "1",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "hex rejected by is_numeric (JS Number gives 26)"
+  },
+  {
+   "name": "num-infinity",
+   "type": "number",
+   "value": "Infinity",
+   "rule": {
+    "op": "greater",
+    "value": "1",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "is_numeric(\"Infinity\") is false (JS Number gives Infinity)"
+  },
+  {
+   "name": "num-nbsp",
+   "type": "number",
+   "value": " 5",
+   "rule": {
+    "op": "greater",
+    "value": "1",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "NBSP is not is_numeric whitespace (PHP false), though JS \\s, trim() and Number() accept it"
+  },
+  {
+   "name": "num-space-only-not-zero",
+   "type": "number",
+   "value": " ",
+   "rule": {
+    "op": "is",
+    "value": "0",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "\" \" is a value (not empty) and not numeric; Number(\" \") === 0 is a trap"
+  },
+  {
+   "name": "num-empty-is-zero",
+   "type": "number",
+   "value": "",
+   "rule": {
+    "op": "is",
+    "value": "0",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "empty value: is gives false (Number(\"\") === 0 is a trap)"
+  },
+  {
+   "name": "num-empty-not-is",
+   "type": "number",
+   "value": "",
+   "rule": {
+    "op": "!is",
+    "value": "0",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "empty value: !is gives true"
+  },
+  {
+   "name": "num-zero-string-not-empty",
+   "type": "number",
+   "value": "0",
+   "rule": {
+    "op": "empty",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "\"0\" is a value, not empty"
+  },
+  {
+   "name": "num-zero-number-not-empty",
+   "type": "number",
+   "value": 0,
+   "rule": {
+    "op": "!empty",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "number 0 is a value; a falsy check would call it empty"
+  },
+  {
+   "name": "num-gte-boundary",
+   "type": "number",
+   "value": "5",
+   "rule": {
+    "op": "greaterOrEqual",
+    "value": "5.0",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "5 >= 5.0 numerically"
+  },
+  {
+   "name": "num-not-is-nonnumeric",
+   "type": "number",
+   "value": "12abc",
+   "rule": {
+    "op": "!is",
+    "value": "5",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "non-numeric value gives unknown even for !is (never a match)"
+  },
+  {
+   "name": "num-truncated-content-op",
+   "type": "number",
+   "value": "12345",
+   "rule": {
+    "op": "greater",
+    "value": "1",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": true,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "truncated: content operators are unknown"
+  },
+  {
+   "name": "text-case-insensitive",
+   "type": "text",
+   "value": "DONE",
+   "rule": {
+    "op": "is",
+    "value": "done",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "text compare is case-insensitive"
+  },
+  {
+   "name": "text-operand-trimmed",
+   "type": "text",
+   "value": "Done",
+   "rule": {
+    "op": "is",
+    "value": "  done ",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "rule operand is trimmed"
+  },
+  {
+   "name": "text-value-not-trimmed",
+   "type": "text",
+   "value": "Done ",
+   "rule": {
+    "op": "is",
+    "value": "done",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "stored value is not trimmed: \"done \" != \"done\""
+  },
+  {
+   "name": "text-not-is-value-not-trimmed",
+   "type": "text",
+   "value": "Done ",
+   "rule": {
+    "op": "!is",
+    "value": "done",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "stored value not trimmed, so !is holds"
+  },
+  {
+   "name": "text-contains-operand-trimmed",
+   "type": "text",
+   "value": "abc",
+   "rule": {
+    "op": "contains",
+    "value": " B ",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "operand trimmed to \"b\", case-insensitive substring of \"abc\""
+  },
+  {
+   "name": "text-contains-on-empty",
+   "type": "text",
+   "value": "",
+   "rule": {
+    "op": "contains",
+    "value": "a",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "contains on empty gives false"
+  },
+  {
+   "name": "text-not-contains-missing",
+   "type": "text",
+   "rule": {
+    "op": "!contains",
+    "value": "a",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "missing value is empty; !contains on empty gives true"
+  },
+  {
+   "name": "text-space-is-a-value",
+   "type": "text",
+   "value": " ",
+   "rule": {
+    "op": "empty",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "\" \" is a value, not empty (no trimming)"
+  },
+  {
+   "name": "text-delims-not-empty",
+   "type": "text",
+   "value": ";#",
+   "rule": {
+    "op": "empty",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "\";#\" counts as empty only for multiselect/multi_select/filelink"
+  },
+  {
+   "name": "url-case-insensitive-contains",
+   "type": "url",
+   "value": "https://Example.COM/Path",
+   "rule": {
+    "op": "contains",
+    "value": "example.com/path",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "url is text-like: case-insensitive contains"
+  },
+  {
+   "name": "text-truncated-not-contains",
+   "type": "text",
+   "value": "abcdef",
+   "rule": {
+    "op": "!contains",
+    "value": "zzz",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": true,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "truncated: !contains reads content, so unknown (not true)"
+  },
+  {
+   "name": "text-truncated-empty",
+   "type": "text",
+   "value": "abcdef",
+   "rule": {
+    "op": "empty",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": true,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "truncated: empty is evaluated normally"
+  },
+  {
+   "name": "text-folder-empty-not-is",
+   "type": "text",
+   "value": "",
+   "rule": {
+    "op": "!is",
+    "value": "x",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": true
+   },
+   "expected": true,
+   "why": "A folder counts like a file: !is on an empty value is true."
+  },
+  {
+   "name": "text-folder-with-value",
+   "type": "text",
+   "value": "Draft",
+   "rule": {
+    "op": "is",
+    "value": "draft",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": true
+   },
+   "expected": true,
+   "why": "folder with a value is evaluated normally"
+  },
+  {
+   "name": "select-case-insensitive",
+   "type": "select",
+   "value": "Open",
+   "rule": {
+    "op": "is",
+    "value": "OPEN",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "select is: whole value, case-insensitive"
+  },
+  {
+   "name": "select-oneOf-whole-value-not-split",
+   "type": "select",
+   "value": "Open;#Closed",
+   "rule": {
+    "op": "oneOf",
+    "value": [
+     "Open"
+    ],
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "select compares the whole value; it does not split on \";#\" like multiselect"
+  },
+  {
+   "name": "select-oneOf-trimmed-items",
+   "type": "select",
+   "value": "verlopen",
+   "rule": {
+    "op": "oneOf",
+    "value": [
+     "Afgewezen",
+     " Verlopen "
+    ],
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "operand items trimmed and compared case-insensitively"
+  },
+  {
+   "name": "select-not-is-empty",
+   "type": "select",
+   "value": "",
+   "rule": {
+    "op": "!is",
+    "value": "Open",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "select !is on empty gives true"
+  },
+  {
+   "name": "dropdown-alias-oneOf",
+   "type": "dropdown",
+   "value": "High",
+   "rule": {
+    "op": "oneOf",
+    "value": [
+     "low",
+     "HIGH"
+    ],
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "dropdown behaves like select"
+  },
+  {
+   "name": "multi-oneOf-item",
+   "type": "multiselect",
+   "value": "Red;#Blue",
+   "rule": {
+    "op": "oneOf",
+    "value": [
+     "blue"
+    ],
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "per-item match, case-insensitive"
+  },
+  {
+   "name": "multi-oneOf-no-substring",
+   "type": "multiselect",
+   "value": "Red;#Blue",
+   "rule": {
+    "op": "oneOf",
+    "value": [
+     "Bl"
+    ],
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "exact item match, never substring"
+  },
+  {
+   "name": "multi-containsAll-true",
+   "type": "multi_select",
+   "value": "Red;#Blue;#Green",
+   "rule": {
+    "op": "containsAll",
+    "value": [
+     "green",
+     " RED "
+    ],
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "all operand items present (trimmed, case-insensitive)"
+  },
+  {
+   "name": "multi-containsAll-false",
+   "type": "multiselect",
+   "value": "Red;#Blue",
+   "rule": {
+    "op": "containsAll",
+    "value": [
+     "red",
+     "yellow"
+    ],
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "yellow is missing"
+  },
+  {
+   "name": "multi-delims-only-empty",
+   "type": "multi_select",
+   "value": ";#",
+   "rule": {
+    "op": "empty",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "\";#\" list without items is empty"
+  },
+  {
+   "name": "multi-leading-trailing-delims",
+   "type": "multiselect",
+   "value": ";#Red;#",
+   "rule": {
+    "op": "oneOf",
+    "value": [
+     "red"
+    ],
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "empty items dropped (splitMulti); \"Red\" matches"
+  },
+  {
+   "name": "multi-truncated-containsAll",
+   "type": "multiselect",
+   "value": "Red;#Blue",
+   "rule": {
+    "op": "containsAll",
+    "value": [
+     "red"
+    ],
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": true,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "truncated: content operators unknown"
+  },
+  {
+   "name": "cb-string-1",
+   "type": "checkbox",
+   "value": "1",
+   "rule": {
+    "op": "isTrue",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "\"1\" is checked"
+  },
+  {
+   "name": "cb-number-1",
+   "type": "checkbox",
+   "value": 1,
+   "rule": {
+    "op": "isTrue",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "number 1 is checked"
+  },
+  {
+   "name": "boolean-string-false",
+   "type": "boolean",
+   "value": "false",
+   "rule": {
+    "op": "isFalse",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "\"false\" is unchecked; boolean is an alias of checkbox"
+  },
+  {
+   "name": "cb-number-0",
+   "type": "checkbox",
+   "value": 0,
+   "rule": {
+    "op": "isFalse",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "number 0 is unchecked (and not empty)"
+  },
+  {
+   "name": "cb-missing-isFalse",
+   "type": "checkbox",
+   "rule": {
+    "op": "isFalse",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "never set (missing) counts as false"
+  },
+  {
+   "name": "cb-empty-isTrue",
+   "type": "checkbox",
+   "value": "",
+   "rule": {
+    "op": "isTrue",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "empty is not checked"
+  },
+  {
+   "name": "cb-capital-True",
+   "type": "checkbox",
+   "value": "True",
+   "rule": {
+    "op": "isTrue",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "only exact '1','true',true,1 count as checked (TRUTHY set)"
+  },
+  {
+   "name": "cb-space-isFalse",
+   "type": "checkbox",
+   "value": " ",
+   "rule": {
+    "op": "isFalse",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "\" \" is a value, neither unchecked nor empty"
+  },
+  {
+   "name": "cb-folder-missing-isFalse",
+   "type": "checkbox",
+   "rule": {
+    "op": "isFalse",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": true
+   },
+   "expected": true,
+   "why": "A folder counts like a file: no value is not checked."
+  },
+  {
+   "name": "cb-truncated-isTrue",
+   "type": "checkbox",
+   "value": "1",
+   "rule": {
+    "op": "isTrue",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": true,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "Cut off: only empty/!empty are decided; isTrue reads the value (spec decision, 10-2026)."
+  },
+  {
+   "name": "user-uid-case",
+   "type": "user",
+   "value": "Alice",
+   "rule": {
+    "op": "is",
+    "value": "alice",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "uid compare is case-insensitive"
+  },
+  {
+   "name": "user-me-case",
+   "type": "user",
+   "value": "alice",
+   "rule": {
+    "op": "is",
+    "value": {
+     "me": true
+    },
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "ALICE",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "value equals ctx.me case-insensitively"
+  },
+  {
+   "name": "user-me-other",
+   "type": "user",
+   "value": "alice",
+   "rule": {
+    "op": "is",
+    "value": {
+     "me": true
+    },
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "bob",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "value is not the viewer"
+  },
+  {
+   "name": "user-me-no-viewer",
+   "type": "user",
+   "value": "alice",
+   "rule": {
+    "op": "is",
+    "value": {
+     "me": true
+    },
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": null,
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "ctx.me missing: unknown"
+  },
+  {
+   "name": "user-me-empty-value",
+   "type": "user",
+   "value": "",
+   "rule": {
+    "op": "is",
+    "value": {
+     "me": true
+    },
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "empty value never equals the viewer"
+  },
+  {
+   "name": "user-me-truncated",
+   "type": "user",
+   "value": "alice",
+   "rule": {
+    "op": "is",
+    "value": {
+     "me": true
+    },
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": true,
+    "isFolder": false
+   },
+   "expected": null,
+   "why": "truncated: content operators unknown"
+  },
+  {
+   "name": "user-folder-empty-me-null",
+   "type": "user",
+   "value": "",
+   "rule": {
+    "op": "is",
+    "value": {
+     "me": true
+    },
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": null,
+    "truncated": false,
+    "isFolder": true
+   },
+   "expected": null,
+   "why": "A folder counts like a file: \"is the person viewing\" without a known viewer cannot be known."
+  },
+  {
+   "name": "filelink-delims-empty",
+   "type": "filelink",
+   "value": ";#",
+   "rule": {
+    "op": "empty",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "filelink \";#\" without items is empty"
+  },
+  {
+   "name": "filelink-one-item",
+   "type": "filelink",
+   "value": "123;#",
+   "rule": {
+    "op": "!empty",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "one item present"
+  },
+  {
+   "name": "filelink-truncated-not-empty",
+   "type": "filelink",
+   "value": "1;#2",
+   "rule": {
+    "op": "!empty",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": true,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "truncated: !empty is evaluated normally"
+  },
+  {
+   "name": "unknown-delims-is-value",
+   "type": "rating",
+   "value": ";#",
+   "rule": {
+    "op": "empty",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "unknown type: \";#\" is a plain value, not empty"
+  },
+  {
+   "name": "unknown-empty",
+   "type": "rating",
+   "value": "",
+   "rule": {
+    "op": "empty",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "unknown type falls back to empty/!empty"
+  },
+  {
+   "name": "filelink-folder-delims",
+   "type": "filelink",
+   "value": ";#",
+   "rule": {
+    "op": "empty",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": true
+   },
+   "expected": true,
+   "why": "A folder counts like a file: \";#\" is an empty file link."
+  },
+  {
+   "name": "unknown-folder-delims-not-empty",
+   "type": "rating",
+   "value": ";#",
+   "rule": {
+    "op": "!empty",
+    "tone": "info"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": true
+   },
+   "expected": true,
+   "why": "unknown type \";#\" is a value, so the folder row is evaluated normally"
+  }
+ ]
+}

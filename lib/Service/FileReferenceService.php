@@ -7,29 +7,28 @@ namespace OCA\MetaVox\Service;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\Files\IRootFolder;
 use OCP\IDBConnection;
+use OCP\IUserSession;
+use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
 
 /**
  * Resolution and backlink logic for the "File Link" field type.
  *
- * A `filelink` value holds one OR MORE file references. Each reference is
- * "<fileid>:<path>"; multiple references are joined with the app's ';#'
- * delimiter (e.g. "12:/a.pdf;#34:/b.docx"). A single reference is just a
- * one-element list, so old single-value data keeps working unchanged. The
- * fileid is the canonical reference — it survives renames and moves; the
- * cached path is only there so old code keeps showing a name and so search has
- * text to match. See issue #73.
+ * A `filelink` value holds one OR MORE file references, joined with the app's
+ * ';#' delimiter. We store each reference as "<fileid>:" (e.g. "12:;#34:").
+ * Older values also carried a path after the colon, the path as the saving
+ * user saw it; we no longer keep it, because it would show other users the
+ * name of a file they may not see. Names come live from Nextcloud instead.
+ * A token without an id is a path we could not resolve and stays as text.
+ * See issue #73.
  *
- * Three jobs live here:
- *  - resolve a picked path to a fileid on save (so we store the stable id),
- *  - resolve fileid(s) back to the CURRENT name/path for display (live), and
+ * Jobs that live here:
+ *  - turn a saved value into its stored form (normalize),
+ *  - resolve fileid(s) to the CURRENT name/path for display (live), and
  *  - find which files reference a given file ("Referenced by" backlinks).
  *
- * Path<->fileid for groupfolder files is the tricky part: a groupfolder's
- * files live on a dedicated storage whose id ends in "/__groupfolders/<id>/",
- * and filecache.path is just "files/..." — the "__groupfolders" segment is in
- * the STORAGE id, not the path. We reuse the exact storage-suffix match proven
- * in {@see DefaultsService}.
+ * Where a team folder's files live in filecache comes from
+ * {@see GroupfolderRootService}.
  *
  * The backlink query builder (buildBacklinkSql) is separated from execution,
  * and the value parsing/matching helpers are pure static functions, so the
@@ -49,13 +48,14 @@ class FileReferenceService {
      */
     public const BACKLINK_SCAN_LIMIT = 500;
 
-    /** @var array<int, int[]> request-scoped cache of gfId => storage numeric ids */
-    private array $storageIdsCache = [];
-
     public function __construct(
         private readonly IDBConnection $db,
         private readonly IRootFolder $rootFolder,
         private readonly LoggerInterface $logger,
+        private readonly GroupfolderRootService $groupfolderRoots,
+        private readonly IUserSession $userSession,
+        // FileAccessService needs FieldService, which needs this: fetched when a link is checked.
+        private readonly ContainerInterface $container,
     ) {
     }
 
@@ -170,6 +170,121 @@ class FileReferenceService {
         ));
     }
 
+    /** The same value without paths: every token that has an id becomes "<id>:". */
+    public static function withoutPaths(string $value): string {
+        return self::joinTokens(array_map(
+            static fn(array $t): array => $t['fileId'] !== null ? ['fileId' => $t['fileId'], 'path' => ''] : $t,
+            self::parseValue($value)
+        ));
+    }
+
+    /* ---------------------------------------------------------------------
+     * Stored form
+     * ------------------------------------------------------------------- */
+
+    /**
+     * The form in which a file-link value is stored. A picked path becomes an
+     * id (as the current user sees it), links outside this team folder,
+     * duplicates and a link to the file itself are dropped, and no path is kept. A path we can't resolve is
+     * kept as text: dropping it blanked people's fields (github#95).
+     *
+     * An id sent as it is must be a file the user may open there, ACL included:
+     * one they could not have picked is left out like one outside the folder, so
+     * leaving it out tells nothing about what is there. A link already in
+     * $current stays, as someone who may open it put it there. A copy
+     * ($asUser false) and a save without a user only look at the team folder.
+     */
+    public function normalize(string $value, int $groupfolderId, ?int $selfFileId = null, string $current = '', bool $asUser = true): string {
+        $userId = $this->userSession->getUser()?->getUID();
+        $tokens = [];
+        $picked = [];
+        foreach (self::parseValue($value) as $token) {
+            if ($token['fileId'] === null && $userId !== null) {
+                $token['fileId'] = $this->resolvePathToFileId($token['path'], $userId);
+                // Found among the user's own files: theirs to link.
+                if ($token['fileId'] !== null) {
+                    $picked[$token['fileId']] = true;
+                }
+            }
+            $tokens[] = $token['fileId'] !== null ? ['fileId' => $token['fileId'], 'path' => ''] : $token;
+        }
+        $tokens = self::dedupeTokens($tokens);
+
+        $ids = array_values(array_filter(array_column($tokens, 'fileId'), static fn($id): bool => $id !== null));
+        $allowed = $ids === [] ? [] : array_flip($this->filesInGroupfolder($ids, $groupfolderId));
+        if ($asUser && $userId !== null && $allowed !== []) {
+            $already = array_column(self::parseValue($current), 'fileId');
+            $unchecked = array_values(array_filter(array_keys($allowed), static fn(int $id): bool => !isset($picked[$id]) && !in_array($id, $already, true)));
+            if ($unchecked !== []) {
+                $allowed = array_diff_key($allowed, array_flip(array_diff($unchecked, $this->linkableFiles($userId, $unchecked, $groupfolderId))));
+            }
+        }
+        return self::joinTokens(array_values(array_filter(
+            $tokens,
+            // In the team folder, and not the file itself: a link to the file you
+            // are looking at says nothing and reads as a duplicate.
+            static fn(array $t): bool => $t['fileId'] === null || (isset($allowed[$t['fileId']]) && $t['fileId'] !== $selfFileId)
+        )));
+    }
+
+    /**
+     * The files of these the user may open in this team folder, by the rule for
+     * its metadata: ACL included, admins all of them.
+     *
+     * @param int[] $fileIds
+     * @return int[]
+     */
+    public function linkableFiles(string $userId, array $fileIds, int $groupfolderId): array {
+        $fileAccess = $this->container->get(FileAccessService::class);
+        $fileAccess->prime($userId, $fileIds);
+        return array_values(array_filter($fileIds, function (int $fileId) use ($fileAccess, $userId, $groupfolderId): bool {
+            $access = $fileAccess->getFileAccess($userId, $fileId);
+            return $access->canRead() && $access->groupfolderId === $groupfolderId;
+        }));
+    }
+
+    /**
+     * Add `resolved` to every file-link field: the linked files as this user
+     * sees them now, or a placeholder for one that is gone or hidden to them.
+     *
+     * @param array<int, array<string, mixed>> $metadata rows with field_type and value
+     * @return array<int, array<string, mixed>>
+     */
+    public function withNames(array $metadata, string $userId): array {
+        $fileIds = [];
+        foreach ($metadata as $field) {
+            if (!in_array($field['field_type'] ?? '', self::FILELINK_TYPES, true)) {
+                continue;
+            }
+            foreach (self::parseValue((string)($field['value'] ?? '')) as $token) {
+                if ($token['fileId'] !== null) {
+                    $fileIds[] = $token['fileId'];
+                }
+            }
+        }
+        if (empty($fileIds)) {
+            return $metadata;
+        }
+        $resolved = $this->resolveMany($fileIds, $userId);
+
+        foreach ($metadata as &$field) {
+            if (!in_array($field['field_type'] ?? '', self::FILELINK_TYPES, true)) {
+                continue;
+            }
+            $items = [];
+            foreach (self::parseValue((string)($field['value'] ?? '')) as $token) {
+                $info = $token['fileId'] !== null ? ($resolved[$token['fileId']] ?? null) : null;
+                $items[] = $info === null
+                    ? ['fileId' => null, 'name' => null, 'path' => null, 'exists' => false]
+                    : ['fileId' => $token['fileId'], 'name' => $info['name'], 'path' => $info['path'], 'exists' => true];
+            }
+            $field['resolved'] = $items;
+        }
+        unset($field);
+
+        return $metadata;
+    }
+
     /* ---------------------------------------------------------------------
      * Resolution
      * ------------------------------------------------------------------- */
@@ -200,31 +315,6 @@ class FileReferenceService {
             $this->logger->warning('MetaVox: could not resolve file-link path to id', [
                 'path' => $path, 'user' => $userId, 'exception' => $e,
             ]);
-            return null;
-        }
-    }
-
-    /**
-     * Resolve a fileid to its CURRENT name + user-relative path for display.
-     * Reflects renames/moves live. Returns null when the file no longer exists
-     * (stale reference) or the user can't see it.
-     *
-     * @return array{fileId: int, name: string, path: string}|null
-     */
-    public function resolveFileIdToInfo(int $fileId, string $userId): ?array {
-        try {
-            $userFolder = $this->rootFolder->getUserFolder($userId);
-            $nodes = $userFolder->getById($fileId);
-            $node = $nodes[0] ?? null;
-            if ($node === null) {
-                return null;
-            }
-            return [
-                'fileId' => $fileId,
-                'name' => $node->getName(),
-                'path' => $userFolder->getRelativePath($node->getPath()) ?? $node->getName(),
-            ];
-        } catch (\Throwable $e) {
             return null;
         }
     }
@@ -267,31 +357,29 @@ class FileReferenceService {
     }
 
     /**
-     * Resolve a groupfolder-relative path to a fileid WITHOUT a user context
-     * (used by the migration). Matches the groupfolder's storage by suffix and
-     * the file by its "files/..." path, mirroring DefaultsService.
+     * Resolve a groupfolder-relative path to a fileid without a user context
+     * (used by the migration).
      *
      * @param string $relPath path relative to the groupfolder root, e.g. "Docs/a.pdf"
      */
     public function resolvePathToFileIdInGroupfolder(string $relPath, int $groupfolderId): ?int {
-        $storageIds = $this->getGroupfolderStorageIds($groupfolderId);
-        if (empty($storageIds)) {
-            return null;
+        foreach ($this->groupfolderRoots->getRoots($groupfolderId) as $root) {
+            $qb = $this->db->getQueryBuilder();
+            $qb->select('fileid')
+               ->from('filecache')
+               ->where($qb->expr()->eq('storage', $qb->createNamedParameter($root['storage'], IQueryBuilder::PARAM_INT)))
+               ->andWhere($qb->expr()->eq('path', $qb->createNamedParameter($root['path'] . '/' . ltrim($relPath, '/'))))
+               ->setMaxResults(1);
+
+            $result = $qb->executeQuery();
+            $row = $result->fetch();
+            $result->closeCursor();
+
+            if ($row) {
+                return (int)$row['fileid'];
+            }
         }
-        $cachePath = 'files/' . ltrim($relPath, '/');
-
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('fileid')
-           ->from('filecache')
-           ->where($qb->expr()->in('storage', $qb->createNamedParameter($storageIds, IQueryBuilder::PARAM_INT_ARRAY)))
-           ->andWhere($qb->expr()->eq('path', $qb->createNamedParameter($cachePath)))
-           ->setMaxResults(1);
-
-        $result = $qb->executeQuery();
-        $row = $result->fetch();
-        $result->closeCursor();
-
-        return $row ? (int)$row['fileid'] : null;
+        return null;
     }
 
     /* ---------------------------------------------------------------------
@@ -406,57 +494,32 @@ class FileReferenceService {
      * ------------------------------------------------------------------- */
 
     /**
-     * Resolve the storage numeric_id(s) backing a groupfolder. The storage id
-     * ends in "/__groupfolders/<gfId>/"; the data-dir prefix varies per install
-     * so we match on the suffix. Cached per request. Mirrors DefaultsService.
+     * The ids that live inside the given team folder. A link target outside it
+     * would point at a file other folder members can't see.
      *
+     * @param int[] $fileIds
      * @return int[]
      */
-    /**
-     * Whether a fileid lives inside the given groupfolder. Used to reject
-     * file-link targets picked from outside the team folder — those would point
-     * at files other folder members can't see, which is confusing and leaky.
-     * Matches via the groupfolder's storage(s) and the "files/" subtree.
-     */
-    public function isFileInGroupfolder(int $fileId, int $groupfolderId): bool {
-        if ($fileId <= 0) {
-            return false;
+    public function filesInGroupfolder(array $fileIds, int $groupfolderId): array {
+        $fileIds = array_values(array_unique(array_filter($fileIds, static fn($id): bool => $id > 0)));
+        $roots = $fileIds === [] ? [] : $this->groupfolderRoots->getRoots($groupfolderId);
+        $found = [];
+        foreach (array_chunk($fileIds, 500) as $chunk) {
+            $qb = $this->db->getQueryBuilder();
+            $inFolder = $this->groupfolderRoots->buildInRootsCondition($qb, $roots);
+            if ($inFolder === null) {
+                return [];
+            }
+            $qb->select('fileid')
+               ->from('filecache')
+               ->where($qb->expr()->in('fileid', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)))
+               ->andWhere($inFolder);
+            $result = $qb->executeQuery();
+            while (($id = $result->fetchOne()) !== false) {
+                $found[] = (int)$id;
+            }
+            $result->closeCursor();
         }
-        $storageIds = $this->getGroupfolderStorageIds($groupfolderId);
-        if (empty($storageIds)) {
-            return false;
-        }
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('fileid')
-           ->from('filecache')
-           ->where($qb->expr()->eq('fileid', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_INT)))
-           ->andWhere($qb->expr()->in('storage', $qb->createNamedParameter($storageIds, IQueryBuilder::PARAM_INT_ARRAY)))
-           ->andWhere($qb->expr()->like('path', $qb->createNamedParameter('files/%')))
-           ->setMaxResults(1);
-        $result = $qb->executeQuery();
-        $row = $result->fetch();
-        $result->closeCursor();
-        return $row !== false;
-    }
-
-    private function getGroupfolderStorageIds(int $groupfolderId): array {
-        if (isset($this->storageIdsCache[$groupfolderId])) {
-            return $this->storageIdsCache[$groupfolderId];
-        }
-
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('numeric_id')
-           ->from('storages')
-           ->where($qb->expr()->like('id', $qb->createNamedParameter('%/__groupfolders/' . $groupfolderId . '/')));
-
-        $result = $qb->executeQuery();
-        $ids = [];
-        while ($row = $result->fetch()) {
-            $ids[] = (int)$row['numeric_id'];
-        }
-        $result->closeCursor();
-
-        $this->storageIdsCache[$groupfolderId] = $ids;
-        return $ids;
+        return $found;
     }
 }

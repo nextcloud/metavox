@@ -1,47 +1,45 @@
-/* MetaVox User Interface Styles */
+/**
+ * Personal settings.
+ *
+ * This file used to give #metavox-user `min-height: 100vh` and
+ * `background: var(--color-background-dark)`, which painted the whole
+ * settings column grey — the one screen in the app that did. Nextcloud owns
+ * the page surface; an app paints its own blocks, not the page.
+ *
+ * The .user-interface measure went with it: NcSettingsSection owns the
+ * measure (900px), and this set a second one at 1200px on a class the
+ * template no longer renders.
+ */
 
-#metavox-user {
-    min-height: 100vh;
-    background: var(--color-background-dark);
+/**
+ * The placeholder in templates/personal.php, shown until the Vue app mounts
+ * and replaces it. Styled here rather than in MetaVoxPersonal.vue because a
+ * scoped style cannot reach markup the component does not render.
+ */
+.metavox-personal-loading {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 16px;
+	padding-block: 48px;
+	color: var(--color-text-maxcontrast);
 }
 
-.user-interface {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
+.metavox-personal-loading p {
+	margin: 0;
 }
 
-/* Loading State */
-.loading-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 80px 20px;
-    text-align: center;
-}
-
-.loading-state p {
-    margin-top: 16px;
-    color: var(--color-text-maxcontrast);
-}
-
-/* Icon Loading Animation */
-.icon-loading-dark {
-    width: 32px;
-    height: 32px;
-    background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTE2IDMwQzI0LjI4NDMgMzAgMzEgMjMuMjg0MyAzMSAxNUMzMSA2LjcxNTczIDI0LjI4NDMgMCAxNiAwIiBzdHJva2U9IiM3Njc2NzYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+Cjwvc3ZnPgo=');
-    animation: rotate 1s linear infinite;
-}
-
-@keyframes rotate {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-    .user-interface {
-        padding: 12px;
-    }
+/**
+ * Reduced motion, §8 MUST. Mirrors the block in admin.css: this file is
+ * loaded unscoped on the settings page, so one rule reaches every component
+ * the personal page renders.
+ */
+@media (prefers-reduced-motion: reduce) {
+	#metavox-personal *,
+	#metavox-personal *::before,
+	#metavox-personal *::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
 }

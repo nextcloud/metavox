@@ -23,6 +23,9 @@ MetaVox registers with the Workflow Engine for metadata-based automation.
 3. Provides Vue component for condition configuration
 4. Evaluates metadata conditions when Flow triggers
 
+The check is only available in admin Flow rules, and only matches files inside
+a team folder (not folders, not personal files).
+
 **Example Flow rule:**
 ```
 Trigger: File accessed
@@ -34,7 +37,7 @@ See [Flow Integration](../admin/flow-integration.md) for configuration details.
 
 ### Nextcloud Search
 
-Metadata values are indexed and searchable through Nextcloud's unified search. Users can find documents by metadata values.
+Metadata values are searchable through Nextcloud's unified search. Free-text search uses a word index per team folder, so every member finds files by their metadata; results only include files the user may read. Date, number, checkbox and File Link fields are not in the word index; find those with a field filter or a `field:value` query. See [Architecture Overview](overview.md#unified-search).
 
 ## SharePoint Migration
 
@@ -63,7 +66,7 @@ SharePoint          MetaVox API              Nextcloud
 | SharePoint Field | MetaVox Equivalent |
 |-----------------|-------------------|
 | Content Type | `select` field with options |
-| Modified By | `usergroup` field |
+| Modified By | `user` field |
 | Retention Label | `select` field |
 | Custom columns | Various field types |
 
@@ -127,19 +130,59 @@ Example: Notify document management system when document status changes to "Publ
 
 ### Custom App Integration
 
-PHP apps can use MetaVox services directly:
+PHP apps can use MetaVox services directly. These services do not check the
+user's rights; the calling app does.
 
 ```php
 use OCA\MetaVox\Service\FieldService;
 
-$fieldService = \OC::$server->get(FieldService::class);
+$fieldService = \OCP\Server::get(FieldService::class);
 
 // Get metadata for a file
-$metadata = $fieldService->getGroupfolderFileMetadata($fileId, $groupfolderId);
+$metadata = $fieldService->getGroupfolderFileMetadata($groupfolderId, $fileId);
 
-// Update metadata
-$fieldService->saveFileGfMetadata($fileId, $groupfolderId, $fieldName, $value);
+// Update metadata: file id => [field name => value]
+$fieldService->saveValues($groupfolderId, [$fileId => [$fieldName => $value]]);
 ```
+
+### Embedding the metadata panel
+
+Another app can show MetaVox's own metadata panel, the one in the Files
+sidebar, as the custom element `<metavox-metadata-form>`. The host gets the
+field pickers, the edit dialog, the team folder fields and the "Linked from"
+list, without depending on MetaVox's Vue version.
+
+Load the bundle while rendering the page. MetaVox is optional to the host, so
+guard the call:
+
+```php
+if (class_exists(\OCA\MetaVox\Embed\MetadataFormEmbed::class)) {
+    \OCP\Server::get(\OCA\MetaVox\Embed\MetadataFormEmbed::class)->load();
+}
+```
+
+`isAvailable($userId)` tells whether MetaVox is enabled for a user.
+
+Then place the element with a file id:
+
+```js
+const el = document.createElement('metavox-metadata-form')
+el.fileId = node.fileid
+container.appendChild(el)
+```
+
+The `file-id` attribute works too. MetaVox finds the team folder itself and
+decides whether the user may edit, by the same rule as every save: the host
+does not pass a team folder or permissions. A file outside a team folder
+shows a message instead of fields.
+
+Events bubble from the element:
+
+| Event | Detail |
+|---|---|
+| `metavox:loaded` | `{ fileId, fields }` |
+| `metavox:saved` | `{ fileId, metadata }` (the changed fields) |
+| `metavox:error` | `{ message }` |
 
 ## Data Exchange Formats
 
@@ -165,10 +208,11 @@ $fieldService->saveFileGfMetadata($fileId, $groupfolderId, $fieldName, $value);
 
 ### CSV Export
 
-Bulk editor exports metadata as CSV:
+Bulk editor exports metadata as CSV. The columns are the file path, the file
+name and one column per field, headed by the field label:
 
 ```csv
-file_path,file_name,status,department,review_date
+File path,File name,Status,Department,Review date
 /Documents/report.pdf,report.pdf,Approved,Legal,2025-01-15
 /Documents/memo.docx,memo.docx,Draft,HR,
 ```

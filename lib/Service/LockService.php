@@ -31,13 +31,17 @@ class LockService {
 
     /**
      * Unlock a cell after editing. Only removes if locked by this user.
+     *
+     * @return bool whether the cell is free now (also when the lock already
+     *   expired), so callers may announce the unlock
      */
-    public function unlock(int $groupfolderId, int $fileId, string $fieldName, string $userId): void {
+    public function unlock(int $groupfolderId, int $fileId, string $fieldName, string $userId): bool {
         $lockKey = "gf_{$groupfolderId}:{$fileId}:{$fieldName}";
         $existing = $this->cache->get($lockKey);
         if ($existing === $userId) {
             $this->cache->remove($lockKey);
         }
+        return $existing === null || $existing === $userId;
     }
 
     /**

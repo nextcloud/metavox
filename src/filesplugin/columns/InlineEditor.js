@@ -7,21 +7,30 @@
  */
 
 import axios from '@nextcloud/axios'
+import { showError, showWarning } from '../../utils/toast.js'
 import { generateUrl } from '@nextcloud/router'
 import { MARKER_CLASS } from './ColumnStyles.js'
 import { saveSingleField, saveBulkFields } from './MetaVoxAPI.js'
-import { parseFieldOptions, formatValue } from './ColumnUtils.js'
-import { permissionCache, metadataCache, getActiveGroupfolderId, getFilelinkName } from './MetaVoxState.js'
-import { parseValue, joinTokens, displayName } from '../../components/fields/filelinkUtils.js'
+import { requireFull } from './MetadataLoader.js'
+import { formatValue } from './ColumnUtils.js'
+import { optionItems } from '../../utils/fieldOptions.js'
+import { isRequired } from '../../utils/requiredFields.js'
+import { permissionCache, metadataCache, getActiveGroupfolderId, getActiveFolderPath } from './MetaVoxState.js'
+import { filelinkHref, filelinkLabel } from './FilelinkNames.js'
+import { parseValue, joinTokens, isWithin } from '../../components/fields/filelinkUtils.js'
+import { PLAIN_TEXT, splitMulti } from '../../utils/fieldValue.js'
 import { translate as t } from '@nextcloud/l10n'
-import { PLAIN_TEXT } from '../../utils/fieldValue.js'
 import { pushUndo } from './UndoSupport.js'
 import { dateFieldIncludesTime, padDatetimeLocal } from '../../utils/dateField.js'
+import { clearCellFormat } from './CellFormat.js'
 
 // ── Module-level state ─────────────────────────────────────────
 
 /** @type {HTMLElement|null} Currently active inline editor */
 let activeEditor = null
+
+/** The cell with the open editor, which a redraw has to leave alone. */
+export function getActiveEditorCell() { return activeEditor }
 
 // ── Callback for updateAllRowCells ─────────────────────────────
 
@@ -69,13 +78,18 @@ export function setSetCellValue(fn) { _setCellValue = fn }
  * @return {boolean}
  */
 export function canEditFile(fileId) {
-	const canEdit = permissionCache.get(fileId)
-	// If permissions were loaded, use them; if unknown, allow (new files)
-	return canEdit !== false
+	// Only what the server said: unknown is not editable yet.
+	return permissionCache.get(fileId) === true
 }
 
 /**
- * Attach a double-click handler to a table cell for inline editing.
+ * Make a table cell editable: by double-click, and by keyboard.
+ *
+ * The cell is the control, so it carries the affordances of one — it is
+ * focusable, it says what it is, and Enter or F2 opens the editor. A
+ * double-click alone left the grid's primary action reachable only with a
+ * mouse. F2 is there because that is what a spreadsheet uses, and this is a
+ * grid of values.
  *
  * @param {HTMLElement} td     The <td> element
  * @param {Object}      config Column configuration object
@@ -95,24 +109,88 @@ function lockedTitle(user) {
 }
 
 export function setupCellEditing(td, config) {
-	td.style.cursor = 'pointer'
-	td.addEventListener('dblclick', (e) => {
+	const open = (e) => {
 		e.preventDefault()
 		e.stopPropagation()
 
-		// Check if cell is locked by another user
+		// Locked by another user
 		if (td._metavoxLocked) return
 
-		// Check write permission (loaded from API response)
-		const fileId = Number(td.dataset.fileId)
-
-		if (!canEditFile(fileId)) {
+		// Write permission, loaded from the API response
+		if (!canEditFile(Number(td.dataset.fileId))) {
 			td.style.cursor = 'default'
+			td.removeAttribute('tabindex')
 			return
 		}
 
 		openInlineEditor(td, config)
-	})
+	}
+
+	td.style.cursor = 'pointer'
+	td.tabIndex = 0
+	td.classList.add('metavox-cell-editable')
+	td.addEventListener('dblclick', open)
+	td.addEventListener('keydown', (e) => {
+		// Enter and F2 only. Space would fight the file list's own row
+		// selection, and a bare letter would fight type-ahead.
+		if (e.key !== 'Enter' && e.key !== 'F2') return
+		// Keys typed in the open editor are the editor's: Enter there saves.
+		// This listener captures, so without this it took them first.
+		if (e.target !== td) return
+		// The file list listens for Enter on an ancestor and opens the file.
+		// Stop it here, before the guards below can return early — otherwise a
+		// locked or read-only cell still opens the file instead of doing
+		// nothing, which is worse than either outcome.
+		e.preventDefault()
+		e.stopPropagation()
+		open(e)
+	}, true)
+	updateCellAccessibleName(td, config)
+}
+
+/**
+ * Name the cell for assistive technology: which field, which value, and that
+ * it can be edited. Without this a screen reader reads a bare table cell and
+ * gives no hint that Enter does anything.
+ *
+ * @param {HTMLElement} td     The <td> element
+ * @param {Object}      config Column configuration object
+ */
+export function updateCellAccessibleName(td, config) {
+	// The renderer writes an em dash for no value and an ellipsis while the
+	// row is still loading; neither is a value to read out.
+	const shown = (td.textContent || '').trim()
+	let value = shown
+	if (shown === '\u2026') {
+		// TRANSLATORS Read out by screen readers as the value of a cell whose value is still loading
+		value = t('metavox', 'Loading\u00a0\u2026')
+	} else if (td.dataset.mvRequired) {
+		// TRANSLATORS Read out by screen readers as the value of a cell of a required field that has no value yet
+		value = t('metavox', 'Required, no value yet')
+	} else if (shown === '' || shown === '\u2014') {
+		// TRANSLATORS Adjective: read out by screen readers as the value of a cell that has no value
+		value = t('metavox', 'Empty')
+	}
+	// An attribute is plain text. The state of a highlight rule is read
+	// from the cell itself: setupCellEditing names the cell again later.
+	const state = td.dataset.mvNote
+	const vars = { field: config.field_label, value, state }
+	const editable = canEditFile(Number(td.dataset.fileId))
+	let label
+	if (state) {
+		label = editable
+			// TRANSLATORS Screen-reader name of an editable grid cell; {field} is the column name, {value} the cell value, {state} the name of a highlight, e.g. "Due date: 3 March 2026, Overdue. Press Enter to edit."
+			? t('metavox', '{field}: {value}, {state}. Press Enter to edit.', vars, undefined, PLAIN_TEXT)
+			// TRANSLATORS Screen-reader name of a read-only grid cell; {field} is the column name, {value} the cell value, {state} the name of a highlight, e.g. "Due date: 3 March 2026, Overdue."
+			: t('metavox', '{field}: {value}, {state}.', vars, undefined, PLAIN_TEXT)
+	} else {
+		label = editable
+			// TRANSLATORS Screen-reader name of an editable grid cell; {field} is the column name, {value} the cell value, e.g. "Status: Approved. Press Enter to edit."
+			? t('metavox', '{field}: {value}. Press Enter to edit.', vars, undefined, PLAIN_TEXT)
+			// TRANSLATORS Screen-reader name of a read-only grid cell; {field} is the column name, {value} the cell value, e.g. "Status: Approved."
+			: t('metavox', '{field}: {value}.', vars, undefined, PLAIN_TEXT)
+	}
+	td.setAttribute('aria-label', label)
 }
 
 /**
@@ -134,6 +212,15 @@ export async function openInlineEditor(td, config) {
 	const fieldName = td.dataset.metavoxField
 	const gfId = getActiveGroupfolderId()
 
+	// Never edit a cut-off value: load the full one first, before locking.
+	if (fileId && fieldName && !(await requireFull([fileId], fieldName))) {
+		showError(t('metavox', 'The full value could not be loaded. Try again.'))
+		return
+	}
+	// The file list may have handed the row to another file while we waited.
+	const rowReused = () => Number(td.dataset.fileId) !== fileId
+	if (rowReused()) return
+
 	// Try to acquire lock
 	if (gfId && fileId && fieldName) {
 		try {
@@ -153,6 +240,10 @@ export async function openInlineEditor(td, config) {
 				return
 			}
 			// Lock API unavailable — proceed without locking
+		}
+		if (rowReused()) {
+			releaseLock(gfId, fileId, fieldName)
+			return
 		}
 	}
 
@@ -192,9 +283,6 @@ export async function openInlineEditor(td, config) {
 				container.appendChild(item)
 			}
 
-			container.addEventListener('keydown', (e) => {
-				if (e.key === 'Escape') closeInlineEditor(true)
-			})
 			container.tabIndex = 0
 			editor = container
 			break
@@ -205,38 +293,36 @@ export async function openInlineEditor(td, config) {
 			// Custom dropdown styled like NcSelect
 			const container = document.createElement('div')
 			container.className = 'metavox-inline-editor metavox-inline-select'
-			const opts = parseFieldOptions(config.field_options)
 
-			// Clear option
-			const clearOpt = document.createElement('div')
-			clearOpt.className = 'metavox-select-option'
-			clearOpt.dataset.value = ''
-			clearOpt.textContent = '—'
-			// TRANSLATORS Verb: accessible name of the empty option that clears the cell value
-			clearOpt.setAttribute('aria-label', t('metavox', 'Clear'))
-			if (!currentValue) clearOpt.classList.add('metavox-select-option--selected')
-			clearOpt.addEventListener('click', () => {
-				saveSingleField(fileId, fieldName, '', { unlock: true })
-				closeInlineEditor(false)
-			})
-			container.appendChild(clearOpt)
+			// Clear option; a required field keeps a value.
+			if (!isRequired(config)) {
+				const clearOpt = document.createElement('div')
+				clearOpt.className = 'metavox-select-option'
+				clearOpt.dataset.value = ''
+				clearOpt.textContent = '—'
+				// TRANSLATORS Verb: accessible name of the empty option that clears the cell value
+				clearOpt.setAttribute('aria-label', t('metavox', 'Clear'))
+				if (!currentValue) clearOpt.classList.add('metavox-select-option--selected')
+				clearOpt.addEventListener('click', () => {
+					saveSingleField(fileId, fieldName, '', { unlock: true })
+					closeInlineEditor(false)
+				})
+				container.appendChild(clearOpt)
+			}
 
-			for (const opt of opts) {
+			for (const opt of optionItems(config.field_options)) {
 				const item = document.createElement('div')
 				item.className = 'metavox-select-option'
-				item.dataset.value = opt
-				item.textContent = opt
-				if (opt === currentValue) item.classList.add('metavox-select-option--selected')
+				item.dataset.value = opt.value
+				item.textContent = opt.label
+				if (opt.value === currentValue) item.classList.add('metavox-select-option--selected')
 				item.addEventListener('click', () => {
-					saveSingleField(fileId, fieldName, opt, { unlock: true })
+					saveSingleField(fileId, fieldName, opt.value, { unlock: true })
 					closeInlineEditor(false)
 				})
 				container.appendChild(item)
 			}
 
-			container.addEventListener('keydown', (e) => {
-				if (e.key === 'Escape') closeInlineEditor(true)
-			})
 			container.tabIndex = 0
 			editor = container
 			break
@@ -246,18 +332,17 @@ export async function openInlineEditor(td, config) {
 			// Create a dropdown with checkboxes
 			const container = document.createElement('div')
 			container.className = 'metavox-inline-editor metavox-inline-multiselect'
-			const opts = parseFieldOptions(config.field_options)
-			const selectedValues = currentValue ? currentValue.split(';#').filter(v => v.trim()) : []
+			const selectedValues = splitMulti(currentValue)
 
-			for (const opt of opts) {
+			for (const opt of optionItems(config.field_options)) {
 				const label = document.createElement('label')
 				label.className = 'metavox-ms-option'
 				const cb = document.createElement('input')
 				cb.type = 'checkbox'
-				cb.value = opt
-				cb.checked = selectedValues.includes(opt)
+				cb.value = opt.value
+				cb.checked = selectedValues.includes(opt.value)
 				label.appendChild(cb)
-				label.appendChild(document.createTextNode(' ' + opt))
+				label.appendChild(document.createTextNode(' ' + opt.label))
 				container.appendChild(label)
 			}
 
@@ -284,6 +369,8 @@ export async function openInlineEditor(td, config) {
 			btnRow.appendChild(saveBtn)
 			btnRow.appendChild(cancelBtn)
 			container.appendChild(btnRow)
+			// Focusable when there are no options to focus.
+			container.tabIndex = -1
 
 			editor = container
 			break
@@ -303,7 +390,6 @@ export async function openInlineEditor(td, config) {
 			}
 			editor.addEventListener('change', commit)
 			editor.addEventListener('keydown', (e) => {
-				if (e.key === 'Escape') closeInlineEditor(true)
 				if (e.key === 'Enter') commit()
 			})
 			break
@@ -315,7 +401,6 @@ export async function openInlineEditor(td, config) {
 			editor.className = 'metavox-inline-editor metavox-inline-input'
 			editor.value = currentValue || ''
 			editor.addEventListener('keydown', (e) => {
-				if (e.key === 'Escape') closeInlineEditor(true)
 				if (e.key === 'Enter') {
 					saveSingleField(fileId, fieldName, editor.value, { unlock: true })
 					closeInlineEditor(false)
@@ -351,18 +436,20 @@ export async function openInlineEditor(td, config) {
 			listEl.className = 'metavox-user-list'
 			container.appendChild(listEl)
 
-			// Clear option (always visible)
-			const clearOpt = document.createElement('div')
-			clearOpt.className = 'metavox-select-option metavox-user-option'
-			clearOpt.textContent = '—'
-			// TRANSLATORS Verb: accessible name of the empty option that clears the cell value
-			clearOpt.setAttribute('aria-label', t('metavox', 'Clear'))
-			if (!currentValue) clearOpt.classList.add('metavox-select-option--selected')
-			clearOpt.addEventListener('click', () => {
-				saveSingleField(fileId, fieldName, '', { unlock: true })
-				closeInlineEditor(false)
-			})
-			listEl.appendChild(clearOpt)
+			// Clear option, always visible; a required field keeps a value.
+			if (!isRequired(config)) {
+				const clearOpt = document.createElement('div')
+				clearOpt.className = 'metavox-select-option metavox-user-option'
+				clearOpt.textContent = '—'
+				// TRANSLATORS Verb: accessible name of the empty option that clears the cell value
+				clearOpt.setAttribute('aria-label', t('metavox', 'Clear'))
+				if (!currentValue) clearOpt.classList.add('metavox-select-option--selected')
+				clearOpt.addEventListener('click', () => {
+					saveSingleField(fileId, fieldName, '', { unlock: true })
+					closeInlineEditor(false)
+				})
+				listEl.appendChild(clearOpt)
+			}
 
 			// Show current value if set
 			if (currentValue) {
@@ -379,12 +466,14 @@ export async function openInlineEditor(td, config) {
 				listEl.appendChild(currentItem)
 			}
 
+			// What stays above the search results: the clear option and the current value.
+			const kept = listEl.children.length
 			let searchTimer = null
 
 			const doSearch = (query) => {
 				if (query.length < 2) {
 					// Clear results, keep clear option + current
-					while (listEl.children.length > (currentValue ? 2 : 1)) {
+					while (listEl.children.length > kept) {
 						listEl.removeChild(listEl.lastChild)
 					}
 					return
@@ -392,7 +481,7 @@ export async function openInlineEditor(td, config) {
 
 				axios.get(generateUrl('/apps/metavox/api/users'), { params: { search: query } }).then(resp => {
 					// Remove old results (keep clear option + current value)
-					while (listEl.children.length > (currentValue ? 2 : 1)) {
+					while (listEl.children.length > kept) {
 						listEl.removeChild(listEl.lastChild)
 					}
 
@@ -440,12 +529,8 @@ export async function openInlineEditor(td, config) {
 				searchTimer = setTimeout(() => doSearch(searchInput.value.trim()), 300)
 			})
 
-			container.addEventListener('keydown', (e) => {
-				if (e.key === 'Escape') closeInlineEditor(true)
-			})
 
 			editor = container
-			setTimeout(() => searchInput.focus(), 0)
 			break
 		}
 
@@ -459,14 +544,16 @@ export async function openInlineEditor(td, config) {
 			input.className = 'metavox-url-input'
 			input.value = currentValue || ''
 			// TRANSLATORS Placeholder of the web address box in the cell editor; {example} is an example address, e.g. "Enter URL (https://example.com)"
-			input.placeholder = t('metavox', 'Enter URL ({example})', { example: 'https://example.com' })
+			input.placeholder = t('metavox', 'Enter URL ({example})', { example: 'https://example.com' }, undefined, PLAIN_TEXT)
 			container.appendChild(input)
 
 			const openBtn = document.createElement('a')
 			openBtn.className = 'metavox-url-open'
 			openBtn.textContent = '↗'
+			// The glyph is not a name and `title` is not reliably announced
+			// (§4), so without this the link had no accessible name.
 			// TRANSLATORS Accessible name of the small button that opens the entered web address in a new tab
-			openBtn.title = t('metavox', 'Open link')
+			openBtn.setAttribute('aria-label', t('metavox', 'Open link'))
 			openBtn.target = '_blank'
 			openBtn.rel = 'noopener noreferrer'
 			const updateLink = () => {
@@ -479,7 +566,6 @@ export async function openInlineEditor(td, config) {
 			container.appendChild(openBtn)
 
 			input.addEventListener('keydown', (e) => {
-				if (e.key === 'Escape') closeInlineEditor(true)
 				if (e.key === 'Enter') {
 					saveSingleField(fileId, fieldName, input.value.trim(), { unlock: true })
 					closeInlineEditor(false)
@@ -497,7 +583,6 @@ export async function openInlineEditor(td, config) {
 			})
 
 			editor = container
-			setTimeout(() => input.focus(), 0)
 			break
 		}
 
@@ -512,19 +597,16 @@ export async function openInlineEditor(td, config) {
 
 			// Existing references (open by fileid when available).
 			fileTokens.forEach((token) => {
-				const name = displayName(token, { [token.fileId]: getFilelinkName(token.fileId) })
+				const { label, title, missing } = filelinkLabel(token)
 
-				const openBtn = document.createElement('a')
-				openBtn.className = 'metavox-filelink-open'
-				openBtn.textContent = name
-				openBtn.title = token.path || name
-				openBtn.target = '_blank'
-				openBtn.rel = 'noopener noreferrer'
-				if (token.fileId != null) {
-					openBtn.href = generateUrl('/f/{fileId}', { fileId: token.fileId })
-				} else {
-					const dir = token.path.substring(0, token.path.lastIndexOf('/'))
-					openBtn.href = generateUrl('/apps/files/?dir={dir}&openfile={file}', { dir, file: token.path })
+				const openBtn = document.createElement(missing ? 'span' : 'a')
+				openBtn.className = missing ? 'metavox-filelink-open metavox-filelink-missing' : 'metavox-filelink-open'
+				openBtn.textContent = label
+				openBtn.title = title
+				if (!missing) {
+					openBtn.target = '_blank'
+					openBtn.rel = 'noopener noreferrer'
+					openBtn.href = filelinkHref(token)
 				}
 				container.appendChild(openBtn)
 			})
@@ -543,11 +625,16 @@ export async function openInlineEditor(td, config) {
 			browseBtn.textContent = t('metavox', 'Add file')
 			browseBtn.addEventListener('click', () => {
 				if (typeof OC !== 'undefined' && OC.dialogs) {
+					// Start in the team folder: a link must point inside it.
+					const base = getActiveFolderPath()
 					OC.dialogs.filepicker(
 						// TRANSLATORS Title of the file picker dialog for a file-link field
 						t('metavox', 'Select a file or folder'),
 						(path) => {
-							if (path) {
+							if (path && !isWithin(path, base)) {
+								// TRANSLATORS Warning when a picked file lies outside the current folder; "Team folder" is the Nextcloud feature name, use its official translation
+								showWarning(t('metavox', 'You can only link files inside this Team folder'))
+							} else if (path) {
 								// Append the picked file to the existing set.
 								const newValue = joinTokens([...fileTokens, { fileId: null, path }])
 								saveSingleField(fileId, fieldName, newValue, { unlock: true })
@@ -556,7 +643,7 @@ export async function openInlineEditor(td, config) {
 						},
 						false, undefined, true,
 						OC.dialogs.FILEPICKER_TYPE_CHOOSE,
-						'/',
+						base || '/',
 						{ allowDirectoryChooser: true }
 					)
 				}
@@ -568,7 +655,7 @@ export async function openInlineEditor(td, config) {
 				clearBtn.className = 'metavox-filelink-clear'
 				clearBtn.textContent = '✕'
 				// TRANSLATORS Verb: accessible name of the cross button that removes all linked files from the cell
-				clearBtn.title = t('metavox', 'Clear')
+				clearBtn.setAttribute('aria-label', t('metavox', 'Clear'))
 				clearBtn.addEventListener('click', () => {
 					saveSingleField(fileId, fieldName, '', { unlock: true })
 					closeInlineEditor(false)
@@ -576,9 +663,6 @@ export async function openInlineEditor(td, config) {
 				container.appendChild(clearBtn)
 			}
 
-			container.addEventListener('keydown', (e) => {
-				if (e.key === 'Escape') closeInlineEditor(true)
-			})
 			container.tabIndex = 0
 
 			editor = container
@@ -592,7 +676,6 @@ export async function openInlineEditor(td, config) {
 			editor.className = 'metavox-inline-editor metavox-inline-input'
 			editor.value = currentValue || ''
 			editor.addEventListener('keydown', (e) => {
-				if (e.key === 'Escape') closeInlineEditor(true)
 				if (e.key === 'Enter') {
 					saveSingleField(fileId, fieldName, editor.value, { unlock: true })
 					closeInlineEditor(false)
@@ -613,8 +696,10 @@ export async function openInlineEditor(td, config) {
 		}
 	}
 
-	// Replace cell content with editor
+	// Replace cell content with editor. No highlight while it is edited:
+	// closing the editor paints the cell again.
 	td.textContent = ''
+	clearCellFormat(td)
 	td.style.position = 'relative'
 
 	// Dropdowns need to be portaled to body to escape table overflow
@@ -672,11 +757,12 @@ export async function openInlineEditor(td, config) {
 	td.appendChild(handle)
 	setupFillHandle(handle, td, config)
 
-	// Focus the editor
-	if (editor.tagName === 'INPUT' || editor.tagName === 'SELECT') {
-		editor.focus()
-		if (editor.type === 'text') editor.select()
-	}
+	// Focus the editor so its keys reach it: the field in it, or else the
+	// dropdown itself. Without scrolling: a scroll closes a dropdown.
+	const focusTarget = editor.matches('input') ? editor : (editor.querySelector('input') || editor)
+	focusTarget.focus({ preventScroll: true })
+	if (focusTarget === editor && editor.type === 'text') editor.select()
+	document.addEventListener('keydown', handleEditorKeydown)
 
 	// Close on click outside
 	setTimeout(() => {
@@ -685,13 +771,40 @@ export async function openInlineEditor(td, config) {
 
 	// Close portaled dropdowns on scroll (they don't follow the page)
 	if (isDropdown) {
-		const scrollHandler = () => {
-			closeInlineEditor(true)
+		const scrollHandler = (e) => {
+			// The dropdown scrolling its own list (wheel, Tab or arrow keys) keeps it open.
+			if (e.target === editor || editor.contains(e.target)) return
+			closeInlineEditor(true, { refocus: editor.contains(document.activeElement) })
 		}
 		// Listen on capture phase to catch scroll on any container
-		document.addEventListener('scroll', scrollHandler, { capture: true, once: true })
+		document.addEventListener('scroll', scrollHandler, { capture: true })
 		td._scrollHandler = scrollHandler
 	}
+}
+
+/** Whether a target is in the open editor: its cell or its dropdown. */
+function inEditor(target) {
+	return !!activeEditor && (activeEditor.contains(target) || !!activeEditor._portalEditor?.contains(target))
+}
+
+/**
+ * Escape cancels the edit from anywhere in the editor. Keys typed in the
+ * editor stay there: the file list would deselect the row on Escape, rename
+ * the file on F2. A dialog opened from the editor (the file picker) keeps
+ * its own keys.
+ *
+ * @param {KeyboardEvent} e
+ */
+export function handleEditorKeydown(e) {
+	if (!activeEditor) return
+	if (e.key === 'Escape') {
+		if (e.isComposing || (!inEditor(e.target) && e.target !== document.body)) return
+		e.preventDefault()
+		e.stopPropagation()
+		closeInlineEditor(true, { refocus: true })
+		return
+	}
+	if (inEditor(e.target)) e.stopPropagation()
 }
 
 /**
@@ -704,13 +817,30 @@ export function handleEditorClickOutside(e) {
 		document.removeEventListener('mousedown', handleEditorClickOutside)
 		return
 	}
-	// Check both the cell and portaled dropdown (multiselect)
-	const inCell = activeEditor.contains(e.target)
-	const inPortal = activeEditor._portalEditor && activeEditor._portalEditor.contains(e.target)
-	if (!inCell && !inPortal) {
+	// A dialog over the page, such as the file picker opened from the editor,
+	// is part of the edit: picking a file there must not cancel it.
+	if (!inEditor(e.target) && !e.target.closest?.('[role="dialog"]')) {
 		closeInlineEditor(true)
 		document.removeEventListener('mousedown', handleEditorClickOutside)
 	}
+}
+
+/**
+ * Release this user's lock on a cell. A beacon, so it also arrives while the
+ * window blurs or closes.
+ *
+ * @param {number} gfId
+ * @param {number} fileId
+ * @param {string} fieldName
+ */
+function releaseLock(gfId, fileId, fieldName) {
+	if (!gfId || !fileId || !fieldName) return
+	const url = generateUrl('/apps/metavox/api/groupfolders/{gfId}/files/{fileId}/unlock', { gfId, fileId })
+	const token = document.querySelector('head[data-requesttoken]')?.dataset?.requesttoken || ''
+	const formData = new FormData()
+	formData.append('field_name', fieldName)
+	formData.append('requesttoken', token)
+	navigator.sendBeacon(url, formData)
 }
 
 /**
@@ -718,28 +848,21 @@ export function handleEditorClickOutside(e) {
  *
  * @param {boolean} cancel If true, restore original cell content instead of
  *                         re-rendering from cache.
+ * @param {object} [options]
+ * @param {boolean} [options.refocus] Put the focus back on the cell.
  */
-export function closeInlineEditor(cancel) {
+export function closeInlineEditor(cancel, { refocus = false } = {}) {
 	if (!activeEditor) return
 	const td = activeEditor
 	activeEditor = null
+	td._cancelFill?.()
 
 	document.removeEventListener('mousedown', handleEditorClickOutside)
+	document.removeEventListener('keydown', handleEditorKeydown)
 
 	// Release lock only on cancel — on save, the lock is released via combined save+unlock
-	// Uses sendBeacon to ensure the unlock reaches the server even during window blur/close
 	if (cancel) {
-		const fileId = Number(td.dataset?.fileId)
-		const fieldName = td.dataset?.metavoxField
-		const gfId = getActiveGroupfolderId()
-		if (gfId && fileId && fieldName) {
-			const url = generateUrl('/apps/metavox/api/groupfolders/{gfId}/files/{fileId}/unlock', { gfId, fileId })
-			const token = document.querySelector('head[data-requesttoken]')?.dataset?.requesttoken || ''
-			const formData = new FormData()
-			formData.append('field_name', fieldName)
-			formData.append('requesttoken', token)
-			navigator.sendBeacon(url, formData)
-		}
+		releaseLock(getActiveGroupfolderId(), Number(td.dataset?.fileId), td.dataset?.metavoxField)
 	}
 
 	// Remove portaled dropdown from body
@@ -754,19 +877,23 @@ export function closeInlineEditor(cancel) {
 		delete td._scrollHandler
 	}
 
-	// Always re-render from cache (restores rich content like avatars, link buttons)
+	// Always re-render from cache (restores rich content like avatars, link buttons).
+	// On cancel too: a save by someone else while the editor was open is newer
+	// than the value it opened with, and the redraws skipped this cell.
 	const fileId2 = Number(td.dataset.fileId)
 	const fieldName2 = td.dataset.metavoxField
 	const activeColumnConfigs = _getActiveColumnConfigs ? _getActiveColumnConfigs() : []
 	const config2 = activeColumnConfigs.find(c => c.field_name === fieldName2)
-	const meta2 = metadataCache.get(fileId2) || {}
+	const meta2 = metadataCache.get(fileId2)
 	if (config2 && _setCellValue) {
-		_setCellValue(td, cancel ? td._originalValue : meta2[fieldName2], config2)
+		_setCellValue(td, meta2 ? meta2[fieldName2] : td._originalValue, config2)
 	}
 
 	delete td._originalContent
 	delete td._originalValue
 	td.style.position = ''
+	// Back on the cell, so the keyboard stays where it was.
+	if (refocus && td.isConnected) td.focus({ preventScroll: true })
 }
 
 /**
@@ -779,7 +906,9 @@ export function closeInlineEditor(cancel) {
  */
 export function setupFillHandle(handle, sourceTd, config) {
 	const fieldName = sourceTd.dataset.metavoxField
+	// Each highlighted cell with the file it showed when it was highlighted.
 	let highlightedCells = []
+	let value = ''
 
 	function getCellsBelow(sourceTd, fieldName) {
 		const sourceRow = sourceTd.closest('tr')
@@ -799,17 +928,19 @@ export function setupFillHandle(handle, sourceTd, config) {
 		return cells
 	}
 
-	function highlightTo(targetY) {
-		// Clear previous highlights
-		for (const c of highlightedCells) c.classList.remove('metavox-fill-highlight')
+	function clearHighlights() {
+		for (const { cell } of highlightedCells) cell.classList.remove('metavox-fill-highlight')
 		highlightedCells = []
+	}
 
+	function highlightTo(targetY) {
+		clearHighlights()
 		const cellsBelow = getCellsBelow(sourceTd, fieldName)
 		for (const cell of cellsBelow) {
 			const rect = cell.getBoundingClientRect()
 			if (rect.top < targetY) {
 				cell.classList.add('metavox-fill-highlight')
-				highlightedCells.push(cell)
+				highlightedCells.push({ cell, fileId: Number(cell.dataset.fileId) })
 			} else {
 				break
 			}
@@ -821,21 +952,40 @@ export function setupFillHandle(handle, sourceTd, config) {
 		highlightTo(e.clientY)
 	}
 
-	function onMouseUp(e) {
+	function stopDrag() {
 		document.removeEventListener('mousemove', onMouseMove)
 		document.removeEventListener('mouseup', onMouseUp)
+		delete sourceTd._cancelFill
+	}
 
-		if (highlightedCells.length === 0) return
+	async function onMouseUp(e) {
+		stopDrag()
 
-		// Get value from editor
-		const editorEl = sourceTd.querySelector('input, select')
-		const value = editorEl ? editorEl.value : sourceTd._originalValue || ''
+		// A row the file list handed to another file during the drag, or one no
+		// longer editable, is left out.
+		const cells = []
+		for (const { cell, fileId } of highlightedCells) {
+			if (cell.isConnected !== false && Number(cell.dataset.fileId) === fileId && canEditFile(fileId)) {
+				cells.push(cell)
+			} else {
+				cell.classList.remove('metavox-fill-highlight')
+			}
+		}
+		highlightedCells = []
+		if (cells.length === 0) return
+
+		// Undo keeps the old values, so those must be the full ones.
+		if (!(await requireFull(cells.map((cell) => Number(cell.dataset.fileId)), fieldName))) {
+			cells.forEach((cell) => cell.classList.remove('metavox-fill-highlight'))
+			showError(t('metavox', 'The full values could not be loaded. Nothing was filled.'))
+			return
+		}
 
 		// Collect file IDs and old values, then save in one bulk call
 		const activeColumnConfigs = _getActiveColumnConfigs ? _getActiveColumnConfigs() : []
 		const undoEntries = []
 		const fileIds = []
-		for (const cell of highlightedCells) {
+		for (const cell of cells) {
 			cell.classList.remove('metavox-fill-highlight')
 			const fileId = Number(cell.dataset.fileId)
 			const meta = metadataCache.get(fileId) || {}
@@ -844,7 +994,6 @@ export function setupFillHandle(handle, sourceTd, config) {
 			const cellConfig = activeColumnConfigs.find(c => c.field_name === fieldName)
 			if (cellConfig && _setCellValue) _setCellValue(cell, value, cellConfig)
 		}
-		highlightedCells = []
 
 		// Single bulk API call instead of N separate requests
 		if (fileIds.length > 0) {
@@ -863,6 +1012,14 @@ export function setupFillHandle(handle, sourceTd, config) {
 	handle.addEventListener('mousedown', (e) => {
 		e.preventDefault()
 		e.stopPropagation()
+		// Taken now: the editor may close during the drag.
+		const editorEl = sourceTd.querySelector('input, select')
+		value = editorEl ? editorEl.value : sourceTd._originalValue || ''
+		// Closing the editor ends the drag, so a fill never outlives its source.
+		sourceTd._cancelFill = () => {
+			stopDrag()
+			clearHighlights()
+		}
 		document.addEventListener('mousemove', onMouseMove)
 		document.addEventListener('mouseup', onMouseUp)
 	})

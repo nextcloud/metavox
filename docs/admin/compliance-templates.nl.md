@@ -13,10 +13,16 @@ MetaVox bevat voor-gedefinieerde metadata-templates voor Nederlandse overheids-c
 
 ## Installatie
 
-1. Ga naar **Instellingen → MetaVox → Team folder-metadata**
-2. Klik **JSON-bestand selecteren** onder "Import & Export"
-3. Selecteer het gewenste template-bestand uit `/templates/compliance/`
-4. Bekijk de preview en klik **Bevestig import**
+De templates zitten bij de app, in de map `templates/compliance/`, en staan in de [GitHub-repository](https://github.com/nextcloud/metavox/tree/main/templates/compliance). Sla eerst het template dat je nodig hebt op je computer op.
+
+1. Ga naar **Instellingen → Beheer → MetaVox** en open het onderdeel **Bestanden**. De templates beschrijven documenten, dus het zijn bestandsvelden.
+2. Open het menu naast **Nieuw veld** en kies **Import from JSON …**.
+3. Kies het template-bestand.
+4. **Import Voorbeeld** toont de velden in het bestand, met hun interne naam en type. Klik **Velden importeren**.
+
+De import zet het voorvoegsel van het onderdeel voor elke naam: `file_gf_` bij **Bestanden**, `gf_` bij **Teammappen**. Zo wordt `bevat_persoonsgegevens` `file_gf_bevat_persoonsgegevens`. Een naam die het voorvoegsel al heeft, blijft zoals hij is. Een veld waarvan de naam al bestaat, wordt niet geïmporteerd; MetaVox meldt dan hoeveel velden mislukten.
+
+Wijs de velden daarna toe aan Team folders, in het onderdeel **Per map**.
 
 ## Template-details
 
@@ -26,10 +32,10 @@ Velden voor het classificeren van documenten volgens de Algemene Verordening Geg
 
 | Veld | Type | Beschrijving |
 |------|------|--------------|
-| Bevat persoonsgegevens | Checkbox | Verplicht — geeft aan of het document persoonsgegevens bevat |
-| Categorie persoonsgegevens | Multi-select | Welke categorieën (NAW, financieel, gezondheid, etc.) |
-| Verwerkingsgrondslag | Select | AVG-rechtsgrond (toestemming, overeenkomst, wettelijke verplichting, etc.) |
-| Bewaartermijn (jaren) | Getal | Maximale bewaartermijn volgens AVG |
+| Bevat persoonsgegevens | Selectievakje | Geeft aan of het document persoonsgegevens bevat. Niet verplicht: een selectievakje heeft altijd een antwoord, aangevinkt of niet. Het template markeert het als verplicht; de import negeert dat |
+| Categorie persoonsgegevens | Meerkeuze | Welke categorieën (NAW, financieel, gezondheid, etc.) |
+| Verwerkingsgrondslag | Dropdown | AVG-rechtsgrond (toestemming, overeenkomst, wettelijke verplichting, etc.) |
+| Bewaartermijn (jaren) | Nummer | Maximale bewaartermijn volgens AVG |
 | Verwerkingsverantwoordelijke | Tekst | Wie verantwoordelijk is voor de gegevensverwerking |
 
 **Use case**: AVG-verantwoording bij verzoeken van betrokkenen of vragen van de Autoriteit Persoonsgegevens.
@@ -40,11 +46,11 @@ Velden voor het classificeren van documenten volgens de Wet Open Overheid:
 
 | Veld | Type | Beschrijving |
 |------|------|--------------|
-| Publicatie-status | Select | Verplicht — openbaar, gedeeltelijk openbaar, niet openbaar |
-| WOO-categorie | Select | Informatie-categorie volgens artikel 3.3 |
-| Uitzonderingsgrond | Multi-select | Reden voor beperkte publicatie (artikelen 5.1–5.5) |
+| Publicatie-status | Dropdown | Verplicht — openbaar, gedeeltelijk openbaar, niet openbaar, te beoordelen |
+| WOO-categorie | Dropdown | Informatie-categorie volgens artikel 3.3 |
+| Uitzonderingsgrond | Meerkeuze | Reden voor beperkte publicatie (artikelen 5.1–5.5) |
 | WOO-verzoek ontvangen | Datum | Datum waarop WOO-verzoek werd ontvangen |
-| Actieve publicatie | Checkbox | Onderworpen aan actieve publicatieplicht |
+| Actieve publicatie | Selectievakje | Onderworpen aan actieve publicatieplicht |
 | Publicatie-datum | Datum | Wanneer het document publiek werd gemaakt |
 
 **Use case**: snel reageren op WOO-verzoeken, documenten identificeren voor proactieve publicatie.
@@ -55,12 +61,12 @@ Velden voor archivering en selectielijst-compliance:
 
 | Veld | Type | Beschrijving |
 |------|------|--------------|
-| Archief-categorie | Select | Verplicht — te vernietigen, blijvend bewaren, overdragen |
-| Vernietigings-jaar | Getal | Jaar waarin het document moet worden vernietigd |
+| Archief-categorie | Dropdown | Verplicht — te vernietigen, blijvend bewaren, overdragen |
+| Vernietigings-jaar | Nummer | Jaar waarin het document moet worden vernietigd |
 | Selectielijst-code | Tekst | Code uit VNG- of nationale selectielijst |
 | Zaaktype | Tekst | Type zaak waar het document toe behoort |
-| Dossier-status | Select | Open, gesloten, gearchiveerd, vernietigd |
-| Bewaartermijn (jaren) | Getal | Bewaartermijn volgens selectielijst |
+| Dossier-status | Dropdown | Open, gesloten, gearchiveerd, vernietigd |
+| Bewaartermijn (jaren) | Nummer | Bewaartermijn volgens selectielijst |
 | Archiveer-datum | Datum | Datum van archivering |
 | Archief-locatie | Tekst | Fysieke of digitale locatie |
 
@@ -106,9 +112,9 @@ De Archiefwet stelt eisen aan:
 
 Templates zijn een startpunt. Pas ze aan voor je organisatie:
 
-1. **Exporteer** huidige velden via MetaVox-beheer
+1. **Exporteer** de velden met **Exporteren naar JSON**, in hetzelfde menu als de import. De export laat het voorvoegsel weg.
 2. **Bewerk** het JSON-bestand
-3. **Importeer** de aangepaste versie
+3. **Importeer** de aangepaste versie met **Import from JSON …**
 
 ### JSON-structuur
 
@@ -128,13 +134,15 @@ Templates zijn een startpunt. Pas ze aan voor je organisatie:
 ]
 ```
 
-**Beschikbare veldtypen**: `text`, `textarea`, `number`, `date`, `select`, `multiselect`, `checkbox`, `url`, `usergroup`, `filelink`
+Laat het voorvoegsel weg uit `field_name`: de import zet het ervoor. `is_required` doet niets bij een `checkbox`; die is nooit verplicht.
+
+**Beschikbare veldtypen**: `text`, `textarea`, `number`, `date`, `select`, `multiselect`, `checkbox`, `url`, `user`, `filelink` (`usergroup` uit oudere bestanden wordt gelezen als `user`)
 
 **Datum-velden** kunnen optioneel een tijd-component bevatten (`includeTime: true` in `field_options`) — zie [Veldtypen → Datum](../user/field-types.md#datum). Handig voor SharePoint-migraties waar `SPFieldDateTime.DisplayFormat = DateTime`-kolommen lossless heen-en-weer moeten gaan.
 
 ## Bronnen
 
-- [MetaVox GitHub](https://github.com/voxcloud/metavox)
+- [MetaVox GitHub](https://github.com/nextcloud/metavox)
 - [VNG selectielijst](https://vng.nl/selectielijst) — Officiële gemeentelijke selectielijst
 - [Autoriteit Persoonsgegevens](https://autoriteitpersoonsgegevens.nl) — AVG-informatie
 - [Wet Open Overheid](https://wetten.overheid.nl/BWBR0045754) — Officiële wettekst

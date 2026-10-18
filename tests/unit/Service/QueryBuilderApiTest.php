@@ -89,4 +89,30 @@ class QueryBuilderApiTest extends TestCase {
             . implode("\n", $offenders)
         );
     }
+
+    /** Both exist only in newer NC versions than we support. */
+    public function testNoApisMissingOnNc31(): void {
+        $patterns = [
+            '/->\s*fetchAssociative\s*\(/' => 'fetchAssociative() (NC 33+), use fetch()',
+            '/::\s*MAX_IN_PARAMETERS\b/' => 'IQueryBuilder::MAX_IN_PARAMETERS (NC 35+), use 1000',
+        ];
+        $offenders = [];
+
+        $rii = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator(__DIR__ . '/../../../lib', \FilesystemIterator::SKIP_DOTS)
+        );
+        foreach ($rii as $file) {
+            if ($file->getExtension() !== 'php') {
+                continue;
+            }
+            $contents = file_get_contents($file->getPathname());
+            foreach ($patterns as $pattern => $message) {
+                if (preg_match($pattern, $contents)) {
+                    $offenders[] = $file->getPathname() . ' uses ' . $message;
+                }
+            }
+        }
+
+        $this->assertSame([], $offenders, implode("\n", $offenders));
+    }
 }

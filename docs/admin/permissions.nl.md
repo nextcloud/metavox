@@ -1,91 +1,49 @@
 # MetaVox permissies
 
-MetaVox gebruikt Nextcloud's bestaande permissie-systeem. Deze gids legt uit hoe permissies voor metadata werken.
+MetaVox volgt de rechten van Nextcloud zelf. Of iemand metadata mag zien of wijzigen, hangt af van wat Nextcloud toestaat voor het bestand en de Team folder, geavanceerde rechten (ACL) inbegrepen. MetaVox voegt één eigen recht toe: velden toekennen en standaardwaarden instellen.
 
-## Permissie-model
+## Wie mag wat
 
-MetaVox heeft een granulair systeem met drie niveaus, toewijsbaar per gebruiker, per groep en per groupfolder:
+| Actie | Wie |
+|-------|-----|
+| Metadata van een bestand zien (kolommen, zijbalk, zoeken, export) | Iedereen die het bestand in zijn Team folder kan openen |
+| Metadata van een bestand wijzigen (raster, zijbalk, bulkeditor, API) | Iedereen die het bestand in zijn Team folder mag wijzigen |
+| Weergaven maken, wijzigen, ordenen en verwijderen | Leden die de Team folder mogen wijzigen |
+| Metadata van de Team folder zelf wijzigen | Leden die de Team folder mogen wijzigen |
+| Velden toekennen aan een Team folder, standaardwaarden instellen | Leden met het MetaVox-beheerrecht die de Team folder mogen wijzigen |
+| Velddefinities maken, wijzigen en verwijderen | Nextcloud-beheerders |
+| MetaVox-beheerinstellingen | Nextcloud-beheerders |
 
-| Permissie | Beschrijving | Standaard |
-|-----------|--------------|-----------|
-| `view_metadata` | Metadata-waarden bekijken | Alle gebruikers met folder-toegang |
-| `edit_metadata` | Metadata bewerken voor bestanden | Gebruikers met schrijfrechten |
-| `manage_fields` | Velden aanmaken/bewerken/verwijderen, weergaven beheren | Alleen beheerders |
+Nextcloud-beheerders mogen dit allemaal in elke Team folder.
 
-Nextcloud-beheerders hebben altijd alle permissies, ongeacht configuratie.
+- **Het bestand mogen wijzigen** betekent: het wijzigrecht van Nextcloud op het bestand in zijn Team folder, ACL inbegrepen. Een bestand dat je alleen via een share bereikt telt niet: metadata hoort bij de Team folder.
+- Met ACL gelden de rechten per bestand. In een map waar je overal mag schrijven, blijft een bestand waarop je alleen leesrecht hebt alleen-lezen, in het raster én in de zijbalk.
+- **De Team folder mogen wijzigen** betekent: het wijzigrecht van Nextcloud op de bovenste map van de Team folder, ACL inbegrepen.
+- Weergaven zijn gedeeld door alle leden. Wie de Team folder mag wijzigen, mag ook weergaven van anderen wijzigen of verwijderen.
+- In de webinterface bewerk je de eigen metadata van de Team folder in de persoonlijke instellingen → MetaVox, die alleen gebruikers met het beheerrecht zien. Andere leden die de Team folder mogen wijzigen, kunnen die metadata via de API wijzigen. In de zijbalk van Bestanden is ze altijd alleen-lezen.
 
-### Permissie-matrix
+## Het beheerrecht
 
-| Actie | view_metadata | edit_metadata | manage_fields | Admin |
-|-------|:-------------:|:-------------:|:-------------:|:-----:|
-| Metadata in zijbalk bekijken | Ja | Ja | Ja | Ja |
-| Metadata-kolommen in bestandenlijst zien | Ja | Ja | Ja | Ja |
-| Documentmetadata bewerken | Nee | Ja | Ja | Ja |
-| Bulk-metadata-editor gebruiken | Nee | Ja | Ja | Ja |
-| Metadata naar CSV exporteren | Nee | Ja | Ja | Ja |
-| Velden aanmaken/bewerken/verwijderen | Nee | Nee | Ja | Ja |
-| Weergaven aanmaken/bewerken/verwijderen | Nee | Nee | Ja | Ja |
-| Veld-definities import/export | Nee | Nee | Ja | Ja |
-| MetaVox-admin-instellingen openen | Nee | Nee | Nee | Ja |
+Een beheerder geeft het aan groepen op de MetaVox-beheerpagina: Beheerinstellingen → MetaVox → **Rechten** → **Recht toevoegen**. Kies een of meer groepen onder **Selecteer groepen** en klik **Recht toekennen**. Het recht staat er als **Metadatavelden en weergaves beheren** en geldt voor elke Team folder. Met **Intrekken** haal je het weer weg.
 
-## Permissies toekennen
+Wat het recht toestaat, in een Team folder waar de gebruiker lid van is en die hij mag wijzigen:
 
-### Aan een gebruiker
+- Velden aan de Team folder toekennen
+- Standaardwaarden instellen voor de bestandsvelden ervan
 
-```bash
-curl -X POST "https://your-nextcloud.com/apps/metavox/api/permissions/user" \
-  -H "Content-Type: application/json" \
-  -b "session-cookie" \
-  -d '{"user_id": "jane", "permission": "edit_metadata", "groupfolder_id": 3}'
-```
+Wie het voor minstens één Team folder heeft, vindt een MetaVox-onderdeel in de persoonlijke instellingen. Daar ken je met **Velden configureren** velden toe en stel je standaardwaarden in, en wijzig je met **Metadata bewerken** de eigen metadata van de Team folder.
 
-### Aan een groep
+Wat het recht niet doet:
 
-```bash
-curl -X POST "https://your-nextcloud.com/apps/metavox/api/permissions/group" \
-  -H "Content-Type: application/json" \
-  -b "session-cookie" \
-  -d '{"group_id": "woo-beheerders", "permission": "manage_fields", "groupfolder_id": 3}'
-```
+- Het geeft geen toegang tot bestanden of metadata. Bestandsmetadata zien en wijzigen volgt de eigen rechten van Nextcloud.
+- Het is niet nodig voor weergaven, ondanks het label. Weergaven maken en wijzigen vraagt schrijfrecht op de bovenste map van de Team folder, meer niet.
+- Het staat niet toe velddefinities te maken, te wijzigen of te verwijderen. Dat blijft bij Nextcloud-beheerders.
 
-### Permissies bekijken
+## Als iets niet mag
 
-```bash
-# Alle permissies bekijken
-curl "https://your-nextcloud.com/apps/metavox/api/permissions" -b "session-cookie"
-
-# Eigen permissies checken
-curl "https://your-nextcloud.com/apps/metavox/api/permissions/me" -b "session-cookie"
-
-# Specifieke permissie checken
-curl "https://your-nextcloud.com/apps/metavox/api/permissions/check?permission=edit_metadata&groupfolder_id=3" -b "session-cookie"
-```
-
-### Permissies intrekken
-
-```bash
-# Gebruikerspermissie intrekken
-curl -X DELETE "https://your-nextcloud.com/apps/metavox/api/permissions/user/{permissionId}" -b "session-cookie"
-
-# Groepspermissie intrekken
-curl -X DELETE "https://your-nextcloud.com/apps/metavox/api/permissions/group/{permissionId}" -b "session-cookie"
-```
-
-## Overerving
-
-Permissies zijn scope'd op groupfolders. Als een permissie zonder `groupfolder_id` wordt toegekend, geldt die voor alle groupfolders:
-
-```
-Team folder A (gebruiker heeft edit_metadata)
-├── Submap A (erft edit_metadata)
-│   ├── Document 1 (gebruiker kan metadata bewerken)
-│   └── Document 2 (gebruiker kan metadata bewerken)
-└── Submap B
-    └── Document 3 (gebruiker kan metadata bewerken)
-
-Team folder B (gebruiker heeft alleen view_metadata)
-├── Document 4 (gebruiker kan alleen metadata zien)
-```
+- Wat je niet mag zien (een bestand, of een Team folder waar je geen lid van bent) geeft **404**, alsof het er niet is.
+- Wat je wel ziet maar niet mag doen geeft **403**.
+- API-antwoorden hebben een vaste `reason`, zoals `not_found`, `read_only`, `not_manager` of `forbidden`. Zie de [API-referentie](../architecture/api-reference.md).
 
 ## Best practices
 
@@ -107,20 +65,23 @@ Team folder B (gebruiker heeft alleen view_metadata)
 
 ### Gebruiker ziet geen metadata
 
-1. Check of gebruiker leesrechten heeft op de Team folder
-2. Verifieer dat MetaVox aan staat
-3. Bevestig dat velden gedefinieerd zijn voor deze Team folder
+1. Kan de gebruiker het bestand in de Team folder openen? Een bestand dat via ACL verborgen is, toont geen metadata.
+2. Staat MetaVox aan voor de gebruiker?
+3. Zijn er velden aan deze Team folder toegekend?
 
-### Gebruiker kan documentmetadata niet bewerken
+### Gebruiker kan de metadata van een document niet wijzigen
 
-1. Check of de gebruiker `edit_metadata`-permissie heeft voor deze groupfolder
-2. Verifieer dat de gebruiker schrijfrechten heeft op het specifieke document in Nextcloud
-3. Check of het document in een Team folder zit (niet een persoonlijke map)
-4. Zorg dat metadata-velden gedefinieerd zijn voor deze Team folder
+1. Heeft de gebruiker schrijfrecht op dit bestand? Kijk bij ACL naar het bestand zelf, niet alleen naar de map.
+2. Geeft de Team folder de groep van de gebruiker alleen leesrecht?
+3. Staat het bestand in een Team folder? Metadata van bestanden die je alleen via een share bereikt, kun je niet wijzigen.
 
-### Gebruiker wil velden of weergaven beheren
+### Gebruiker kan geen weergaven maken of wijzigen
 
-De gebruiker heeft de `manage_fields`-permissie nodig. Ken die toe via de admin-API of vraag een beheerder om hem toe te wijzen.
+De gebruiker heeft schrijfrecht nodig op de bovenste map van de Team folder. Schrijfrecht in alleen een submap is niet genoeg.
+
+### Gebruiker kan geen velden toekennen of standaardwaarden instellen
+
+De gebruiker heeft het beheerrecht nodig, via een van zijn groepen (MetaVox-beheerpagina → **Rechten**), en schrijfrecht op de bovenste map van de Team folder.
 
 ## Zie ook
 

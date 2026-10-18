@@ -8,7 +8,7 @@ This document outlines the practical performance limits of MetaVox when managing
 |-----------|--------------------------|--------------------|--------------------|
 | **Files per view** | 5,000 | None (gradual degradation) | 5,000 (blocked above) |
 | **Fields per Team Folder** | Unlimited | Unlimited (EAV model) | Limited by 8,000-byte row size |
-| **Active filters per view** | 10 | ~15 before noticeable slowdown | 12 join operations (blocked above) |
+| **Active filters (API `sorted-file-ids`)** | 10 | ~15 before noticeable slowdown | 12 join operations (blocked above) |
 | **Displayed columns** | 10–20 | No hard limit | Limited by row size |
 | **Concurrent users (small folder)** | 10–100 (hardware dependent) | N/A | N/A |
 | **Concurrent users (large folder)** | 2–20 (hardware dependent) | N/A | N/A |
@@ -35,18 +35,29 @@ The List View Threshold is SharePoint's most impactful limit: any view, sort, or
 
 MetaVox does not enforce a hard item-per-view threshold. Instead, performance degrades gradually as folder size increases. There are four independent bottleneck tiers:
 
-### Bottleneck 1: HTTP Batch Loading
+### Bottleneck 1: Loading Values with the Listing
 
-MetaVox loads file metadata in bulk at folder open. All file IDs are extracted from Nextcloud's `dirContents` Vue property and fetched in **chunks of 200 per API request** (`MetaVoxColumns.js`). Since `dirContents` may populate asynchronously, MetaVox polls for new entries for up to 10 seconds and fetches any uncached files in additional batches.
+The metadata values come with the Files app's own folder listing. MetaVox adds
+the WebDAV property `nc:metavox` to the Files app's `PROPFIND` (Depth 1), and a
+server plugin (`MetadataPropertyPlugin.php`) answers it for team folder
+listings: one access check per file in memory, then one database query per
+1,000 files for all values. Each value is cut at **512 characters** in the
+listing; the cell marks a cut-off value, and the full value loads when the cell
+is edited.
 
-| Files in folder | API calls at open | Estimated load time | Scroll behavior |
-|-----------------|------------------|---------------------|-----------------|
-| 200 | 1 | ~300ms | Instant (cached) |
-| 1,000 | 5 | ~1.5s | Instant (cached) |
-| 5,000 | 25 | ~8s | Instant (cached) |
-| 10,000 | 50 | ~15s | Instant (cached) |
+What the listing does not deliver (a file the plugin could not vouch for, or a
+listing that came before MetaVox was ready) is loaded through the API as a
+fallback: `directory-metadata`, at most **200 files per request**, bundled 50 ms
+after the last file is queued and at most 200 ms after the first.
 
-> **Note:** All metadata is loaded in the background after folder open. Once the initial bulk load completes, scrolling through the file list does **not** trigger additional API calls — all data is served from the in-memory cache. The MutationObserver detects virtual scroll row recycling (via `data-cy-files-list-row-fileid` attribute changes) and fills cells from the cache instantly.
+| Files in folder | Value queries on the server | Extra API calls at open | Scroll behavior |
+|-----------------|-----------------------------|-------------------------|-----------------|
+| 200 | 1 | 0 | Instant (cached) |
+| 1,000 | 1 | 0 | Instant (cached) |
+| 5,000 | 5 | 0 | Instant (cached) |
+| 10,000 | 10 | 0 | Instant (cached) |
+
+> **Note:** Values arrive with the listing. Scrolling through the file list does **not** trigger additional requests — all data is served from the in-memory cache. The MutationObserver detects virtual scroll row recycling (via `data-cy-files-list-row-fileid` attribute changes) and fills cells from the cache instantly.
 
 ### Bottleneck 2: Nextcloud File List
 
@@ -60,9 +71,15 @@ Nextcloud's Files app loads all files in a folder into a client-side `dirContent
 | 10,000–50,000 | Multi-second load, browser memory pressure |
 | 50,000+ | Browser may hang or crash |
 
-### Bottleneck 3: SQL Filtering & Sorting
+### Bottleneck 3: SQL Filtering & Sorting (API)
 
-MetaVox uses an Entity-Attribute-Value (EAV) model with self-JOINs for filtering (`FilterService.php`). With proper database indexes (added in migration `Version20250101000010`), query performance scales logarithmically:
+In the Files app, filtering and sorting on MetaVox columns run in the browser,
+over the values the grid already has (`FilterSortCore.js`); a cut-off value is
+filtered and sorted as shown. When not all values could be loaded, the grid
+pauses sorting and filtering on MetaVox columns and says so.
+
+Server-side filtering and sorting is used by the OCS endpoint `sorted-file-ids`.
+It uses an Entity-Attribute-Value (EAV) model with self-JOINs (`FilterService.php`). With proper database indexes (added in migration `Version20250101000010`), query performance scales logarithmically:
 
 | Metadata records | 1 filter | 3 filters | 5 filters |
 |-----------------|----------|-----------|-----------|
@@ -97,13 +114,13 @@ MetaVox uses an EAV (Entity-Attribute-Value) database model. Metadata fields are
 
 - **No hardcoded maximum** on the number of fields per Team Folder
 - Adding fields does not alter the database schema
-- Each field value is stored as a TEXT type (no fixed byte limit per value)
+- Each field value is stored as a TEXT type (no fixed byte limit per value); the grid listing carries the first 512 characters
 
 | Constraint | MetaVox | SharePoint |
 |------------|---------|------------|
 | Max fields/columns per list | **Unlimited** (EAV model) | Limited by 8,000-byte row size |
 | Field name length | 255 characters | 255 characters |
-| Field value size | TEXT (unbounded) | Varies by column type |
+| Field value size | TEXT (unbounded); 512 characters in the grid listing | Varies by column type |
 | Lookup/join threshold | No hard limit | 12 join operations |
 | Field types | 10 (text, number, textarea, date, select, multiselect, checkbox, url, user, filelink) | 30+ |
 
@@ -114,7 +131,7 @@ The frontend renders metadata columns via DOM injection with horizontal scrollin
 - Minimum column width: 60px
 - Column widths are calculated dynamically based on field label length and type
 - Horizontal scrolling with sticky headers is supported
-- Column widths are persisted per user
+- Column widths are persisted per browser (local storage)
 
 ### Practical Column Limits
 
@@ -124,12 +141,12 @@ While there is no hard limit, performance considerations apply:
 |---------------|--------|
 | 1–10 | No impact |
 | 10–20 | Wider horizontal scroll area, still performant |
-| 20–30 | API response size increases (~500 bytes per file per column) |
+| 20–30 | Listing response grows: each non-empty value adds up to 512 characters per file |
 | 30+ | Consider using Views to show subsets of columns |
 
-### Filter Performance vs. Column Count
+### Filter Performance vs. Column Count (API)
 
-Each **active filter** in a view adds one SQL JOIN operation to the query. This is the primary scaling factor for column count:
+For the `sorted-file-ids` endpoint, each **active filter** adds one SQL JOIN operation to the query. This is the primary scaling factor for column count there (the Files app grid filters in the browser and adds no JOINs):
 
 | Active filters | SQL JOINs | Performance impact |
 |---------------|-----------|-------------------|
@@ -144,26 +161,27 @@ Each **active filter** in a view adds one SQL JOIN operation to the query. This 
 
 ### Per-User Server Load
 
-MetaVox injects initialization data (groupfolders, fields, views) inline into the HTML via Nextcloud's `IInitialState` mechanism. This eliminates separate API calls for the initial page load. When navigating to a different folder within the same session, a single `/api/init` call retrieves all needed data.
+MetaVox injects initialization data (groupfolders, and fields and views per team folder) inline into the HTML via Nextcloud's `IInitialState` mechanism. This eliminates separate API calls for the initial page load. Navigating to another team folder uses the same data; a `/api/init` call is only the fallback when it is missing.
 
 Each user opening a folder with metadata columns generates:
 
-| Operation | API calls | Database queries |
-|-----------|-----------|-----------------|
+| Operation | Extra API calls | Database queries |
+|-----------|-----------------|-----------------|
 | Folder open (first load) | 0 (inline via IInitialState) | Executed during PHP page render |
-| Folder open (navigation) | 1 (`/api/init`) | ~4 (groupfolders, fields, views, permissions) |
-| Metadata bulk load (all files) | 1–3 (chunks of 200) | 1 per chunk |
-| Filter values (lazy, on dropdown open) | 0–1 | 0–1 (cached 300s server-side) |
-| **Total per folder open** | **1–4** | **~5–8** |
+| Folder open (navigation) | 0–1 (`/api/init` as fallback) | ~4 when called (groupfolders, fields, views, permissions) |
+| Metadata values (all files) | 0 (with the Files app's PROPFIND) | 1 per 1,000 files, inside the PROPFIND |
+| Values the listing missed | 0–1 per 200 files | 1 per request |
+| Filter values (on dropdown open) | 0 (computed in the browser from loaded values) | 0 |
+| **Total per folder open** | **0–1, plus fallbacks** | **~1–5** |
 
 ### Data Consistency & Real-Time Sync
 
 When **notify_push** is installed and configured, MetaVox supports real-time collaboration:
 
 - **Cell locking**: When a user starts editing a cell, it is locked for other users (30-second TTL via Redis). Other users see a lock indicator with the editor's name.
-- **Real-time push**: Metadata changes are pushed to all users viewing the same groupfolder via WebSocket (notify_push). No polling required.
-- **Presence tracking**: MetaVox tracks which users are actively viewing a groupfolder. Push events are only sent to active viewers, reducing unnecessary traffic.
-- **Graceful degradation**: Without notify_push, MetaVox falls back to last-write-wins with eventual consistency via cache expiry.
+- **Real-time push**: Changes are announced via WebSocket (notify_push) to the users who have the team folder open: only file ids, no values. Their browser reloads those files through the API. No polling required.
+- **Presence tracking**: Listing a team folder registers the user; Nextcloud's User status heartbeat keeps the registration alive, and switching team folder or closing the tab ends it. Without the User status app, a registration lasts 12 hours.
+- **Graceful degradation**: Without notify_push, last write wins; changes by others appear after navigating or refreshing. Cell locks still refuse a second editor.
 
 See [Real-Time Sync](../features/real-time-sync.md) for full details.
 
@@ -206,7 +224,7 @@ Capacity depends heavily on server configuration and folder size:
 | **Database on separate server** | High | SQL queries no longer compete with PHP for CPU/RAM |
 | **RAM (8 → 16+ GB)** | High | Larger database buffer pool, more PHP workers |
 | **SSD/NVMe storage** | High | Faster database I/O, especially for JOINs |
-| **Redis/APCu caching** | High | MetaVox caches metadata (30s TTL) and field definitions (600s TTL) |
+| **Redis/APCu caching** | High | MetaVox caches field definitions and views (600s TTL), API filter values (300s) and API sort/filter results (30s); presence and cell locks need it |
 | **More CPU cores** | Medium | Helps with concurrent users (parallel PHP-FPM workers), limited benefit for single-user performance |
 
 ### What doesn't help
@@ -214,7 +232,7 @@ Capacity depends heavily on server configuration and folder size:
 | Change | Why it has limited effect |
 |--------|--------------------------|
 | More CPU cores (single user) | PHP is single-threaded per request |
-| More network bandwidth | API calls are small (20–100 KB per batch) |
+| More network bandwidth | Responses are small: only non-empty values, at most 512 characters each in the listing |
 | CDN / edge caching | Metadata is dynamic and user-specific |
 
 ### Estimated Practical Limits by Hardware Tier
@@ -233,11 +251,11 @@ Capacity depends heavily on server configuration and folder size:
 
 2. **Ensure database indexes are active.** The indexes added in migration `Version20250101000010` improve filter query performance by 40–100x. Verify they exist on the `metavox_file_gf_meta` table.
 
-3. **Enable Redis or APCu caching** in your Nextcloud configuration. MetaVox uses distributed caching for metadata (30s TTL) and field definitions (600s TTL).
+3. **Enable Redis or APCu caching** in your Nextcloud configuration. MetaVox uses distributed caching for field definitions and views (600s TTL) and for API filter results (30–300s); with more than one web server, presence and cell locks need a shared cache such as Redis. Metadata values are always read from the database.
 
-4. **Limit active filters per view to 10 or fewer.** Each filter adds a SQL JOIN. Performance remains excellent up to ~10 filters but degrades beyond 15.
+4. **For the `sorted-file-ids` API, limit active filters to 10 or fewer.** Each filter adds a SQL JOIN. Performance remains excellent up to ~10 filters but degrades beyond 15.
 
-5. **Use the Views feature** to show only relevant columns per use case, rather than displaying all fields at once. This reduces API response sizes and improves rendering performance.
+5. **Use the Views feature** to show only relevant columns per use case, rather than displaying all fields at once. This improves rendering performance.
 
 6. **For multi-user editing**, install notify_push for real-time sync and cell locking. Without it, last-write-wins applies.
 

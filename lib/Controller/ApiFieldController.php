@@ -4,40 +4,52 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Controller;
 
+use OCA\MetaVox\Access\Access;
+use OCA\MetaVox\Access\AccessContext;
+use OCA\MetaVox\Access\RequireAccess;
+use OCA\MetaVox\Exception\MetadataAccessException;
+use OCA\MetaVox\Exception\RequestException;
 use OCA\MetaVox\Service\ApiFieldService;
 use OCA\MetaVox\Service\ApiValidationException;
 use OCA\MetaVox\Service\FieldService;
-use OCA\MetaVox\Service\GroupfolderResolver;
-use OCA\MetaVox\Service\PermissionService;
+use OCA\MetaVox\Service\FileAccessService;
+use OCA\MetaVox\Service\TeamFolderAccessService;
+use OCA\MetaVox\Service\ViewColumnFormat;
+use OCA\MetaVox\L10n\Translatable;
+use OCA\MetaVox\Validation\FieldDefinition;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\CORS;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\DataResponse;
-use OCP\Files\IRootFolder;
 use OCP\IRequest;
 use OCP\IUserSession;
-use Psr\Log\LoggerInterface;
 
 class ApiFieldController extends BaseOCSController {
 
     private ApiFieldService $apiFieldService;
-    private LoggerInterface $logger;
+    private AccessContext $accessContext;
+    private TeamFolderAccessService $teamFolders;
 
     public function __construct(
         string $appName,
         IRequest $request,
         FieldService $fieldService,
         ApiFieldService $apiFieldService,
-        PermissionService $permissionService,
         IUserSession $userSession,
-        IRootFolder $rootFolder,
-        GroupfolderResolver $groupfolderResolver,
-        LoggerInterface $logger
+        FileAccessService $fileAccess,
+        TeamFolderAccessService $teamFolders,
+        AccessContext $accessContext
     ) {
-        parent::__construct($appName, $request, $userSession, $permissionService, $fieldService, $rootFolder, $groupfolderResolver);
+        parent::__construct($appName, $request, $userSession, $fieldService, $fileAccess);
         $this->apiFieldService = $apiFieldService;
-        $this->logger = $logger;
+        $this->accessContext = $accessContext;
+        $this->teamFolders = $teamFolders;
+    }
+
+    /** The file's real team folder, as the access rule found it; never a guess (#98). */
+    private function checkedGroupfolder(): int {
+        return $this->accessContext->getGroupfolderId() ?? throw MetadataAccessException::notFound();
     }
 
     // ========================================
@@ -45,148 +57,27 @@ class ApiFieldController extends BaseOCSController {
     // ========================================
 
     /**
-     * Update existing field (Admin only)
-     */
-    #[CORS]
-    #[NoCSRFRequired]
-    public function updateField(int $id): DataResponse {
-        try {
-            $fieldName = $this->request->getParam('field_name');
-            $fieldLabel = $this->request->getParam('field_label');
-            $fieldType = $this->request->getParam('field_type');
-            $fieldDescription = $this->request->getParam('field_description', '');
-            $fieldOptions = $this->request->getParam('field_options', '');
-            $isRequired = $this->request->getParam('is_required', false);
-            $sortOrder = $this->request->getParam('sort_order', 0);
-            $appliesToGroupfolder = $this->request->getParam('applies_to_groupfolder');
-
-            if (empty($fieldName) || empty($fieldLabel) || empty($fieldType)) {
-                return new DataResponse(['error' => 'Field name, label, and type are required'], Http::STATUS_BAD_REQUEST);
-            }
-
-            // Strip any prefix before validating the base name
-            $baseName = trim($fieldName);
-            $baseName = preg_replace('/^(file_gf_|gf_)/', '', $baseName);
-            if (!preg_match('/^[a-z][a-z0-9_]*$/', $baseName)) {
-                return new DataResponse(['error' => 'Field name may only contain lowercase letters, numbers and underscores, and must start with a letter'], Http::STATUS_BAD_REQUEST);
-            }
-
-            $fieldData = [
-                'field_name' => trim($fieldName),
-                'field_label' => trim($fieldLabel),
-                'field_type' => $fieldType,
-                'field_description' => trim($fieldDescription),
-                'field_options' => $fieldOptions,
-                'is_required' => (bool)$isRequired,
-                'sort_order' => (int)$sortOrder,
-            ];
-
-            if ($appliesToGroupfolder !== null) {
-                $fieldData['applies_to_groupfolder'] = (int)$appliesToGroupfolder;
-            }
-
-            $success = $this->fieldService->updateField($id, $fieldData);
-
-            if ($success) {
-                return new DataResponse(['success' => true, 'message' => 'Field updated successfully'], Http::STATUS_OK);
-            } else {
-                return new DataResponse(['error' => 'Failed to update field', 'success' => false], Http::STATUS_INTERNAL_SERVER_ERROR);
-            }
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => 'Internal server error: ' . $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
-     * Delete field (Admin only)
-     */
-    #[CORS]
-    #[NoCSRFRequired]
-    public function deleteField(int $id): DataResponse {
-        try {
-            $success = $this->fieldService->deleteField($id);
-            return new DataResponse(['success' => $success], Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
      * Create groupfolder field (Admin only)
      */
     #[CORS]
     #[NoCSRFRequired]
+    #[RequireAccess(Access::NcAdmin)]
     public function createGroupfolderField(): DataResponse {
-        try {
-            $fieldType = $this->request->getParam('field_type', 'text');
-            $fieldOptions = $this->apiFieldService->normaliseFieldDefinitionOptions(
-                $fieldType,
-                $this->request->getParam('field_options', [])
-            );
-
-            $fieldData = [
-                'field_name' => $this->request->getParam('field_name'),
-                'field_label' => $this->request->getParam('field_label'),
-                'field_type' => $fieldType,
-                'field_description' => $this->request->getParam('field_description', ''),
-                'field_options' => $fieldOptions,
-                'is_required' => $this->request->getParam('is_required', false),
-                'sort_order' => $this->request->getParam('sort_order', 0),
-                'scope' => 'groupfolder',
-                'applies_to_groupfolder' => $this->request->getParam('applies_to_groupfolder', false),
-            ];
-
-            if (empty($fieldData['field_name']) || empty($fieldData['field_label'])) {
-                return new DataResponse(['error' => 'Field name and label are required'], Http::STATUS_BAD_REQUEST);
-            }
-
-            $id = $this->fieldService->createField($fieldData);
-            return new DataResponse(['id' => $id, 'success' => true], Http::STATUS_CREATED);
-        } catch (ApiValidationException $e) {
-            return new DataResponse(['error' => 'Validation failed', 'fields' => $e->getErrors()], Http::STATUS_BAD_REQUEST);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage(), 'success' => false], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        $id = $this->fieldService->createField($this->sentParams(FieldDefinition::PARAMS));
+        return new DataResponse(['id' => $id, 'success' => true], Http::STATUS_CREATED);
     }
 
     /**
-     * Update a groupfolder field definition (Admin only)
+     * Change a field definition: only what is sent changes (Admin only)
      */
     #[CORS]
     #[NoCSRFRequired]
+    #[RequireAccess(Access::NcAdmin)]
     public function updateGroupfolderField(int $id): DataResponse {
-        try {
-            $fieldType = $this->request->getParam('field_type', 'text');
-            $fieldOptions = $this->apiFieldService->normaliseFieldDefinitionOptions(
-                $fieldType,
-                $this->request->getParam('field_options', [])
-            );
-
-            $fieldData = [
-                'field_name'             => $this->request->getParam('field_name'),
-                'field_label'            => $this->request->getParam('field_label'),
-                'field_type'             => $fieldType,
-                'field_description'      => $this->request->getParam('field_description', ''),
-                'field_options'          => $fieldOptions,
-                'is_required'            => $this->request->getParam('is_required', false),
-                'sort_order'             => $this->request->getParam('sort_order', 0),
-                'applies_to_groupfolder' => $this->request->getParam('applies_to_groupfolder', false),
-            ];
-
-            if (empty($fieldData['field_name']) || empty($fieldData['field_label'])) {
-                return new DataResponse(['error' => 'field_name and field_label are required'], Http::STATUS_BAD_REQUEST);
-            }
-
-            $success = $this->fieldService->updateField($id, $fieldData);
-            if (!$success) {
-                return new DataResponse(['error' => 'Field not found or update failed'], Http::STATUS_NOT_FOUND);
-            }
-            return new DataResponse(['success' => true], Http::STATUS_OK);
-        } catch (ApiValidationException $e) {
-            return new DataResponse(['error' => 'Validation failed', 'fields' => $e->getErrors()], Http::STATUS_BAD_REQUEST);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        if (!$this->fieldService->updateField($id, $this->sentParams(FieldDefinition::PARAMS))) {
+            throw RequestException::notFound(Translatable::t('Field not found'));
         }
+        return new DataResponse(['success' => true], Http::STATUS_OK);
     }
 
     /**
@@ -194,31 +85,26 @@ class ApiFieldController extends BaseOCSController {
      */
     #[CORS]
     #[NoCSRFRequired]
+    #[RequireAccess(Access::NcAdmin)]
     public function deleteGroupfolderField(int $id): DataResponse {
-        try {
-            $success = $this->fieldService->deleteField($id);
-            if (!$success) {
-                return new DataResponse(['error' => 'Field not found or delete failed'], Http::STATUS_NOT_FOUND);
-            }
-            return new DataResponse(['success' => true], Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        if (!$this->fieldService->deleteField($id)) {
+            throw RequestException::notFound(Translatable::t('Field not found'));
         }
+        return new DataResponse(['success' => true], Http::STATUS_OK);
     }
 
     /**
-     * Set groupfolder fields (Admin only)
+     * Set groupfolder fields
      */
     #[CORS]
+    #[NoAdminRequired]
     #[NoCSRFRequired]
+    #[RequireAccess(Access::MetaVoxManager, folder: 'groupfolderId')]
     public function setGroupfolderFields(int $groupfolderId): DataResponse {
-        try {
-            $fieldIds = $this->request->getParam('field_ids', []);
-            $success = $this->fieldService->setGroupfolderFields($groupfolderId, $fieldIds);
-            return new DataResponse(['success' => $success], Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        // Left out is no "none": a misspelled key would unassign every field.
+        $this->requireParam('field_ids');
+        $this->fieldService->setGroupfolderFields($groupfolderId, $this->getIdListParam('field_ids'));
+        return new DataResponse(['success' => true], Http::STATUS_OK);
     }
 
     /**
@@ -226,13 +112,10 @@ class ApiFieldController extends BaseOCSController {
      */
     #[CORS]
     #[NoCSRFRequired]
+    #[RequireAccess(Access::NcAdmin)]
     public function getMetadataStatistics(): DataResponse {
-        try {
-            $stats = $this->apiFieldService->getMetadataStatistics();
-            return new DataResponse($stats, Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        $stats = $this->apiFieldService->getMetadataStatistics();
+        return new DataResponse($stats, Http::STATUS_OK);
     }
 
     // ========================================
@@ -245,45 +128,27 @@ class ApiFieldController extends BaseOCSController {
     #[CORS]
     #[NoAdminRequired]
     #[NoCSRFRequired]
+    #[RequireAccess(Access::FileList)]
     public function getBulkFileMetadata(): DataResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof DataResponse) return $user;
+        $user = $this->requireUser();
 
-            $fileIdsParam = $this->request->getParam('file_ids');
-            $fileIds = [];
+        $fileIds = $this->getIdListParam('file_ids', required: true, max: 100);
 
-            if (is_array($fileIdsParam) && !empty($fileIdsParam)) {
-                $fileIds = $fileIdsParam;
-            } elseif (is_string($fileIdsParam) && !empty($fileIdsParam)) {
-                $fileIds = explode(',', $fileIdsParam);
+        // Each file only returns values from its own team folder (#98).
+        $fileGroupfolders = [];
+        $this->fileAccess->prime($user->getUID(), $fileIds);
+        foreach ($fileIds as $fileId) {
+            $access = $this->fileAccess->getFileAccess($user->getUID(), $fileId);
+            if ($access->canRead()) {
+                $fileGroupfolders[$fileId] = $access->groupfolderId;
             }
-
-            $fileIds = array_map('intval', array_filter($fileIds, fn($id) => is_numeric($id) && intval($id) > 0));
-            $fileIds = array_unique($fileIds);
-
-            if (empty($fileIds)) {
-                return new DataResponse(['error' => 'No valid file IDs provided'], Http::STATUS_BAD_REQUEST);
-            }
-            if (count($fileIds) > 100) {
-                return new DataResponse(['error' => 'Maximum 100 file IDs per request'], Http::STATUS_BAD_REQUEST);
-            }
-
-            // Resolve each file's OWN team folder (user-scoped). Files the user
-            // cannot see, or that are not in a team folder, drop out. Each file
-            // then returns only its own folder's values — no more cross-folder
-            // mixing of stale/foreign rows (issue #98).
-            $fileGroupfolders = $this->resolveAccessibleFileGroupfolders($fileIds, $user->getUID());
-            if (empty($fileGroupfolders)) {
-                return new DataResponse(['error' => 'No accessible files found'], Http::STATUS_FORBIDDEN);
-            }
-
-            $metadata = $this->apiFieldService->getBulkFileMetadataScoped($fileGroupfolders);
-            return new DataResponse($metadata, Http::STATUS_OK);
-        } catch (\Exception $e) {
-            $this->logger->error('MetaVox: getBulkFileMetadata error', ['exception' => $e]);
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
+        if (empty($fileGroupfolders)) {
+            throw self::nothingWritable(['not_found']);
+        }
+
+        $metadata = $this->apiFieldService->getBulkFileMetadataScoped($fileGroupfolders);
+        return new DataResponse($metadata, Http::STATUS_OK);
     }
 
     /**
@@ -292,29 +157,12 @@ class ApiFieldController extends BaseOCSController {
     #[CORS]
     #[NoAdminRequired]
     #[NoCSRFRequired]
+    #[RequireAccess(Access::CanRead, file: 'fileId')]
     public function getFileMetadata(int $fileId): DataResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof DataResponse) return $user;
+        $groupfolderId = $this->checkedGroupfolder();
 
-            if (!$this->canUserAccessFile($fileId, $user->getUID())) {
-                return new DataResponse(['error' => 'Access denied to file'], Http::STATUS_FORBIDDEN);
-            }
-
-            // Resolve the team folder the file physically lives in (from the
-            // user's mount — the same source of truth as the UI), instead of
-            // guessing it from the metadata table. Read and write now agree on
-            // the same folder (issue #98).
-            $groupfolderId = $this->resolveUserGroupfolderId($fileId, $user->getUID());
-            if ($groupfolderId === null) {
-                return new DataResponse(['error' => 'File is not in a team folder'], Http::STATUS_NOT_FOUND);
-            }
-
-            $metadata = $this->apiFieldService->getGroupfolderFileMetadata($groupfolderId, $fileId);
-            return new DataResponse($metadata, Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        $metadata = $this->apiFieldService->getGroupfolderFileMetadata($groupfolderId, $fileId);
+        return new DataResponse($metadata, Http::STATUS_OK);
     }
 
     /**
@@ -323,33 +171,13 @@ class ApiFieldController extends BaseOCSController {
     #[CORS]
     #[NoAdminRequired]
     #[NoCSRFRequired]
+    #[RequireAccess(Access::CanUpdate, file: 'fileId')]
     public function saveFileMetadata(int $fileId): DataResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof DataResponse) return $user;
+        $groupfolderId = $this->checkedGroupfolder();
 
-            if (!$this->canUserAccessFile($fileId, $user->getUID())) {
-                return new DataResponse(['error' => 'Access denied to file'], Http::STATUS_FORBIDDEN);
-            }
+        $this->apiFieldService->saveGroupfolderFileMetadata($groupfolderId, $fileId, $this->mapParam('metadata'));
 
-            // Write into the team folder the file physically lives in — NOT the
-            // old groupfolder_id=0 sink that made saved values unreadable
-            // (issue #98). A file outside any team folder has no valid scope, so
-            // we reject it explicitly instead of "saving for later".
-            $groupfolderId = $this->resolveUserGroupfolderId($fileId, $user->getUID());
-            if ($groupfolderId === null) {
-                return new DataResponse(['error' => 'File is not in a team folder'], Http::STATUS_NOT_FOUND);
-            }
-
-            $metadata = $this->request->getParam('metadata', []);
-            $this->apiFieldService->saveGroupfolderFileMetadata($groupfolderId, $fileId, $metadata);
-
-            return new DataResponse(['success' => true], Http::STATUS_OK);
-        } catch (ApiValidationException $e) {
-            return new DataResponse(['error' => 'Validation failed', 'fields' => $e->getErrors()], Http::STATUS_BAD_REQUEST);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        return new DataResponse(['success' => true], Http::STATUS_OK);
     }
 
     /**
@@ -358,16 +186,14 @@ class ApiFieldController extends BaseOCSController {
     #[CORS]
     #[NoAdminRequired]
     #[NoCSRFRequired]
+    #[RequireAccess(Access::LoggedIn, reason: 'only the caller\'s own team folders; admins see all')]
     public function getGroupfolders(): DataResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof DataResponse) return $user;
+        $user = $this->requireUser();
 
-            $groupfolders = $this->fieldService->getGroupfolders($user->getUID());
-            return new DataResponse($groupfolders, Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        // Same as web: admins get all folders, scope=member only their own.
+        $adminMode = $this->teamFolders->isAdmin($user->getUID()) && $this->request->getParam('scope') !== 'member';
+        $groupfolders = $this->fieldService->getGroupfolders($user->getUID(), $adminMode);
+        return new DataResponse($groupfolders, Http::STATUS_OK);
     }
 
     /**
@@ -376,17 +202,12 @@ class ApiFieldController extends BaseOCSController {
     #[CORS]
     #[NoAdminRequired]
     #[NoCSRFRequired]
+    #[RequireAccess(Access::TeamFolderMember, folder: 'groupfolderId')]
     public function getGroupfolderMetadata(int $groupfolderId): DataResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof DataResponse) return $user;
-            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
+        $user = $this->requireUser();
 
-            $metadata = $this->fieldService->getGroupfolderMetadata($groupfolderId);
-            return new DataResponse($metadata, Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        $metadata = $this->fieldService->getGroupfolderMetadata($groupfolderId);
+        return new DataResponse($metadata, Http::STATUS_OK);
     }
 
     /**
@@ -395,37 +216,12 @@ class ApiFieldController extends BaseOCSController {
     #[CORS]
     #[NoAdminRequired]
     #[NoCSRFRequired]
+    #[RequireAccess(Access::CanUpdateTeamFolder, folder: 'groupfolderId')]
     public function saveGroupfolderMetadata(int $groupfolderId): DataResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof DataResponse) return $user;
-            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
+        $user = $this->requireUser();
 
-            $metadata = $this->request->getParam('metadata', []);
-
-            $fields = $this->fieldService->getFieldsByScope('groupfolder');
-            $this->apiFieldService->validateMetadataValues($metadata, $fields);
-
-            $fieldMap = [];
-            foreach ($fields as $field) {
-                $fieldMap[$field['field_name']] = $field['id'];
-            }
-
-            foreach ($metadata as $fieldName => $value) {
-                if (isset($fieldMap[$fieldName])) {
-                    if (is_array($value)) {
-                        $value = implode(';#', $value);
-                    }
-                    $this->fieldService->saveGroupfolderFieldValue($groupfolderId, $fieldMap[$fieldName], (string)$value);
-                }
-            }
-
-            return new DataResponse(['success' => true], Http::STATUS_OK);
-        } catch (ApiValidationException $e) {
-            return new DataResponse(['error' => 'Validation failed', 'fields' => $e->getErrors()], Http::STATUS_BAD_REQUEST);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage(), 'success' => false], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        $this->fieldService->saveGroupfolderValues($groupfolderId, $this->mapParam('metadata'));
+        return new DataResponse(['success' => true], Http::STATUS_OK);
     }
 
     /**
@@ -434,13 +230,12 @@ class ApiFieldController extends BaseOCSController {
     #[CORS]
     #[NoAdminRequired]
     #[NoCSRFRequired]
+    #[RequireAccess(Access::LoggedIn, reason: 'only the fields of the caller\'s team folders; all of them for admins and managers')]
     public function getGroupfolderFields(): DataResponse {
-        try {
-            $fields = $this->fieldService->getFieldsByScope('groupfolder');
-            return new DataResponse(array_values($fields), Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        $user = $this->requireUser();
+
+        $fields = $this->fieldService->getCatalogue($this->teamFolders->catalogueFolders($user->getUID()));
+        return new DataResponse($fields, Http::STATUS_OK);
     }
 
     /**
@@ -449,31 +244,14 @@ class ApiFieldController extends BaseOCSController {
     #[CORS]
     #[NoAdminRequired]
     #[NoCSRFRequired]
+    #[RequireAccess(Access::CanRead, folder: 'groupfolderId', file: 'fileId')]
     public function getGroupfolderFileMetadata(int $groupfolderId, int $fileId): DataResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof DataResponse) return $user;
+        $user = $this->requireUser();
 
-            if (!$this->canUserAccessFile($fileId, $user->getUID())) {
-                return new DataResponse(['error' => 'Access denied to file'], Http::STATUS_FORBIDDEN);
-            }
+        // The file must be in this team folder (#98).
 
-            // Reject reads scoped to a folder the file isn't physically in, so
-            // callers can't fish stale rows out of folder 0 / deleted folders
-            // (issue #98).
-            $realGroupfolderId = $this->resolveUserGroupfolderId($fileId, $user->getUID());
-            if ($realGroupfolderId !== $groupfolderId) {
-                return new DataResponse(
-                    ['error' => 'File is not in the specified team folder'],
-                    Http::STATUS_BAD_REQUEST
-                );
-            }
-
-            $metadata = $this->apiFieldService->getGroupfolderFileMetadata($groupfolderId, $fileId);
-            return new DataResponse($metadata, Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        $metadata = $this->apiFieldService->getGroupfolderFileMetadata($groupfolderId, $fileId);
+        return new DataResponse($metadata, Http::STATUS_OK);
     }
 
     /**
@@ -482,35 +260,15 @@ class ApiFieldController extends BaseOCSController {
     #[CORS]
     #[NoAdminRequired]
     #[NoCSRFRequired]
+    #[RequireAccess(Access::CanUpdate, folder: 'groupfolderId', file: 'fileId')]
     public function saveGroupfolderFileMetadata(int $groupfolderId, int $fileId): DataResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof DataResponse) return $user;
+        $user = $this->requireUser();
 
-            if (!$this->canUserAccessFile($fileId, $user->getUID())) {
-                return new DataResponse(['error' => 'Access denied to file'], Http::STATUS_FORBIDDEN);
-            }
+        // The file must be in this team folder (#98).
 
-            // The file must physically live in the group folder being written to.
-            // Rejects writes to a non-existent folder or a folder the file isn't
-            // in — no more "saving for later" into a ghost folder (issue #98).
-            $realGroupfolderId = $this->resolveUserGroupfolderId($fileId, $user->getUID());
-            if ($realGroupfolderId !== $groupfolderId) {
-                return new DataResponse(
-                    ['error' => 'File is not in the specified team folder'],
-                    Http::STATUS_BAD_REQUEST
-                );
-            }
+        $this->apiFieldService->saveGroupfolderFileMetadata($groupfolderId, $fileId, $this->mapParam('metadata'));
 
-            $metadata = $this->request->getParam('metadata', []);
-            $this->apiFieldService->saveGroupfolderFileMetadata($groupfolderId, $fileId, $metadata);
-
-            return new DataResponse(['success' => true], Http::STATUS_OK);
-        } catch (ApiValidationException $e) {
-            return new DataResponse(['error' => 'Validation failed', 'fields' => $e->getErrors()], Http::STATUS_BAD_REQUEST);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        return new DataResponse(['success' => true], Http::STATUS_OK);
     }
 
     /**
@@ -519,18 +277,12 @@ class ApiFieldController extends BaseOCSController {
     #[CORS]
     #[NoAdminRequired]
     #[NoCSRFRequired]
+    #[RequireAccess(Access::TeamFolderMember, folder: 'groupfolderId')]
     public function getGroupfolderAssignedFields(int $groupfolderId): DataResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof DataResponse) return $user;
-            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
+        $user = $this->requireUser();
 
-            $fields = $this->fieldService->getAssignedFieldsWithDataForGroupfolder($groupfolderId);
-            return new DataResponse($fields, Http::STATUS_OK);
-        } catch (\Exception $e) {
-            $this->logger->error('MetaVox: getGroupfolderAssignedFields error', ['exception' => $e]);
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        $fields = $this->fieldService->getAssignedFieldsWithDataForGroupfolder($groupfolderId);
+        return new DataResponse($fields, Http::STATUS_OK);
     }
 
     /**
@@ -539,19 +291,14 @@ class ApiFieldController extends BaseOCSController {
     #[CORS]
     #[NoAdminRequired]
     #[NoCSRFRequired]
+    #[RequireAccess(Access::TeamFolderMember, folder: 'groupfolderId')]
     public function getGroupfolderFileFields(int $groupfolderId): DataResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof DataResponse) return $user;
-            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
+        $user = $this->requireUser();
 
-            $fields = $this->fieldService->getAssignedFileFieldsForGroupfolder($groupfolderId);
-            $response = new DataResponse($fields, Http::STATUS_OK);
-            $response->addHeader('Cache-Control', 'private, max-age=600');
-            return $response;
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        $fields = $this->fieldService->getAssignedFileFieldsForGroupfolder($groupfolderId);
+        $response = new DataResponse($fields, Http::STATUS_OK);
+        $response->addHeader('Cache-Control', 'private, max-age=600');
+        return $response;
     }
 
     // ========================================
@@ -564,41 +311,31 @@ class ApiFieldController extends BaseOCSController {
     #[CORS]
     #[NoAdminRequired]
     #[NoCSRFRequired]
+    #[RequireAccess(Access::FileList)]
     public function batchUpdateFileMetadata(): DataResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof DataResponse) return $user;
+        $user = $this->requireUser();
 
-            $updates = $this->request->getParam('updates', []);
-            if (empty($updates) || !is_array($updates)) {
-                return new DataResponse(['error' => 'updates array is required'], Http::STATUS_BAD_REQUEST);
-            }
+        $updates = $this->batchItems('updates');
 
-            $userId = $user->getUID();
-            $filteredUpdates = [];
-            foreach ($updates as $update) {
-                if (isset($update['file_id']) && $this->canUserAccessFile((int)$update['file_id'], $userId)) {
-                    $filteredUpdates[] = $update;
-                }
-            }
-
-            if (empty($filteredUpdates)) {
-                return new DataResponse(['error' => 'No accessible files in update request'], Http::STATUS_FORBIDDEN);
-            }
-
-            $results = $this->apiFieldService->batchUpdateFileMetadata($filteredUpdates);
-            $successCount = count(array_filter($results, fn($r) => $r['success']));
-
-            return new DataResponse([
-                'success' => true,
-                'results' => $results,
-                'total' => count($results),
-                'successful' => $successCount,
-                'failed' => count($results) - $successCount
-            ], Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        // Refused items are reported back, not silently dropped.
+        $authorized = $this->authorizeBatchWrites($updates, $user->getUID());
+        if (empty($authorized['allowed'])) {
+            throw self::nothingWritable(array_column($authorized['denied'], 'reason'), ['results' => $authorized['denied']]);
         }
+
+        $results = array_merge(
+            $this->apiFieldService->batchUpdateFileMetadata($authorized['allowed']),
+            $authorized['denied']
+        );
+        $successCount = count(array_filter($results, fn($r) => $r['success']));
+
+        return new DataResponse([
+            'success' => true,
+            'results' => $results,
+            'total' => count($results),
+            'successful' => $successCount,
+            'failed' => count($results) - $successCount
+        ], Http::STATUS_OK);
     }
 
     /**
@@ -607,41 +344,30 @@ class ApiFieldController extends BaseOCSController {
     #[CORS]
     #[NoAdminRequired]
     #[NoCSRFRequired]
+    #[RequireAccess(Access::FileList)]
     public function batchDeleteFileMetadata(): DataResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof DataResponse) return $user;
+        $user = $this->requireUser();
 
-            $deletes = $this->request->getParam('deletes', []);
-            if (empty($deletes) || !is_array($deletes)) {
-                return new DataResponse(['error' => 'deletes array is required'], Http::STATUS_BAD_REQUEST);
-            }
+        $deletes = $this->batchItems('deletes');
 
-            $userId = $user->getUID();
-            $filteredDeletes = [];
-            foreach ($deletes as $delete) {
-                if (isset($delete['file_id']) && $this->canUserAccessFile((int)$delete['file_id'], $userId)) {
-                    $filteredDeletes[] = $delete;
-                }
-            }
-
-            if (empty($filteredDeletes)) {
-                return new DataResponse(['error' => 'No accessible files in delete request'], Http::STATUS_FORBIDDEN);
-            }
-
-            $results = $this->apiFieldService->batchDeleteFileMetadata($filteredDeletes);
-            $successCount = count(array_filter($results, fn($r) => $r['success']));
-
-            return new DataResponse([
-                'success' => true,
-                'results' => $results,
-                'total' => count($results),
-                'successful' => $successCount,
-                'failed' => count($results) - $successCount
-            ], Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        $authorized = $this->authorizeBatchWrites($deletes, $user->getUID());
+        if (empty($authorized['allowed'])) {
+            throw self::nothingWritable(array_column($authorized['denied'], 'reason'), ['results' => $authorized['denied']]);
         }
+
+        $results = array_merge(
+            $this->apiFieldService->batchDeleteFileMetadata($authorized['allowed']),
+            $authorized['denied']
+        );
+        $successCount = count(array_filter($results, fn($r) => $r['success']));
+
+        return new DataResponse([
+            'success' => true,
+            'results' => $results,
+            'total' => count($results),
+            'successful' => $successCount,
+            'failed' => count($results) - $successCount
+        ], Http::STATUS_OK);
     }
 
     /**
@@ -650,45 +376,54 @@ class ApiFieldController extends BaseOCSController {
     #[CORS]
     #[NoAdminRequired]
     #[NoCSRFRequired]
+    #[RequireAccess(Access::FileList)]
     public function batchCopyFileMetadata(): DataResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof DataResponse) return $user;
+        $user = $this->requireUser();
 
-            $userId = $user->getUID();
-            $sourceFileId = (int)$this->request->getParam('source_file_id');
-            $targetFileIds = $this->request->getParam('target_file_ids', []);
-            $fieldNames = $this->request->getParam('field_names', null);
+        $userId = $user->getUID();
+        $sourceFileId = $this->intParam('source_file_id', required: true, min: 1);
+        $targetFileIds = $this->getIdListParam('target_file_ids', required: true);
+        $fieldNames = $this->request->getParam('field_names') === null ? null : $this->getStringListParam('field_names');
 
-            if (!$sourceFileId) {
-                return new DataResponse(['error' => 'source_file_id is required'], Http::STATUS_BAD_REQUEST);
-            }
-            if (!$this->canUserAccessFile($sourceFileId, $userId)) {
-                return new DataResponse(['error' => 'Access denied to source file'], Http::STATUS_FORBIDDEN);
-            }
-            if (empty($targetFileIds) || !is_array($targetFileIds)) {
-                return new DataResponse(['error' => 'target_file_ids array is required'], Http::STATUS_BAD_REQUEST);
-            }
+        // Reading the source is enough (#98).
+        $sourceGroupfolderId = $this->fileAccess->requireReadableFile($userId, $sourceFileId);
 
-            // Read the source metadata from the team folder the source file
-            // actually lives in (issue #98) — not the folder-unaware lookup that
-            // could mix in stale/foreign rows.
-            $sourceGroupfolderId = $this->resolveUserGroupfolderId($sourceFileId, $userId);
-            if ($sourceGroupfolderId === null) {
-                return new DataResponse(['error' => 'Source file is not in a team folder'], Http::STATUS_NOT_FOUND);
-            }
-
-            // Resolve each target's own team folder (user-scoped). Copy only
-            // into targets the user can see AND that live in a team folder.
-            $targetGroupfolders = $this->resolveAccessibleFileGroupfolders(array_map('intval', $targetFileIds), $userId);
-            if (empty($targetGroupfolders)) {
-                return new DataResponse(['error' => 'No accessible target files in a team folder'], Http::STATUS_FORBIDDEN);
-            }
-
-            $result = $this->apiFieldService->batchCopyFileMetadata($sourceGroupfolderId, $sourceFileId, $targetGroupfolders, $fieldNames);
-            return new DataResponse($result, Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        // Only copy into targets the user may change.
+        $targets = $this->fileAccess->filterWritableFiles($userId, $targetFileIds);
+        if (empty($targets['allowed'])) {
+            throw self::nothingWritable(array_map(fn ($e) => $e->getReason(), $targets['denied']));
         }
+
+        $result = $this->apiFieldService->batchCopyFileMetadata($sourceGroupfolderId, $sourceFileId, $targets['allowed'], $fieldNames);
+        return new DataResponse($result, Http::STATUS_OK);
+    }
+
+    /**
+     * The items of a batch: a list of objects.
+     *
+     * @throws ApiValidationException for anything else
+     */
+    private function batchItems(string $name): array {
+        $items = $this->listParam($name, required: true);
+        foreach ($items as $item) {
+            if (!is_array($item) || ($item !== [] && array_is_list($item))) {
+                throw new ApiValidationException([$name => ViewColumnFormat::MSG_INVALID]);
+            }
+        }
+        return $items;
+    }
+
+    /**
+     * None of the files may be changed: 404 when the caller can't see any of
+     * them, 403 when they can see some.
+     *
+     * @param string[] $reasons the reason each file was refused
+     */
+    private static function nothingWritable(array $reasons, array $data = []): RequestException {
+        return array_diff($reasons, ['not_found']) === []
+            // TRANSLATORS Error when none of the files a request names exists or can be seen by the user
+            ? RequestException::notFound(Translatable::t('None of these files can be found'), $data)
+            // TRANSLATORS Error when the user may not change any of the files a request names
+            : RequestException::readOnly(Translatable::t('None of these files can be changed'), $data);
     }
 }

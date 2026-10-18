@@ -1,17 +1,7 @@
 <?php
 
-return [
+$routes = [
     'routes' => [
-        // ========================================
-        // 🏠 PAGE ROUTES
-        // ========================================
-        
-        // Admin page route
-        ['name' => 'admin#index', 'url' => '/admin', 'verb' => 'GET'],
-        
-        // User page route (NEW)
-        ['name' => 'user#index', 'url' => '/user', 'verb' => 'GET'],
-        
         // ========================================
         // 📋 FIELD MANAGEMENT ROUTES (Web Interface)
         // ========================================
@@ -21,6 +11,7 @@ return [
         ['name' => 'field#createGroupfolderField', 'url' => '/api/groupfolder-fields', 'verb' => 'POST'],
         ['name' => 'field#updateGroupfolderField', 'url' => '/api/groupfolder-fields/{id}', 'verb' => 'PUT'],
         ['name' => 'field#deleteGroupfolderField', 'url' => '/api/groupfolder-fields/{id}', 'verb' => 'DELETE'],
+        ['name' => 'field#bulkDeleteFields', 'url' => '/api/groupfolder-fields/bulk-delete', 'verb' => 'POST'],
         
         // Groupfolder routes
         ['name' => 'field#getGroupfolders', 'url' => '/api/groupfolders', 'verb' => 'GET'],
@@ -28,8 +19,9 @@ return [
         ['name' => 'field#saveGroupfolderMetadata', 'url' => '/api/groupfolders/{groupfolderId}/metadata', 'verb' => 'POST'],
         
         // Groupfolder file metadata routes (individual files within groupfolders)
-        ['name' => 'field#getGroupfolderFileMetadata', 'url' => '/api/groupfolders/{groupfolderId}/files/{fileId}/metadata', 'verb' => 'GET'],
-        ['name' => 'field#saveGroupfolderFileMetadata', 'url' => '/api/groupfolders/{groupfolderId}/files/{fileId}/metadata', 'verb' => 'POST'],
+        // A file's metadata; the server finds its team folder.
+        ['name' => 'field#getFileMetadata', 'url' => '/api/files/{fileId}/metadata', 'verb' => 'GET'],
+        ['name' => 'field#saveFileMetadata', 'url' => '/api/files/{fileId}/metadata', 'verb' => 'POST'],
         ['name' => 'field#getFileBacklinks', 'url' => '/api/groupfolders/{groupfolderId}/files/{fileId}/backlinks', 'verb' => 'GET'],
 
         // Bulk file metadata routes
@@ -40,6 +32,7 @@ return [
         // Groupfolder field assignment routes
         ['name' => 'field#getGroupfolderAssignedFields', 'url' => '/api/groupfolders/{groupfolderId}/fields', 'verb' => 'GET'],
         ['name' => 'field#setGroupfolderFields', 'url' => '/api/groupfolders/{groupfolderId}/fields', 'verb' => 'POST'],
+        ['name' => 'field#getGroupfolderFileFields', 'url' => '/api/groupfolders/{groupfolderId}/file-fields', 'verb' => 'GET'],
 
         // Per-folder default value routes
         ['name' => 'defaults#getDefaults', 'url' => '/api/groupfolders/{groupfolderId}/defaults', 'verb' => 'GET'],
@@ -53,8 +46,12 @@ return [
         ['name' => 'user_field#getFieldValues', 'url' => '/api/user/groupfolders/{groupfolderId}/field-values', 'verb' => 'GET'],
         ['name' => 'user_field#getAllGroupfolderFields', 'url' => '/api/user/groupfolder-fields', 'verb' => 'GET'],
         ['name' => 'user_field#getGroupfolderMetadata', 'url' => '/api/user/groupfolders/{groupfolderId}/metadata', 'verb' => 'GET'],
-        ['name' => 'user_field#saveGroupfolderMetadata', 'url' => '/api/user/groupfolders/{groupfolderId}/metadata', 'verb' => 'POST'],
         ['name' => 'user_field#setGroupfolderFields', 'url' => '/api/user/groupfolders/{groupfolderId}/fields', 'verb' => 'POST'],
+
+        // The user's saved metadata searches, shown as folders in Files
+        ['name' => 'metadata_search#index', 'url' => '/api/user/metadata-searches', 'verb' => 'GET'],
+        ['name' => 'metadata_search#create', 'url' => '/api/user/metadata-searches', 'verb' => 'POST'],
+        ['name' => 'metadata_search#destroy', 'url' => '/api/user/metadata-searches/{id}', 'verb' => 'DELETE'],
 
         // ========================================
         // 🔐 PERMISSION MANAGEMENT ROUTES (NEW)
@@ -68,8 +65,6 @@ return [
         
         // Get permissions
         ['name' => 'permission#getAllPermissions', 'url' => '/api/permissions', 'verb' => 'GET'],
-        ['name' => 'permission#getMyPermissions', 'url' => '/api/permissions/me', 'verb' => 'GET'],
-        ['name' => 'permission#checkPermission', 'url' => '/api/permissions/check', 'verb' => 'GET'],
         
         // Grant permissions
         ['name' => 'permission#grantUserPermission', 'url' => '/api/permissions/user', 'verb' => 'POST'],
@@ -113,8 +108,8 @@ return [
         // Files plugin init (single call for all startup data)
         ['name' => 'view#init', 'url' => '/api/init', 'verb' => 'GET'],
 
-        // Filter values scoped to current directory
-        ['name' => 'filter#getAllFilterValues', 'url' => '/api/groupfolders/{groupfolderId}/filter-values', 'verb' => 'POST'],
+        // Grid values and permissions for the files in view
+        ['name' => 'filter#getDirectoryMetadata', 'url' => '/api/groupfolders/{groupfolderId}/directory-metadata', 'verb' => 'GET'],
 
         // Cell locking for concurrent editing
         ['name' => 'lock#lockCell', 'url' => '/api/groupfolders/{groupfolderId}/files/{fileId}/lock', 'verb' => 'POST'],
@@ -211,3 +206,19 @@ return [
         ['name' => 'apiView#deleteView',   'url' => '/api/v1/groupfolders/{groupfolderId}/views/{viewId}',  'verb' => 'DELETE'],
     ]
 ];
+
+// An id in a URL is a number: Nextcloud would read "12abc" as 12, now it is
+// no route at all (404).
+foreach ($routes as &$list) {
+    foreach ($list as &$route) {
+        preg_match_all('/\{(\w+)\}/', $route['url'], $params);
+        foreach ($params[1] as $param) {
+            if ($param === 'id' || str_ends_with($param, 'Id')) {
+                $route['requirements'][$param] = '\d+';
+            }
+        }
+    }
+}
+unset($list, $route);
+
+return $routes;

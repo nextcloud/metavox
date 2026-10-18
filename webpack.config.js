@@ -10,12 +10,20 @@ module.exports = {
     admin: path.join(__dirname, 'src', 'admin.js'),
     user: path.join(__dirname, 'src', 'user.js'),
     filesplugin: path.join(__dirname, 'src', 'filesplugin', 'filesplugin-main.js'),
+    'metavox-init': path.join(__dirname, 'src', 'filesplugin', 'init.js'),
     'metavox-flow': path.join(__dirname, 'src', 'flow', 'main.js'),
     'metavox-search': path.join(__dirname, 'src', 'search', 'search-main.js'),
+    'metavox-embed': path.join(__dirname, 'src', 'embed', 'embed.js'),
   },
   output: {
     path: path.resolve(__dirname, 'js'),
-    filename: '[name].js'
+    filename: '[name].js',
+    // Nextcloud versions the entry scripts itself; the chunks they load are
+    // ours to version. Without it a browser keeps an old chunk for six months
+    // (max-age) after an update, and new code runs against it.
+    chunkFilename: '[name].js?v=[contenthash:8]',
+    // Chunks no build makes any more are not left behind.
+    clean: true,
   },
   module: {
     rules: [
@@ -71,10 +79,9 @@ module.exports = {
     }),
   ],
   resolve: {
+    // No alias for vue: its runtime build, as Nextcloud's own config uses.
+    // Templates are compiled at build time; the browser needs no compiler.
     extensions: ['.js', '.vue'],
-    alias: {
-      vue$: 'vue/dist/vue.esm-bundler.js'
-    },
     fallback: {
       "path": false,
       "https": false,
@@ -84,14 +91,19 @@ module.exports = {
       "zlib": false,
       "assert": false,
       "util": false,
-      "buffer": require.resolve("buffer/"),
+      "buffer": false,
       "string_decoder": false
     }
   },
-  performance: {
-    hints: false,
-    maxAssetSize: 512000,
-    maxEntrypointSize: 512000
-  },
+  // No size warnings: Nextcloud loads our bundles itself.
+  performance: { hints: false },
   devtool: false,
+  // A build reuses the last one's work (node_modules/.cache). Not in CI,
+  // where every run starts clean.
+  cache: process.env.CI ? false : {
+    type: 'filesystem',
+    buildDependencies: {
+      config: [__filename, path.join(__dirname, 'babel.config.js'), path.join(__dirname, 'package.json')],
+    },
+  },
 }

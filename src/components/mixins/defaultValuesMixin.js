@@ -1,7 +1,8 @@
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 import { showError } from '@nextcloud/dialogs'
-import { translate as t } from '@nextcloud/l10n'
+import { translate as t, translatePlural as n } from '@nextcloud/l10n'
+import { PLAIN_TEXT } from '../../utils/fieldValue.js'
 
 /**
  * Shared per-folder DEFAULT-VALUE behaviour for the admin (ManageGroupfolders)
@@ -21,6 +22,8 @@ export default {
     return {
       // groupfolderId -> { fieldId -> value }
       fileFieldDefaults: {},
+      // groupfolderId -> { fieldId -> linked files as you see them } (file links)
+      fileFieldDefaultFiles: {},
       // groupfolderId -> 'idle' | 'running'
       defaultsStatus: {},
       // groupfolderId -> interval handle
@@ -33,15 +36,62 @@ export default {
   },
 
   methods: {
+    /**
+     * The subline under a folder name in the folder list.
+     *
+     * It used to read "%n fields configured" off the raw assignment count,
+     * which is every field assigned to the folder regardless of what it
+     * describes. IntraVox showed "10 fields configured" while the Edit
+     * metadata dialog offered four inputs: the other six were file fields,
+     * which belong to the files inside the folder and are edited in the
+     * Files app, not here. Nothing was corrupt and nothing was hidden — one
+     * number was answering a different question than the dialog beside it.
+     *
+     * So name both, in the same two groups the Configure fields dialog
+     * already uses. The team-folder count is first because it is the one
+     * that predicts this row: it decides whether Edit metadata is enabled
+     * and what a click on the row opens.
+     *
+     * Lives in the mixin because the admin and personal pages show the same
+     * list; they already share the two counting methods this builds on.
+     */
+    fieldsSummary(groupfolderId) {
+      const folderFields = this.getAssignedGroupfolderFieldsCount(groupfolderId)
+      const fileFields = this.getAssignedFieldsCount(groupfolderId) - folderFields
+
+      // A folder with nothing assigned says so once rather than twice.
+      if (folderFields === 0 && fileFields === 0) {
+        // TRANSLATORS Shown in a Team folder row when no metadata fields are assigned to it
+        return t('metavox', 'No fields configured')
+      }
+
+      // One string with both numbers rather than two joined by a separator:
+      // a translator needs to see the whole line to order it, and a bare
+      // ", " as its own translatable unit gives them nothing to work with.
+      // TRANSLATORS Summary in a Team folder row. {folderFields} is e.g. "2 Team folder fields", {fileFields} e.g. "3 file fields"; keep both placeholders
+      return t('metavox', '{folderFields} · {fileFields}', {
+        // TRANSLATORS %n is the number of fields that describe the Team folder itself
+        folderFields: n('metavox', '%n Team folder field', '%n Team folder fields', folderFields),
+        // TRANSLATORS %n is the number of fields that can be set on files in the Team folder
+        fileFields: n('metavox', '%n file field', '%n file fields', fileFields),
+      }, undefined, PLAIN_TEXT)
+    },
+
     async loadFolderDefaults(groupfolderId) {
       try {
         const resp = await axios.get(
           generateUrl(`/apps/metavox/api/groupfolders/${groupfolderId}/defaults`)
         )
         this.fileFieldDefaults[groupfolderId] = (resp.data && resp.data.defaults) || {}
+        this.fileFieldDefaultFiles[groupfolderId] = (resp.data && resp.data.resolved) || {}
       } catch (error) {
         this.fileFieldDefaults[groupfolderId] = {}
+        this.fileFieldDefaultFiles[groupfolderId] = {}
       }
+    },
+
+    getDefaultResolved(groupfolderId, field) {
+      return (this.fileFieldDefaultFiles[groupfolderId] || {})[field.id] || []
     },
 
     getDefaultValue(groupfolderId, field) {

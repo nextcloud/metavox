@@ -9,6 +9,7 @@
 import { createApp, h } from 'vue'
 import { translate, translatePlural } from '@nextcloud/l10n'
 import MetaVoxFilterPanel from './MetaVoxFilterPanel.vue'
+import { watchLoading } from '../../utils/updatedPage.js'
 
 export class MetaVoxFilterElement extends HTMLElement {
 
@@ -47,7 +48,7 @@ export class MetaVoxFilterElement extends HTMLElement {
 		})
 		this._vueApp.config.globalProperties.t = translate
 		this._vueApp.config.globalProperties.n = translatePlural
-		this._vueApp.mount(mountEl)
+		watchLoading(this._vueApp).mount(mountEl)
 	}
 
 	connectedCallback() {

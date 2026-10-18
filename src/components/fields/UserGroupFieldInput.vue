@@ -12,7 +12,7 @@
       <!-- TRANSLATORS Accessible name of the pencil button that picks a different account for the field -->
       <NcButton :aria-label="t('metavox', 'Change account')"
         v-if="!disabled"
-        type="tertiary"
+        variant="tertiary"
         @click="startEditing">
         <template #icon>
           <PencilIcon :size="16" />
@@ -21,7 +21,7 @@
       <!-- TRANSLATORS Accessible name of the button that removes the chosen account from the field -->
       <NcButton :aria-label="t('metavox', 'Clear selection')"
         v-if="!disabled"
-        type="tertiary"
+        variant="tertiary"
         @click="clearSelection">
         <template #icon>
           <CloseIcon :size="16" />
@@ -30,15 +30,17 @@
     </div>
 
     <!-- Show select when no value or editing -->
-    <!-- TRANSLATORS Placeholder of the account search box in the cell editor of a person field -->
-    <NcSelect :placeholder="placeholder || t('metavox', 'Type to search accounts …')"
+    <!-- TRANSLATORS Accessible name of the account search box when the field has no label of its own -->
+    <NcSelect :aria-label-combobox="fieldLabel || t('metavox', 'Search accounts')"
       v-else
-      :id="inputId"
       v-model="internalValue"
+      :input-id="inputId"
+      label-outside
       :options="users"
       :disabled="disabled"
       :loading="loading"
       :filterable="false"
+      :placeholder="placeholder || t('metavox', 'Type to search accounts …')"
       :multiple="multiple"
       :reduce="option => option.id"
       label="displayname"
@@ -64,7 +66,10 @@
 
 <script>
 import { translate } from '@nextcloud/l10n'
-import { NcSelect, NcAvatar, NcUserBubble, NcButton } from '@nextcloud/vue'
+import NcSelect from '@nextcloud/vue/components/NcSelect'
+import NcAvatar from '@nextcloud/vue/components/NcAvatar'
+import NcUserBubble from '@nextcloud/vue/components/NcUserBubble'
+import NcButton from '@nextcloud/vue/components/NcButton'
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 import PencilIcon from 'vue-material-design-icons/Pencil.vue'
@@ -98,6 +103,12 @@ export default {
       default: false
     },
     inputId: {
+      type: String,
+      default: ''
+    },
+    // The visible label lives in the parent form, so the combobox needs the
+    // same text as its own accessible name.
+    fieldLabel: {
       type: String,
       default: ''
     },
@@ -155,11 +166,12 @@ export default {
   methods: {
     t: translate,
     noOptionsText(search) {
-      return search.length < 2
+      if (search.length < 2) {
         // TRANSLATORS Shown in the account search list until at least 2 characters are typed
-        ? this.t('metavox', 'Type at least 2 characters …')
-        // TRANSLATORS Shown in the account search list when no account matches the search
-        : this.t('metavox', 'No accounts found')
+        return this.t('metavox', 'Type at least 2 characters …')
+      }
+      // TRANSLATORS Shown in the account search list when no account matches the search
+      return this.t('metavox', 'No accounts found')
     },
     async loadCurrentUser(userId) {
       try {

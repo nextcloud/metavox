@@ -4,28 +4,17 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Service;
 
+use OCA\GroupFolders\Mount\GroupMountPoint;
 use OCP\Files\Node;
-use OCP\IDBConnection;
 use Psr\Log\LoggerInterface;
 
 /**
- * Resolves the groupfolder (Team Folder) id for a file path.
- *
- * Extracted from FileCopyListener so the same logic is shared by all
- * listeners. Mount points are loaded once per request and cached in memory:
- * a bulk upload fires one NodeCreatedEvent per file, and without this cache
- * each event would re-query the group_folders table.
- *
- * The path-matching itself is a pure function (resolveFromPath) so it can be
- * unit-tested without a database.
+ * Which team folder a node is in, read from its mount like groupfolders does
+ * itself. Folder names in the path are not reliable.
  */
 class GroupfolderResolver {
 
-    /** @var array<array{id: int, mount_point: string}>|null Request-scoped mount point cache */
-    private ?array $mountPoints = null;
-
     public function __construct(
-        private readonly IDBConnection $db,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -35,7 +24,11 @@ class GroupfolderResolver {
      */
     public function getGroupfolderId(Node $node): ?int {
         try {
-            return $this->resolveFromPath($node->getPath(), $this->getMountPoints());
+            $mount = $node->getMountPoint();
+            if ($mount instanceof GroupMountPoint) {
+                return $mount->getFolderId();
+            }
+            return self::resolveFromRootPath($node->getPath());
         } catch (\Exception $e) {
             $this->logger->warning('MetaVox: Groupfolder detection error', ['exception' => $e]);
             return null;
@@ -43,56 +36,12 @@ class GroupfolderResolver {
     }
 
     /**
-     * Pure path resolution — no I/O. Given a file path and the list of
-     * groupfolder mount points, return the matching groupfolder id.
-     *
-     * Matching is identical to the original FileCopyListener behaviour:
-     * a mount-point match on the path, with a fallback to the internal
-     * __groupfolders/{id}/ storage pattern.
-     *
-     * @param array<array{id: int, mount_point: string}> $mountPoints
+     * Old layout reached via the root folder (cron, occ): "/__groupfolders/<id>/...".
      */
-    public function resolveFromPath(string $path, array $mountPoints): ?int {
-        foreach ($mountPoints as $mp) {
-            if ($mp['mount_point'] !== '' && str_contains($path, '/' . $mp['mount_point'] . '/')) {
-                return (int)$mp['id'];
-            }
-        }
-
-        // Fallback: internal storage patterns (e.g. .../__groupfolders/42/...)
-        if (preg_match('/\/__groupfolders\/(\d+)\//', $path, $matches)) {
+    public static function resolveFromRootPath(string $path): ?int {
+        if (preg_match('#^/__groupfolders/(\d+)/#', $path, $matches)) {
             return (int)$matches[1];
         }
-
         return null;
-    }
-
-    /**
-     * Load groupfolder mount points, cached for the lifetime of this request.
-     *
-     * @return array<array{id: int, mount_point: string}>
-     */
-    private function getMountPoints(): array {
-        if ($this->mountPoints !== null) {
-            return $this->mountPoints;
-        }
-
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('folder_id', 'mount_point')
-           ->from('group_folders')
-           ->orderBy('folder_id');
-
-        $result = $qb->executeQuery();
-        $rows = [];
-        while ($row = $result->fetch()) {
-            $rows[] = [
-                'id' => (int)$row['folder_id'],
-                'mount_point' => (string)$row['mount_point'],
-            ];
-        }
-        $result->closeCursor();
-
-        $this->mountPoints = $rows;
-        return $rows;
     }
 }

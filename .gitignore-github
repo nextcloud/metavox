@@ -12,3 +12,10 @@ ROADMAP.md
 
 # Forgejo Actions: interne hostnamen en namen van secrets. GitHub draait .github/workflows/.
 .forgejo/
+
+# Lokale Claude-config en demo-seedscripts: interne hosts, IP's en SSH-gebruikers.
+.claude/
+docs/internal/
+scripts/seed-contracts.py
+scripts/seed-demo.py
+scripts/seed-demo.sh

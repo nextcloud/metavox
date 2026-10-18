@@ -3,9 +3,9 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: MetaVox 2.2.3\n"
+"Project-Id-Version: MetaVox 3.0.0\n"
 "Report-Msgid-Bugs-To: translations@nextcloud.com\n"
-"PO-Revision-Date: 2026-10-09 00:00+0000\n"
+"PO-Revision-Date: 2026-10-18 00:00+0000\n"
 "Last-Translator: MetaVox <translations@nextcloud.com>\n"
 "Language-Team: nl\n"
 "MIME-Version: 1.0\n"
@@ -17,13 +17,43 @@ msgstr ""
 msgid "— no sorting —"
 msgstr "— geen sortering —"
 
+msgid "(required)"
+msgstr "(verplicht)"
+
+msgid "{column}, rule {position}: {problem}"
+msgstr "{column}, regel {position}: {problem}"
+
+msgid "{column}: {problem}"
+msgstr ""
+
+msgid "{field} ({values})"
+msgstr ""
+
 msgid "{field} {operator}"
 msgstr ""
 
 msgid "{field} {operator} \"{value}\""
-msgstr ""
+msgstr "{field} {operator} ‘{value}’"
+
+msgid "{field} not saved: {reason}"
+msgstr "{field} niet opgeslagen: {reason}"
 
 msgid "{field}: {value}"
+msgstr ""
+
+msgid "{field}: {value}, {state}."
+msgstr ""
+
+msgid "{field}: {value}, {state}. Press Enter to edit."
+msgstr "{field}: {value}, {state}. Druk op Enter om te bewerken."
+
+msgid "{field}: {value}."
+msgstr ""
+
+msgid "{field}: {value}. Press Enter to edit."
+msgstr "{field}: {value}. Druk op Enter om te bewerken."
+
+msgid "{folderFields} · {fileFields}"
 msgstr ""
 
 msgid "{seconds} s"
@@ -32,11 +62,35 @@ msgstr ""
 msgid "+ add value"
 msgstr "+ waarde toevoegen"
 
-msgid "A subscription includes: guaranteed Nextcloud compatibility, email support, priority bug fixes, and active development."
-msgstr ""
+msgid "A backup or restore is already running"
+msgstr "Er loopt al een back-up of herstel"
 
-msgid "Accept"
-msgstr "Accepteren"
+msgid "A change shows once a page is loaded again."
+msgstr "Een wijziging is zichtbaar zodra een pagina opnieuw is geladen."
+
+msgid "A column can have at most 10 rules"
+msgstr "Een kolom kan maximaal 10 regels hebben"
+
+msgid "a condition this version does not know"
+msgstr "een voorwaarde die deze versie niet kent"
+
+msgid "A field with this name already exists"
+msgstr "Er bestaat al een veld met deze naam"
+
+msgid "A file field name starts with file_gf_, followed by lowercase letters, numbers and underscores, beginning with a letter (for example file_gf_department)."
+msgstr "De naam van een bestandsveld begint met file_gf_, gevolgd door kleine letters, cijfers en underscores, te beginnen met een letter (bijvoorbeeld file_gf_afdeling)."
+
+msgid "A shared cache is set up, so presence and editing locks work across all web servers."
+msgstr "Er is een gedeelde cache ingesteld, dus aanwezigheid en bewerkingslocks werken over alle webservers."
+
+msgid "A Team folder field name starts with gf_, followed by lowercase letters, numbers and underscores, beginning with a letter (for example gf_classification)."
+msgstr "De naam van een teammapveld begint met gf_, gevolgd door kleine letters, cijfers en underscores, te beginnen met een letter (bijvoorbeeld gf_classificatie)."
+
+msgid "A view name can have at most 100 characters"
+msgstr "De naam van een weergave kan maximaal 100 tekens hebben"
+
+msgid "Accept AI suggestion for {field}"
+msgstr "AI-suggestie voor {field} accepteren"
 
 msgid "Access denied"
 msgstr "Toegang geweigerd"
@@ -53,14 +107,20 @@ msgstr "Acties"
 msgid "Active permissions"
 msgstr "Actieve rechten"
 
+msgid "Add a word to narrow the search"
+msgstr "Voeg een woord toe om de zoekopdracht te verfijnen"
+
+msgid "Add a word, or filter by field"
+msgstr "Voeg een woord toe of filter op veld"
+
+msgid "Add at least one option"
+msgstr "Voeg minstens één optie toe"
+
 msgid "Add field"
 msgstr "Veld toevoegen"
 
 msgid "Add file"
 msgstr "Bestand toevoegen"
-
-msgid "Add new metadata field"
-msgstr "Nieuw metadataveld toevoegen"
 
 msgid "Add option"
 msgstr "Optie toevoegen"
@@ -68,20 +128,32 @@ msgstr "Optie toevoegen"
 msgid "Add permission"
 msgstr "Recht toevoegen"
 
+msgid "Add rule for {column}"
+msgstr "Regel toevoegen voor {column}"
+
 msgid "Add your first metadata field to get started organizing your files."
 msgstr "Voeg je eerste metadataveld toe om te beginnen met het organiseren van je bestanden."
 
 msgid "Add your first metadata field to get started organizing your Team folders."
 msgstr "Voeg je eerste metadataveld toe om te beginnen met het organiseren van je teammappen."
 
+msgid "after {date}"
+msgstr "na {date}"
+
+msgid "After a date"
+msgstr "Na een datum"
+
+msgid "after today"
+msgstr "na vandaag"
+
+msgid "After today"
+msgstr "Na vandaag"
+
 msgid "AI could not generate a new suggestion for this field."
 msgstr "AI kon geen nieuwe suggestie genereren voor dit veld."
 
 msgid "AI could not generate any suggestions for this file."
 msgstr "AI kon geen suggesties genereren voor dit bestand."
-
-msgid "AI generation failed. Please try again."
-msgstr "AI-generatie mislukt. Probeer het opnieuw."
 
 msgid "AI metadata generation"
 msgstr "AI-metadatageneratie"
@@ -101,11 +173,17 @@ msgstr "AI-taak mislukt"
 msgid "AI task timed out"
 msgstr "AI-taak duurde te lang"
 
-msgid "All types"
-msgstr "Alle types"
+msgid "All fields"
+msgstr "Alle velden"
+
+msgid "All my Team folders"
+msgstr "Al mijn teammappen"
 
 msgid "Allow people to generate metadata suggestions using AI. Requires an AI provider to be configured in Nextcloud."
 msgstr "Sta gebruikers toe om metadata suggesties te genereren met AI. Vereist dat een AI-provider is geconfigureerd in Nextcloud."
+
+msgid "An option cannot contain ;#"
+msgstr "Een optie mag geen ;# bevatten"
 
 msgid "Anonymous instance identifier (hashed URL)"
 msgstr "Anonieme instantie-identificatie (gehashte URL)"
@@ -118,6 +196,9 @@ msgstr "Anonieme gebruiksstatistieken uitgeschakeld."
 
 msgid "Any personal or sensitive data"
 msgstr "Persoonlijke of gevoelige gegevens"
+
+msgid "Applies to links people add or change. Links already saved stay as they are."
+msgstr "Geldt voor links die mensen toevoegen of wijzigen. Links die al zijn opgeslagen, blijven zoals ze zijn."
 
 msgid "Apply defaults now"
 msgstr "Standaardwaarden nu toepassen"
@@ -134,9 +215,6 @@ msgstr "Standaardwaarden toepassen …"
 msgid "Applying defaults is taking longer than expected. It will continue in the background."
 msgstr "Het toepassen van standaardwaarden duurt langer dan verwacht. Het gaat door op de achtergrond."
 
-msgid "Are you sure you want to delete the view \"{name}\"?"
-msgstr "Weet je zeker dat je de weergave \"{name}\" wilt verwijderen?"
-
 msgid "Are you sure you want to restore this backup? This will replace all current metadata with the backup data."
 msgstr "Weet je zeker dat je deze back-up wilt herstellen? Dit vervangt alle huidige metadata met de back-up gegevens."
 
@@ -146,11 +224,50 @@ msgstr "Weet je zeker dat je dit recht wilt intrekken?"
 msgid "Ascending"
 msgstr "Oplopend"
 
+msgid "Ask an administrator to add metadata fields for files here."
+msgstr "Vraag een beheerder om metadatavelden toe te voegen voor bestanden hier."
+
+msgid "Ask an administrator to add metadata fields for folders here."
+msgstr "Vraag een beheerder om metadatavelden toe te voegen voor mappen hier."
+
+msgid "Ask an administrator to add metadata fields for this Team folder."
+msgstr "Vraag een beheerder om metadatavelden toe te voegen voor deze teammap."
+
+msgid "Assigned to the person viewing"
+msgstr "Toegewezen aan wie kijkt"
+
+msgid "Assigned to you"
+msgstr "Toegewezen aan jou"
+
+msgid "At least"
+msgstr "Minstens"
+
+msgid "at least {value}"
+msgstr "minstens {value}"
+
+msgid "At most"
+msgstr "Hoogstens"
+
+msgid "at most {value}"
+msgstr "hoogstens {value}"
+
 msgid "Auto-detect"
 msgstr "Automatisch bepalen"
 
 msgid "Automatic daily backups of all metadata. You can also create manual backups and restore from any backup."
 msgstr "Automatische dagelijkse back-ups van alle metadata. Je kunt ook handmatige back-ups maken en herstellen vanuit elke back-up."
+
+msgid "Background jobs last ran more than an hour ago. The search index and default values wait for them."
+msgstr "Achtergrondtaken liepen meer dan een uur geleden voor het laatst. De zoekindex en de standaardwaarden wachten daarop."
+
+msgid "Background jobs run via %s. Use the system cron, so the search index and default values keep up."
+msgstr "Achtergrondtaken draaien via %s. Gebruik de systeem-cron, zodat de zoekindex en de standaardwaarden bijblijven."
+
+msgid "Background jobs run via the system cron."
+msgstr "Achtergrondtaken draaien via de systeem-cron."
+
+msgid "Backup"
+msgstr "Back-up"
 
 msgid "Backup and restore"
 msgstr "Back-up & Herstel"
@@ -164,14 +281,35 @@ msgstr "Back-up mislukt: {error}"
 msgid "Backup from: {date}"
 msgstr "Back-up van: {date}"
 
+msgid "Backup not found"
+msgstr "Back-up niet gevonden"
+
 msgid "Basic server configuration (database, OS, web server, language, timezone, country)"
 msgstr "Basale serverconfiguratie (database, OS, webserver, taal, tijdzone, land)"
+
+msgid "before {date}"
+msgstr "vóór {date}"
+
+msgid "Before a date"
+msgstr "Vóór een datum"
+
+msgid "before today"
+msgstr "vóór vandaag"
+
+msgid "Before today"
+msgstr "Vóór vandaag"
 
 msgid "Being edited by {user}"
 msgstr "Wordt bewerkt door {user}"
 
 msgid "Being edited by someone else"
-msgstr ""
+msgstr "Wordt door iemand anders bewerkt"
+
+msgid "Blocked domains"
+msgstr "Geblokkeerde domeinen"
+
+msgid "Blue"
+msgstr "Blauw"
 
 msgid "Cancel"
 msgstr "Annuleren"
@@ -179,32 +317,80 @@ msgstr "Annuleren"
 msgid "Cannot delete (in use)"
 msgstr "Kan niet verwijderen (in gebruik)"
 
-msgid "Cannot delete field - it is currently in use"
-msgstr "Kan veld niet verwijderen - het is momenteel in gebruik"
-
 msgid "Change account"
 msgstr "Gebruiker wijzigen"
 
+msgid "Changes by others appear right away, through Client Push."
+msgstr "Wijzigingen van anderen verschijnen direct, via Client Push."
+
 msgid "Check configuration:"
-msgstr ""
+msgstr "Ingestelde controle:"
 
 msgid "Checkbox"
 msgstr "Selectievakje"
 
+msgid "Checked"
+msgstr "Aangevinkt"
+
+msgid "Choose 1 to 50 options of at most 200 characters"
+msgstr "Kies 1 tot 50 opties van maximaal 200 tekens"
+
+msgid "Choose a field."
+msgstr "Kies een veld."
+
+msgid "Choose a JSON file to import"
+msgstr "Kies een JSON-bestand om te importeren"
+
+msgid "Choose a Team folder."
+msgstr "Kies een teammap."
+
+msgid "Choose a value."
+msgstr "Kies een waarde."
+
+msgid "Choose an existing account"
+msgstr "Kies een bestaande gebruiker"
+
+msgid "Choose an existing group"
+msgstr "Kies een bestaande groep"
+
+msgid "Choose an existing Team folder"
+msgstr "Kies een bestaande teammap"
+
+msgid "Choose an option"
+msgstr "Kies een optie"
+
 msgid "Choose an option …"
 msgstr "Kies een optie …"
 
+msgid "Choose at least one option"
+msgstr "Kies minstens één optie"
+
+msgid "Choose existing fields"
+msgstr "Kies bestaande velden"
+
+msgid "Choose one of the field types"
+msgstr "Kies een van de veldtypes"
+
+msgid "Choose one of the options of this field"
+msgstr "Kies een van de opties van dit veld"
+
+msgid "Choose one or more options"
+msgstr "Kies een of meer opties"
+
+msgid "Choose only options of this field"
+msgstr "Kies alleen opties van dit veld"
+
 msgid "Choose options …"
 msgstr "Kies opties …"
-
-msgid "Choose which columns to show and in what order."
-msgstr "Kies welke kolommen getoond worden en in welke volgorde."
 
 msgid "Clear"
 msgstr "Wissen"
 
 msgid "Clear all"
 msgstr "Alles wissen"
+
+msgid "Clear metadata"
+msgstr "Metadata wissen"
 
 msgid "Clear search"
 msgstr "Zoekopdracht wissen"
@@ -218,11 +404,20 @@ msgstr "Wissen …"
 msgid "Close"
 msgstr "Sluiten"
 
+msgid "Color"
+msgstr "Kleur"
+
 msgid "Columns"
 msgstr "Kolommen"
 
+msgid "Compares by day: a time earlier today counts as today."
+msgstr "Vergelijkt per dag: een tijdstip eerder vandaag telt als vandaag."
+
 msgid "Comparison value is required"
 msgstr "Vergelijkingswaarde is verplicht"
+
+msgid "Condition"
+msgstr "Voorwaarde"
 
 msgid "Configure custom metadata fields that will be available for all Team folders. These fields help organize and categorize your Team folders."
 msgstr "Configureer aangepaste metadatavelden die beschikbaar zijn voor alle teammappen. Deze velden helpen bij het organiseren en categoriseren van je teammappen."
@@ -232,9 +427,6 @@ msgstr "Configureer aangepaste metadatavelden die beschikbaar zijn voor bestande
 
 msgid "Configure fields"
 msgstr "Velden configureren"
-
-msgid "Configure fields for this Team folder"
-msgstr "Configureer velden voor deze teammap"
 
 msgid "Configure fields: Choose which fields are available for each Team folder"
 msgstr "Velden configureren: Kies welke velden beschikbaar zijn voor elke teammap"
@@ -248,41 +440,77 @@ msgstr "Configureer welke metadatavelden beschikbaar zijn voor je teammappen"
 msgid "Configure which metadata search fields are available for each Team folder and manage Team folder-specific metadata."
 msgstr "Configureer welke metadata zoekvelden beschikbaar zijn voor elke teammap en beheer teammap-specifieke metadata."
 
-msgid "Confirm import"
-msgstr "Import Bevestigen"
-
 msgid "contains"
 msgstr "bevat"
+
+msgid "Contains"
+msgstr "Bevat"
+
+msgid "contains {value}"
+msgstr "bevat {value}"
 
 msgid "contains all"
 msgstr "bevat alle"
 
+msgid "Contains all of"
+msgstr "Bevat alle van"
+
+msgid "contains all of {values}"
+msgstr "bevat alle van {values}"
+
+msgid "Contains one of"
+msgstr "Bevat een van"
+
+msgid "contains one of {values}"
+msgstr "bevat een van {values}"
+
 msgid "Could not connect to license server"
-msgstr ""
+msgstr "Kan geen verbinding maken met de licentieserver"
+
+msgid "Could not delete the fields. Nothing was changed."
+msgstr "Kon de velden niet verwijderen. Er is niets gewijzigd."
 
 msgid "Could not delete the view: {reason}"
 msgstr "Kon de weergave niet verwijderen: {reason}"
 
+msgid "Could not generate metadata. Try again."
+msgstr "Kon de metadata niet genereren. Probeer het opnieuw."
+
+msgid "Could not load metadata. Check the connection and try again."
+msgstr "Kon de metadata niet laden. Controleer de verbinding en probeer het opnieuw."
+
 msgid "Could not reach the telemetry server. Please try again later."
 msgstr "Kan de telemetrieserver niet bereiken. Probeer het later opnieuw."
+
+msgid "Could not regenerate the suggestion. Try again."
+msgstr "Kon geen nieuwe suggestie maken. Probeer het opnieuw."
+
+msgid "Could not save metadata. Try again."
+msgstr "Kon de metadata niet opslaan. Probeer het opnieuw."
+
+msgid "Could not save the setting. It is unchanged."
+msgstr "De instelling kon niet worden opgeslagen. Hij is niet gewijzigd."
 
 msgid "Could not save the view: {reason}"
 msgstr "Kon de weergave niet bewaren: {reason}"
 
+msgid "Create a new view"
+msgstr "Nieuwe weergave maken"
+
 msgid "Create backup now"
 msgstr "Nu back-up maken"
 
-msgid "Create new view"
-msgstr "Nieuwe weergave maken"
-
-msgid "Create predefined filter, column and sort combinations for this Team folder."
-msgstr "Maak vooraf gedefinieerde filter-, kolom- en sorteercombinaties voor deze teammap."
+msgid "Create field"
+msgstr "Veld aanmaken"
 
 msgid "Created"
 msgstr "Aangemaakt"
 
 msgid "Creating backup …"
 msgstr "Back-up maken …"
+
+msgid "Custom rule"
+msgstr "Eigen regel"
 
 msgid "Date"
 msgstr "Datum"
@@ -299,8 +527,17 @@ msgstr "Verwijderen"
 msgid "Delete field"
 msgstr "Veld verwijderen"
 
-msgid "Delete this view?"
-msgstr "Deze weergave verwijderen?"
+msgid "Delete fields"
+msgstr "Velden verwijderen"
+
+msgid "Delete saved search"
+msgstr "Bewaarde zoekopdracht verwijderen"
+
+msgid "Delete selected"
+msgstr "Selectie verwijderen"
+
+msgid "Delete the view {name}? This cannot be undone."
+msgstr "De weergave {name} verwijderen? Dit kan niet ongedaan worden gemaakt."
 
 msgid "Delete view"
 msgstr "Weergave verwijderen"
@@ -314,8 +551,8 @@ msgstr "Beschrijving"
 msgid "Description:"
 msgstr "Beschrijving:"
 
-msgid "Dismiss"
-msgstr "Afwijzen"
+msgid "Dismiss AI suggestion for {field}"
+msgstr "AI-suggestie voor {field} negeren"
 
 msgid "Display name"
 msgstr "Weergavenaam"
@@ -326,11 +563,17 @@ msgstr "Weergavenaam voor gebruikers"
 msgid "does not contain"
 msgstr "bevat niet"
 
+msgid "Does not contain"
+msgstr "Bevat niet"
+
+msgid "does not contain {value}"
+msgstr "bevat niet {value}"
+
+msgid "Done"
+msgstr "Klaar"
+
 msgid "Download"
 msgstr "Downloaden"
-
-msgid "Download all metadata fields as a JSON file."
-msgstr "Download alle metadatavelden als JSON-bestand."
 
 msgid "Drag to reorder"
 msgstr "Slepen om te herordenen"
@@ -341,6 +584,12 @@ msgstr ""
 msgid "Dropdown options"
 msgstr "Dropdown-opties"
 
+msgid "Due soon"
+msgstr "Binnenkort"
+
+msgid "Due today"
+msgstr "Vervalt vandaag"
+
 msgid "e.g. Author, Document type, Status"
 msgstr "bijv. Auteur, Document Type, Status"
 
@@ -350,20 +599,29 @@ msgstr "bijv. Afdeling, Project Type, Prioriteit"
 msgid "e.g. MVOX-XXXX-XXXX-XXXX-XXXX"
 msgstr "bijv. MVOX-XXXX-XXXX-XXXX-XXXX"
 
-msgid "e.g. Value 1, Value 2"
-msgstr "bijv. Waarde 1, Waarde 2"
-
 msgid "e.g., author, document_type, status"
 msgstr "bijv. auteur, document_type, status"
 
 msgid "e.g., department, project_type, priority"
 msgstr "bijv. afdeling, project_type, prioriteit"
 
+msgid "Each person sees the files assigned to them."
+msgstr "Ieder ziet zo de eigen bestanden gemarkeerd."
+
+msgid "Edit"
+msgstr "Bewerken"
+
+msgid "Edit …"
+msgstr "Bewerken …"
+
 msgid "Edit field"
 msgstr "Veld bewerken"
 
-msgid "Edit field: {name}"
-msgstr "Veld bewerken: {name}"
+msgid "Edit file metadata"
+msgstr "Metadata van dit bestand bewerken"
+
+msgid "Edit folder metadata"
+msgstr "Metadata van deze map bewerken"
 
 msgid "Edit metadata"
 msgstr "Metadata bewerken"
@@ -377,6 +635,9 @@ msgstr "Metadata bewerken voor {folder}"
 msgid "Edit metadata: Set Team folder-specific metadata values (admin only)"
 msgstr "Metadata bewerken: Stel teammap-specifieke metadatawaarden in (alleen beheerder)"
 
+msgid "Edit Team folder metadata"
+msgstr "Teammap-metadata bewerken"
+
 msgid "Edit Team folder metadata values"
 msgstr "Metadatawaarden van teammap bewerken"
 
@@ -386,8 +647,38 @@ msgstr "Bewerk de metadatawaarden voor deze teammap"
 msgid "Edit view"
 msgstr "Weergave bewerken"
 
+msgid "Editing metadata for {folder}"
+msgstr "Metadata bewerken voor {folder}"
+
+msgid "Empty"
+msgstr "Leeg"
+
 msgid "Enable AI metadata generation"
 msgstr "AI-metadatageneratie inschakelen"
+
+msgid "Enter 1 to 200 characters"
+msgstr "Voer 1 tot 200 tekens in"
+
+msgid "Enter a date and time as YYYY-MM-DDTHH:MM:SS"
+msgstr "Voer een datum en tijd in als YYYY-MM-DDTHH:MM:SS"
+
+msgid "Enter a date as YYYY-MM-DD"
+msgstr "Voer een datum in als YYYY-MM-DD"
+
+msgid "Enter a label"
+msgstr "Voer een label in"
+
+msgid "Enter a label people will see"
+msgstr "Vul een naam in die gebruikers te zien krijgen"
+
+msgid "Enter a link to a file"
+msgstr "Voer een link naar een bestand in"
+
+msgid "Enter a list of IDs"
+msgstr "Voer een lijst met ID's in"
+
+msgid "Enter a list of names"
+msgstr "Voer een lijst met namen in"
 
 msgid "Enter a name for the view"
 msgstr "Geef de weergave een naam"
@@ -395,8 +686,35 @@ msgstr "Geef de weergave een naam"
 msgid "Enter a number"
 msgstr "Voer een getal in"
 
+msgid "Enter a number, such as 12 or 3.5"
+msgstr "Voer een getal in, zoals 12 of 3.5"
+
+msgid "Enter a valid date"
+msgstr "Voer een geldige datum in"
+
+msgid "Enter a web address"
+msgstr "Voer een webadres in"
+
+msgid "Enter a whole number"
+msgstr "Voer een geheel getal in"
+
+msgid "Enter a whole number from 1 to 3650"
+msgstr "Voer een heel getal van 1 tot 3650 in"
+
+msgid "Enter an address that starts with http://, https:// or mailto:"
+msgstr "Voer een adres in dat begint met http://, https:// of mailto:"
+
+msgid "Enter at most 500 domains"
+msgstr "Voer maximaal 500 domeinen in"
+
+msgid "Enter domains such as example.com or .ru, one per line"
+msgstr "Voer domeinen in zoals example.com of .ru, één per regel"
+
 msgid "Enter expected value"
 msgstr "Voer de verwachte waarde in"
+
+msgid "Enter text"
+msgstr "Voer tekst in"
 
 msgid "Enter URL ({example})"
 msgstr "Voer URL in ({example})"
@@ -410,17 +728,17 @@ msgstr "Fout bij laden metadata"
 msgid "Error saving metadata: {error}"
 msgstr "Fout bij opslaan van metadata: {error}"
 
+msgid "Exactly what is and is not sent"
+msgstr "Precies wat er wel en niet wordt verzonden"
+
 msgid "Existing metadata fields"
 msgstr "Bestaande metadatavelden"
 
 msgid "Export CSV"
 msgstr "Exporteer CSV"
 
-msgid "Export fields"
-msgstr "Velden exporteren"
-
-msgid "Export fields to JSON"
-msgstr "Velden exporteren naar JSON"
+msgid "Export to JSON"
+msgstr "Exporteren naar JSON"
 
 msgid "Exporting …"
 msgstr "Exporteren …"
@@ -452,9 +770,6 @@ msgstr "Velden importeren mislukt: {error}"
 msgid "Failed to load groups"
 msgstr "Groepen laden mislukt"
 
-msgid "Failed to load metadata"
-msgstr "Metadata laden mislukt"
-
 msgid "Failed to load metadata fields"
 msgstr "Metadata velden laden mislukt"
 
@@ -463,15 +778,6 @@ msgstr "Rechten laden mislukt"
 
 msgid "Failed to load Team folders"
 msgstr "Teammappen laden mislukt"
-
-msgid "Failed to parse JSON file: {error}"
-msgstr "JSON-bestand parsen mislukt: {error}"
-
-msgid "Failed to read file"
-msgstr ""
-
-msgid "Failed to regenerate suggestion."
-msgstr "Suggestie opnieuw genereren mislukt."
 
 msgid "Failed to remove subscription key"
 msgstr "Verwijderen abonnementssleutel mislukt"
@@ -491,32 +797,26 @@ msgstr "Metadata opslaan mislukt"
 msgid "Failed to save subscription key"
 msgstr "Opslaan abonnementssleutel mislukt"
 
-msgid "Failed to save view"
-msgstr "Weergave opslaan mislukt"
-
 msgid "Failed to send report"
 msgstr "Rapport verzenden mislukt"
 
 msgid "Failed to update field"
 msgstr "Veld bijwerken mislukt"
 
-msgid "Failed to update settings"
-msgstr "Instellingen bijwerken mislukt"
-
 msgid "Field"
 msgstr "Veld"
 
-msgid "Field \"{name}\" added successfully"
-msgstr "Veld \"{name}\" succesvol toegevoegd"
+msgid "Field \"{name}\" added"
+msgstr "Veld \"{name}\" toegevoegd"
 
-msgid "Field configuration saved successfully"
-msgstr "Veld configuratie succesvol opgeslagen"
+msgid "Field configuration saved"
+msgstr "Veldconfiguratie opgeslagen"
 
 msgid "Field definitions"
-msgstr ""
+msgstr "Velddefinities"
 
-msgid "Field deleted successfully"
-msgstr "Veld succesvol verwijderd"
+msgid "Field deleted"
+msgstr "Veld verwijderd"
 
 msgid "Field label"
 msgstr "Veld Label"
@@ -524,23 +824,20 @@ msgstr "Veld Label"
 msgid "Field name"
 msgstr "Veldnaam"
 
-msgid "Field name may only contain lowercase letters, numbers and underscores, and must start with a letter"
-msgstr "Een veldnaam mag alleen kleine letters, cijfers en underscores bevatten en moet met een letter beginnen"
-
-msgid "Field name, label, and type are required"
-msgstr "Veldnaam, label en type zijn verplicht"
+msgid "Field not found"
+msgstr "Veld niet gevonden"
 
 msgid "Field type"
 msgstr "Veldtype"
 
-msgid "Field type:"
-msgstr "Veldtype:"
+msgid "Field type cannot be changed when field is in use"
+msgstr "Het veldtype kan niet worden gewijzigd zolang het veld in gebruik is"
 
-msgid "Field updated successfully"
-msgstr "Veld succesvol bijgewerkt"
+msgid "Field updated"
+msgstr "Veld bijgewerkt"
 
-msgid "File fields"
-msgstr "Bestandsvelden"
+msgid "File is not in this Team folder"
+msgstr "Bestand staat niet in deze teammap"
 
 msgid "File link"
 msgstr "Bestandslink"
@@ -560,17 +857,29 @@ msgstr "Bestandsnaam"
 msgid "File names or paths"
 msgstr "Bestandsnamen of paden"
 
+msgid "File not found"
+msgstr "Bestand niet gevonden"
+
 msgid "File path"
 msgstr "Bestandspad"
 
 msgid "File values"
-msgstr ""
+msgstr "Bestandswaarden"
 
-msgid "Files matching all selected options are shown."
-msgstr "Bestanden die aan alle geselecteerde opties voldoen worden getoond."
+msgid "Files"
+msgstr "Bestanden"
+
+msgid "Files with any of the selected options are shown."
+msgstr "Bestanden met een van de gekozen opties worden getoond."
+
+msgid "Files without a value are marked in the grid, and get one at their next save."
+msgstr "Bestanden zonder waarde worden in de lijst gemarkeerd en krijgen er een bij de volgende keer opslaan."
 
 msgid "Filter by metadata"
 msgstr "Filteren op metadata"
+
+msgid "Filter on {column}"
+msgstr "Filteren op {column}"
 
 msgid "Filterable"
 msgstr "Filterbaar"
@@ -578,11 +887,23 @@ msgstr "Filterbaar"
 msgid "Filters"
 msgstr ""
 
-msgid "Filters (preset values)"
-msgstr "Filters (preset waarden)"
+msgid "Finish or cancel this rule to save the view."
+msgstr "Rond deze regel af of annuleer hem om de weergave op te slaan."
+
+msgid "Fixed while the field is in use"
+msgstr "Ligt vast zolang het veld in gebruik is"
 
 msgid "Folder metadata"
 msgstr "Mapmetadata"
+
+msgid "For a date field, send {\"includeTime\": true} or false"
+msgstr "Stuur voor een datumveld {\"includeTime\": true} of false"
+
+msgid "Free-text search finds the metadata of all files."
+msgstr "Zoeken op vrije tekst vindt de metadata van alle bestanden."
+
+msgid "General"
+msgstr "Algemeen"
 
 msgid "Generate with AI"
 msgstr "Genereren met AI"
@@ -592,6 +913,9 @@ msgstr "Genereren …"
 
 msgid "Generating metadata with AI …"
 msgstr "Metadata genereren met AI …"
+
+msgid "Give the search a name of at most 100 characters."
+msgstr "Geef de zoekopdracht een naam van maximaal 100 tekens."
 
 msgid "Grant permission"
 msgstr "Recht toekennen"
@@ -605,11 +929,32 @@ msgstr "groter dan of gelijk aan"
 msgid "greater than"
 msgstr "groter dan"
 
+msgid "Greater than"
+msgstr "Groter dan"
+
+msgid "greater than {value}"
+msgstr "groter dan {value}"
+
+msgid "Green"
+msgstr "Groen"
+
 msgid "Group"
 msgstr "Groep"
 
+msgid "Handled by Nextcloud. Contact your Nextcloud account manager, or {email}."
+msgstr "Lopen via Nextcloud. Neem contact op met je Nextcloud-accountmanager, of {email}."
+
 msgid "Help improve MetaVox by sharing anonymous usage statistics."
 msgstr "Help MetaVox te verbeteren door anonieme gebruiksstatistieken te delen."
+
+msgid "Hidden columns keep their rules: {columns}"
+msgstr "Verborgen kolommen houden hun regels: {columns}"
+
+msgid "Highlight cells"
+msgstr "Cellen markeren"
+
+msgid "Highlights: {names}"
+msgstr "Markeringen: {names}"
 
 msgid "How it works:"
 msgstr "Hoe het werkt:"
@@ -620,20 +965,20 @@ msgstr "Niet actief"
 msgid "Import and export"
 msgstr "Importeren & Exporteren"
 
-msgid "Import completed: {imported} imported, {errors} errors"
-msgstr "Import voltooid: {imported} geïmporteerd, {errors} fouten"
-
 msgid "Import fields"
 msgstr "Velden importeren"
 
-msgid "Import fields from JSON"
-msgstr "Velden importeren vanuit JSON"
+msgid "Import from JSON …"
+msgstr "Importeren uit JSON …"
 
 msgid "Import preview"
 msgstr "Import Voorbeeld"
 
 msgid "Importing …"
 msgstr "Importeren …"
+
+msgid "In the file list"
+msgstr "In de bestandslijst"
 
 msgid "Include time component"
 msgstr "Tijd meenemen"
@@ -659,14 +1004,20 @@ msgstr "Ongeldig teken \"{char}\" — alleen a-z, 0-9 en _ toegestaan"
 msgid "Invalid configuration format"
 msgstr "Ongeldig configuratieformaat"
 
+msgid "Invalid ID"
+msgstr "Ongeldig id"
+
 msgid "Invalid JSON file: {error}"
 msgstr "Ongeldig JSON-bestand: {error}"
 
-msgid "Invalid JSON format. Expected an array of field definitions."
-msgstr "Ongeldig JSON formaat. Verwacht een array van veld definities."
-
 msgid "Invalid operator"
 msgstr "Ongeldige operator"
+
+msgid "Is"
+msgstr ""
+
+msgid "is {value}"
+msgstr ""
 
 msgid "is after"
 msgstr "is na"
@@ -674,17 +1025,53 @@ msgstr "is na"
 msgid "is before"
 msgstr "is vóór"
 
+msgid "is checked"
+msgstr "is aangevinkt"
+
+msgid "Is checked"
+msgstr "Is aangevinkt"
+
 msgid "is empty"
 msgstr "is leeg"
+
+msgid "Is empty"
+msgstr "Is leeg"
 
 msgid "is not"
 msgstr "is niet"
 
+msgid "Is not"
+msgstr "Is niet"
+
+msgid "is not {value}"
+msgstr "is niet {value}"
+
+msgid "is not checked"
+msgstr "is niet aangevinkt"
+
+msgid "Is not checked"
+msgstr "Is niet aangevinkt"
+
 msgid "is not empty"
 msgstr "is niet leeg"
 
+msgid "Is not empty"
+msgstr "Is niet leeg"
+
 msgid "is one of"
 msgstr "is een van"
+
+msgid "Is one of"
+msgstr "Is een van"
+
+msgid "is one of {values}"
+msgstr "is een van {values}"
+
+msgid "is the person viewing"
+msgstr "is de persoon die kijkt"
+
+msgid "Is the person viewing"
+msgstr "Is de persoon die kijkt"
 
 msgid "JSON must be an array of field definitions"
 msgstr "JSON moet een array van veld definities zijn"
@@ -704,14 +1091,35 @@ msgstr "kleiner dan of gelijk aan"
 msgid "less than"
 msgstr "kleiner dan"
 
+msgid "Less than"
+msgstr "Kleiner dan"
+
+msgid "less than {value}"
+msgstr "kleiner dan {value}"
+
+msgid "Let people search on metadata from Nextcloud's search bar, and keep a search as a folder in Files."
+msgstr "Laat mensen vanuit de zoekbalk van Nextcloud op metadata zoeken en een zoekopdracht bewaren als map in Bestanden."
+
+msgid "Link to a file in this Team folder"
+msgstr "Verwijs naar een bestand in deze teammap"
+
+msgid "Linked from"
+msgstr "Gelinkt vanuit"
+
+msgid "Links in URL fields"
+msgstr "Links in URL-velden"
+
+msgid "Links must start with http://, https:// or mailto:. When off, any link is allowed except one that runs code, such as javascript:."
+msgstr "Links moeten beginnen met http://, https:// of mailto:. Staat dit uit, dan is elke link toegestaan behalve een link die code uitvoert, zoals javascript:."
+
+msgid "Links to this domain are not allowed"
+msgstr "Links naar dit domein zijn niet toegestaan"
+
 msgid "Loading …"
 msgstr "Laden …"
 
 msgid "Loading backups …"
 msgstr "Back-ups laden …"
-
-msgid "Loading field configuration …"
-msgstr "Veld configuratie laden …"
 
 msgid "Loading metadata …"
 msgstr "Metadata laden …"
@@ -731,14 +1139,17 @@ msgstr "Teammappen laden …"
 msgid "Loading your Team folders …"
 msgstr "Teammappen laden …"
 
+msgid "Location"
+msgstr "Locatie"
+
 msgid "Long text"
 msgstr "Lange tekst"
 
+msgid "Make a column visible under Columns to highlight its cells."
+msgstr "Zet onder Kolommen een kolom op Zichtbaar om de cellen te markeren."
+
 msgid "Make sure the Team Folders app is installed and you have created some Team folders."
 msgstr "Zorg ervoor dat de Teammappen-app is geïnstalleerd en dat je teammappen hebt aangemaakt."
-
-msgid "Manage account and group permissions for metadata fields and views"
-msgstr "Beheer gebruikers- en groepsrechten voor metadatavelden en weergaves"
 
 msgid "Manage fields permission required"
 msgstr "Recht om velden te beheren vereist"
@@ -749,8 +1160,14 @@ msgstr "Metadatavelden en weergaves beheren"
 msgid "Manage Team folders"
 msgstr "Teammappen beheren"
 
+msgid "Mark a field as filterable in the view editor to filter on it here."
+msgstr "Vink een veld aan als filterbaar in de weergave-editor om er hier op te filteren."
+
 msgid "Metadata content or values"
 msgstr "Metadata inhoud of waarden"
+
+msgid "Metadata entries"
+msgstr "Metadata-items"
 
 msgid "Metadata field"
 msgstr "Metadataveld"
@@ -761,14 +1178,17 @@ msgstr "Metadataveldnaam is verplicht"
 msgid "Metadata fields"
 msgstr "Metadatavelden"
 
-msgid "Metadata saved successfully"
-msgstr "Metadata succesvol opgeslagen"
+msgid "Metadata filter in the search bar"
+msgstr "Metadatafilter in de zoekbalk"
 
-msgid "Metadata saved successfully!"
-msgstr "Metadata succesvol opgeslagen!"
+msgid "Metadata is only available for files in a Team folder."
+msgstr "Metadata is alleen beschikbaar voor bestanden in een teammap."
 
-msgid "Metadata statistics"
-msgstr "Metadatastatistieken"
+msgid "Metadata saved"
+msgstr "Metadata opgeslagen"
+
+msgid "Metadata searches"
+msgstr "Metadata-zoekopdrachten"
 
 msgid "Metadata updated"
 msgstr "Metadata bijgewerkt"
@@ -776,23 +1196,59 @@ msgstr "Metadata bijgewerkt"
 msgid "MetaVox"
 msgstr ""
 
-msgid "MetaVox - Custom metadata fields"
-msgstr "MetaVox - Aangepaste metadatavelden"
-
 msgid "MetaVox · Filter by field …"
 msgstr "MetaVox · Filter op veld …"
 
-msgid "MetaVox is free and open source (AGPL-3.0). All features work without a subscription. If MetaVox is valuable to your organization, a subscription supports active development and gives you guaranteed Nextcloud compatibility and email support."
-msgstr ""
+msgid "MetaVox background jobs"
+msgstr "MetaVox-achtergrondtaken"
+
+msgid "MetaVox database"
+msgstr "MetaVox-database"
+
+msgid "MetaVox is built and tested for MySQL, MariaDB and PostgreSQL. On SQLite it works for trying it out, without the search index. For real use, switch to one of those."
+msgstr "MetaVox is gebouwd en getest voor MySQL, MariaDB en PostgreSQL. Op SQLite werkt het om uit te proberen, zonder de zoekindex. Stap voor echt gebruik over op een van die drie."
+
+msgid "MetaVox is built and tested for this database."
+msgstr "MetaVox is gebouwd en getest voor deze database."
+
+msgid "MetaVox is free and open source (AGPL-3.0). All features work without a subscription — nothing is gated. If your organization gets value from it, a subscription funds the maintenance and gives you guaranteed Nextcloud compatibility, email support and priority bug fixes."
+msgstr "MetaVox is gratis en open source (AGPL-3.0). Alle functies werken zonder abonnement — er wordt niets achter een slot gezet. Haalt je organisatie er waarde uit, dan financiert een abonnement het onderhoud en krijg je gegarandeerde Nextcloud-compatibiliteit, e-mailondersteuning en voorrang bij het oplossen van fouten."
+
+msgid "MetaVox live updates"
+msgstr "MetaVox live-updates"
 
 msgid "MetaVox metadata"
 msgstr ""
 
+msgid "MetaVox presence"
+msgstr "MetaVox-aanwezigheid"
+
+msgid "MetaVox search index"
+msgstr "MetaVox-zoekindex"
+
+msgid "MetaVox shared cache"
+msgstr "MetaVox gedeelde cache"
+
+msgid "MetaVox Team folders"
+msgstr "MetaVox-teammappen"
+
+msgid "MetaVox was updated. Reload the page to continue."
+msgstr "MetaVox is bijgewerkt. Laad de pagina opnieuw om verder te gaan."
+
 msgid "MetaVox, Nextcloud and PHP versions"
 msgstr "MetaVox, Nextcloud en PHP versies"
 
+msgid "Missing"
+msgstr "Ontbreekt"
+
+msgid "More than … days ago"
+msgstr "Meer dan … dagen geleden"
+
 msgid "Move down"
 msgstr "Omlaag"
+
+msgid "Move or delete rule {position} of {column}"
+msgstr "Regel {position} van {column} verplaatsen of verwijderen"
 
 msgid "Move up"
 msgstr "Omhoog"
@@ -803,20 +1259,20 @@ msgstr "Meerkeuze"
 msgid "Must start with a lowercase letter (a-z)"
 msgstr "Moet beginnen met een kleine letter (a-z)"
 
-msgid "My Team folders"
-msgstr "Mijn Teammappen"
-
 msgid "Name"
 msgstr "Naam"
-
-msgid "Name is required"
-msgstr "Naam is verplicht"
 
 msgid "Name shown to people"
 msgstr "Naam getoond aan gebruikers"
 
 msgid "Never"
 msgstr "Nooit"
+
+msgid "New field"
+msgstr "Nieuw veld"
+
+msgid "New rule for {column}"
+msgstr "Nieuwe regel voor {column}"
 
 msgid "New view"
 msgstr "Nieuwe weergave"
@@ -830,6 +1286,9 @@ msgstr "Nee"
 msgid "No (unchecked)"
 msgstr "Nee (niet aangevinkt)"
 
+msgid "No access to metadata"
+msgstr "Geen toegang tot metadata"
+
 msgid "No accessible Team folders"
 msgstr "Geen toegankelijke teammappen"
 
@@ -841,9 +1300,6 @@ msgstr "Geen AI-tekstgeneratie beschikbaar"
 
 msgid "No backups available yet. Backups are created automatically every 24 hours, or you can create one manually."
 msgstr "Nog geen back-ups beschikbaar. Back-ups worden automatisch elke 24 uur gemaakt, of je kunt er handmatig een maken."
-
-msgid "No columns configured. Configure columns first."
-msgstr "Geen kolommen geconfigureerd. Configureer eerst kolommen."
 
 msgid "No fields available"
 msgstr "Geen velden beschikbaar"
@@ -870,19 +1326,16 @@ msgid "No fields to import"
 msgstr "Geen velden om te importeren"
 
 msgid "No file IDs provided"
-msgstr ""
+msgstr "Geen bestands-ID's opgegeven"
 
-msgid "No file metadata fields are configured for items in this Team folder. Contact your administrator to set up metadata fields."
-msgstr "Er zijn geen bestandsmetadatavelden geconfigureerd voor items in deze teammap. Neem contact op met je beheerder om metadatavelden in te stellen."
+msgid "No file metadata"
+msgstr "Geen bestandsmetadata"
 
 msgid "No files selected"
 msgstr "Geen bestanden geselecteerd"
 
 msgid "No files specified"
-msgstr ""
-
-msgid "No filterable columns available. Mark columns as filterable in the column settings."
-msgstr "Geen filterbare kolommen beschikbaar. Markeer kolommen als filterbaar in de kolominstellingen."
+msgstr "Geen bestanden opgegeven"
 
 msgid "No filterable fields"
 msgstr "Geen filterbare velden"
@@ -890,17 +1343,26 @@ msgstr "Geen filterbare velden"
 msgid "No filterable fields in this folder"
 msgstr "Geen filterbare velden in deze map"
 
-msgid "No folder metadata fields are configured for items in this Team folder. Contact your administrator to set up metadata fields."
-msgstr "Er zijn geen mapmetadatavelden geconfigureerd voor items in deze teammap. Neem contact op met je beheerder om metadatavelden in te stellen."
+msgid "No filters in this view"
+msgstr "Geen filters in deze weergave"
+
+msgid "No filters to save"
+msgstr "Geen filters om te bewaren"
+
+msgid "No folder metadata"
+msgstr "Geen mapmetadata"
 
 msgid "No groups found"
 msgstr "Geen groepen gevonden"
 
 msgid "No license key configured"
-msgstr ""
+msgstr "Geen licentiesleutel ingesteld"
 
 msgid "No matching values in this folder"
 msgstr "Geen passende waarden in deze map"
+
+msgid "No metadata available"
+msgstr "Geen metadata beschikbaar"
 
 msgid "No metadata fields are configured for this Team folder."
 msgstr "Geen metadatavelden geconfigureerd voor deze teammap."
@@ -912,7 +1374,7 @@ msgid "No metadata fields configured"
 msgstr "Geen metadatavelden geconfigureerd"
 
 msgid "No metadata provided"
-msgstr ""
+msgstr "Geen metadata opgegeven"
 
 msgid "No metadata to export"
 msgstr "Geen metadata om te exporteren"
@@ -923,26 +1385,65 @@ msgstr "Geen metadatawaarden om op te slaan"
 msgid "No options available"
 msgstr "Geen opties beschikbaar"
 
+msgid "No permission to change the metadata of this file"
+msgstr "Geen rechten om de metadata van dit bestand te wijzigen"
+
+msgid "No permission to change this Team folder"
+msgstr "Geen recht om deze teammap te wijzigen"
+
 msgid "No permissions configured"
 msgstr "Geen rechten geconfigureerd"
 
 msgid "No permissions found matching \"{query}\""
 msgstr "Geen rechten gevonden voor \"{query}\""
 
-msgid "No Team folder metadata fields are configured for this Team folder. Contact your administrator to set up Team folder metadata fields."
-msgstr "Er zijn geen teammap-metadatavelden geconfigureerd voor deze teammap. Neem contact op met je beheerder om teammap-metadatavelden in te stellen."
+msgid "No shared cache such as Redis is set up. With more than one web server, presence and editing locks need one."
+msgstr "Er is geen gedeelde cache zoals Redis ingesteld. Met meer dan één webserver hebben aanwezigheid en bewerkingslocks er een nodig."
+
+msgid "No Team folder metadata"
+msgstr "Geen teammap-metadata"
 
 msgid "No Team folders found"
 msgstr "Geen teammappen gevonden"
 
-msgid "No views configured yet."
-msgstr "Nog geen weergaves geconfigureerd."
+msgid "None of these files can be changed"
+msgstr "Geen van deze bestanden kan worden gewijzigd"
+
+msgid "None of these files can be found"
+msgstr "Geen van deze bestanden is gevonden"
+
+msgid "Not added — a file cannot be linked to itself"
+msgstr "Niet toegevoegd — een bestand kan niet naar zichzelf verwijzen"
+
+msgid "Not added — only files inside this Team folder can be linked"
+msgstr "Niet toegevoegd — alleen bestanden uit deze teammap kunnen gekoppeld worden"
+
+msgid "Not added — this file is already linked"
+msgstr "Niet toegevoegd — dit bestand is al gekoppeld"
+
+msgid "not assigned"
+msgstr "niet toegewezen"
+
+msgid "Not checked"
+msgstr "Niet aangevinkt"
+
+msgid "Not found"
+msgstr "Niet gevonden"
 
 msgid "Not logged in"
 msgstr "Niet ingelogd"
 
+msgid "Nothing found"
+msgstr "Niets gevonden"
+
+msgid "Nothing was deleted — the fields are still in use."
+msgstr "Er is niets verwijderd — de velden zijn nog in gebruik."
+
 msgid "Number"
 msgstr "Nummer"
+
+msgid "Number of days"
+msgstr "Aantal dagen"
 
 msgid "Number of metadata fields and their types"
 msgstr "Aantal metadatavelden en hun types"
@@ -950,11 +1451,35 @@ msgstr "Aantal metadatavelden en hun types"
 msgid "Number of Team folders using MetaVox"
 msgstr "Aantal teammappen die MetaVox gebruiken"
 
+msgid "on {date}"
+msgstr "op {date}"
+
+msgid "On a date"
+msgstr "Op een datum"
+
+msgid "One per line: .ru blocks every .ru address, example.com that site and its subdomains."
+msgstr "Eén per regel: .ru blokkeert elk .ru-adres, example.com die site en de subdomeinen ervan."
+
+msgid "One per line. Leave empty to allow every domain that is not blocked."
+msgstr "Eén per regel. Laat leeg om elk domein toe te staan dat niet is geblokkeerd."
+
+msgid "Only allow these domains"
+msgstr "Alleen deze domeinen toestaan"
+
 msgid "Only fill empty fields"
 msgstr "Alleen lege velden invullen"
 
+msgid "Only links to approved domains are allowed"
+msgstr "Alleen links naar goedgekeurde domeinen zijn toegestaan"
+
 msgid "Only lowercase letters (a-z), numbers (0-9) and underscores (_)"
 msgstr "Alleen kleine letters (a-z), cijfers (0-9) en underscores (_)"
+
+msgid "Only web and email addresses"
+msgstr "Alleen web- en e-mailadressen"
+
+msgid "Open in Files"
+msgstr "Openen in Bestanden"
 
 msgid "Open link"
 msgstr "Link openen"
@@ -971,14 +1496,14 @@ msgstr "Optie waarde"
 msgid "Optional description for this field"
 msgstr "Optionele beschrijving voor dit veld"
 
-msgid "Options:"
-msgstr "Opties:"
+msgid "Orange"
+msgstr "Oranje"
 
 msgid "Organization name or contact email"
 msgstr "Organisatienaam of contact-e-mailadres"
 
-msgid "Overview of metadata fields and usage in your MetaVox installation."
-msgstr "Overzicht van metadatavelden en gebruik in je MetaVox-installatie."
+msgid "Overdue"
+msgstr "Te laat"
 
 msgid "Overwrite existing values"
 msgstr "Bestaande waarden overschrijven"
@@ -986,26 +1511,26 @@ msgstr "Bestaande waarden overschrijven"
 msgid "People in the selected groups will be able to manage metadata fields and views"
 msgstr "Gebruikers in de geselecteerde groepen kunnen metadatavelden en weergaves beheren"
 
+msgid "Per folder"
+msgstr "Per map"
+
 msgid "Permission"
 msgstr "Recht"
 
-msgid "Permission revoked successfully"
-msgstr "Recht succesvol ingetrokken"
+msgid "Permission not found"
+msgstr "Recht niet gevonden"
+
+msgid "Permission revoked"
+msgstr "Recht ingetrokken"
 
 msgid "Permissions"
 msgstr "Rechten"
 
-msgid "Please add at least one option for dropdown fields"
-msgstr "Voeg minimaal één optie toe voor dropdown velden"
+msgid "Personal Team folder settings"
+msgstr "Persoonlijke teammap-instellingen"
 
 msgid "Please configure some fields first using the \"Configure fields\" button."
 msgstr "Configureer eerst velden met de \"Velden Configureren\" knop."
-
-msgid "Please enter a field label"
-msgstr "Voer een veld label in"
-
-msgid "Please enter a field name"
-msgstr "Voer een veldnaam in"
 
 msgid "Please enter a subscription key"
 msgstr "Voer een abonnementssleutel in"
@@ -1013,29 +1538,29 @@ msgstr "Voer een abonnementssleutel in"
 msgid "Please enter a valid URL"
 msgstr "Voer een geldige URL in"
 
-msgid "Please select a JSON file to import"
-msgstr "Selecteer een JSON-bestand om te importeren"
-
 msgid "Please try again."
 msgstr "Probeer het opnieuw."
 
 msgid "Preparing …"
-msgstr ""
+msgstr "Voorbereiden …"
 
-msgid "Pricing details"
-msgstr "Prijsinformatie"
+msgid "Preview"
+msgstr "Voorbeeld"
 
-msgid "Questions?"
-msgstr ""
+msgid "Questions about the app:"
+msgstr "Vragen over de app:"
 
-msgid "Referenced by"
-msgstr "Gerefereerd door"
+msgid "Red"
+msgstr "Rood"
 
-msgid "Regenerate"
-msgstr "Opnieuw genereren"
+msgid "Regenerate AI suggestion for {field}"
+msgstr "AI-suggestie voor {field} opnieuw genereren"
 
 msgid "Remove"
 msgstr "Verwijderen"
+
+msgid "Remove filter value {value}"
+msgstr "Filterwaarde {value} verwijderen"
 
 msgid "Remove option"
 msgstr "Optie verwijderen"
@@ -1043,14 +1568,17 @@ msgstr "Optie verwijderen"
 msgid "Remove subscription key"
 msgstr "Abonnementssleutel verwijderen"
 
-msgid "Report sent successfully"
-msgstr "Rapport succesvol verstuurd"
+msgid "Report sent"
+msgstr "Rapport verzonden"
 
 msgid "Required"
 msgstr "Verplicht"
 
 msgid "Required field"
 msgstr "Verplicht veld"
+
+msgid "Required, no value yet"
+msgstr "Verplicht, nog geen waarde"
 
 msgid "Restore"
 msgstr "Herstellen"
@@ -1073,23 +1601,53 @@ msgstr "Opnieuw proberen"
 msgid "Revoke"
 msgstr "Intrekken"
 
+msgid "Revoke permission"
+msgstr "Recht intrekken"
+
+msgid "Rule {position} of {column}"
+msgstr "Regel {position} van {column}"
+
+msgid "Rule deleted"
+msgstr "Regel verwijderd"
+
+msgid "Rule moved to position {position}"
+msgstr "Regel verplaatst naar positie {position}"
+
 msgid "Save"
 msgstr "Opslaan"
 
 msgid "Save & activate"
 msgstr "Opslaan & activeren"
 
-msgid "Save changes"
-msgstr "Wijzigingen opslaan"
+msgid "Save a filter as a folder in Files"
+msgstr "Een filter bewaren als map in Bestanden"
+
+msgid "Save as folder"
+msgstr "Opslaan als map"
+
+msgid "Save as view"
+msgstr "Bewaren als weergave"
 
 msgid "Save configuration"
 msgstr "Configuratie opslaan"
 
-msgid "Save view"
-msgstr "Weergave opslaan"
+msgid "Save filters as view …"
+msgstr "Filters bewaren als weergave …"
+
+msgid "Saved search not found"
+msgstr "Bewaarde zoekopdracht niet gevonden"
 
 msgid "Saving …"
 msgstr "Opslaan …"
+
+msgid "Saving searches as folders is turned off"
+msgstr "Zoekopdrachten bewaren als map staat uit"
+
+msgid "Search"
+msgstr "Zoeken"
+
+msgid "Search accounts"
+msgstr "Gebruikers zoeken"
 
 msgid "Search and select groups …"
 msgstr "Zoek en selecteer groepen …"
@@ -1100,11 +1658,26 @@ msgstr "Velden zoeken"
 msgid "Search fields …"
 msgstr "Velden zoeken …"
 
+msgid "Search permissions"
+msgstr "Rechten zoeken"
+
 msgid "Search permissions …"
 msgstr "Rechten zoeken …"
 
 msgid "Search Team folders"
 msgstr "Teammappen zoeken"
+
+msgid "Search values"
+msgstr "Waarden zoeken"
+
+msgid "Searches every Team folder you are a member of."
+msgstr "Zoekt in elke teammap waarvan je lid bent."
+
+msgid "Searching metadata"
+msgstr "Zoeken op metadata"
+
+msgid "Select {field}"
+msgstr "{field} selecteren"
 
 msgid "Select a field"
 msgstr "Kies een veld"
@@ -1121,11 +1694,17 @@ msgstr "Kies een teammap"
 msgid "Select a value"
 msgstr "Kies een waarde"
 
+msgid "Select all deletable"
+msgstr "Selecteer alle verwijderbare"
+
 msgid "Select groups"
 msgstr "Selecteer groepen"
 
-msgid "Select JSON file"
-msgstr "Selecteer JSON-bestand"
+msgid "Send a sort_field, filters or both"
+msgstr "Stuur een sort_field, filters of beide"
+
+msgid "Send each field name with its value"
+msgstr "Stuur elke veldnaam met de waarde ervan"
 
 msgid "Send report now"
 msgstr "Rapport nu verzenden"
@@ -1133,35 +1712,65 @@ msgstr "Rapport nu verzenden"
 msgid "Sending …"
 msgstr "Verzenden …"
 
-msgid "Set as default view"
-msgstr "Als standaard weergave instellen"
+msgid "Set by the administrator, the same for every file here."
+msgstr "Ingesteld door de beheerder, hetzelfde voor elk bestand hier."
 
-msgid "Set preset filter values (comma-separated) per field."
-msgstr "Stel vooraf ingestelde filterwaarden in (komma-gescheiden) per veld."
+msgid "Setting saved."
+msgstr "Instelling opgeslagen."
+
+msgid "Settings section"
+msgstr "Instellingenonderdeel"
 
 msgid "Share anonymous usage statistics"
 msgstr "Anonieme gebruiksstatistieken delen"
 
-msgid "Sort"
-msgstr "Sorteren"
+msgid "Shortened. The full value loads when you edit the cell."
+msgstr "Ingekort. De volledige waarde wordt geladen als je de cel bewerkt."
+
+msgid "Show"
+msgstr "Toon"
+
+msgid "Show {column}"
+msgstr "{column} tonen"
+
+msgid "Showing the newest {count} files. Make the search narrower to see the rest."
+msgstr "De nieuwste {count} bestanden worden getoond. Verfijn de zoekopdracht om de rest te zien."
+
+msgid "Shown to people beside the field"
+msgstr "Wordt naast het veld getoond aan gebruikers"
+
+msgid "Shown when you point at the icon in the cell, for example what needs to happen: “Approve first”."
+msgstr "Te zien als je het icoon in de cel aanwijst, bijvoorbeeld wat er moet gebeuren: ‘Nog goedkeuren’."
+
+msgid "Shown when you point at the icon in the cell, for example what needs to happen: “Approve first”. Empty: “{name}”."
+msgstr "Te zien als je het icoon in de cel aanwijst, bijvoorbeeld wat er moet gebeuren: ‘Nog goedkeuren’. Leeg: ‘{name}’."
+
+msgid "Some text"
+msgstr "Een tekst"
+
+msgid "Someone else"
+msgstr "Iemand anders"
+
+msgid "Someone else is editing this value"
+msgstr "Iemand anders bewerkt deze waarde"
+
+msgid "Something else"
+msgstr "Iets anders"
 
 msgid "Sorting"
 msgstr "Sortering"
 
+msgid "Sorting and filtering on MetaVox columns is paused: not all values could be loaded."
+msgstr "Sorteren en filteren op MetaVox-kolommen is gepauzeerd: niet alle waarden konden worden geladen."
+
 msgid "Spaces are not allowed — use underscores instead"
 msgstr "Spaties zijn niet toegestaan — gebruik underscores"
-
-msgid "Standard Nextcloud file view"
-msgstr ""
 
 msgid "Standard view"
 msgstr "Standaardweergave"
 
 msgid "Standard view — loads automatically when opening this folder"
 msgstr "Standaardweergave — wordt automatisch geopend in deze map"
-
-msgid "Statistics"
-msgstr "Statistieken"
 
 msgid "Subscription activated!"
 msgstr "Abonnement geactiveerd!"
@@ -1181,11 +1790,17 @@ msgstr "Abonnementssleutel verwijderd."
 msgid "Subscription key saved but validation failed: {reason}"
 msgstr "Abonnementssleutel opgeslagen maar validatie mislukt: {reason}"
 
+msgid "Subscriptions and pricing:"
+msgstr "Abonnementen en prijzen:"
+
 msgid "Support"
 msgstr "Ondersteuning"
 
 msgid "Support MetaVox"
 msgstr "Ondersteun MetaVox"
+
+msgid "Switch view"
+msgstr "Weergave wisselen"
 
 msgid "Team folder"
 msgstr "Teammap"
@@ -1196,12 +1811,6 @@ msgstr "Teammap (optioneel)"
 msgid "Team folder {id}"
 msgstr "Teammap {id}"
 
-msgid "Team folder fields"
-msgstr "Teammap-velden"
-
-msgid "Team folder information"
-msgstr "Teammap-informatie"
-
 msgid "Team folder metadata"
 msgstr "Teammap-metadata"
 
@@ -1209,10 +1818,13 @@ msgid "Team folder metadata fields"
 msgstr "Teammap-metadatavelden"
 
 msgid "Team folder values"
-msgstr ""
+msgstr "Teammapwaarden"
 
 msgid "Team folders"
 msgstr "Teammappen"
+
+msgid "Team Folders %s is on."
+msgstr "Teammappen %s staat aan."
 
 msgid "Team folders with metadata"
 msgstr "Teammappen met metadata"
@@ -1220,14 +1832,56 @@ msgstr "Teammappen met metadata"
 msgid "Text"
 msgstr "Tekst"
 
+msgid "Text by the icon (optional)"
+msgstr "Tekst bij het icoon (optioneel)"
+
 msgid "Thank you for helping improve MetaVox!"
 msgstr "Bedankt voor het helpen verbeteren van MetaVox!"
 
 msgid "Thank you! Anonymous usage statistics enabled."
 msgstr "Bedankt! Anonieme gebruiksstatistieken ingeschakeld."
 
+msgid "The Client Push app (notify_push) is not set up. Changes by others then appear after a refresh."
+msgstr "De app Client Push (notify_push) is niet ingesteld. Wijzigingen van anderen verschijnen dan pas na verversen."
+
+msgid "The current filters are saved as a new view."
+msgstr "De huidige filters worden bewaard als nieuwe weergave."
+
+msgid "The current view stays as it is."
+msgstr "De huidige weergave blijft zoals hij is."
+
+msgid "The filters replace those of this view. Everyone with access sees the change."
+msgstr "De filters vervangen die van deze weergave. Iedereen met toegang ziet de wijziging."
+
+msgid "The full value could not be loaded. Try again."
+msgstr "De volledige waarde kon niet worden geladen. Probeer het opnieuw."
+
+msgid "The full values could not be loaded. Nothing was filled."
+msgstr "De volledige waarden konden niet worden geladen. Er is niets ingevuld."
+
+msgid "The metadata check is only available to administrators"
+msgstr "De metadatacontrole is alleen beschikbaar voor beheerders"
+
+msgid "The open rule for {column} was closed without changes."
+msgstr "De open regel voor {column} is zonder wijzigingen gesloten."
+
+msgid "The rules of this view take up more than 32 KB"
+msgstr "De regels van deze weergave zijn groter dan 32 KB"
+
+msgid "The search could not be saved."
+msgstr "De zoekopdracht kon niet worden opgeslagen."
+
+msgid "The search index is being built: %1$s of %2$s files. Until then, free-text search finds only the files already done."
+msgstr "De zoekindex wordt opgebouwd: %1$s van %2$s bestanden. Tot die tijd vindt zoeken op vrije tekst alleen de bestanden die al klaar zijn."
+
+msgid "The Team Folders app is off. MetaVox adds metadata to Team folders and does nothing without it."
+msgstr "De app Teammappen staat uit. MetaVox voegt metadata toe aan teammappen en doet zonder die app niets."
+
 msgid "The telemetry server returned an error: {error}"
 msgstr "De telemetrieserver gaf een fout: {error}"
+
+msgid "The User status app is off. Who has a Team folder open then shows for up to 12 hours."
+msgstr "De app Gebruikersstatus staat uit. Wie een teammap open heeft, blijft dan tot 12 uur zichtbaar."
 
 msgid "These fields apply to the Team folder itself"
 msgstr "Deze velden zijn van toepassing op de teammap zelf"
@@ -1235,20 +1889,59 @@ msgstr "Deze velden zijn van toepassing op de teammap zelf"
 msgid "These fields can be set on individual files"
 msgstr "Deze velden kunnen op individuele bestanden worden ingesteld"
 
-msgid "This file is already linked"
-msgstr "Dit bestand is al gekoppeld"
+msgid "This field is required"
+msgstr "Dit veld is verplicht"
 
-msgid "This file is not in a Team folder. Metadata is only available for Team folder files."
-msgstr "Dit bestand bevindt zich niet in een teammap. Metadata is alleen beschikbaar voor bestanden in teammappen."
+msgid "This file has no metadata to copy"
+msgstr "Dit bestand heeft geen metadata om te kopiëren"
 
-msgid "This metadata applies to the entire Team folder and can only be edited by administrators in the administration settings."
-msgstr "Deze metadata is van toepassing op de gehele teammap en kan alleen door beheerders worden bewerkt in de beheerinstellingen."
+msgid "This is no MetaVox backup file name"
+msgstr "Dit is geen bestandsnaam van een MetaVox-back-up"
 
-msgid "Total accounts"
-msgstr "Totaal gebruikers"
+msgid "This kind of link is not allowed"
+msgstr "Dit soort link is niet toegestaan"
 
-msgid "Total metadata entries"
-msgstr "Totaal metadata-items"
+msgid "This metadata applies to the whole Team folder. Only administrators can change it."
+msgstr "Deze metadata geldt voor de hele teammap. Alleen beheerders kunnen die wijzigen."
+
+msgid "This rule does not work with this field and highlights nothing."
+msgstr "Deze regel werkt niet bij dit veld en markeert niets."
+
+msgid "This rule uses an option the field no longer has."
+msgstr "Deze regel gebruikt een optie die het veld niet meer heeft."
+
+msgid "This saved search does not exist."
+msgstr "Deze bewaarde zoekopdracht bestaat niet."
+
+msgid "This Team folder does not use this field for its files"
+msgstr "Deze teammap gebruikt dit veld niet voor zijn bestanden"
+
+msgid "This text contains a character that cannot be saved"
+msgstr "Deze tekst bevat een teken dat niet kan worden opgeslagen"
+
+msgid "This text is too long"
+msgstr "Deze tekst is te lang"
+
+msgid "This value can only be changed by an administrator."
+msgstr "Deze waarde kan alleen door een beheerder worden gewijzigd."
+
+msgid "This value is not valid"
+msgstr "Deze waarde is niet geldig"
+
+msgid "To save, finish or cancel the open rule for {column}."
+msgstr "Rond de open regel voor {column} af of annuleer hem om op te slaan."
+
+msgid "today"
+msgstr "vandaag"
+
+msgid "Today"
+msgstr "Vandaag"
+
+msgid "Too many IDs in one request"
+msgstr "Te veel ID's in één verzoek"
+
+msgid "Too many matches to search them all"
+msgstr "Te veel treffers om ze allemaal te doorzoeken"
 
 msgid "Total metadata entries count"
 msgstr "Totaal aantal metadata-items"
@@ -1256,26 +1949,35 @@ msgstr "Totaal aantal metadata-items"
 msgid "Total number of accounts and active accounts"
 msgstr "Totaal aantal gebruikers en actieve gebruikers"
 
+msgid "Type a word in the search box to see the results of the filter."
+msgstr "Typ een woord in het zoekvak om de resultaten van het filter te zien."
+
 msgid "Type at least 2 characters …"
 msgstr "Typ minimaal 2 tekens …"
 
+msgid "Type the whole value, exactly as it is written. To find part of a value, type it in the search box instead."
+msgstr "Typ de hele waarde, precies zoals die is geschreven. Wil je een deel van een waarde vinden, typ het dan in het zoekvak."
+
 msgid "Type to search accounts …"
 msgstr "Typ om gebruikers te zoeken …"
+
+msgid "Unavailable file"
+msgstr "Bestand niet beschikbaar"
+
+msgid "Undo"
+msgstr "Ongedaan maken"
 
 msgid "Unknown"
 msgstr "Onbekend"
 
 msgid "Unknown error"
-msgstr ""
-
-msgid "Unknown field type: {type}"
-msgstr ""
+msgstr "Onbekende fout"
 
 msgid "Unnamed field"
 msgstr "Naamloos veld"
 
-msgid "Upload a JSON file to import metadata fields."
-msgstr "Upload een JSON-bestand om metadatavelden te importeren."
+msgid "Update “{name}”"
+msgstr "“{name}” bijwerken"
 
 msgid "Uppercase letters are not allowed — use lowercase only"
 msgstr "Hoofdletters zijn niet toegestaan — gebruik alleen kleine letters"
@@ -1283,11 +1985,35 @@ msgstr "Hoofdletters zijn niet toegestaan — gebruik alleen kleine letters"
 msgid "URL"
 msgstr ""
 
+msgid "Use 1 for ticked or 0 for not ticked"
+msgstr "Gebruik 1 voor aangevinkt of 0 voor niet aangevinkt"
+
+msgid "Use at most 40 characters"
+msgstr "Gebruik maximaal 40 tekens"
+
+msgid "Use true or false"
+msgstr "Gebruik true of false"
+
+msgid "Users can find files by a field and its value from Nextcloud's search bar. Light: one search reads an index."
+msgstr "Gebruikers kunnen vanuit de zoekbalk van Nextcloud bestanden vinden op een veld en de waarde ervan. Licht: een zoekopdracht leest een index."
+
+msgid "Users can keep a filter as a folder under \"Metadata searches\" in Files (Nextcloud 33 and newer). Opening one shows up to 500 files and asks more of the server than a search. Works only with the filter on."
+msgstr "Gebruikers kunnen een filter bewaren als map onder ‘Metadata-zoekopdrachten’ in Bestanden (Nextcloud 33 en nieuwer). Zo’n map openen toont tot 500 bestanden en vraagt meer van de server dan een zoekopdracht. Werkt alleen als het filter aan staat."
+
+msgid "Validation failed"
+msgstr "Validatie mislukt"
+
 msgid "Value"
 msgstr "Waarde"
 
 msgid "Value to check"
 msgstr "Te controleren waarde"
+
+msgid "Values"
+msgstr "Waarden"
+
+msgid "View created"
+msgstr "Weergave aangemaakt"
 
 msgid "View details"
 msgstr "Details bekijken"
@@ -1301,17 +2027,14 @@ msgstr "Naam van de weergave is verplicht"
 msgid "View not found"
 msgstr "Weergave niet gevonden"
 
-msgid "Views"
-msgstr "Weergaves"
+msgid "View updated"
+msgstr "Weergave bijgewerkt"
 
 msgid "Visible"
 msgstr "Zichtbaar"
 
 msgid "Visit Support"
 msgstr "Ga naar Ondersteuning"
-
-msgid "Warning:"
-msgstr "Waarschuwing:"
 
 msgid "We collect: field counts, Team folder counts, entry counts, version info (MetaVox, Nextcloud, PHP), and basic server configuration. No personal data or file contents are ever shared."
 msgstr "We verzamelen: aantal velden, aantal teammappen, aantal items, versie-informatie (MetaVox, Nextcloud, PHP) en basale serverconfiguratie. Persoonlijke gegevens of bestandsinhoud worden nooit gedeeld."
@@ -1325,6 +2048,9 @@ msgstr "Wat we nooit verzamelen:"
 msgid "What you can do:"
 msgstr "Wat je kunt doen:"
 
+msgid "When a cell matches more than one rule, the top one counts."
+msgstr "Past een cel bij meer regels, dan telt de bovenste."
+
 msgid "When enabled, people see a \"Generate with AI\" button in the metadata sidebar. The AI reads file content and suggests values for metadata fields."
 msgstr "Wanneer ingeschakeld zien gebruikers een \"Genereren met AI\"-knop in de metadata-zijbalk. De AI leest bestandsinhoud en stelt waarden voor metadatavelden voor."
 
@@ -1337,14 +2063,32 @@ msgstr "waar"
 msgid "Whether your Nextcloud has an Extended Support / Enterprise subscription (a single yes/no, sourced from Nextcloud's public API)"
 msgstr "Of je Nextcloud een Extended Support- of Enterprise-abonnement heeft (alleen ja of nee, opgehaald uit de publieke API van Nextcloud)"
 
+msgid "Which links people can save in URL fields."
+msgstr "Welke links mensen in URL-velden kunnen opslaan."
+
+msgid "Who has a Team folder open follows the open browsers, through the User status app."
+msgstr "Wie een teammap open heeft, volgt de open browsers, via de app Gebruikersstatus."
+
+msgid "Within the next … days"
+msgstr "Binnen de komende … dagen"
+
+msgid "Without thousands separators, for example 10000"
+msgstr "Zonder scheidingstekens voor duizendtallen, bijvoorbeeld 10000"
+
 msgid "Yes"
 msgstr "Ja"
 
 msgid "Yes (checked)"
 msgstr "Ja (aangevinkt)"
 
+msgid "You are not a member of a Team folder."
+msgstr "Je bent geen lid van een teammap."
+
 msgid "You can only link files inside this Team folder"
 msgstr "Je kunt alleen bestanden in deze teammap koppelen"
+
+msgid "You can save at most 50 searches."
+msgstr "Je kunt maximaal 50 zoekopdrachten bewaren."
 
 msgid "You do not have access to any Team folders yet. Contact your administrator if you need access."
 msgstr "Je hebt nog geen toegang tot teammappen. Neem contact op met je beheerder als je toegang nodig hebt."
@@ -1361,6 +2105,12 @@ msgstr "Je installatie"
 msgid "Your MetaVox subscription key needs attention."
 msgstr "Je MetaVox abonnementssleutel vereist aandacht."
 
+msgid "Your saved metadata searches and the files they find."
+msgstr "Je bewaarde metadata-zoekopdrachten en de bestanden die ze vinden."
+
+msgid "Your saved metadata searches show here, each with the files it finds. Save one with the metadata filter in the search bar."
+msgstr "Hier staan je bewaarde metadata-zoekopdrachten, elk met de bestanden die het vindt. Bewaar er een met het metadatafilter in de zoekbalk."
+
 msgid "Your Team folders"
 msgstr "Jouw teammappen"
 
@@ -1369,60 +2119,120 @@ msgid_plural "{count} cells updated"
 msgstr[0] "{count} cellen bijgewerkt"
 msgstr[1] "{count} cellen bijgewerkt"
 
+msgid "{field} is used in %n Team folder and cannot be deleted"
+msgid_plural "{field} is used in %n Team folders and cannot be deleted"
+msgstr[0] "{field} wordt in %n teammap gebruikt en kan niet worden verwijderd"
+msgstr[1] "{field} wordt in %n teammappen gebruikt en kan niet worden verwijderd"
+
+msgid "{removed} deleted, {skipped} skipped because it is still in use"
+msgid_plural "{removed} deleted, {skipped} skipped because they are still in use"
+msgstr[0] "{removed} verwijderd, {skipped} overgeslagen omdat ze nog in gebruik zijn"
+msgstr[1] "{removed} verwijderd, {skipped} overgeslagen omdat ze nog in gebruik zijn"
+
 msgid "{values} and %n other"
 msgid_plural "{values} and %n others"
-msgstr[0] ""
-msgstr[1] ""
-
-msgid "%n column"
-msgid_plural "%n columns"
-msgstr[0] "%n kolommen"
-msgstr[1] "%n kolommen"
+msgstr[0] "{values} en %n andere"
+msgstr[1] "{values} en %n andere"
 
 msgid "%n entry"
 msgid_plural "%n entries"
 msgstr[0] "%n item"
 msgstr[1] "%n items"
 
-msgid "%n field configured"
-msgid_plural "%n fields configured"
-msgstr[0] "%n velden geconfigureerd"
-msgstr[1] "%n velden geconfigureerd"
+msgid "%n field"
+msgid_plural "%n fields"
+msgstr[0] "%n veld"
+msgstr[1] "%n velden"
 
 msgid "%n field definition"
 msgid_plural "%n field definitions"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%n velddefinitie"
+msgstr[1] "%n velddefinities"
+
+msgid "%n field deleted"
+msgid_plural "%n fields deleted"
+msgstr[0] "%n veld verwijderd"
+msgstr[1] "%n velden verwijderd"
 
 msgid "%n field found"
 msgid_plural "%n fields found"
 msgstr[0] "%n veld gevonden"
 msgstr[1] "%n velden gevonden"
 
+msgid "%n field selected"
+msgid_plural "%n fields selected"
+msgstr[0] "%n veld geselecteerd"
+msgstr[1] "%n velden geselecteerd"
+
+msgid "%n file field"
+msgid_plural "%n file fields"
+msgstr[0] "%n bestandsveld"
+msgstr[1] "%n bestandsvelden"
+
 msgid "%n file value"
 msgid_plural "%n file values"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%n bestandswaarde"
+msgstr[1] "%n bestandswaarden"
 
-msgid "%n filter"
-msgid_plural "%n filters"
-msgstr[0] "%n filters"
-msgstr[1] "%n filters"
+msgid "%n filter active"
+msgid_plural "%n filters active"
+msgstr[0] "%n filter actief"
+msgstr[1] "%n filters actief"
 
 msgid "%n folder"
 msgid_plural "%n folders"
 msgstr[0] "%n map"
 msgstr[1] "%n mappen"
 
+msgid "%n folder found"
+msgid_plural "%n folders found"
+msgstr[0] "%n map gevonden"
+msgstr[1] "%n mappen gevonden"
+
+msgid "%n permission"
+msgid_plural "%n permissions"
+msgstr[0] "%n recht"
+msgstr[1] "%n rechten"
+
+msgid "%n permission found"
+msgid_plural "%n permissions found"
+msgstr[0] "%n recht gevonden"
+msgstr[1] "%n rechten gevonden"
+
+msgid "%n rule"
+msgid_plural "%n rules"
+msgstr[0] "%n regel"
+msgstr[1] "%n regels"
+
+msgid "%n Team folder field"
+msgid_plural "%n Team folder fields"
+msgstr[0] "%n teammapveld"
+msgstr[1] "%n teammapvelden"
+
 msgid "%n Team folder value"
 msgid_plural "%n Team folder values"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%n teammapwaarde"
+msgstr[1] "%n teammapwaarden"
+
+msgid "%n value"
+msgid_plural "%n values"
+msgstr[0] "%n waarde"
+msgstr[1] "%n waarden"
+
+msgid "Clear all metadata from this file? Required fields keep their value: {fields}. This cannot be undone."
+msgid_plural "Clear all metadata from {count} files? Required fields keep their value: {fields}. This cannot be undone."
+msgstr[0] "Alle metadata van dit bestand wissen? Verplichte velden behouden hun waarde: {fields}. Dit kan niet ongedaan worden gemaakt."
+msgstr[1] "Alle metadata van {count} bestanden wissen? Verplichte velden behouden hun waarde: {fields}. Dit kan niet ongedaan worden gemaakt."
 
 msgid "Clear all metadata from this file? This cannot be undone."
 msgid_plural "Clear all metadata from {count} files? This cannot be undone."
 msgstr[0] "Alle metadata van dit bestand wissen? Dit kan niet ongedaan worden gemaakt."
 msgstr[1] "Alle metadata van {count} bestanden wissen? Dit kan niet ongedaan worden gemaakt."
+
+msgid "Delete %n selected field? Its values are removed everywhere and this cannot be undone."
+msgid_plural "Delete %n selected fields? Their values are removed everywhere and this cannot be undone."
+msgstr[0] "%n geselecteerd veld verwijderen? De waarden verdwijnen overal en dit kan niet ongedaan worden gemaakt."
+msgstr[1] "%n geselecteerde velden verwijderen? De waarden verdwijnen overal en dit kan niet ongedaan worden gemaakt."
 
 msgid "Edit metadata ({count} item)"
 msgid_plural "Edit metadata ({count} items)"
@@ -1434,30 +2244,35 @@ msgid_plural "Exported %n fields"
 msgstr[0] "%n veld geëxporteerd"
 msgstr[1] "%n velden geëxporteerd"
 
-msgid "Found %n field matching \"{query}\""
-msgid_plural "Found %n fields matching \"{query}\""
-msgstr[0] "%n velden gevonden voor \"{query}\""
-msgstr[1] "%n velden gevonden voor \"{query}\""
-
 msgid "Found %n field to import"
 msgid_plural "Found %n fields to import"
 msgstr[0] "%n veld gevonden om te importeren"
 msgstr[1] "%n velden gevonden om te importeren"
 
-msgid "Found %n Team folder matching \"{query}\""
-msgid_plural "Found %n Team folders matching \"{query}\""
-msgstr[0] "%n teammappen gevonden voor \"{query}\""
-msgstr[1] "%n teammappen gevonden voor \"{query}\""
+msgid "Import completed: {imported} imported, {errors} error"
+msgid_plural "Import completed: {imported} imported, {errors} errors"
+msgstr[0] "Import voltooid: {imported} geïmporteerd, {errors} fouten"
+msgstr[1] "Import voltooid: {imported} geïmporteerd, {errors} fouten"
 
 msgid "Imported %n field"
 msgid_plural "Imported %n fields"
 msgstr[0] "%n veld geïmporteerd"
 msgstr[1] "%n velden geïmporteerd"
 
+msgid "in %n Team folder"
+msgid_plural "in %n Team folders"
+msgstr[0] "in %n teammap"
+msgstr[1] "in %n teammappen"
+
 msgid "Metadata cleared for {count} file"
 msgid_plural "Metadata cleared for {count} files"
 msgstr[0] "Metadata gewist voor {count} bestanden"
 msgstr[1] "Metadata gewist voor {count} bestanden"
+
+msgid "Metadata cleared for {count} file. Kept: {fields}"
+msgid_plural "Metadata cleared for {count} files. Kept: {fields}"
+msgstr[0] "Metadata gewist voor {count} bestand. Behouden: {fields}"
+msgstr[1] "Metadata gewist voor {count} bestanden. Behouden: {fields}"
 
 msgid "Metadata exported for {count} file"
 msgid_plural "Metadata exported for {count} files"
@@ -1474,10 +2289,20 @@ msgid_plural "MetaVox is running for {count} accounts here and keeps working in 
 msgstr[0] "MetaVox draait hier voor {count} gebruikers en blijft volledig werken zonder abonnement. Haalt je organisatie er waarde uit, dan wordt een abonnement zeer gewaardeerd — het financiert het onderhoud. Verkocht via Nextcloud: neem contact op met je accountmanager of {email}."
 msgstr[1] "MetaVox draait hier voor {count} gebruikers en blijft volledig werken zonder abonnement. Haalt je organisatie er waarde uit, dan wordt een abonnement zeer gewaardeerd — het financiert het onderhoud. Verkocht via Nextcloud: neem contact op met je accountmanager of {email}."
 
+msgid "more than a day ago"
+msgid_plural "more than %n days ago"
+msgstr[0] "meer dan een dag geleden"
+msgstr[1] "meer dan %n dagen geleden"
+
 msgid "Permission granted to %n group"
 msgid_plural "Permission granted to %n groups"
 msgstr[0] "Recht verleend aan %n groep"
 msgstr[1] "Recht verleend aan %n groepen"
+
+msgid "Saves %n filter: {list}"
+msgid_plural "Saves %n filters: {list}"
+msgstr[0] "Bewaart %n filter: {list}"
+msgstr[1] "Bewaart %n filters: {list}"
 
 msgid "Show %n more folder"
 msgid_plural "Show %n more folders"
@@ -1489,12 +2314,22 @@ msgid_plural "Showing {displayed} of {total} folders"
 msgstr[0] "{displayed} van {total} mappen weergegeven"
 msgstr[1] "{displayed} van {total} mappen weergegeven"
 
+msgid "Showing {shown} of %n match. Type more to narrow it down."
+msgid_plural "Showing {shown} of %n matches. Type more to narrow them down."
+msgstr[0] "{shown} van %n treffer getoond. Typ meer om verder te verfijnen."
+msgstr[1] "{shown} van %n treffers getoond. Typ meer om verder te verfijnen."
+
+msgid "Showing {shown} of %n value. Search to find the rest."
+msgid_plural "Showing {shown} of %n values. Search to find the rest."
+msgstr[0] "{shown} van %n waarde getoond. Zoek om de rest te vinden."
+msgstr[1] "{shown} van %n waarden getoond. Zoek om de rest te vinden."
+
 msgid "This field is used in %n Team folder. Some changes may be restricted."
 msgid_plural "This field is used in %n Team folders. Some changes may be restricted."
 msgstr[0] "Dit veld wordt in %n teammap gebruikt. Sommige wijzigingen kunnen beperkt zijn."
 msgstr[1] "Dit veld wordt in %n teammappen gebruikt. Sommige wijzigingen kunnen beperkt zijn."
 
-msgid "Used in %n Team folder"
-msgid_plural "Used in %n Team folders"
-msgstr[0] "Gebruikt in %n teammappen"
-msgstr[1] "Gebruikt in %n teammappen"
+msgid "within the next day"
+msgid_plural "within the next %n days"
+msgstr[0] "binnen de komende dag"
+msgstr[1] "binnen de komende %n dagen"

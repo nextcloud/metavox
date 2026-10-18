@@ -1,8 +1,7 @@
-// Runs with Node's own test runner: node --test tests/js/ (npm run test:l10n).
-const { describe, it } = require('node:test')
-const assert = require('node:assert/strict')
-const { readFileSync, readdirSync } = require('node:fs')
-const { join, relative, resolve } = require('node:path')
+import { describe, it, expect } from 'vitest'
+import { readFileSync, readdirSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import { join, relative, resolve } from 'node:path'
 
 /**
  * Simulate the Nextcloud Transifex extractor and fail if it would miss a string.
@@ -29,6 +28,7 @@ const { join, relative, resolve } = require('node:path')
 
 const ROOT = resolve(__dirname, '../..')
 const APP_ID = 'metavox'
+const require = createRequire(import.meta.url)
 const { computeSourceStrings, stringsInFile } = require(join(ROOT, 'scripts/extract-en-json.js'))
 
 // translationtool collapses whitespace in a template match with PHP's
@@ -98,7 +98,7 @@ describe('Transifex bot visibility', () => {
 
 	it('the simulation finds something', () => {
 		// A broken simulation must not pass everything vacuously.
-		assert.ok(visible.size > 300, `the simulation found only ${visible.size} strings`)
+		expect(visible.size).toBeGreaterThan(300)
 	})
 
 	it('every frontend string is visible to the bot', () => {
@@ -109,7 +109,7 @@ describe('Transifex bot visibility', () => {
 				if (!visible.has(s)) invisible.add(`${rel(f)}: ${JSON.stringify(s.slice(0, 80))}`)
 			}
 		}
-		assert.deepEqual([...invisible], [])
+		expect([...invisible]).toEqual([])
 	})
 
 	it('no translation helper is called by another name', () => {
@@ -122,7 +122,7 @@ describe('Transifex bot visibility', () => {
 				offenders.push(`${rel(f)}: ${m[1]}(…)`)
 			}
 		}
-		assert.deepEqual(offenders, [])
+		expect(offenders).toEqual([])
 	})
 
 	it('no call-site omits the app id', () => {
@@ -134,7 +134,7 @@ describe('Transifex bot visibility', () => {
 				if (m[1] !== APP_ID && /\s/.test(m[1])) offenders.push(`${rel(f)}: t('${m[1].slice(0, 50)}')`)
 			}
 		}
-		assert.deepEqual(offenders, [])
+		expect(offenders).toEqual([])
 	})
 
 	it('every msgid is a literal', () => {
@@ -148,7 +148,7 @@ describe('Transifex bot visibility', () => {
 				offenders.push(`${rel(f)}:${line}`)
 			}
 		}
-		assert.deepEqual(offenders, [])
+		expect(offenders).toEqual([])
 	})
 
 	it('every server message constant is written out for the extractor', () => {
@@ -163,7 +163,7 @@ describe('Transifex bot visibility', () => {
 				if (!extracted.has(m[2].replace(/\\(['\\])/g, '$1'))) missing.push(`${rel(f)}: ${m[1]}`)
 			}
 		}
-		assert.deepEqual(missing, [])
+		expect(missing).toEqual([])
 	})
 
 	it('mentions the tag only to start a hint', () => {
@@ -178,6 +178,6 @@ describe('Transifex bot visibility', () => {
 				}
 			})
 		}
-		assert.deepEqual(offenders, [])
+		expect(offenders).toEqual([])
 	})
 })

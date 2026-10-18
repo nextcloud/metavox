@@ -1,0 +1,45 @@
+{
+	"name": "metavox-dav-parsers",
+	"private": true,
+	"type": "module",
+	"description": "The webdav + fast-xml-parser pairs the Files app of NC 31-35 shipped, to read nc:metavox with.",
+	"scripts": {
+		"test": "node --test"
+	},
+	"devDependencies": {
+		"webdav-5.7.1-fxp-4.4.1": "npm:webdav@5.7.1",
+		"webdav-5.8.0-fxp-4.5.3": "npm:webdav@5.8.0",
+		"webdav-5.9.0-fxp-5.3.4": "npm:webdav@5.9.0",
+		"webdav-5.9.0-fxp-5.7.1": "npm:webdav@5.9.0",
+		"webdav-5.10.0-fxp-5.7.3": "npm:webdav@5.10.0",
+		"webdav-5.10.0-fxp-5.8.0": "npm:webdav@5.10.0",
+		"webdav-5.10.0-fxp-5.11.1": "npm:webdav@5.10.0",
+		"webdav-5.11.0-fxp-5.11.1": "npm:webdav@5.11.0"
+	},
+	"overrides": {
+		"webdav-5.7.1-fxp-4.4.1": {
+			"fast-xml-parser": "4.4.1"
+		},
+		"webdav-5.8.0-fxp-4.5.3": {
+			"fast-xml-parser": "4.5.3"
+		},
+		"webdav-5.9.0-fxp-5.3.4": {
+			"fast-xml-parser": "5.3.4"
+		},
+		"webdav-5.9.0-fxp-5.7.1": {
+			"fast-xml-parser": "5.7.1"
+		},
+		"webdav-5.10.0-fxp-5.7.3": {
+			"fast-xml-parser": "5.7.3"
+		},
+		"webdav-5.10.0-fxp-5.8.0": {
+			"fast-xml-parser": "5.8.0"
+		},
+		"webdav-5.10.0-fxp-5.11.1": {
+			"fast-xml-parser": "5.11.1"
+		},
+		"webdav-5.11.0-fxp-5.11.1": {
+			"fast-xml-parser": "5.11.1"
+		}
+	}
+}

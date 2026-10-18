@@ -1,6 +1,6 @@
 # MetaVox documentatie
 
-![MetaVox v1.0.0 — metadata-kolommen in de Nextcloud Files-app](../screenshots/MetaVox%20v1.0.0.png)
+![Metadata-kolommen in Bestanden, met de weergavekiezer, gemarkeerde cellen en een ontbrekende verplichte waarde](../screenshots/grid-highlights.png)
 
 Welkom bij de MetaVox-documentatie. MetaVox is een Nextcloud-app die gestructureerde metadata toevoegt aan documenten in Team folders — voor classificatie, compliance-tracking en doorzoekbaarheid, zonder je bestanden te veranderen.
 
@@ -14,6 +14,7 @@ Leer hoe je metadata in je dagelijkse workflow gebruikt.
 - [Veldtypen](user/field-types.md) — Verschillende metadata-veldtypen (incl. standaardwaarden)
 - [Zoeken](user/search.md) — Bestanden vinden op metadata via Geünificeerd zoeken
 - [Weergaven](user/views.md) — Switch tussen voor-gedefinieerde kolom-, filter- en sorteer-combinaties
+- [Cellen markeren](user/highlight-rules.md) — Cellen kleuren op hun waarde, en welke regel voorgaat
 - [Bulk-bewerken](user/bulk-editing.md) — Metadata bewerken voor meerdere bestanden tegelijk
 - [Data exporteren](user/exporting-data.md) — Metadata exporteren naar CSV
 
@@ -46,7 +47,7 @@ Technische documentatie voor integratie en evaluatie.
 - [Privacy & beveiliging](architecture/privacy.md) — Data-locality en AVG-compliance
 - [API-referentie](architecture/api-reference.md) — OCS API-endpoints en batch-operaties
 - [Performance-limieten](architecture/performance-limits.md) — Capaciteitsplanning en schaling
-- [Integratie-gids](architecture/integration.md) — Nextcloud, SharePoint-migratie en externe systemen
+- [Integratie-gids](architecture/integration.md) — Nextcloud, SharePoint-migratie, externe systemen en het metadatapaneel insluiten in een andere app
 
 ## Aan de slag
 
@@ -54,8 +55,8 @@ Nieuw bij MetaVox? Begin met de [Snelstart-gids](getting-started.md) voor de ker
 
 ## Ondersteuning
 
-- **Issues & feature requests**: [GitHub Issues](https://github.com/voxcloud/metavox/issues)
-- **Broncode**: [GitHub repository](https://github.com/voxcloud/metavox)
+- **Issues & feature requests**: [GitHub Issues](https://github.com/nextcloud/metavox/issues)
+- **Broncode**: [GitHub repository](https://github.com/nextcloud/metavox)
 
 ## Licentie
 

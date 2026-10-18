@@ -1,40 +1,31 @@
 /**
- * MetaVox File List Filters — NC33 Native Filter Bar Integration
+ * MetaVox File List Filters — the MetaVox filter in the Files filter bar.
  *
- * Registers a MetaVox metadata filter in NC33's native filter bar
- * (alongside Type, Modified, People) using the registerFileListFilter() API.
+ * Registered through Nextcloud's official filter API. NC31/32 (@nextcloud/files 3)
+ * and NC33+ (@nextcloud/files 4) each read their own registry, so we use both.
  */
 
 import './MetaVoxFilterElement.js'
 import { createApp, h } from 'vue'
 import { translate, translate as t, translatePlural, translatePlural as n } from '@nextcloud/l10n'
-import { PLAIN_TEXT } from '../../utils/fieldValue.js'
 import MetaVoxFilterPanel from './MetaVoxFilterPanel.vue'
-import { ensureSortBypass, reorderDomRows } from './Sorting.js'
-
-const METAVOX_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -3 32 30"><polygon fill="currentColor" points="6.4,0.9 2,10.1 11,10.1"/><polygon fill="currentColor" points="17.5,0.9 13,10.1 22,10.1"/><rect x="2" y="10.1" width="20" height="13.1" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="4.9" y1="15" x2="18.8" y2="15" stroke="currentColor" stroke-width="1"/><line x1="4.9" y1="17.4" x2="18.8" y2="17.4" stroke="currentColor" stroke-width="1"/><line x1="4.9" y1="19.8" x2="13" y2="19.8" stroke="currentColor" stroke-width="1"/></svg>'
+import { watchLoading } from '../../utils/updatedPage.js'
+import { showError } from '../../utils/toast.js'
+import { emit } from '@nextcloud/event-bus'
+import { getFileListFilters, registerFileListFilter, unregisterFileListFilter } from '@nextcloud/files'
+import { ensureSortBypass, reorderDomRows, setSortPending } from './Sorting.js'
+import { applyFilterSort, compileFilters, missingIds } from './FilterSortCore.js'
+import { optionLabel } from './FilterOptions.js'
+import { writeUrl } from './UrlState.js'
+import { getListingNodes, isListingLoading, listingGeneration } from './ListingSync.js'
+import { queueMetadataLoad } from './MetadataLoader.js'
+import { hasValues } from './MetadataStore.js'
+import { getActiveGroupfolderId, getAvailableFields } from './MetaVoxState.js'
+import { PLAIN_TEXT } from '../../utils/fieldValue.js'
+import { updateTableMinWidth } from './ColumnDOM.js'
+import { METAVOX_ICON_SVG } from '../../utils/metavoxIcon.js'
 
 const FILTER_ID = 'metavox-metadata'
-
-function _compareValues(a, b, fieldType) {
-	const aVal = a ?? ''
-	const bVal = b ?? ''
-	if (aVal === bVal) return 0
-	if (aVal === '') return 1
-	if (bVal === '') return -1
-
-	switch (fieldType) {
-	case 'number':
-		return parseFloat(aVal) - parseFloat(bVal)
-	case 'date':
-		return new Date(aVal).getTime() - new Date(bVal).getTime()
-	case 'checkbox':
-	case 'boolean':
-		return (aVal === '1' ? 0 : 1) - (bVal === '1' ? 0 : 1)
-	default:
-		return String(aVal).localeCompare(String(bVal))
-	}
-}
 
 /** @type {Object|null} The registered filter instance */
 let filterInstance = null
@@ -53,7 +44,9 @@ class MetaVoxMetadataFilter extends EventTarget {
 	constructor() {
 		super()
 		this.id = FILTER_ID
-		this.order = 100
+		// After Nextcloud's own filters (the highest is 999): NC31/32 can only add
+		// a filter bar slot at the end once theirs are mounted.
+		this.order = 1000
 		this.displayName = 'MetaVox'
 		this.iconSvgInline = METAVOX_ICON_SVG
 		this.tagName = 'metavox-metadata-filter'
@@ -64,10 +57,13 @@ class MetaVoxMetadataFilter extends EventTarget {
 		this._groupfolderId = null
 		this._sortState = null // { fieldName, fieldType, direction } or null
 
-		// Server-side sorted/filtered file IDs
-		this._serverFileIds = null // ordered file IDs from server
-		this._serverFileIdSet = null // Set for O(1) membership check
-		this._serverFileIdMap = null // Map<fileId, index> for O(1) sort position
+		// The gate: never filter or sort on values that are missing or cut off.
+		this._lastNodes = []
+		this._gatePending = null
+		this._gateFailedGeneration = null
+		this._held = false // the last filter() kept the rows as they were
+		// The last filter() let every row through as it came: no filter, no sort.
+		this._passedAll = true
 	}
 
 	// ========================================
@@ -75,106 +71,46 @@ class MetaVoxMetadataFilter extends EventTarget {
 	// ========================================
 
 	/**
-	 * Mount the filter UI into the given element.
-	 * On NC32, this is called by onUpdated for every filter — must not crash.
-	 * The real UI is handled by our own injected button popover.
+	 * NC31/32 give each filter a slot in the filter bar and call mount(el) on it,
+	 * possibly more than once. NC33+ render tagName instead.
 	 */
-	async mount(el) {
-		if (!el) return
-		this.currentInstance = { $el: el, $destroy: () => {} }
+	mount(el) {
+		if (!el || el === this._mountEl) return
+		this._mountEl = el
+		el.replaceChildren(_filterButton(this))
 	}
 
 	filter(nodes) {
-		// Server-side: use pre-computed sorted/filtered file IDs
-		if (this._serverFileIds && this._serverFileIds.length > 0) {
-			const idSet = this._serverFileIdSet
-			const orderMap = this._serverFileIdMap
-			const hasActiveFilters = this._activeFilters.size > 0
+		this._lastNodes = nodes
+		this._held = false
+		const filters = compileFilters(this._activeFilters)
+		const sort = this._sortState
+		this._passedAll = filters.length === 0 && !sort
+		if (this._passedAll) return nodes
 
-			// Filter: if filters are active, remove non-matching nodes.
-			// If only sorting (no filters), keep ALL nodes.
-			let result = hasActiveFilters
-				? nodes.filter(node => !node.fileid || idSet.has(node.fileid))
-				: [...nodes]
-
-			// Sort by server-provided order (unmatched nodes go to bottom)
-			if (this._sortState) {
-				result.sort((a, b) => {
-					const posA = orderMap.get(a.fileid) ?? Number.MAX_SAFE_INTEGER
-					const posB = orderMap.get(b.fileid) ?? Number.MAX_SAFE_INTEGER
-					return posA - posB
-				})
-			}
-
-			return result
+		// A cut-off value counts as it is shown; only missing values are loaded first.
+		const missing = missingIds(nodes, hasValues)
+		if (missing.length > 0) {
+			// Never hide or reorder rows on partial data: load what is missing first.
+			this._gate(missing)
+			this._held = true
+			return nodes
 		}
-
-		// Fallback: client-side filtering (when server call hasn't completed yet)
-		let result = nodes
-
-		if (this._activeFilters.size > 0 && this._metadataCache) {
-			const filters = []
-			for (const [fieldName, valueSet] of this._activeFilters) {
-				if (valueSet.size === 0) continue
-				const positiveValues = new Set()
-				for (const v of valueSet) {
-					if (v !== '0') positiveValues.add(v)
-				}
-				filters.push({ fieldName, valueSet, positiveValues, matchEmpty: valueSet.has('0') })
-			}
-
-			if (filters.length > 0) {
-				result = result.filter(node => {
-					const fileId = node.fileid
-					if (!fileId) return true
-					const meta = this._metadataCache.get(fileId) || {}
-					for (const f of filters) {
-						const cellValue = meta[f.fieldName]
-						const cellEmpty = !cellValue || cellValue === '0' || cellValue === 'false'
-						if (cellEmpty) {
-							if (f.matchEmpty) continue
-							return false
-						}
-						if (f.positiveValues.size === 0) return false
-						const cellStr = String(cellValue)
-						if (!cellStr.includes(';#')) {
-							if (!f.positiveValues.has(cellStr)) return false
-						} else {
-							const parts = cellStr.split(';#')
-							let matched = false
-							for (let i = 0; i < parts.length; i++) {
-								const part = parts[i].trim()
-								if (part && f.positiveValues.has(part)) { matched = true; break }
-							}
-							if (!matched) return false
-						}
-					}
-					return true
-				})
-			}
-		}
-
-		if (this._sortState && this._metadataCache) {
-			const { fieldName, fieldType, direction } = this._sortState
-			const multiplier = direction === 'asc' ? 1 : -1
-			result = [...result].sort((a, b) => {
-				const metaA = this._metadataCache.get(a.fileid) || {}
-				const metaB = this._metadataCache.get(b.fileid) || {}
-				return multiplier * _compareValues(metaA[fieldName], metaB[fieldName], fieldType)
-			})
-		}
-
-		return result
+		return applyFilterSort(nodes, filters, sort, (id) => this._metadataCache?.get(id))
 	}
 
 	reset() {
 		this._activeFilters.clear()
 		this._sortState = null
-		this.clearServerState()
+		// A load still running ends here, pause and all; the next filter() starts its own.
+		this._gatePending = null
+		this._gateFailedGeneration = null
 		this._emitChips()
 		this._emitFilterUpdate()
 		// NC32 fallback: restore all DOM rows
 		reorderDomRows(null)
+		// The sort ended too: no arrow, no loading sign.
+		setSortPending(false)
 	}
 
 	// ========================================
@@ -235,6 +171,13 @@ class MetaVoxMetadataFilter extends EventTarget {
 		this.applyClientSideFilterSort()
 	}
 
+	/** Clear every filter; the sort stays, as with the ✕ on a single chip. */
+	clearFilters() {
+		this._activeFilters.clear()
+		this._emitChips()
+		this.applyClientSideFilterSort()
+	}
+
 	/**
 	 * Check if a specific value is active for a field.
 	 * @param {string} fieldName
@@ -275,125 +218,77 @@ class MetaVoxMetadataFilter extends EventTarget {
 		return this._sortState
 	}
 
-	/**
-	 * Trigger NC33 to re-run filter() which includes sorting.
-	 */
-	triggerResort() {
-		this._emitFilterUpdate()
+	/** True while missing values keep the filter and sort from being applied. */
+	isHeld() {
+		return this._held
 	}
 
-	// ========================================
-	// Server-side sort/filter
-	// ========================================
-
 	/**
-	 * Apply filters and sort client-side using the metadataCache.
-	 * Zero server calls — instant filtering and sorting.
+	 * Apply filters and sort after they changed. Filtering and sorting happen
+	 * in the browser, on the cached values (no server call).
 	 */
 	applyClientSideFilterSort() {
-		if (!this._metadataCache) return
-
 		// Deselect all files — the visible set is about to change
 		const headerCheckbox = document.querySelector('.files-list__row-head .files-list__row-checkbox input[type="checkbox"]')
 		if (headerCheckbox && (headerCheckbox.checked || headerCheckbox.indeterminate)) {
 			headerCheckbox.click()
 		}
-
-		// Nothing to do — clear server IDs so NC shows all files
-		if (!this._sortState && this._activeFilters.size === 0) {
-			this._serverFileIds = null
-			this._serverFileIdSet = null
-			this._serverFileIdMap = null
-			this._emitFilterUpdate()
-			// NC32 fallback: restore all DOM rows
-			reorderDomRows(null)
-			return
-		}
-
-		// Start with all cached file IDs
-		let ids = [...this._metadataCache.keys()]
-
-		// Apply filters (AND between fields, OR within a field)
-		if (this._activeFilters.size > 0) {
-			ids = ids.filter(fileId => {
-				const meta = this._metadataCache.get(fileId) || {}
-				for (const [fieldName, valueSet] of this._activeFilters) {
-					const cellValue = meta[fieldName]
-					const cellEmpty = !cellValue || cellValue === '0' || cellValue === 'false'
-
-					const hasEmptyFilter = valueSet.has('0')
-					const realValues = new Set([...valueSet].filter(v => v !== '0'))
-
-					if (cellEmpty) {
-						if (hasEmptyFilter) continue
-						return false
-					}
-
-					if (realValues.size === 0 && hasEmptyFilter) return false
-
-					if (realValues.size > 0) {
-						const cellStr = String(cellValue)
-						if (!cellStr.includes(';#')) {
-							if (!realValues.has(cellStr)) return false
-						} else {
-							const parts = cellStr.split(';#').map(p => p.trim())
-							if (!parts.some(p => realValues.has(p))) return false
-						}
-					}
-				}
-				return true
-			})
-		}
-
-		// Apply sort
-		if (this._sortState) {
-			const { fieldName, fieldType, direction } = this._sortState
-			ids.sort((a, b) => {
-				const metaA = this._metadataCache.get(a) || {}
-				const metaB = this._metadataCache.get(b) || {}
-				const valA = metaA[fieldName] ?? ''
-				const valB = metaB[fieldName] ?? ''
-
-				if (!valA && valB) return 1
-				if (valA && !valB) return -1
-				if (!valA && !valB) return 0
-
-				let cmp = 0
-				if (fieldType === 'number' || fieldType === 'integer' || fieldType === 'float') {
-					cmp = parseFloat(valA) - parseFloat(valB)
-				} else if (fieldType === 'date') {
-					cmp = new Date(valA).getTime() - new Date(valB).getTime()
-				} else if (fieldType === 'checkbox' || fieldType === 'boolean') {
-					cmp = (valA === '1' ? 0 : 1) - (valB === '1' ? 0 : 1)
-				} else {
-					cmp = String(valA).localeCompare(String(valB))
-				}
-				return direction === 'desc' ? -cmp : cmp
-			})
-		}
-
-		this._serverFileIds = ids
-		this._serverFileIdSet = new Set(ids)
-		this._serverFileIdMap = new Map()
-		for (let i = 0; i < ids.length; i++) {
-			this._serverFileIdMap.set(ids[i], i)
-		}
-
-		// NC33: sort bypass patches Vue computed; NC32: reorder DOM rows directly
-		const bypassOk = ensureSortBypass()
-		this._emitFilterUpdate()
-		if (!bypassOk) {
-			reorderDomRows(ids)
-		}
+		this.reapply()
 	}
 
 	/**
-	 * Clear server-side state (e.g. on directory change or view clear).
+	 * Let the Files app run filter() again. With the sort bypass NC keeps our
+	 * order; without it the visible rows are reordered in the DOM.
 	 */
-	clearServerState() {
-		this._serverFileIds = null
-		this._serverFileIdSet = null
-		this._serverFileIdMap = null
+	reapply() {
+		const bypassOk = ensureSortBypass()
+		const active = this._activeFilters.size > 0 || !!this._sortState
+		// Nothing filters or sorts, now or at the last run: telling the Files app
+		// would only make it filter and sort every row again for the same list.
+		if (active || !this._passedAll) {
+			this._emitFilterUpdate()
+		} else {
+			this._syncToUrl()
+		}
+		if (!bypassOk) {
+			const shown = active ? this.filter(getListingNodes()) : null
+			// While values are still loading the rows stay as they are.
+			if (!active || !this._held) reorderDomRows(shown && shown.map((node) => node.fileid))
+		}
+
+		// Filtering can empty the list, and the column width we force on the
+		// table then has nothing to size — it only shoves Nextcloud's empty
+		// state off to the right. Re-measure once the rows have gone.
+		requestAnimationFrame(() => updateTableMinWidth())
+	}
+
+	/**
+	 * Load the missing values once, then reapply. Without progress it pauses
+	 * until the next listing, so a failing load can never loop.
+	 */
+	_gate(ids) {
+		if (this._gatePending || this._gateFailedGeneration === listingGeneration()) return
+		// Nothing to load, or the Files app still shows the previous folder.
+		if (!getActiveGroupfolderId() || isListingLoading()) return
+		const before = ids.length
+		setSortPending(true)
+		const gate = queueMetadataLoad(ids)
+			.catch(() => {})
+			.then(() => {
+				// "Default" or another folder ended this load with a reset.
+				if (this._gatePending !== gate) return
+				this._gatePending = null
+				setSortPending(false)
+				const after = missingIds(this._lastNodes, hasValues).length
+				if (after < before) {
+					setTimeout(() => this.reapply(), 0)
+					return
+				}
+				this._gateFailedGeneration = listingGeneration()
+				// TRANSLATORS Error message; MetaVox is the app name, do not translate it
+				showError(t('metavox', 'Sorting and filtering on MetaVox columns is paused: not all values could be loaded.'))
+			})
+		this._gatePending = gate
 	}
 
 	// ========================================
@@ -407,31 +302,22 @@ class MetaVoxMetadataFilter extends EventTarget {
 	}
 
 	_syncToUrl() {
-		const params = new URLSearchParams(window.location.search)
-		if (this._activeFilters.size > 0) {
-			// Encode: field1:val1,val2;field2:val3
-			const parts = []
-			for (const [fieldName, valueSet] of this._activeFilters) {
-				const shortName = fieldName.replace('file_gf_', '')
-				parts.push(`${shortName}:${[...valueSet].join(',')}`)
-			}
-			params.set('mvfilter', parts.join(';'))
-		} else {
-			params.delete('mvfilter')
+		// Encode: field1:val1,val2;field2:val3
+		const parts = []
+		for (const [fieldName, valueSet] of this._activeFilters) {
+			parts.push(`${fieldName.replace('file_gf_', '')}:${[...valueSet].join(',')}`)
 		}
-		// Don't navigate, just update URL silently
-		const newUrl = window.location.pathname + '?' + params.toString() + window.location.hash
-		history.replaceState(null, '', newUrl)
+		writeUrl({ filters: parts.join(';') || null })
 	}
 
 	/**
-	 * Load filters from the URL ?mvfilter= parameter.
-	 * Reads and applies the encoded filter state without triggering navigation.
+	 * Apply an encoded filter string: field1:val1,val2;field2:val3, as the
+	 * link of a page holds it (UrlState).
+	 *
+	 * @param {string} raw - The encoded filter string
 	 * @param {Array<Object>} columnConfigs - Column configs to resolve field names from
 	 */
-	loadFromUrl(columnConfigs) {
-		const params = new URLSearchParams(window.location.search)
-		const raw = params.get('mvfilter')
+	loadFromEncoded(raw, columnConfigs) {
 		if (!raw) return
 
 		this._activeFilters.clear()
@@ -444,8 +330,9 @@ class MetaVoxMetadataFilter extends EventTarget {
 			const valuesStr = part.substring(colonIdx + 1).trim()
 			if (!shortName || !valuesStr) continue
 
-			// Resolve full field name: try exact match first, then with file_gf_ prefix
-			const configs = columnConfigs || this._columnConfigs
+			// Resolve full field name: try exact match first, then with file_gf_ prefix.
+			// Any field of the team folder counts: a link without a view shows no columns.
+			const configs = [...(columnConfigs || this._columnConfigs), ...getAvailableFields()]
 			let fieldName = shortName
 			const matchedConfig = configs.find(
 				c => c.field_name === shortName || c.field_name === 'file_gf_' + shortName,
@@ -462,15 +349,23 @@ class MetaVoxMetadataFilter extends EventTarget {
 
 		this._emitChips()
 		this._emitFilterUpdate()
+		// The event alone does not narrow the list: the rows are filtered
+		// client-side, so the pass has to be run as well. Without it a link
+		// showed its chips while the list still held every file.
+		this.applyClientSideFilterSort()
 	}
 
 	_emitChips() {
 		const chips = []
 		for (const [fieldName, valueSet] of this._activeFilters) {
 			if (valueSet.size === 0) continue
+			// A view can filter on a field it does not show as a column.
 			const config = this._columnConfigs.find(c => c.field_name === fieldName)
+				?? getAvailableFields().find(f => f.field_name === fieldName)
 			const label = config?.field_label || fieldName.replace('file_gf_', '')
-			const values = [...valueSet]
+			// The chip has to say what the dropdown said: a checkbox stores
+			// "0" but the option the user ticked reads "No".
+			const values = [...valueSet].map((v) => optionLabel(v, config?.field_type, config))
 			const MAX_DISPLAY = 2
 			let valuesText
 			if (values.length <= MAX_DISPLAY) {
@@ -495,7 +390,7 @@ class MetaVoxMetadataFilter extends EventTarget {
 			chips.push({
 				// TRANSLATORS Button chip in the filter bar that removes all active filters; keep it short
 				text: '✕ ' + t('metavox', 'Clear all'),
-				onclick: () => this.reset(),
+				onclick: () => this.clearFilters(),
 			})
 		}
 		this.dispatchEvent(new CustomEvent('update:chips', { detail: chips }))
@@ -507,7 +402,7 @@ class MetaVoxMetadataFilter extends EventTarget {
 // ========================================
 
 /**
- * Register the MetaVox metadata filter in NC33's filter bar.
+ * Register the MetaVox metadata filter in the Files filter bar.
  * @param {Array<Object>} columnConfigs - Column configs with filterable flag
  * @param {number} groupfolderId - Current groupfolder ID
  * @param {Map<number, Object>} metadataCache - Metadata cache from MetaVoxColumns
@@ -523,101 +418,40 @@ export function registerMetaVoxFilter(columnConfigs, groupfolderId, metadataCach
 	filterInstance.setGroupfolderId(groupfolderId)
 	filterInstance.setMetadataCache(metadataCache)
 
-	// Only register in NC33 filter bar if there are filterable fields
+	// Only register in the filter bar if there are filterable fields
 	const filterableConfigs = columnConfigs.filter(c => c.filterable)
 	if (filterableConfigs.length > 0 && !registered) {
-		_registerDirect()
-	}
-}
-
-let _registerRetries = 0
-const _MAX_REGISTER_RETRIES = 10
-
-function _registerDirect() {
-	// Find the global filter map: NC33 uses _nc_files_scope.v4_0.fileListFilters,
-	// NC32 uses _nc_filelist_filters directly
-	let filtersMap = window._nc_files_scope?.v4_0?.fileListFilters
-		|| window._nc_filelist_filters
-	if (!filtersMap) {
-		_scheduleRetry('filter map not found')
-		return
-	}
-
-	if (filtersMap.has(FILTER_ID)) {
+		_register(filterInstance)
 		registered = true
-		_registerRetries = 0
-		return
 	}
-
-	// Register in the global map first — NC32's onUpdated reads from filtersWithUI
-	// which is a computed from the store, so we need to be in the store before the DOM renders
-	filtersMap.set(FILTER_ID, filterInstance)
-
-	// Find the filter store via the filter bar DOM
-	const container = document.querySelector('[class*="fileListFilters"], .file-list-filters')
-	const store = container?.__vue__?._setupState?.filterStore
-	if (!store?.filters) {
-		// Keep in filtersMap but retry store registration
-		_scheduleRetry('filter bar DOM not ready')
-		return
-	}
-
-	if (!store.filters.some(f => f.id === FILTER_ID)) {
-		if (window._nc_files_scope?.v4_0) {
-			// NC33: register with full UI support
-			if (typeof store.registerFilter === 'function') {
-				store.registerFilter(filterInstance)
-			} else {
-				store.filters.push(filterInstance)
-			}
-		} else {
-			// NC32: register in store for filter() to be called, but mount() is a no-op.
-			// The UI is handled by our own injected button + popover.
-			try {
-				if (typeof store.addFilter === 'function') {
-					store.addFilter(filterInstance)
-				} else if (Array.isArray(store.filters)) {
-					store.filters.push(filterInstance)
-				}
-			} catch (e) {
-				// Store registration failed — filter will work client-side only
-			}
-		}
-		// Wire chip listener (NC33 only — NC32 doesn't support store.$patch for filters)
-		if (window._nc_files_scope?.v4_0 && typeof store.$patch === 'function') {
-			filterInstance.addEventListener('update:chips', (e) => {
-				store.$patch(state => {
-					const chips = e.detail || []
-					const next = { ...state.chips }
-					if (chips.length > 0) {
-						next[FILTER_ID] = chips
-					} else {
-						delete next[FILTER_ID]
-					}
-					state.chips = next
-				})
-			})
-		}
-	}
-
-	// NC32: inject our own filter button since we can't use store.addFilter
-	if (!window._nc_files_scope?.v4_0) {
-		_injectNC32FilterButton(container)
-	}
-
-	registered = true
-	_registerRetries = 0
-	console.info('MetaVox: Filter registered in NC filter bar')
 }
 
-function _injectNC32FilterButton(filterBar) {
-	if (!filterBar || document.getElementById('metavox-filter-btn')) return
+/**
+ * Register at both official entry points: NC33+ read the registry of @nextcloud/files 4,
+ * NC31/32 the map and event of @nextcloud/files 3 (what its registerFileListFilter does).
+ */
+function _register(filter) {
+	if (!getFileListFilters().some((f) => f.id === filter.id)) {
+		registerFileListFilter(filter)
+	}
+	window._nc_filelist_filters ??= new Map()
+	if (!window._nc_filelist_filters.has(filter.id)) {
+		window._nc_filelist_filters.set(filter.id, filter)
+		emit('files:filter:added', filter)
+	}
+}
 
-	const btnContainer = filterBar.querySelector('.file-list-filters__filter')
-	if (!btnContainer) return
+function _unregister(filterId) {
+	unregisterFileListFilter(filterId)
+	if (window._nc_filelist_filters?.delete(filterId)) {
+		emit('files:filter:removed', filterId)
+	}
+}
 
+/** The MetaVox button with its panel, for the NC31/32 filter bar. */
+function _filterButton(filter) {
 	const btn = document.createElement('button')
-	btn.id = 'metavox-filter-btn'
+	btn.className = 'metavox-filter-btn'
 	btn.style.cssText = 'display:flex;align-items:center;gap:4px;padding:1px 8px 0 4px;margin:0;border:none;background:transparent;cursor:pointer;border-radius:var(--border-radius-pill,20px);font:inherit;color:var(--color-main-text);'
 	btn.innerHTML = `<span style="display:flex;align-items:center;width:20px;height:20px">${METAVOX_ICON_SVG}</span><span>MetaVox</span>`
 
@@ -646,17 +480,21 @@ function _injectNC32FilterButton(filterBar) {
 		popover.appendChild(mountEl)
 
 		_popoverApp = createApp({
-			render: () => h(MetaVoxFilterPanel, { filter: filterInstance }),
+			render: () => h(MetaVoxFilterPanel, { filter }),
 		})
 		_popoverApp.config.globalProperties.t = translate
 		_popoverApp.config.globalProperties.n = translatePlural
-		_popoverApp.mount(mountEl)
+		watchLoading(_popoverApp).mount(mountEl)
 
 		document.body.appendChild(popover)
 
-		// Close on outside click
+		// Close on outside click. Inside is known as the click starts: by the time
+		// it reaches the page the target can be gone, like a cleared search or a
+		// value that leaves the list.
+		let clickInside = null
+		popover.addEventListener('click', (ev) => { clickInside = ev }, true)
 		const closeHandler = (ev) => {
-			if (!popover?.contains(ev.target) && !btn.contains(ev.target)) {
+			if (ev !== clickInside && !btn.contains(ev.target)) {
 				_popoverApp?.unmount()
 				_popoverApp = null
 				popover?.remove()
@@ -667,48 +505,19 @@ function _injectNC32FilterButton(filterBar) {
 		setTimeout(() => document.addEventListener('click', closeHandler), 0)
 	})
 
-	btnContainer.appendChild(btn)
-}
-
-function _scheduleRetry(reason) {
-	if (_registerRetries >= _MAX_REGISTER_RETRIES) {
-		console.warn(`MetaVox: Filter registration failed after ${_MAX_REGISTER_RETRIES} retries (${reason})`)
-		return
-	}
-	_registerRetries++
-	const delay = Math.min(200 * _registerRetries, 2000)
-	setTimeout(() => {
-		if (!registered) _registerDirect()
-	}, delay)
+	return btn
 }
 
 /**
  * Remove the MetaVox filter from the filter bar.
  */
 export function removeFilters() {
-	if (!registered || !filterInstance) return
+	if (!filterInstance) return
 
-	// Remove from global filter map (NC33 or NC32)
-	const filtersMap = window._nc_files_scope?.v4_0?.fileListFilters
-		|| window._nc_filelist_filters
-	if (filtersMap) {
-		filtersMap.delete(FILTER_ID)
-	}
-
-	// Remove from store filters array
-	const container = document.querySelector('[class*="fileListFilters"], .file-list-filters')
-	const store = container?.__vue__?._setupState?.filterStore
-	if (store?.filters) {
-		const idx = store.filters.findIndex(f => f.id === FILTER_ID)
-		if (idx !== -1) store.filters.splice(idx, 1)
-	}
-	if (store?.chips && store.chips[FILTER_ID]) {
-		store.$patch(state => { delete state.chips[FILTER_ID] })
-	}
-
-	if (filterInstance) {
-		filterInstance.reset()
-	}
+	// Clear chips and rows first, while Nextcloud still listens to the filter.
+	filterInstance.reset()
+	// Also a filter that was never registered goes: its values must not move on to the next folder.
+	if (registered) _unregister(FILTER_ID)
 
 	registered = false
 	filterInstance = null

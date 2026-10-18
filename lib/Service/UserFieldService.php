@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Service;
 
+use OCA\MetaVox\Validation\FieldValue;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 use OCP\IGroupManager;
@@ -56,6 +57,7 @@ public function getAccessibleGroupfolders(string $userId): array {
                     'quota' => GroupFolderAccessor::get($gfFolder, 'quota'),
                     'size' => 0,
                     'acl' => GroupFolderAccessor::get($gfFolder, 'acl'),
+                    'acl_default_no_permission' => (bool)GroupFolderAccessor::get($gfFolder, 'aclDefaultNoPermission', false),
                 ];
             }
 
@@ -80,6 +82,7 @@ public function getAccessibleGroupfolders(string $userId): array {
                     'quota' => (int)($row['quota'] ?? -3),
                     'size' => (int)($row['size'] ?? 0),
                     'acl' => (bool)($row['acl'] ?? false),
+                    'acl_default_no_permission' => (bool)($row['acl_default_no_permission'] ?? false),
                 ];
             }
             $result->closeCursor();
@@ -112,6 +115,7 @@ public function getAccessibleGroupfolders(string $userId): array {
                     'quota' => (int)($row['quota'] ?? -3),
                     'size' => (int)($row['size'] ?? 0),
                     'acl' => (bool)($row['acl'] ?? false),
+                    'acl_default_no_permission' => (bool)($row['acl_default_no_permission'] ?? false),
                 ];
             }
             $foldersMap[$folderId]['groups'][] = $row['group_id'];
@@ -190,7 +194,7 @@ public function hasAccessToGroupfolder(string $userId, int $groupfolderId): bool
                     'field_type' => $row['field_type'],
                     'field_description' => $row['field_description'] ?? '',
                     'field_options' => $row['field_options'] ? json_decode($row['field_options'], true) : [],
-                    'is_required' => (bool)$row['is_required'],
+                    'is_required' => FieldValue::isRequired($row),
                     'applies_to_groupfolder' => (int)($row['applies_to_groupfolder'] ?? 0),
                     'value' => $row['value'],
                 ];
@@ -205,127 +209,4 @@ public function hasAccessToGroupfolder(string $userId, int $groupfolderId): bool
         }
     }
 
-    /**
-     * Save groupfolder metadata value
-     */
-    public function saveGroupfolderMetadata(int $groupfolderId, array $metadata): bool {
-        try {
-            // Get field name to ID mapping
-            $qb = $this->db->getQueryBuilder();
-            $qb->select('id', 'field_name')
-               ->from('metavox_gf_fields');
-            
-            $result = $qb->executeQuery();
-            $fieldMap = [];
-            while ($row = $result->fetch()) {
-                $fieldMap[$row['field_name']] = (int)$row['id'];
-            }
-            $result->closeCursor();
-
-            $dbProvider = $this->db->getDatabaseProvider();
-            $now = date('Y-m-d H:i:s');
-
-            foreach ($metadata as $fieldName => $value) {
-                if (!isset($fieldMap[$fieldName])) {
-                    continue;
-                }
-
-                // UPSERT: single query instead of SELECT + INSERT/UPDATE
-                if ($dbProvider === IDBConnection::PLATFORM_MYSQL) {
-                    $sql = "INSERT INTO *PREFIX*metavox_gf_metadata
-                            (groupfolder_id, field_name, field_value, created_at, updated_at)
-                            VALUES (?, ?, ?, ?, ?)
-                            ON DUPLICATE KEY UPDATE
-                            field_value = VALUES(field_value),
-                            updated_at = VALUES(updated_at)";
-                } else {
-                    $sql = "INSERT INTO *PREFIX*metavox_gf_metadata
-                            (groupfolder_id, field_name, field_value, created_at, updated_at)
-                            VALUES (?, ?, ?, ?, ?)
-                            ON CONFLICT (groupfolder_id, field_name)
-                            DO UPDATE SET
-                            field_value = EXCLUDED.field_value,
-                            updated_at = EXCLUDED.updated_at";
-                }
-
-                $this->db->executeStatement($sql, [
-                    $groupfolderId,
-                    $fieldName,
-                    (string)$value,
-                    $now,
-                    $now,
-                ]);
-            }
-
-            return true;
-        } catch (\Exception $e) {
-            $this->logger->error('MetaVox: saveGroupfolderMetadata failed', ['exception' => $e, 'groupfolderId' => $groupfolderId]);
-            return false;
-        }
-    }
-
-    /**
-     * Set which fields are assigned to a groupfolder
-     */
-    public function setGroupfolderFields(int $groupfolderId, array $fieldIds): bool {
-        try {
-            // Delete existing assignments
-            $qb = $this->db->getQueryBuilder();
-            $qb->delete('metavox_gf_assigns')
-               ->where($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)));
-            $qb->executeStatement();
-
-            // Insert new assignments
-            foreach ($fieldIds as $fieldId) {
-                $qb = $this->db->getQueryBuilder();
-                $qb->insert('metavox_gf_assigns')
-                   ->values([
-                       'groupfolder_id' => $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT),
-                       'field_id' => $qb->createNamedParameter($fieldId, IQueryBuilder::PARAM_INT),
-                       'created_at' => $qb->createNamedParameter(date('Y-m-d H:i:s')),
-                   ]);
-                $qb->executeStatement();
-            }
-
-            return true;
-        } catch (\Exception $e) {
-            $this->logger->error('MetaVox: setGroupfolderFields failed', ['exception' => $e, 'groupfolderId' => $groupfolderId]);
-            return false;
-        }
-    }
-
-    /**
-     * Get all groupfolder fields (for field configuration UI)
-     */
-    public function getAllGroupfolderFields(): array {
-        try {
-            $qb = $this->db->getQueryBuilder();
-            $qb->select('*')
-               ->from('metavox_gf_fields')
-               ->orderBy('sort_order', 'ASC');
-
-            $result = $qb->executeQuery();
-            $fields = [];
-            while ($row = $result->fetch()) {
-                $fields[] = [
-                    'id' => (int)$row['id'],
-                    'field_name' => $row['field_name'],
-                    'field_label' => $row['field_label'],
-                    'field_type' => $row['field_type'],
-                    'field_description' => $row['field_description'] ?? '',
-                    'field_options' => $row['field_options'] ? json_decode($row['field_options'], true) : [],
-                    'is_required' => (bool)$row['is_required'],
-                    'sort_order' => (int)$row['sort_order'],
-                    'scope' => 'groupfolder',
-                    'applies_to_groupfolder' => isset($row['applies_to_groupfolder']) ? (int)$row['applies_to_groupfolder'] : 0,
-                ];
-            }
-            $result->closeCursor();
-
-            return $fields;
-        } catch (\Exception $e) {
-            $this->logger->error('MetaVox: getAllGroupfolderFields failed', ['exception' => $e]);
-            return [];
-        }
-    }
 }

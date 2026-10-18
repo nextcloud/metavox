@@ -8,7 +8,7 @@ Dit document beschrijft de praktische performance-limieten van MetaVox bij het b
 |----------|----------------------------|----------------------|-------------------|
 | **Bestanden per weergave** | 5.000 | Geen (geleidelijke degradatie) | 5.000 (geblokkeerd erboven) |
 | **Velden per team folder** | Onbeperkt | Onbeperkt (EAV-model) | Beperkt door 8.000-byte rijgrootte |
-| **Actieve filters per weergave** | 10 | ~15 voor merkbare vertraging | 12 join-operaties (geblokkeerd erboven) |
+| **Actieve filters (API `sorted-file-ids`)** | 10 | ~15 voor merkbare vertraging | 12 join-operaties (geblokkeerd erboven) |
 | **Weergegeven kolommen** | 10–20 | Geen harde limiet | Beperkt door rijgrootte |
 | **Gelijktijdige gebruikers (kleine folder)** | 10–100 (hardware-afhankelijk) | N.v.t. | N.v.t. |
 | **Gelijktijdige gebruikers (grote folder)** | 2–20 (hardware-afhankelijk) | N.v.t. | N.v.t. |
@@ -35,18 +35,20 @@ De List View Threshold is SharePoint's meest impact-volle limiet: elke weergave-
 
 MetaVox handhaaft geen harde item-per-weergave-drempel. Performance degradeert geleidelijk naarmate folder-grootte stijgt. Er zijn vier onafhankelijke bottleneck-tiers:
 
-### Bottleneck 1: HTTP batch-loading
+### Bottleneck 1: waarden laden met de maplijst
 
-MetaVox laadt bestand-metadata bulk-gewijs bij folder-open. Alle bestand-ID's worden uit Nextcloud's `dirContents` Vue-property gehaald en in **chunks van 200 per API-request** opgehaald (`MetaVoxColumns.js`). Omdat `dirContents` asynchroon kan vullen, pollt MetaVox voor nieuwe entries tot 10 seconden lang en haalt ongecachte bestanden in extra batches op.
+De metadata-waarden komen mee met de eigen maplijst van de Files-app. MetaVox voegt de WebDAV-property `nc:metavox` toe aan de `PROPFIND` (Depth 1) van de Files-app, en een server-plugin (`MetadataPropertyPlugin.php`) beantwoordt die voor maplijsten van teammappen: één toegangscontrole per bestand in het geheugen, daarna één database-query per 1.000 bestanden voor alle waarden. Elke waarde wordt in de maplijst afgekapt op **512 tekens**; de cel markeert een afgekapte waarde, en de volledige waarde laadt als de cel wordt bewerkt.
 
-| Bestanden in folder | API-calls bij open | Geschatte laadtijd | Scroll-gedrag |
-|---------------------|---------------------|--------------------|---------------|
-| 200 | 1 | ~300ms | Instant (gecached) |
-| 1.000 | 5 | ~1.5s | Instant (gecached) |
-| 5.000 | 25 | ~8s | Instant (gecached) |
-| 10.000 | 50 | ~15s | Instant (gecached) |
+Wat de maplijst niet levert (een bestand waarvoor de plugin niet kon instaan, of een maplijst die er was voordat MetaVox klaar stond), wordt als fallback via de API geladen: `directory-metadata`, maximaal **200 bestanden per request**, gebundeld 50 ms na het laatst aangeboden bestand en uiterlijk 200 ms na het eerste.
 
-> **Let op**: alle metadata wordt op de achtergrond geladen na folder-open. Zodra de initiële bulk-load klaar is, triggert scrollen door de bestandenlijst **geen** extra API-calls — alle data komt uit de in-memory cache. De MutationObserver detecteert virtual-scroll row-recycling (via `data-cy-files-list-row-fileid` attribute-wijzigingen) en vult cellen direct uit de cache.
+| Bestanden in folder | Waarde-queries op de server | Extra API-calls bij open | Scroll-gedrag |
+|---------------------|-----------------------------|--------------------------|---------------|
+| 200 | 1 | 0 | Instant (gecached) |
+| 1.000 | 1 | 0 | Instant (gecached) |
+| 5.000 | 5 | 0 | Instant (gecached) |
+| 10.000 | 10 | 0 | Instant (gecached) |
+
+> **Let op**: de waarden komen mee met de maplijst. Scrollen door de bestandenlijst triggert **geen** extra requests — alle data komt uit de in-memory cache. De MutationObserver detecteert virtual-scroll row-recycling (via `data-cy-files-list-row-fileid` attribute-wijzigingen) en vult cellen direct uit de cache.
 
 ### Bottleneck 2: Nextcloud-bestandenlijst
 
@@ -60,9 +62,11 @@ Nextcloud's Files-app laadt alle bestanden in een folder in een client-side `dir
 | 10.000–50.000 | Multi-seconden laden, browser-geheugendruk |
 | 50.000+ | Browser kan hangen of crashen |
 
-### Bottleneck 3: SQL filtering & sortering
+### Bottleneck 3: SQL filtering & sortering (API)
 
-MetaVox gebruikt een Entity-Attribute-Value (EAV) model met self-JOINs voor filtering (`FilterService.php`). Met juiste database-indexen (toegevoegd in migratie `Version20250101000010`) schaalt query-performance logaritmisch:
+In de Files-app draaien filteren en sorteren op MetaVox-kolommen in de browser, over de waarden die het grid al heeft (`FilterSortCore.js`); een afgekapte waarde wordt gefilterd en gesorteerd zoals getoond. Konden niet alle waarden worden geladen, dan pauzeert het grid sorteren en filteren op MetaVox-kolommen en meldt dat.
+
+Server-side filteren en sorteren gebruikt het OCS-endpoint `sorted-file-ids`. Dat werkt met een Entity-Attribute-Value (EAV) model met self-JOINs (`FilterService.php`). Met juiste database-indexen (toegevoegd in migratie `Version20250101000010`) schaalt query-performance logaritmisch:
 
 | Metadata-records | 1 filter | 3 filters | 5 filters |
 |------------------|----------|-----------|-----------|
@@ -97,13 +101,13 @@ MetaVox gebruikt een EAV (Entity-Attribute-Value) database-model. Metadata-velde
 
 - **Geen hardcoded maximum** op het aantal velden per team folder
 - Velden toevoegen verandert het database-schema niet
-- Elke veld-waarde wordt opgeslagen als TEXT-type (geen vaste byte-limiet per waarde)
+- Elke veld-waarde wordt opgeslagen als TEXT-type (geen vaste byte-limiet per waarde); de grid-maplijst bevat de eerste 512 tekens
 
 | Beperking | MetaVox | SharePoint |
 |-----------|---------|------------|
 | Max velden/kolommen per lijst | **Onbeperkt** (EAV-model) | Beperkt door 8.000-byte rijgrootte |
 | Veldnaam-lengte | 255 tekens | 255 tekens |
-| Veldwaarde-grootte | TEXT (onbeperkt) | Varieert per kolom-type |
+| Veldwaarde-grootte | TEXT (onbeperkt); 512 tekens in de grid-maplijst | Varieert per kolom-type |
 | Lookup/join-threshold | Geen harde limiet | 12 join-operaties |
 | Veldtypen | 10 (tekst, getal, textarea, datum, select, multi-select, checkbox, url, gebruiker, file-link) | 30+ |
 
@@ -114,7 +118,7 @@ De frontend rendert metadata-kolommen via DOM-injectie met horizontaal scrollen.
 - Minimum kolom-breedte: 60px
 - Kolom-breedtes worden dynamisch berekend op basis van label-lengte en type
 - Horizontaal scrollen met sticky headers ondersteund
-- Kolom-breedtes worden per gebruiker bewaard
+- Kolom-breedtes worden per browser bewaard (local storage)
 
 ### Praktische kolom-limieten
 
@@ -124,12 +128,12 @@ Hoewel er geen harde limiet is, gelden performance-overwegingen:
 |------------------|--------|
 | 1–10 | Geen impact |
 | 10–20 | Bredere horizontaal-scroll-area, nog steeds performant |
-| 20–30 | API-response-grootte stijgt (~500 bytes per bestand per kolom) |
+| 20–30 | Maplijst-response groeit: elke niet-lege waarde voegt tot 512 tekens per bestand toe |
 | 30+ | Overweeg weergaven te gebruiken om subsets te tonen |
 
-### Filter-performance vs. kolom-aantal
+### Filter-performance vs. kolom-aantal (API)
 
-Elke **actieve filter** in een weergave voegt één SQL-JOIN-operatie toe aan de query. Dit is de primaire scaling-factor voor kolom-aantal:
+Voor het endpoint `sorted-file-ids` voegt elke **actieve filter** één SQL-JOIN-operatie toe aan de query. Dat is daar de primaire scaling-factor voor kolom-aantal (het grid in de Files-app filtert in de browser en voegt geen JOINs toe):
 
 | Actieve filters | SQL-JOINs | Performance-impact |
 |-----------------|-----------|---------------------|
@@ -144,26 +148,27 @@ Elke **actieve filter** in een weergave voegt één SQL-JOIN-operatie toe aan de
 
 ### Per-gebruiker server-belasting
 
-MetaVox injecteert initialisatie-data (groupfolders, velden, weergaven) inline in de HTML via Nextcloud's `IInitialState`-mechanisme. Dit elimineert aparte API-calls voor de initiële page load. Bij navigeren naar een andere folder binnen dezelfde sessie haalt één `/api/init`-call alle benodigde data op.
+MetaVox injecteert initialisatie-data (groupfolders, en velden en weergaven per teammap) inline in de HTML via Nextcloud's `IInitialState`-mechanisme. Dit elimineert aparte API-calls voor de initiële page load. Navigeren naar een andere teammap gebruikt dezelfde data; een `/api/init`-call is alleen de fallback als die ontbreekt.
 
 Elke gebruiker die een folder met metadata-kolommen opent genereert:
 
-| Operatie | API-calls | Database-queries |
-|----------|-----------|------------------|
+| Operatie | Extra API-calls | Database-queries |
+|----------|-----------------|------------------|
 | Folder open (eerste laad) | 0 (inline via IInitialState) | Uitgevoerd tijdens PHP page-render |
-| Folder open (navigatie) | 1 (`/api/init`) | ~4 (groupfolders, velden, weergaven, permissies) |
-| Metadata bulk-load (alle bestanden) | 1–3 (chunks van 200) | 1 per chunk |
-| Filter-waarden (lazy, bij dropdown open) | 0–1 | 0–1 (gecached 300s server-side) |
-| **Totaal per folder-open** | **1–4** | **~5–8** |
+| Folder open (navigatie) | 0–1 (`/api/init` als fallback) | ~4 als die wordt aangeroepen (groupfolders, velden, weergaven, permissies) |
+| Metadata-waarden (alle bestanden) | 0 (met de PROPFIND van de Files-app) | 1 per 1.000 bestanden, binnen de PROPFIND |
+| Waarden die de maplijst miste | 0–1 per 200 bestanden | 1 per request |
+| Filter-waarden (bij dropdown open) | 0 (in de browser berekend uit geladen waarden) | 0 |
+| **Totaal per folder-open** | **0–1, plus fallbacks** | **~1–5** |
 
 ### Data-consistentie & real-time sync
 
 Wanneer **notify_push** is geïnstalleerd en geconfigureerd, ondersteunt MetaVox real-time samenwerking:
 
 - **Cell-locking**: wanneer een gebruiker een cel begint te bewerken, wordt die voor andere gebruikers gelockt (30-seconden TTL via Redis). Andere gebruikers zien een lock-indicator met de editor-naam.
-- **Real-time push**: metadata-wijzigingen worden via WebSocket (notify_push) naar alle gebruikers die dezelfde groupfolder bekijken gepushd. Geen polling nodig.
-- **Aanwezigheids-tracking**: MetaVox volgt welke gebruikers actief een groupfolder bekijken. Push-events worden alleen verstuurd naar actieve viewers, wat onnodig verkeer vermindert.
-- **Graceful degradation**: zonder notify_push valt MetaVox terug op last-write-wins met eventual consistency via cache-expiry.
+- **Real-time push**: wijzigingen worden via WebSocket (notify_push) gemeld aan de gebruikers die de teammap open hebben: alleen bestands-id's, geen waarden. Hun browser laadt die bestanden opnieuw via de API. Geen polling nodig.
+- **Aanwezigheids-tracking**: een teammap openen registreert de gebruiker; de heartbeat van de Gebruikersstatus-app van Nextcloud houdt de registratie in leven, en naar een andere teammap gaan of het tabblad sluiten beëindigt hem. Zonder de Gebruikersstatus-app blijft een registratie 12 uur staan.
+- **Graceful degradation**: zonder notify_push wint de laatste write; wijzigingen van anderen verschijnen na navigeren of vernieuwen. Cell-locks weigeren nog steeds een tweede bewerker.
 
 Zie [Real-time sync](../features/real-time-sync.md) voor volledige details.
 
@@ -206,7 +211,7 @@ Capaciteit hangt sterk af van server-configuratie en folder-grootte:
 | **Database op aparte server** | Hoog | SQL-queries concurreren niet meer met PHP voor CPU/RAM |
 | **RAM (8 → 16+ GB)** | Hoog | Grotere database buffer pool, meer PHP-workers |
 | **SSD/NVMe-storage** | Hoog | Snellere database-I/O, vooral voor JOINs |
-| **Redis/APCu-caching** | Hoog | MetaVox cached metadata (30s TTL) en veld-definities (600s TTL) |
+| **Redis/APCu-caching** | Hoog | MetaVox cachet veld-definities en weergaven (600s TTL), API-filterwaarden (300s) en API-sorteer-/filterresultaten (30s); aanwezigheid en cell-locks hebben het nodig |
 | **Meer CPU-cores** | Middel | Helpt met gelijktijdige gebruikers (parallel PHP-FPM-workers), beperkte winst voor single-user performance |
 
 ### Wat niet helpt
@@ -214,7 +219,7 @@ Capaciteit hangt sterk af van server-configuratie en folder-grootte:
 | Wijziging | Waarom beperkt effect |
 |-----------|------------------------|
 | Meer CPU-cores (single user) | PHP is single-threaded per request |
-| Meer netwerk-bandbreedte | API-calls zijn klein (20–100 KB per batch) |
+| Meer netwerk-bandbreedte | Responses zijn klein: alleen niet-lege waarden, maximaal 512 tekens per waarde in de maplijst |
 | CDN / edge caching | Metadata is dynamisch en gebruiker-specifiek |
 
 ### Geschatte praktische limieten per hardware-tier
@@ -233,11 +238,11 @@ Capaciteit hangt sterk af van server-configuratie en folder-grootte:
 
 2. **Zorg dat database-indexen actief zijn.** De indexen toegevoegd in migratie `Version20250101000010` verbeteren filter-query-performance met 40–100×. Verifieer dat ze bestaan op de `metavox_file_gf_meta`-tabel.
 
-3. **Schakel Redis of APCu-caching in** in je Nextcloud-configuratie. MetaVox gebruikt gedistribueerde caching voor metadata (30s TTL) en veld-definities (600s TTL).
+3. **Schakel Redis of APCu-caching in** in je Nextcloud-configuratie. MetaVox gebruikt gedistribueerde caching voor veld-definities en weergaven (600s TTL) en voor API-filterresultaten (30–300s); met meer dan één webserver hebben aanwezigheid en cell-locks een gedeelde cache zoals Redis nodig. Metadata-waarden worden altijd uit de database gelezen.
 
-4. **Beperk actieve filters per weergave tot 10 of minder.** Elke filter voegt een SQL-JOIN toe. Performance blijft uitstekend tot ~10 filters maar degradeert boven 15.
+4. **Beperk voor de `sorted-file-ids`-API actieve filters tot 10 of minder.** Elke filter voegt een SQL-JOIN toe. Performance blijft uitstekend tot ~10 filters maar degradeert boven 15.
 
-5. **Gebruik de weergaven-feature** om alleen relevante kolommen per use case te tonen, in plaats van alle velden tegelijk. Dit verkleint API-response-groottes en verbetert rendering-performance.
+5. **Gebruik de weergaven-feature** om alleen relevante kolommen per use case te tonen, in plaats van alle velden tegelijk. Dit verbetert rendering-performance.
 
 6. **Voor multi-user bewerken**, installeer notify_push voor real-time sync en cell-locking. Zonder geldt last-write-wins.
 

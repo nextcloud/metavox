@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace OCA\MetaVox\Flow;
 
 use OCA\MetaVox\Service\FieldService;
+use OCA\MetaVox\Service\GroupfolderRootService;
+use OCA\MetaVox\Service\TeamFolderAccessService;
 use OCA\WorkflowEngine\Entity\File;
 use OCP\Files\IHomeStorage;
 use OCP\Files\Storage\IStorage;
 use OCP\IL10N;
 use OCP\IURLGenerator;
+use OCP\IUserSession;
+use OCP\WorkflowEngine\IManager;
 use OCP\WorkflowEngine\ICheck;
 use OCP\WorkflowEngine\IEntity;
 use OCP\WorkflowEngine\IFileCheck;
@@ -36,6 +40,9 @@ class MetadataCheck implements ICheck, IFileCheck {
         private IURLGenerator $urlGenerator,
         private LoggerInterface $logger,
         private FieldService $fieldService,
+        private IUserSession $userSession,
+        private TeamFolderAccessService $teamFolders,
+        private GroupfolderRootService $groupfolderRoots,
     ) {
     }
 
@@ -59,8 +66,9 @@ class MetadataCheck implements ICheck, IFileCheck {
      * @return bool Whether this check is available for the given scope
      */
     public function isAvailableForScope(int $scope): bool {
-        // Available for all scopes
-        return true;
+        // Metadata rules are the admin's: a user rule could test values of files
+        // the user only reaches through a share.
+        return $scope === IManager::SCOPE_ADMIN;
     }
 
     /**
@@ -106,6 +114,15 @@ class MetadataCheck implements ICheck, IFileCheck {
      * @throws \UnexpectedValueException if configuration is invalid
      */
     public function validateCheck($operator, $value): void {
+        // Nextcloud checks the scope for the operation, not for each check: a
+        // user rule posted to the API would get through. Saving is done by the
+        // rule's author, so refuse anyone but an admin here.
+        $user = $this->userSession->getUser();
+        if ($user !== null && !$this->teamFolders->isAdmin($user->getUID())) {
+            // TRANSLATORS Error message in the Flow (workflow) rule editor when someone other than an administrator saves the check
+            throw new \UnexpectedValueException($this->l->t('The metadata check is only available to administrators'));
+        }
+
         $config = json_decode($value, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             // TRANSLATORS Error message in the Flow (workflow) rule editor when the saved check cannot be read
@@ -164,7 +181,7 @@ class MetadataCheck implements ICheck, IFileCheck {
 
         $fieldName = $config['field_name'] ?? '';
         $expectedValue = $config['value'] ?? '';
-        $groupfolderId = $config['groupfolder_id'] ?? null;
+        $groupfolderId = empty($config['groupfolder_id']) ? null : (int)$config['groupfolder_id'];
         // Use operator from config if present, otherwise use the $operator parameter
         $actualOperator = $config['operator'] ?? $operator;
 
@@ -179,29 +196,30 @@ class MetadataCheck implements ICheck, IFileCheck {
                 return false;
             }
 
-            // If no groupfolder specified, try to detect it
-            if ($groupfolderId === null) {
-                $groupfolderId = $this->detectGroupfolderId();
-            }
-
-            if ($groupfolderId === null) {
+            // The team folder the file is in, from where it lives; not in one
+            // (trash and versions included): the rule doesn't apply. A rule for
+            // one team folder only applies to files in that one.
+            $fileGroupfolderId = $this->groupfolderRoots->getGroupfolderIdForFile($fileId);
+            if ($fileGroupfolderId === null || ($groupfolderId !== null && $groupfolderId !== $fileGroupfolderId)) {
                 return false;
             }
 
             // Get the metadata for this file
-            $metadata = $this->fieldService->getGroupfolderFileMetadata((int)$groupfolderId, $fileId);
+            $metadata = $this->fieldService->getGroupfolderFileMetadata($fileGroupfolderId, $fileId);
 
             // Find the field value
             $actualValue = null;
+            $fieldType = '';
             foreach ($metadata as $field) {
                 if ($field['field_name'] === $fieldName) {
                     $actualValue = $field['value'];
+                    $fieldType = (string)($field['field_type'] ?? '');
                     break;
                 }
             }
 
             // Perform the comparison
-            return $this->compare($actualOperator, $actualValue, $expectedValue);
+            return $this->compare($actualOperator, $actualValue, $expectedValue, $fieldType);
 
         } catch (\Exception $e) {
             $this->logger->warning('MetaVox Flow check failed: ' . $e->getMessage(), [
@@ -229,74 +247,18 @@ class MetadataCheck implements ICheck, IFileCheck {
     }
 
     /**
-     * Try to detect the groupfolder ID from the storage
-     * Optimized order: database lookup first (fastest if file has metadata),
-     * then storage ID checks (no I/O needed)
+     * Compare the actual value with the expected value using the operator. A
+     * choice field reads as the grid's highlight rules read it, tested on the
+     * same cases (tests/fixtures/value-rules-matrix.json).
      */
-    private function detectGroupfolderId(): ?int {
-        try {
-            // Method 1 (fastest): Check database if file already has metadata
-            $fileId = $this->getFileId();
-            if ($fileId !== null) {
-                $groupfolderId = $this->findGroupfolderByFileId($fileId);
-                if ($groupfolderId !== null) {
-                    return $groupfolderId;
-                }
-            }
-
-            // Method 2: Check storage ID for groupfolder pattern
-            $storageId = $this->storage->getId();
-            if (preg_match('/groupfolder[:\/_]+(\d+)/i', $storageId, $matches)) {
-                return (int)$matches[1];
-            }
-
-            // Method 3: Check unwrapped storage ID
-            $unwrappedStorage = $this->storage;
-            while ($unwrappedStorage instanceof \OC\Files\Storage\Wrapper\Wrapper) {
-                $unwrappedStorage = $unwrappedStorage->getWrapperStorage();
-            }
-            if ($unwrappedStorage !== $this->storage) {
-                $unwrappedId = $unwrappedStorage->getId();
-                if (preg_match('/groupfolder[:\/_]+(\d+)/i', $unwrappedId, $matches)) {
-                    return (int)$matches[1];
-                }
-            }
-
-            // Method 4: Try mount point (fallback)
-            if (method_exists($this->storage, 'getMountPoint')) {
-                $mountPoint = $this->storage->getMountPoint();
-                if (preg_match('/^\/(\d+)\//', $mountPoint, $matches)) {
-                    return (int)$matches[1];
-                }
-            }
-
-        } catch (\Exception $e) {
-            $this->logger->debug('MetaVox: Could not detect groupfolder ID: ' . $e->getMessage());
+    private function compare(string $operator, ?string $actualValue, string $expectedValue, string $fieldType = ''): bool {
+        if (FieldService::holdsList($fieldType)) {
+            return $this->compareItems($operator, self::items($actualValue ?? ''), $expectedValue);
+        }
+        if (\in_array($fieldType, ['select', 'dropdown'], true)) {
+            return $this->compareChoice($operator, $actualValue ?? '', $expectedValue);
         }
 
-        return null;
-    }
-
-    /**
-     * Find groupfolder ID by looking up the file in the metadata database
-     */
-    private function findGroupfolderByFileId(int $fileId): ?int {
-        try {
-            $groupfolderId = $this->fieldService->getGroupfolderIdByFileId($fileId);
-            if ($groupfolderId !== null) {
-                return $groupfolderId;
-            }
-        } catch (\Exception $e) {
-            $this->logger->debug('MetaVox: findGroupfolderByFileId error: ' . $e->getMessage());
-        }
-
-        return null;
-    }
-
-    /**
-     * Compare the actual value with the expected value using the operator
-     */
-    private function compare(string $operator, ?string $actualValue, string $expectedValue): bool {
         // Handle empty/null values
         $isEmpty = $actualValue === null || $actualValue === '';
 
@@ -356,6 +318,58 @@ class MetadataCheck implements ICheck, IFileCheck {
             default:
                 return false;
         }
+    }
+
+    /**
+     * A multi-select or file link, per item: "is one of" (and "contains", as
+     * older rules have it) when it has any of the options, "contains all" when
+     * it has every one.
+     *
+     * @param list<string> $items
+     */
+    private function compareItems(string $operator, array $items, string $expected): bool {
+        if ($operator === 'empty' || $operator === '!empty') {
+            return ($items === []) === ($operator === 'empty');
+        }
+        if ($items === []) {
+            return false;
+        }
+        $have = array_map([self::class, 'lower'], $items);
+        $wanted = array_map(fn (string $item): string => self::lower(trim($item)), self::wanted($expected));
+        return match ($operator) {
+            'oneOf', 'contains' => array_intersect($wanted, $have) !== [],
+            'containsAll' => $wanted !== [] && array_diff($wanted, $have) === [],
+            default => false,
+        };
+    }
+
+    /** One option of a dropdown, compared without case and without the spaces around what the rule says. */
+    private function compareChoice(string $operator, string $actual, string $expected): bool {
+        $empty = $actual === '';
+        $value = self::lower($actual);
+        return match ($operator) {
+            'empty' => $empty,
+            '!empty' => !$empty,
+            'is' => !$empty && $value === self::lower(trim($expected)),
+            '!is' => $empty || $value !== self::lower(trim($expected)),
+            'oneOf' => !$empty && \in_array($value, array_map(fn (string $v): string => self::lower(trim($v)), self::wanted($expected)), true),
+            default => false,
+        };
+    }
+
+    /** The items of a stored list value, as the grid splits them. */
+    private static function items(string $value): array {
+        return array_values(array_filter(array_map('trim', explode(';#', $value)), fn (string $item): bool => $item !== ''));
+    }
+
+    /** What a rule asks for: its list, or the one text it holds. @return list<string> */
+    private static function wanted(string $expected): array {
+        $list = json_decode($expected, true);
+        return \is_array($list) ? array_values(array_map('strval', array_filter($list, 'is_scalar'))) : [$expected];
+    }
+
+    private static function lower(string $value): string {
+        return mb_strtolower($value, 'UTF-8');
     }
 
     /**

@@ -65,3 +65,6 @@ if (!interface_exists(\OCP\IDBConnection::class)) {
         break;
     }
 }
+
+// Private NC classes that the OCP stub package lacks.
+require_once __DIR__ . '/stubs/Emitter.php';

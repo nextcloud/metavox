@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace OCA\MetaVox\Command;
 
 use OCA\MetaVox\Service\DefaultsService;
-use OCA\MetaVox\Service\SearchIndexService;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -18,9 +17,8 @@ use Symfony\Component\Console\Output\OutputInterface;
  * admins who do not want to wait for the 5-minute discovery cron — e.g. right
  * after a migration, or after configuring a new default on a large folder.
  *
- * Shares the exact data path as the background jobs (DefaultsService +
- * SearchIndexService::bulkUpdateFileIndex): idempotent, no push, bulk search
- * re-index. Runs in bounded batches so memory stays flat regardless of folder
+ * Shares the exact data path as the background jobs (DefaultsService):
+ * idempotent, no push, search words in bulk. Runs in bounded batches so memory stays flat regardless of folder
  * size.
  */
 class ApplyDefaults extends Command {
@@ -30,7 +28,6 @@ class ApplyDefaults extends Command {
 
     public function __construct(
         private readonly DefaultsService $defaultsService,
-        private readonly SearchIndexService $searchIndexService,
     ) {
         parent::__construct();
     }
@@ -90,7 +87,6 @@ class ApplyDefaults extends Command {
             }
 
             $this->defaultsService->bulkInsertDefaults($groupfolderId, $fileIds, $defaults);
-            $this->searchIndexService->bulkUpdateFileIndex($fileIds);
 
             $applied += \count($fileIds);
             $cursor = max($fileIds);

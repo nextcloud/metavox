@@ -1,0 +1,690 @@
+{
+ "_comment": "Highlight rules as an API client may send them (raw JSON text, so 7.0 and 1e400 survive), and what the server stores or which part it refuses with which message. \"stricter\": the browser would still use the rule; the server refuses it on purpose.",
+ "cases": [
+  {
+   "name": "empty without value",
+   "rule": "{\"op\":\"empty\",\"tone\":\"warning\"}",
+   "stored": {
+    "op": "empty",
+    "tone": "warning"
+   }
+  },
+  {
+   "name": "empty with value null",
+   "rule": "{\"op\":\"empty\",\"value\":null,\"tone\":\"warning\"}",
+   "stored": {
+    "op": "empty",
+    "tone": "warning"
+   }
+  },
+  {
+   "name": "checked",
+   "rule": "{\"op\":\"isTrue\",\"tone\":\"success\"}",
+   "stored": {
+    "op": "isTrue",
+    "tone": "success"
+   }
+  },
+  {
+   "name": "unknown keys are dropped",
+   "rule": "{\"op\":\"!empty\",\"tone\":\"info\",\"foo\":1,\"color\":\"#f00\"}",
+   "stored": {
+    "op": "!empty",
+    "tone": "info"
+   }
+  },
+  {
+   "name": "empty with a value",
+   "rule": "{\"op\":\"empty\",\"value\":\"x\",\"tone\":\"info\"}",
+   "error": "value",
+   "message": "This value is not valid"
+  },
+  {
+   "name": "days",
+   "rule": "{\"op\":\"nextDays\",\"value\":7,\"tone\":\"warning\"}",
+   "stored": {
+    "op": "nextDays",
+    "value": 7,
+    "tone": "warning"
+   }
+  },
+  {
+   "name": "days as a whole float",
+   "rule": "{\"op\":\"nextDays\",\"value\":7.0,\"tone\":\"warning\"}",
+   "stored": {
+    "op": "nextDays",
+    "value": 7,
+    "tone": "warning"
+   }
+  },
+  {
+   "name": "days in exponent form",
+   "rule": "{\"op\":\"olderThanDays\",\"value\":1e1,\"tone\":\"info\"}",
+   "stored": {
+    "op": "olderThanDays",
+    "value": 10,
+    "tone": "info"
+   }
+  },
+  {
+   "name": "days at the top",
+   "rule": "{\"op\":\"olderThanDays\",\"value\":3650,\"tone\":\"info\"}",
+   "stored": {
+    "op": "olderThanDays",
+    "value": 3650,
+    "tone": "info"
+   }
+  },
+  {
+   "name": "days zero",
+   "rule": "{\"op\":\"nextDays\",\"value\":0,\"tone\":\"warning\"}",
+   "error": "value",
+   "message": "Enter a whole number from 1 to 3650"
+  },
+  {
+   "name": "days above the top",
+   "rule": "{\"op\":\"nextDays\",\"value\":3651,\"tone\":\"warning\"}",
+   "error": "value",
+   "message": "Enter a whole number from 1 to 3650"
+  },
+  {
+   "name": "days not whole",
+   "rule": "{\"op\":\"nextDays\",\"value\":7.5,\"tone\":\"warning\"}",
+   "error": "value",
+   "message": "Enter a whole number from 1 to 3650"
+  },
+  {
+   "name": "days huge",
+   "rule": "{\"op\":\"nextDays\",\"value\":1e300,\"tone\":\"warning\"}",
+   "error": "value",
+   "message": "Enter a whole number from 1 to 3650"
+  },
+  {
+   "name": "days infinite",
+   "rule": "{\"op\":\"nextDays\",\"value\":1e400,\"tone\":\"warning\"}",
+   "error": "value",
+   "message": "Enter a whole number from 1 to 3650"
+  },
+  {
+   "name": "days missing",
+   "rule": "{\"op\":\"nextDays\",\"tone\":\"warning\"}",
+   "error": "value",
+   "message": "Enter a whole number from 1 to 3650"
+  },
+  {
+   "name": "days as text",
+   "rule": "{\"op\":\"nextDays\",\"value\":\"7\",\"tone\":\"warning\"}",
+   "error": "value",
+   "message": "This value is not valid"
+  },
+  {
+   "name": "days as a bool",
+   "rule": "{\"op\":\"nextDays\",\"value\":true,\"tone\":\"warning\"}",
+   "error": "value",
+   "message": "This value is not valid"
+  },
+  {
+   "name": "number as text",
+   "rule": "{\"op\":\"greater\",\"value\":\"10\",\"tone\":\"error\"}",
+   "stored": {
+    "op": "greater",
+    "value": "10",
+    "tone": "error"
+   }
+  },
+  {
+   "name": "number as a JSON number",
+   "rule": "{\"op\":\"greater\",\"value\":10,\"tone\":\"error\"}",
+   "stored": {
+    "op": "greater",
+    "value": "10",
+    "tone": "error"
+   }
+  },
+  {
+   "name": "number as a JSON decimal",
+   "rule": "{\"op\":\"less\",\"value\":2.5,\"tone\":\"error\"}",
+   "stored": {
+    "op": "less",
+    "value": "2.5",
+    "tone": "error"
+   }
+  },
+  {
+   "name": "number with the whitespace is_numeric allows",
+   "rule": "{\"op\":\"greaterOrEqual\",\"value\":\" 5\\n\",\"tone\":\"info\"}",
+   "stored": {
+    "op": "greaterOrEqual",
+    "value": "5",
+    "tone": "info"
+   }
+  },
+  {
+   "name": "number with an exponent",
+   "rule": "{\"op\":\"lessOrEqual\",\"value\":\"1e3\",\"tone\":\"info\"}",
+   "stored": {
+    "op": "lessOrEqual",
+    "value": "1e3",
+    "tone": "info"
+   }
+  },
+  {
+   "name": "number negative decimal",
+   "rule": "{\"op\":\"greater\",\"value\":\"-0.5\",\"tone\":\"info\"}",
+   "stored": {
+    "op": "greater",
+    "value": "-0.5",
+    "tone": "info"
+   }
+  },
+  {
+   "name": "number without a leading zero",
+   "rule": "{\"op\":\"greater\",\"value\":\".5\",\"tone\":\"info\"}",
+   "stored": {
+    "op": "greater",
+    "value": ".5",
+    "tone": "info"
+   }
+  },
+  {
+   "name": "number that is no number",
+   "rule": "{\"op\":\"greater\",\"value\":\"abc\",\"tone\":\"error\"}",
+   "error": "value",
+   "message": "Enter a number"
+  },
+  {
+   "name": "number with a comma",
+   "rule": "{\"op\":\"greater\",\"value\":\"1,5\",\"tone\":\"error\"}",
+   "error": "value",
+   "message": "Enter a number"
+  },
+  {
+   "name": "number with a no-break space",
+   "rule": "{\"op\":\"greater\",\"value\":\"\\u00a05\",\"tone\":\"error\"}",
+   "error": "value",
+   "message": "Enter a number"
+  },
+  {
+   "name": "number infinite as text",
+   "rule": "{\"op\":\"greater\",\"value\":\"1e400\",\"tone\":\"error\"}",
+   "error": "value",
+   "message": "Enter a number"
+  },
+  {
+   "name": "number infinite as JSON",
+   "rule": "{\"op\":\"greater\",\"value\":1e400,\"tone\":\"error\"}",
+   "error": "value",
+   "message": "Enter a number"
+  },
+  {
+   "name": "number missing",
+   "rule": "{\"op\":\"greater\",\"tone\":\"error\"}",
+   "error": "value",
+   "message": "Enter a number"
+  },
+  {
+   "name": "number as a bool",
+   "rule": "{\"op\":\"greater\",\"value\":true,\"tone\":\"error\"}",
+   "error": "value",
+   "message": "This value is not valid"
+  },
+  {
+   "name": "before today",
+   "rule": "{\"op\":\"before\",\"value\":{\"today\":0},\"tone\":\"error\",\"preset\":\"overdue\"}",
+   "stored": {
+    "op": "before",
+    "value": {
+     "today": 0
+    },
+    "tone": "error",
+    "preset": "overdue"
+   }
+  },
+  {
+   "name": "today written as a float",
+   "rule": "{\"op\":\"before\",\"value\":{\"today\":0.0},\"tone\":\"error\"}",
+   "stored": {
+    "op": "before",
+    "value": {
+     "today": 0
+    },
+    "tone": "error"
+   }
+  },
+  {
+   "name": "after a date",
+   "rule": "{\"op\":\"after\",\"value\":\"2026-01-14\",\"tone\":\"info\"}",
+   "stored": {
+    "op": "after",
+    "value": "2026-01-14",
+    "tone": "info"
+   }
+  },
+  {
+   "name": "a leap day",
+   "rule": "{\"op\":\"after\",\"value\":\"2024-02-29\",\"tone\":\"info\"}",
+   "stored": {
+    "op": "after",
+    "value": "2024-02-29",
+    "tone": "info"
+   }
+  },
+  {
+   "name": "a year below 100",
+   "rule": "{\"op\":\"before\",\"value\":\"0099-03-01\",\"tone\":\"info\"}",
+   "stored": {
+    "op": "before",
+    "value": "0099-03-01",
+    "tone": "info"
+   }
+  },
+  {
+   "name": "a day that does not exist",
+   "rule": "{\"op\":\"before\",\"value\":\"2026-02-30\",\"tone\":\"error\"}",
+   "error": "value",
+   "message": "Enter a valid date"
+  },
+  {
+   "name": "a date is not trimmed",
+   "rule": "{\"op\":\"before\",\"value\":\"2026-01-01\\n\",\"tone\":\"error\"}",
+   "error": "value",
+   "message": "Enter a valid date"
+  },
+  {
+   "name": "a date with a time",
+   "rule": "{\"op\":\"before\",\"value\":\"2026-01-01T08:00\",\"tone\":\"error\"}",
+   "error": "value",
+   "message": "Enter a valid date"
+  },
+  {
+   "name": "a date missing",
+   "rule": "{\"op\":\"before\",\"value\":null,\"tone\":\"error\"}",
+   "error": "value",
+   "message": "Enter a valid date"
+  },
+  {
+   "name": "today plus one",
+   "rule": "{\"op\":\"before\",\"value\":{\"today\":1},\"tone\":\"error\"}",
+   "error": "value",
+   "message": "This value is not valid"
+  },
+  {
+   "name": "today with another key",
+   "rule": "{\"op\":\"before\",\"value\":{\"today\":0,\"x\":1},\"tone\":\"error\"}",
+   "error": "value",
+   "message": "This value is not valid",
+   "stricter": true
+  },
+  {
+   "name": "a date as a number",
+   "rule": "{\"op\":\"before\",\"value\":20260114,\"tone\":\"error\"}",
+   "error": "value",
+   "message": "This value is not valid"
+  },
+  {
+   "name": "is a text",
+   "rule": "{\"op\":\"is\",\"value\":\"Goedgekeurd\",\"tone\":\"success\"}",
+   "stored": {
+    "op": "is",
+    "value": "Goedgekeurd",
+    "tone": "success"
+   }
+  },
+  {
+   "name": "is a text, trimmed",
+   "rule": "{\"op\":\"is\",\"value\":\"  Goedgekeurd  \",\"tone\":\"success\"}",
+   "stored": {
+    "op": "is",
+    "value": "Goedgekeurd",
+    "tone": "success"
+   }
+  },
+  {
+   "name": "is trimmed like the browser trims",
+   "rule": "{\"op\":\"is\",\"value\":\"\\u00a0x\\u3000\",\"tone\":\"success\"}",
+   "stored": {
+    "op": "is",
+    "value": "x",
+    "tone": "success"
+   }
+  },
+  {
+   "name": "is the viewer",
+   "rule": "{\"op\":\"is\",\"value\":{\"me\":true},\"tone\":\"info\",\"preset\":\"assignedToViewer\"}",
+   "stored": {
+    "op": "is",
+    "value": {
+     "me": true
+    },
+    "tone": "info",
+    "preset": "assignedToViewer"
+   }
+  },
+  {
+   "name": "is today",
+   "rule": "{\"op\":\"is\",\"value\":{\"today\":0},\"tone\":\"warning\",\"preset\":\"dueToday\"}",
+   "stored": {
+    "op": "is",
+    "value": {
+     "today": 0
+    },
+    "tone": "warning",
+    "preset": "dueToday"
+   }
+  },
+  {
+   "name": "is a whole JSON number",
+   "rule": "{\"op\":\"is\",\"value\":42,\"tone\":\"info\"}",
+   "stored": {
+    "op": "is",
+    "value": "42",
+    "tone": "info"
+   }
+  },
+  {
+   "name": "is empty text",
+   "rule": "{\"op\":\"is\",\"value\":\"\",\"tone\":\"info\"}",
+   "error": "value",
+   "message": "Enter 1 to 200 characters"
+  },
+  {
+   "name": "is only spaces",
+   "rule": "{\"op\":\"is\",\"value\":\"   \",\"tone\":\"info\"}",
+   "error": "value",
+   "message": "Enter 1 to 200 characters"
+  },
+  {
+   "name": "is a text over 200",
+   "rule": "{\"op\":\"is\",\"value\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"tone\":\"info\"}",
+   "error": "value",
+   "message": "Enter 1 to 200 characters"
+  },
+  {
+   "name": "is a number written with 201 digits",
+   "rule": "{\"op\":\"is\",\"value\":\"111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111\",\"tone\":\"info\"}",
+   "error": "value",
+   "message": "Enter 1 to 200 characters",
+   "stricter": true
+  },
+  {
+   "name": "is a JSON decimal",
+   "rule": "{\"op\":\"is\",\"value\":2.5,\"tone\":\"info\"}",
+   "error": "value",
+   "message": "This value is not valid",
+   "stricter": true
+  },
+  {
+   "name": "is a bool",
+   "rule": "{\"op\":\"is\",\"value\":true,\"tone\":\"info\"}",
+   "error": "value",
+   "message": "This value is not valid"
+  },
+  {
+   "name": "is me as a number",
+   "rule": "{\"op\":\"is\",\"value\":{\"me\":1},\"tone\":\"info\"}",
+   "error": "value",
+   "message": "This value is not valid"
+  },
+  {
+   "name": "is me with another key",
+   "rule": "{\"op\":\"is\",\"value\":{\"me\":true,\"x\":1},\"tone\":\"info\"}",
+   "error": "value",
+   "message": "This value is not valid",
+   "stricter": true
+  },
+  {
+   "name": "contains",
+   "rule": "{\"op\":\"contains\",\"value\":\"abc\",\"tone\":\"warning\"}",
+   "stored": {
+    "op": "contains",
+    "value": "abc",
+    "tone": "warning"
+   }
+  },
+  {
+   "name": "does not contain, trimmed",
+   "rule": "{\"op\":\"!contains\",\"value\":\" a b \",\"tone\":\"warning\"}",
+   "stored": {
+    "op": "!contains",
+    "value": "a b",
+    "tone": "warning"
+   }
+  },
+  {
+   "name": "is not the viewer",
+   "rule": "{\"op\":\"!is\",\"value\":{\"me\":true},\"tone\":\"info\"}",
+   "error": "value",
+   "message": "This value is not valid"
+  },
+  {
+   "name": "contains a list",
+   "rule": "{\"op\":\"contains\",\"value\":[\"a\"],\"tone\":\"info\"}",
+   "error": "value",
+   "message": "This value is not valid"
+  },
+  {
+   "name": "one of, trimmed",
+   "rule": "{\"op\":\"oneOf\",\"value\":[\"A\",\" B \"],\"tone\":\"error\"}",
+   "stored": {
+    "op": "oneOf",
+    "value": [
+     "A",
+     "B"
+    ],
+    "tone": "error"
+   }
+  },
+  {
+   "name": "contains all, duplicates kept",
+   "rule": "{\"op\":\"containsAll\",\"value\":[\"A\",\"A\"],\"tone\":\"info\"}",
+   "stored": {
+    "op": "containsAll",
+    "value": [
+     "A",
+     "A"
+    ],
+    "tone": "info"
+   }
+  },
+  {
+   "name": "one of, whole numbers become text",
+   "rule": "{\"op\":\"oneOf\",\"value\":[1,\"2\"],\"tone\":\"info\"}",
+   "stored": {
+    "op": "oneOf",
+    "value": [
+     "1",
+     "2"
+    ],
+    "tone": "info"
+   }
+  },
+  {
+   "name": "one of nothing",
+   "rule": "{\"op\":\"oneOf\",\"value\":[],\"tone\":\"error\"}",
+   "error": "value",
+   "message": "Choose 1 to 50 options of at most 200 characters"
+  },
+  {
+   "name": "one of 51",
+   "rule": "{\"op\":\"oneOf\",\"value\":[\"0\", \"1\", \"2\", \"3\", \"4\", \"5\", \"6\", \"7\", \"8\", \"9\", \"10\", \"11\", \"12\", \"13\", \"14\", \"15\", \"16\", \"17\", \"18\", \"19\", \"20\", \"21\", \"22\", \"23\", \"24\", \"25\", \"26\", \"27\", \"28\", \"29\", \"30\", \"31\", \"32\", \"33\", \"34\", \"35\", \"36\", \"37\", \"38\", \"39\", \"40\", \"41\", \"42\", \"43\", \"44\", \"45\", \"46\", \"47\", \"48\", \"49\", \"50\"],\"tone\":\"error\"}",
+   "error": "value",
+   "message": "Choose 1 to 50 options of at most 200 characters"
+  },
+  {
+   "name": "one of with an empty item",
+   "rule": "{\"op\":\"oneOf\",\"value\":[\"A\",\"\"],\"tone\":\"error\"}",
+   "error": "value",
+   "message": "Choose 1 to 50 options of at most 200 characters"
+  },
+  {
+   "name": "one of a text",
+   "rule": "{\"op\":\"oneOf\",\"value\":\"A\",\"tone\":\"error\"}",
+   "error": "value",
+   "message": "This value is not valid"
+  },
+  {
+   "name": "one of with null",
+   "rule": "{\"op\":\"oneOf\",\"value\":[\"A\",null],\"tone\":\"error\"}",
+   "error": "value",
+   "message": "This value is not valid"
+  },
+  {
+   "name": "one of with a decimal",
+   "rule": "{\"op\":\"oneOf\",\"value\":[\"A\",1.5],\"tone\":\"error\"}",
+   "error": "value",
+   "message": "This value is not valid"
+  },
+  {
+   "name": "label trimmed",
+   "rule": "{\"op\":\"empty\",\"tone\":\"info\",\"label\":\"  Binnenkort \"}",
+   "stored": {
+    "op": "empty",
+    "tone": "info",
+    "label": "Binnenkort"
+   }
+  },
+  {
+   "name": "label without hidden characters",
+   "rule": "{\"op\":\"empty\",\"tone\":\"info\",\"label\":\"\\u202eKlaar\\u200b\"}",
+   "stored": {
+    "op": "empty",
+    "tone": "info",
+    "label": "Klaar"
+   }
+  },
+  {
+   "name": "label keeps the emoji joiner",
+   "rule": "{\"op\":\"empty\",\"tone\":\"info\",\"label\":\"\\ud83d\\udc69\\u200d\\ud83d\\udcbb Werk\"}",
+   "stored": {
+    "op": "empty",
+    "tone": "info",
+    "label": "👩‍💻 Werk"
+   }
+  },
+  {
+   "name": "label empty is no label",
+   "rule": "{\"op\":\"empty\",\"tone\":\"info\",\"label\":\"\"}",
+   "stored": {
+    "op": "empty",
+    "tone": "info"
+   }
+  },
+  {
+   "name": "label null is no label",
+   "rule": "{\"op\":\"empty\",\"tone\":\"info\",\"label\":null}",
+   "stored": {
+    "op": "empty",
+    "tone": "info"
+   }
+  },
+  {
+   "name": "label of 40",
+   "rule": "{\"op\":\"empty\",\"tone\":\"info\",\"label\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}",
+   "stored": {
+    "op": "empty",
+    "tone": "info",
+    "label": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   }
+  },
+  {
+   "name": "label of 40 after cleaning",
+   "rule": "{\"op\":\"empty\",\"tone\":\"info\",\"label\":\"\\u202exxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}",
+   "stored": {
+    "op": "empty",
+    "tone": "info",
+    "label": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   }
+  },
+  {
+   "name": "label of 41",
+   "rule": "{\"op\":\"empty\",\"tone\":\"info\",\"label\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}",
+   "error": "label",
+   "message": "Use at most 40 characters",
+   "stricter": true
+  },
+  {
+   "name": "label as a number",
+   "rule": "{\"op\":\"empty\",\"tone\":\"info\",\"label\":5}",
+   "error": "label",
+   "message": "This value is not valid",
+   "stricter": true
+  },
+  {
+   "name": "known preset kept",
+   "rule": "{\"op\":\"empty\",\"tone\":\"warning\",\"preset\":\"missing\"}",
+   "stored": {
+    "op": "empty",
+    "tone": "warning",
+    "preset": "missing"
+   }
+  },
+  {
+   "name": "unknown preset dropped",
+   "rule": "{\"op\":\"empty\",\"tone\":\"warning\",\"preset\":\"constructor\"}",
+   "stored": {
+    "op": "empty",
+    "tone": "warning"
+   }
+  },
+  {
+   "name": "preset that is no text dropped",
+   "rule": "{\"op\":\"empty\",\"tone\":\"warning\",\"preset\":[\"missing\"]}",
+   "stored": {
+    "op": "empty",
+    "tone": "warning"
+   }
+  },
+  {
+   "name": "stored in a fixed key order",
+   "rule": "{\"preset\":\"missing\",\"label\":\"L\",\"tone\":\"info\",\"op\":\"empty\"}",
+   "stored": {
+    "op": "empty",
+    "tone": "info",
+    "label": "L",
+    "preset": "missing"
+   }
+  },
+  {
+   "name": "unknown tone",
+   "rule": "{\"op\":\"empty\",\"tone\":\"purple\"}",
+   "error": "tone",
+   "message": "This value is not valid"
+  },
+  {
+   "name": "no tone",
+   "rule": "{\"op\":\"empty\"}",
+   "error": "tone",
+   "message": "This value is not valid"
+  },
+  {
+   "name": "unknown op",
+   "rule": "{\"op\":\"matches\",\"value\":\"x\",\"tone\":\"info\"}",
+   "error": "op",
+   "message": "This value is not valid"
+  },
+  {
+   "name": "no op",
+   "rule": "{\"value\":\"x\",\"tone\":\"info\"}",
+   "error": "op",
+   "message": "This value is not valid"
+  },
+  {
+   "name": "op as a list",
+   "rule": "{\"op\":[\"is\"],\"value\":\"x\",\"tone\":\"info\"}",
+   "error": "op",
+   "message": "This value is not valid"
+  },
+  {
+   "name": "a rule that is a list",
+   "rule": "[\"is\",\"x\"]",
+   "error": "rule",
+   "message": "This value is not valid"
+  },
+  {
+   "name": "a rule that is text",
+   "rule": "\"is\"",
+   "error": "rule",
+   "message": "This value is not valid"
+  }
+ ]
+}

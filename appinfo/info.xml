@@ -3,52 +3,76 @@
       xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
     <id>metavox</id>
     <name>MetaVox</name>
-<summary>SharePoint-style metadata columns for Nextcloud Team Folders</summary>
+<summary>Metadata for team folders: columns, views, highlights and search, right in Files</summary>
 <description>
-MetaVox adds SharePoint-style metadata management to Nextcloud Team Folders. Define custom metadata fields and edit them inline — directly in the file list. Your files stay untouched: metadata is stored separately, never modifying file content.
+MetaVox brings structured metadata to Nextcloud team folders. Define the fields your team needs, fill them in right in the file list, and filter, sort, highlight and search on them, even in folders with hundreds of thousands of files. Your files stay untouched: the metadata is stored separately.
 
-**10+ field types:** text, number, date, checkbox, dropdown, multi-select, URL, user picker, file link, and more.
+**Work in the file list**
+- **Metadata columns.** Your fields appear as columns in Files. Double-click a cell to edit it, or edit many files at once.
+- **Ten field types.** Text, long text, number, date and time, checkbox, dropdown, multi-select, web address, person and file link.
+- **Values you can trust.** Required fields stay filled, and every value is checked, however it arrives.
 
-**Key Features:**
+**See what matters**
+- **Views.** Save columns, filters and sorting per team folder, and switch between them in one click.
+- **Highlights.** Color cells by their value: overdue in red, due soon in orange, approved in green.
+- **Instant filter and sort.** Search a filter's values and narrow down thousands of files at once.
 
-- **Inline grid editing** — Double-click any cell to edit. Changes appear instantly for all users.
-- **Views** — Save column, filter, and sort combinations as tabs. Switch views with one click.
-- **Real-time collaboration** — Cell locking prevents concurrent edits. Syncs via WebSocket (notify_push).
-- **Client-side filter and sort** — Instant filtering with zero server calls.
-- **AI metadata autofill** — AI reads file content and suggests metadata values.
-- **Bulk editing** — Edit metadata for multiple files at once.
-- **Backup and restore** — Automated daily backups with one-click restore.
-- **Flow integration** — Automate actions based on metadata values (notifications, access control, retention).
-- **REST API** — Full OCS API for external integrations and bulk operations.
+**Find it again**
+- **Search by field.** Filter Nextcloud's search bar on a field value, in one team folder or all of them.
+- **Saved searches as folders.** Keep a search as a folder in Files, always up to date. *(Nextcloud 33 and newer)*
 
-**Ideal for:** SharePoint migrations, document classification, curriculum tagging, policy management, and research annotation. Used by universities, government organizations, and enterprises.
+**Work together**
+- **Live updates.** Changes appear for everyone at once, and a cell someone is editing is locked.
+- **Nextcloud's permissions.** You see and change the metadata of exactly the files you can, ACL included.
 
-Supports **Nextcloud 31, 32, 33, 34, and 35** with automatic feature detection.
+**Automate and connect**
+- **Default values.** New files get their team folder's defaults.
+- **AI suggestions.** Let AI read a file and suggest its metadata.
+- **Flow.** Act on metadata: notifications, access control, retention.
+- **WebDAV and REST API.** Ask for `&lt;nc:metavox/&gt;` in a PROPFIND to get every file's metadata with the folder listing, or use the OCS API.
+- **Backup and restore.** Daily backups, restored with one click.
+
+**Built for** document classification, case and project files, contracts, policy management, curriculum tagging and research data. Used by universities, government organizations and enterprises.
+
+Supports **Nextcloud 31 to 35** on **MySQL, MariaDB or PostgreSQL**, in English, Dutch, French, German and Swedish. SQLite is for trying MetaVox out.
 </description>
-    <version>2.2.3</version>
+    <version>3.0.0</version>
     <licence>AGPL-3.0-or-later</licence>
     <author mail="info@voxcloud.nl">Sam Ditmeijer</author>
     <author mail="info@voxcloud.nl">Rik Dekker</author>
     <namespace>MetaVox</namespace>
     <documentation>
-        <user>https://github.com/nextcloud/metavox/blob/main/README.md</user>
+        <user>https://github.com/nextcloud/metavox/blob/main/docs/index.md</user>
         <admin>https://github.com/nextcloud/metavox/tree/main/docs/admin</admin>
         <developer>https://github.com/nextcloud/metavox/blob/main/docs/architecture/api-reference.md</developer>
     </documentation>
     <category>files</category>
     <category>organization</category>
     <website>https://voxcloud.nl</website>
-    <screenshot>https://raw.githubusercontent.com/nextcloud/metavox/main/screenshots/columns-collaboration.png</screenshot>
-    <screenshot>https://raw.githubusercontent.com/nextcloud/metavox/main/screenshots/views-tabs.png</screenshot>
-    <screenshot>https://raw.githubusercontent.com/nextcloud/metavox/main/screenshots/inline-editing.gif</screenshot>
-    <screenshot>https://raw.githubusercontent.com/nextcloud/metavox/main/screenshots/Manage%20team%20metadata.png</screenshot>
-    <repository type="git">https://github.com/nextcloud/metavox.git</repository>
-    <bugs>https://github.com/nextcloud/metavox/issues</bugs>
     <discussion>https://github.com/nextcloud/metavox/discussions</discussion>
+    <bugs>https://github.com/nextcloud/metavox/issues</bugs>
+    <repository type="git">https://github.com/nextcloud/metavox.git</repository>
+    <screenshot>https://raw.githubusercontent.com/nextcloud/metavox/main/screenshots/grid-highlights.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/nextcloud/metavox/main/screenshots/view-editor.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/nextcloud/metavox/main/screenshots/metadata-searches.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/nextcloud/metavox/main/screenshots/inline-editing.gif</screenshot>
+    <screenshot>https://raw.githubusercontent.com/nextcloud/metavox/main/screenshots/admin-fields.png</screenshot>
     <dependencies>
         <php min-version="8.1"/>
         <nextcloud min-version="31" max-version="35"/>
     </dependencies>
+    <background-jobs>
+        <job>OCA\MetaVox\BackgroundJobs\TelemetryJob</job>
+        <job>OCA\MetaVox\BackgroundJobs\LicenseUsageJob</job>
+        <job>OCA\MetaVox\BackgroundJobs\CleanupDeletedMetadata</job>
+        <job>OCA\MetaVox\BackgroundJobs\MetadataBackupJob</job>
+        <job>OCA\MetaVox\BackgroundJobs\DiscoverMissingDefaultsJob</job>
+    </background-jobs>
+    <repair-steps>
+        <install>
+            <step>OCA\MetaVox\Repair\PostgresValueIndex</step>
+        </install>
+    </repair-steps>
     <commands>
         <command>OCA\MetaVox\Command\ApplyDefaults</command>
     </commands>
@@ -58,11 +82,4 @@ Supports **Nextcloud 31, 32, 33, 34, and 35** with automatic feature detection.
         <personal>OCA\MetaVox\Settings\Personal</personal>
         <personal-section>OCA\MetaVox\Settings\PersonalSection</personal-section>
     </settings>
-    <background-jobs>
-        <job>OCA\MetaVox\BackgroundJobs\TelemetryJob</job>
-        <job>OCA\MetaVox\BackgroundJobs\LicenseUsageJob</job>
-        <job>OCA\MetaVox\BackgroundJobs\CleanupDeletedMetadata</job>
-        <job>OCA\MetaVox\BackgroundJobs\MetadataBackupJob</job>
-        <job>OCA\MetaVox\BackgroundJobs\DiscoverMissingDefaultsJob</job>
-</background-jobs>
 </info>

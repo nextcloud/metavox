@@ -1,0 +1,139 @@
+{
+ "_comment": "Highlight rule operators per field type and the kind of value each takes. Shared by the browser (src/utils/valueOperators.js) and the server.",
+ "types": {
+  "text": [
+   "is",
+   "!is",
+   "contains",
+   "!contains",
+   "empty",
+   "!empty"
+  ],
+  "textarea": [
+   "is",
+   "!is",
+   "contains",
+   "!contains",
+   "empty",
+   "!empty"
+  ],
+  "url": [
+   "is",
+   "!is",
+   "contains",
+   "!contains",
+   "empty",
+   "!empty"
+  ],
+  "number": [
+   "is",
+   "!is",
+   "greater",
+   "less",
+   "greaterOrEqual",
+   "lessOrEqual",
+   "empty",
+   "!empty"
+  ],
+  "date": [
+   "before",
+   "after",
+   "is",
+   "nextDays",
+   "olderThanDays",
+   "empty",
+   "!empty"
+  ],
+  "select": [
+   "is",
+   "!is",
+   "oneOf",
+   "empty",
+   "!empty"
+  ],
+  "dropdown": [
+   "is",
+   "!is",
+   "oneOf",
+   "empty",
+   "!empty"
+  ],
+  "multiselect": [
+   "oneOf",
+   "containsAll",
+   "empty",
+   "!empty"
+  ],
+  "multi_select": [
+   "oneOf",
+   "containsAll",
+   "empty",
+   "!empty"
+  ],
+  "checkbox": [
+   "isTrue",
+   "isFalse"
+  ],
+  "boolean": [
+   "isTrue",
+   "isFalse"
+  ],
+  "user": [
+   "is",
+   "!is",
+   "empty",
+   "!empty"
+  ]
+ },
+ "fallback": [
+  "empty",
+  "!empty"
+ ],
+ "operandKinds": {
+  "empty": "none",
+  "!empty": "none",
+  "isTrue": "none",
+  "isFalse": "none",
+  "nextDays": "days",
+  "olderThanDays": "days",
+  "greater": "number",
+  "less": "number",
+  "greaterOrEqual": "number",
+  "lessOrEqual": "number",
+  "before": "date",
+  "after": "date",
+  "is": "equal",
+  "!is": "text",
+  "contains": "text",
+  "!contains": "text",
+  "oneOf": "list",
+  "containsAll": "list"
+ },
+ "notInFlow": [
+  "nextDays",
+  "olderThanDays"
+ ],
+ "tones": [
+  "error",
+  "warning",
+  "success",
+  "info"
+ ],
+ "presets": [
+  "overdue",
+  "dueToday",
+  "dueSoon",
+  "missing",
+  "checked",
+  "unchecked",
+  "assignedToViewer"
+ ],
+ "limits": {
+  "rules": 10,
+  "list": 50,
+  "text": 200,
+  "label": 40,
+  "days": 3650,
+  "bytes": 32768
+ }
+}

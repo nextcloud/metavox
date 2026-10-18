@@ -3,15 +3,13 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Controller;
 
+use OCA\MetaVox\Access\Access;
+use OCA\MetaVox\Access\RequireAccess;
 use OCA\MetaVox\Service\TelemetryService;
 use OCP\AppFramework\Controller;
-use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\DataResponse;
-use OCP\IGroupManager;
 use OCP\IRequest;
-use OCP\IUserSession;
-use Psr\Log\LoggerInterface;
 
 /**
  * API Controller for MetaVox Telemetry Management
@@ -24,26 +22,14 @@ use Psr\Log\LoggerInterface;
  * All endpoints are admin-only (no @NoAdminRequired)
  */
 class TelemetryController extends Controller {
+
+    use ReadsParams;
     public function __construct(
         string $appName,
         IRequest $request,
         private TelemetryService $telemetryService,
-        private IUserSession $userSession,
-        private IGroupManager $groupManager,
-        private LoggerInterface $logger
     ) {
         parent::__construct($appName, $request);
-    }
-
-    /**
-     * Check if current user is admin
-     */
-    private function isAdmin(): bool {
-        $user = $this->userSession->getUser();
-        if ($user === null) {
-            return false;
-        }
-        return $this->groupManager->isAdmin($user->getUID());
     }
 
     /**
@@ -54,30 +40,12 @@ class TelemetryController extends Controller {
      * @return DataResponse
      */
     #[NoCSRFRequired]
+    #[RequireAccess(Access::NcAdmin)]
     public function getStatus(): DataResponse {
-        if (!$this->isAdmin()) {
-            return new DataResponse([
-                'success' => false,
-                'message' => 'Admin privileges required'
-            ], Http::STATUS_FORBIDDEN);
-        }
-
-        try {
-            $status = $this->telemetryService->getStatus();
-
-            return new DataResponse([
-                'success' => true,
-                ...$status,
-            ]);
-        } catch (\Exception $e) {
-            $this->logger->error('Failed to get telemetry status', [
-                'error' => $e->getMessage()
-            ]);
-            return new DataResponse([
-                'success' => false,
-                'message' => 'Failed to retrieve telemetry status'
-            ], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        return new DataResponse([
+            'success' => true,
+            ...$this->telemetryService->getStatus(),
+        ]);
     }
 
     /**
@@ -88,30 +56,12 @@ class TelemetryController extends Controller {
      * @return DataResponse
      */
     #[NoCSRFRequired]
+    #[RequireAccess(Access::NcAdmin)]
     public function getStats(): DataResponse {
-        if (!$this->isAdmin()) {
-            return new DataResponse([
-                'success' => false,
-                'message' => 'Admin privileges required'
-            ], Http::STATUS_FORBIDDEN);
-        }
-
-        try {
-            $stats = $this->telemetryService->getStats();
-
-            return new DataResponse([
-                'success' => true,
-                'stats' => $stats
-            ]);
-        } catch (\Exception $e) {
-            $this->logger->error('Failed to get statistics', [
-                'error' => $e->getMessage()
-            ]);
-            return new DataResponse([
-                'success' => false,
-                'message' => 'Failed to retrieve statistics'
-            ], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        return new DataResponse([
+            'success' => true,
+            'stats' => $this->telemetryService->getStats(),
+        ]);
     }
 
     /**
@@ -121,31 +71,15 @@ class TelemetryController extends Controller {
      *
      * @return DataResponse
      */
+    #[RequireAccess(Access::NcAdmin)]
     public function sendTelemetry(): DataResponse {
-        if (!$this->isAdmin()) {
-            return new DataResponse([
-                'success' => false,
-                'message' => 'Admin privileges required'
-            ], Http::STATUS_FORBIDDEN);
-        }
+        $result = $this->telemetryService->sendReportWithDetails();
 
-        try {
-            $result = $this->telemetryService->sendReportWithDetails();
-
-            return new DataResponse([
-                'success' => $result['success'],
-                'reason' => $result['reason'] ?? null,
-                'message' => $result['message'] ?? null,
-            ]);
-        } catch (\Exception $e) {
-            $this->logger->error('Failed to send telemetry', [
-                'error' => $e->getMessage()
-            ]);
-            return new DataResponse([
-                'success' => false,
-                'message' => 'Failed to send telemetry'
-            ], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        return new DataResponse([
+            'success' => $result['success'],
+            'reason' => $result['reason'] ?? null,
+            'message' => $result['message'] ?? null,
+        ]);
     }
 
     /**
@@ -155,33 +89,11 @@ class TelemetryController extends Controller {
      *
      * @return DataResponse
      */
+    #[RequireAccess(Access::NcAdmin)]
     public function saveSettings(): DataResponse {
-        if (!$this->isAdmin()) {
-            return new DataResponse([
-                'success' => false,
-                'message' => 'Admin privileges required'
-            ], Http::STATUS_FORBIDDEN);
+        if ($this->request->getParam('enabled') !== null) {
+            $this->telemetryService->setEnabled($this->boolParam('enabled', false));
         }
-
-        try {
-            $enabled = $this->request->getParam('enabled');
-
-            if ($enabled !== null) {
-                $this->telemetryService->setEnabled($enabled === 'true' || $enabled === true || $enabled === '1' || $enabled === 1);
-            }
-
-            return new DataResponse([
-                'success' => true,
-                'message' => 'Telemetry settings saved successfully'
-            ]);
-        } catch (\Exception $e) {
-            $this->logger->error('Failed to save telemetry settings', [
-                'error' => $e->getMessage()
-            ]);
-            return new DataResponse([
-                'success' => false,
-                'message' => 'Failed to save telemetry settings'
-            ], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        return new DataResponse(['success' => true]);
     }
 }

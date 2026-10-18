@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Service;
 
+use OCA\MetaVox\Exception\AiAutofillException;
 use OCA\MetaVox\L10n\Translatable;
+use OCA\MetaVox\Validation\FieldOptions;
 use OCP\App\IAppManager;
 use OCP\Files\IRootFolder;
 use OCP\IAppConfig;
@@ -91,7 +93,7 @@ class AiAutofillService {
             }
         }
         // TRANSLATORS Error message shown to the user when no AI text generation is set up on the server; AI = artificial intelligence
-        throw new \RuntimeException(Translatable::t('No AI text generation provider available'));
+        throw new AiAutofillException(Translatable::t('No AI text generation provider available'));
     }
 
     /**
@@ -157,8 +159,9 @@ class AiAutofillService {
             if ($status === Task::STATUS_FAILED || $status === Task::STATUS_CANCELLED) {
                 $errorMsg = $task->getErrorMessage() ?? 'Unknown error';
                 $this->logger->error('MetaVox: AI task failed', ['taskId' => $taskId, 'error' => $errorMsg]);
+                // The provider's message stays in the log.
                 // TRANSLATORS Error message shown to the user when AI could not fill in the metadata; AI = artificial intelligence
-                throw new \RuntimeException(Translatable::t('AI task failed'));
+                throw new AiAutofillException(Translatable::t('AI task failed'));
             }
 
             // Increase poll interval after first few seconds
@@ -170,7 +173,7 @@ class AiAutofillService {
         if ($task->getStatus() !== Task::STATUS_SUCCESSFUL) {
             $this->logger->error('MetaVox: AI task timed out', ['taskId' => $taskId, 'waitedSeconds' => $waited]);
             // TRANSLATORS Error message shown to the user when AI took too long to fill in the metadata; AI = artificial intelligence
-            throw new \RuntimeException(Translatable::t('AI task timed out'));
+            throw new AiAutofillException(Translatable::t('AI task timed out'));
         }
 
         $output = $task->getOutput();
@@ -389,10 +392,10 @@ class AiAutofillService {
                 $desc .= ', description: "' . $field['field_description'] . '"';
             }
 
-            if (in_array($field['field_type'], ['select', 'multiselect', 'dropdown'], true) && !empty($field['field_options'])) {
-                $options = is_array($field['field_options'])
-                    ? $field['field_options']
-                    : array_filter(explode("\n", (string)$field['field_options']));
+            $options = in_array($field['field_type'], ['select', 'multiselect', 'dropdown'], true)
+                ? FieldOptions::values($field['field_options'] ?? null)
+                : [];
+            if ($options !== []) {
                 // Quote each option so the AI knows the exact values
                 $quoted = array_map(fn($o) => '"' . $o . '"', $options);
                 $desc .= ', ALLOWED VALUES: [' . implode(', ', $quoted) . ']';
@@ -409,7 +412,7 @@ class AiAutofillService {
                     $desc .= 'return ONLY a number';
                     break;
                 case 'date':
-                    $includeTime = is_array($field['field_options'] ?? null) && !empty($field['field_options']['includeTime']);
+                    $includeTime = FieldOptions::includeTime($field['field_options'] ?? null);
                     $desc .= $includeTime
                         ? 'return date AND time in YYYY-MM-DDTHH:mm:ss format (24-hour, NO timezone suffix)'
                         : 'return in YYYY-MM-DD format';
@@ -496,14 +499,12 @@ PROMPT;
         $validFieldNames = [];
         $fieldTypes = [];
         $fieldOptions = [];
+        $includesTime = [];
         foreach ($fields as $field) {
             $validFieldNames[] = $field['field_name'];
             $fieldTypes[$field['field_name']] = $field['field_type'];
-            if (!empty($field['field_options'])) {
-                $fieldOptions[$field['field_name']] = is_array($field['field_options'])
-                    ? $field['field_options']
-                    : array_filter(explode("\n", (string)$field['field_options']));
-            }
+            $fieldOptions[$field['field_name']] = FieldOptions::values($field['field_options'] ?? null);
+            $includesTime[$field['field_name']] = FieldOptions::includeTime($field['field_options'] ?? null);
         }
 
         $suggestions = [];
@@ -530,8 +531,7 @@ PROMPT;
                     if (!preg_match('/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2})?$/', $stringValue)) {
                         continue 2;
                     }
-                    $expectsTime = is_array($fieldOptions[$fieldName] ?? null)
-                        && !empty($fieldOptions[$fieldName]['includeTime']);
+                    $expectsTime = $includesTime[$fieldName];
                     $hasTime = strpos($stringValue, 'T') !== false;
                     if ($expectsTime !== $hasTime) {
                         continue 2;
@@ -543,7 +543,7 @@ PROMPT;
                 case 'select':
                 case 'dropdown':
                     // Must match one of the allowed options
-                    if (isset($fieldOptions[$fieldName])) {
+                    if ($fieldOptions[$fieldName] !== []) {
                         if (!in_array($stringValue, $fieldOptions[$fieldName], true)) {
                             // Try case-insensitive match
                             $matched = false;
@@ -563,7 +563,7 @@ PROMPT;
                     break;
                 case 'multiselect':
                     // Validate each value in the semicolon-separated list
-                    if (isset($fieldOptions[$fieldName])) {
+                    if ($fieldOptions[$fieldName] !== []) {
                         $parts = preg_split('/[;#]+/', $stringValue);
                         $validParts = [];
                         foreach ($parts as $part) {

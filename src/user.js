@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import MetaVoxPersonal from './components/MetaVoxPersonal.vue'
 import { translate, translatePlural } from '@nextcloud/l10n'
+import { watchLoading } from './utils/updatedPage.js'
 
 const mountPoint = document.getElementById('metavox-personal')
 
@@ -14,7 +15,7 @@ if (mountPoint) {
     app.config.globalProperties.OC = window.OC
     app.config.globalProperties.OCA = window.OCA
 
-    app.mount(mountPoint)
+    watchLoading(app).mount(mountPoint)
 }
 
 export default app

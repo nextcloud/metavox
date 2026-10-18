@@ -289,6 +289,7 @@ class LicenseService {
 		}
 
 		return [
+			'totalFields' => $stats['totalFields'],
 			'teamFoldersWithFields' => $stats['teamFoldersWithFields'],
 			'totalEntries' => $stats['totalEntries'],
 			'entriesPerFolder' => $stats['entriesPerFolder'],
@@ -309,6 +310,17 @@ class LicenseService {
 
 	private function getUsageStats(): array {
 		try {
+			// Field definitions. The Support pane shows this beside the two
+			// counts below; it used to read them from the telemetry endpoint,
+			// so the same three numbers came from two sources that could
+			// disagree.
+			$qb = $this->db->getQueryBuilder();
+			$qb->select($qb->func()->count('*', 'count'))
+				->from('metavox_gf_fields');
+			$result = $qb->executeQuery();
+			$totalFields = (int)$result->fetchOne();
+			$result->closeCursor();
+
 			// Team folders with fields assigned
 			$qb = $this->db->getQueryBuilder();
 			$qb->select($qb->func()->count($qb->createFunction('DISTINCT groupfolder_id'), 'count'))
@@ -364,6 +376,7 @@ class LicenseService {
 			$totalUsers = $this->countAllUsers();
 
 			return [
+				'totalFields' => $totalFields,
 				'teamFoldersWithFields' => $teamFoldersWithFields,
 				'totalEntries' => $totalEntries,
 				'entriesPerFolder' => $entriesPerFolder,
@@ -374,6 +387,7 @@ class LicenseService {
 				'error' => $e->getMessage(),
 			]);
 			return [
+				'totalFields' => 0,
 				'teamFoldersWithFields' => 0,
 				'totalEntries' => 0,
 				'entriesPerFolder' => [],

@@ -6,7 +6,7 @@
  */
 
 import { translate as t } from '@nextcloud/l10n'
-import MetadataCheck from './MetadataCheck.js'
+import { TAG_NAME } from './MetadataCheckElement.js'
 
 // Wait for the WorkflowEngine to be ready
 window.addEventListener('DOMContentLoaded', () => {
@@ -36,7 +36,7 @@ function registerFlowComponents() {
 			// TRANSLATORS Operator of the Flow check, read as "MetaVox metadata where <field> equals <value>"; keep it short
 			{ operator: 'matches', name: t('metavox', 'where') },
 		],
-		component: MetadataCheck,
+		element: TAG_NAME,
 	})
 
 }

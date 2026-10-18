@@ -1,0 +1,1216 @@
+{
+ "_comment": "Test vectors for highlight rules: value + rule + ctx -> true, false or null (unknown, no colour). today is the browser's day.",
+ "vectors": [
+  {
+   "name": "text empty string is empty",
+   "type": "text",
+   "value": "",
+   "rule": {
+    "op": "empty"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "text missing is empty",
+   "type": "text",
+   "value": null,
+   "rule": {
+    "op": "empty"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "text space is a value",
+   "type": "text",
+   "value": " ",
+   "rule": {
+    "op": "empty"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false
+  },
+  {
+   "name": "number 0 is a value",
+   "type": "number",
+   "value": "0",
+   "rule": {
+    "op": "empty"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false
+  },
+  {
+   "name": "multiselect without items is empty",
+   "type": "multiselect",
+   "value": ";#",
+   "rule": {
+    "op": "empty"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "filelink with a file is not empty",
+   "type": "filelink",
+   "value": "12:",
+   "rule": {
+    "op": "!empty"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "folder: an empty value counts like on a file",
+   "type": "text",
+   "value": "",
+   "rule": {
+    "op": "empty"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": true
+   },
+   "expected": true
+  },
+  {
+   "name": "folder: a value on a folder counts",
+   "type": "text",
+   "value": "x",
+   "rule": {
+    "op": "!empty"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": true
+   },
+   "expected": true
+  },
+  {
+   "name": "folder: an empty checkbox is not checked, like on a file",
+   "type": "checkbox",
+   "value": "",
+   "rule": {
+    "op": "isFalse"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": true
+   },
+   "expected": true
+  },
+  {
+   "name": "text is, any case",
+   "type": "text",
+   "value": "Concept",
+   "rule": {
+    "op": "is",
+    "value": "concept"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "text is, operand trimmed",
+   "type": "text",
+   "value": "Concept",
+   "rule": {
+    "op": "is",
+    "value": " Concept "
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "text is, value not trimmed",
+   "type": "text",
+   "value": "Concept ",
+   "rule": {
+    "op": "is",
+    "value": "Concept"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false
+  },
+  {
+   "name": "text is on empty",
+   "type": "text",
+   "value": "",
+   "rule": {
+    "op": "is",
+    "value": "x"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false
+  },
+  {
+   "name": "text !is on empty is true",
+   "type": "text",
+   "value": "",
+   "rule": {
+    "op": "!is",
+    "value": "x"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "text contains",
+   "type": "text",
+   "value": "Klant 013",
+   "rule": {
+    "op": "contains",
+    "value": "ANT 0"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "text !contains on empty is true",
+   "type": "text",
+   "value": null,
+   "rule": {
+    "op": "!contains",
+    "value": "x"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "url contains",
+   "type": "url",
+   "value": "https://example.org/a",
+   "rule": {
+    "op": "contains",
+    "value": "example"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "cut-off text: contains unknown",
+   "type": "textarea",
+   "value": "Lange tekst",
+   "rule": {
+    "op": "contains",
+    "value": "tekst"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": true,
+    "isFolder": false
+   },
+   "expected": null
+  },
+  {
+   "name": "cut-off text: not empty known",
+   "type": "textarea",
+   "value": "Lange tekst",
+   "rule": {
+    "op": "!empty"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": true,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "number greater",
+   "type": "number",
+   "value": "10001",
+   "rule": {
+    "op": "greater",
+    "value": "10000"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "number greater, equal is not greater",
+   "type": "number",
+   "value": "10000",
+   "rule": {
+    "op": "greater",
+    "value": "10000"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false
+  },
+  {
+   "name": "number at least",
+   "type": "number",
+   "value": "10000",
+   "rule": {
+    "op": "greaterOrEqual",
+    "value": "10000"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "number less, negative",
+   "type": "number",
+   "value": "-5",
+   "rule": {
+    "op": "less",
+    "value": "0"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "number is as number",
+   "type": "number",
+   "value": "1.0",
+   "rule": {
+    "op": "is",
+    "value": "1"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "number exponent",
+   "type": "number",
+   "value": "1e3",
+   "rule": {
+    "op": "is",
+    "value": "1000"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "number with spaces",
+   "type": "number",
+   "value": " 12 ",
+   "rule": {
+    "op": "is",
+    "value": "12"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "number with comma is unknown",
+   "type": "number",
+   "value": "1,5",
+   "rule": {
+    "op": "greater",
+    "value": "1"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null
+  },
+  {
+   "name": "number with text is unknown",
+   "type": "number",
+   "value": "12abc",
+   "rule": {
+    "op": "less",
+    "value": "100"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null
+  },
+  {
+   "name": "number hex is unknown",
+   "type": "number",
+   "value": "0x1A",
+   "rule": {
+    "op": "greater",
+    "value": "1"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null
+  },
+  {
+   "name": "number empty is not greater",
+   "type": "number",
+   "value": "",
+   "rule": {
+    "op": "greater",
+    "value": "0"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false
+  },
+  {
+   "name": "number empty !is is true",
+   "type": "number",
+   "value": "",
+   "rule": {
+    "op": "!is",
+    "value": "0"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "date before today",
+   "type": "date",
+   "value": "2026-10-05",
+   "rule": {
+    "op": "before",
+    "value": {
+     "today": 0
+    }
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "date today is not before today",
+   "type": "date",
+   "value": "2026-10-06",
+   "rule": {
+    "op": "before",
+    "value": {
+     "today": 0
+    }
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false
+  },
+  {
+   "name": "date with time earlier today is today",
+   "type": "date",
+   "value": "2026-10-06T08:00:00",
+   "rule": {
+    "op": "is",
+    "value": {
+     "today": 0
+    }
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "date with time earlier today is not before today",
+   "type": "date",
+   "value": "2026-10-06T08:00:00",
+   "rule": {
+    "op": "before",
+    "value": {
+     "today": 0
+    }
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false
+  },
+  {
+   "name": "date with old 16 character time",
+   "type": "date",
+   "value": "2026-10-05T23:59",
+   "rule": {
+    "op": "before",
+    "value": {
+     "today": 0
+    }
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "date with a space before the time",
+   "type": "date",
+   "value": "2026-10-07 01:00:00",
+   "rule": {
+    "op": "after",
+    "value": {
+     "today": 0
+    }
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "date after today",
+   "type": "date",
+   "value": "2026-10-07",
+   "rule": {
+    "op": "after",
+    "value": {
+     "today": 0
+    }
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "date before a fixed date",
+   "type": "date",
+   "value": "2026-01-01",
+   "rule": {
+    "op": "before",
+    "value": "2026-01-02"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "date on a fixed date",
+   "type": "date",
+   "value": "2026-01-02T10:00:00",
+   "rule": {
+    "op": "is",
+    "value": "2026-01-02"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "next 7 days: today counts",
+   "type": "date",
+   "value": "2026-10-06",
+   "rule": {
+    "op": "nextDays",
+    "value": 7
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "next 7 days: the seventh day counts",
+   "type": "date",
+   "value": "2026-10-13",
+   "rule": {
+    "op": "nextDays",
+    "value": 7
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "next 7 days: the eighth day does not",
+   "type": "date",
+   "value": "2026-10-14",
+   "rule": {
+    "op": "nextDays",
+    "value": 7
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false
+  },
+  {
+   "name": "next 7 days: yesterday does not",
+   "type": "date",
+   "value": "2026-10-05",
+   "rule": {
+    "op": "nextDays",
+    "value": 7
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false
+  },
+  {
+   "name": "next days across a month",
+   "type": "date",
+   "value": "2026-11-02",
+   "rule": {
+    "op": "nextDays",
+    "value": 30
+   },
+   "ctx": {
+    "today": "2026-10-31",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "more than 30 days ago",
+   "type": "date",
+   "value": "2026-09-05",
+   "rule": {
+    "op": "olderThanDays",
+    "value": 30
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "exactly 30 days ago is not more",
+   "type": "date",
+   "value": "2026-09-06",
+   "rule": {
+    "op": "olderThanDays",
+    "value": 30
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false
+  },
+  {
+   "name": "impossible date is unknown",
+   "type": "date",
+   "value": "2026-02-30",
+   "rule": {
+    "op": "before",
+    "value": {
+     "today": 0
+    }
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null
+  },
+  {
+   "name": "not a date is unknown",
+   "type": "date",
+   "value": "14-1-2026",
+   "rule": {
+    "op": "before",
+    "value": {
+     "today": 0
+    }
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null
+  },
+  {
+   "name": "empty date is not before today",
+   "type": "date",
+   "value": "",
+   "rule": {
+    "op": "before",
+    "value": {
+     "today": 0
+    }
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false
+  },
+  {
+   "name": "empty date matches empty",
+   "type": "date",
+   "value": "",
+   "rule": {
+    "op": "empty"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "select is, any case",
+   "type": "select",
+   "value": "In review",
+   "rule": {
+    "op": "is",
+    "value": "in review"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "select one of",
+   "type": "select",
+   "value": "Verlopen",
+   "rule": {
+    "op": "oneOf",
+    "value": [
+     "Afgewezen",
+     "Verlopen"
+    ]
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "select one of, not a part of the value",
+   "type": "select",
+   "value": "Verlopen later",
+   "rule": {
+    "op": "oneOf",
+    "value": [
+     "Verlopen"
+    ]
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false
+  },
+  {
+   "name": "select !is on empty is true",
+   "type": "select",
+   "value": null,
+   "rule": {
+    "op": "!is",
+    "value": "Concept"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "multiselect one of",
+   "type": "multiselect",
+   "value": "Rood;#Groen",
+   "rule": {
+    "op": "oneOf",
+    "value": [
+     "groen",
+     "Blauw"
+    ]
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "multiselect one of, whole items only",
+   "type": "multiselect",
+   "value": "Rood;#Groenblauw",
+   "rule": {
+    "op": "oneOf",
+    "value": [
+     "Groen"
+    ]
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false
+  },
+  {
+   "name": "multiselect contains all",
+   "type": "multiselect",
+   "value": "Rood;#Groen;#Blauw",
+   "rule": {
+    "op": "containsAll",
+    "value": [
+     "Blauw",
+     "rood"
+    ]
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "multiselect contains all, one missing",
+   "type": "multiselect",
+   "value": "Rood;#Groen",
+   "rule": {
+    "op": "containsAll",
+    "value": [
+     "Rood",
+     "Blauw"
+    ]
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false
+  },
+  {
+   "name": "multiselect empty contains nothing",
+   "type": "multi_select",
+   "value": "",
+   "rule": {
+    "op": "oneOf",
+    "value": [
+     "Rood"
+    ]
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false
+  },
+  {
+   "name": "checkbox 1 is checked",
+   "type": "checkbox",
+   "value": "1",
+   "rule": {
+    "op": "isTrue"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "checkbox number 1 is checked",
+   "type": "checkbox",
+   "value": 1,
+   "rule": {
+    "op": "isTrue"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "checkbox true is checked",
+   "type": "boolean",
+   "value": "true",
+   "rule": {
+    "op": "isTrue"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "checkbox 0 is not checked",
+   "type": "checkbox",
+   "value": "0",
+   "rule": {
+    "op": "isFalse"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "checkbox never set is not checked",
+   "type": "checkbox",
+   "value": null,
+   "rule": {
+    "op": "isFalse"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "checkbox never set is not checked (true)",
+   "type": "checkbox",
+   "value": "",
+   "rule": {
+    "op": "isTrue"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false
+  },
+  {
+   "name": "user is the viewer",
+   "type": "user",
+   "value": "Alice",
+   "rule": {
+    "op": "is",
+    "value": {
+     "me": true
+    }
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "user is someone else",
+   "type": "user",
+   "value": "bob",
+   "rule": {
+    "op": "is",
+    "value": {
+     "me": true
+    }
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false
+  },
+  {
+   "name": "user empty is not the viewer",
+   "type": "user",
+   "value": "",
+   "rule": {
+    "op": "is",
+    "value": {
+     "me": true
+    }
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false
+  },
+  {
+   "name": "user viewer unknown",
+   "type": "user",
+   "value": "alice",
+   "rule": {
+    "op": "is",
+    "value": {
+     "me": true
+    }
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": null,
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null
+  },
+  {
+   "name": "user is a named person",
+   "type": "user",
+   "value": "bob",
+   "rule": {
+    "op": "is",
+    "value": "BOB"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "filelink empty",
+   "type": "filelink",
+   "value": "",
+   "rule": {
+    "op": "empty"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "unknown type not empty",
+   "type": "whatever",
+   "value": "x",
+   "rule": {
+    "op": "!empty"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true
+  },
+  {
+   "name": "number-value-infinite",
+   "type": "number",
+   "value": "1e400",
+   "rule": {
+    "op": "greater",
+    "value": "5"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": null
+  }
+ ]
+}

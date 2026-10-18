@@ -4,26 +4,29 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Controller;
 
-use OCA\MetaVox\AppInfo\Application;
+use OCA\MetaVox\Access\Access;
+use OCA\MetaVox\Access\RequireAccess;
 use OCA\MetaVox\BackgroundJobs\DiscoverMissingDefaultsJob;
+use OCA\MetaVox\Exception\RequestException;
+use OCA\MetaVox\L10n\Translatable;
+use OCA\MetaVox\Service\DefaultsDiscovery;
 use OCA\MetaVox\Service\DefaultsService;
 use OCA\MetaVox\Service\FieldService;
+use OCA\MetaVox\Service\ApiValidationException;
 use OCA\MetaVox\Service\FileReferenceService;
-use OCA\MetaVox\Service\PermissionService;
-use OCP\AppFramework\Http;
+use OCA\MetaVox\Validation\FieldValue;
+use OCA\MetaVox\Validation\InvalidValue;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\BackgroundJob\IJobList;
-use OCP\Files\IRootFolder;
-use OCP\IAppConfig;
+use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IRequest;
 use OCP\IUserSession;
-use Psr\Log\LoggerInterface;
 
 /**
  * Web UI endpoints for per-folder default values:
  *  - setDefault: configure a field's default for a folder
- *  - trigger:    reset the discovery cursor and force a discovery run, so an
+ *  - trigger:    start a sweep through the folder and force a discovery run, so an
  *                admin need not wait for the 5-minute cron after changing a
  *                default. Does NOT process inline — it queues work and returns
  *                immediately, so a 1M-file folder cannot time out the request.
@@ -37,16 +40,15 @@ class DefaultsController extends BaseController {
         string $appName,
         IRequest $request,
         FieldService $fieldService,
-        PermissionService $permissionService,
         IUserSession $userSession,
-        IRootFolder $rootFolder,
         private readonly DefaultsService $defaultsService,
         private readonly FileReferenceService $fileReferenceService,
         private readonly IJobList $jobList,
-        private readonly IAppConfig $appConfig,
-        private readonly LoggerInterface $logger,
+        private readonly DefaultsDiscovery $discovery,
+        private readonly ITimeFactory $time,
+        private readonly FieldValue $fieldValues,
     ) {
-        parent::__construct($appName, $request, $userSession, $permissionService, $fieldService, $rootFolder);
+        parent::__construct($appName, $request, $userSession, $fieldService);
     }
 
     /**
@@ -54,16 +56,26 @@ class DefaultsController extends BaseController {
      * management UI can prefill its inputs.
      */
     #[NoAdminRequired]
+    #[RequireAccess(Access::MetaVoxManager, folder: 'groupfolderId')]
     public function getDefaults(int $groupfolderId): JSONResponse {
         $user = $this->requireUser();
-        if ($user instanceof JSONResponse) {
-            return $user;
+
+        $defaults = $this->defaultsService->getFolderDefaultsByFieldId($groupfolderId);
+
+        // File-link defaults hold ids only; the names come as the manager sees the files.
+        $types = array_column($this->fieldService->getAllFields(), 'field_type', 'id');
+        $rows = [];
+        foreach ($defaults as $fieldId => $value) {
+            $rows[$fieldId] = ['field_type' => $types[$fieldId] ?? '', 'value' => $value];
         }
-        if ($denied = $this->requireManagePermission($user->getUID(), $groupfolderId)) {
-            return $denied;
+        $resolved = [];
+        foreach ($this->fileReferenceService->withNames($rows, $user->getUID()) as $fieldId => $row) {
+            if (isset($row['resolved'])) {
+                $resolved[$fieldId] = $row['resolved'];
+            }
         }
 
-        return new JSONResponse(['defaults' => $this->defaultsService->getFolderDefaultsByFieldId($groupfolderId)]);
+        return new JSONResponse(['defaults' => $defaults, 'resolved' => (object)$resolved]);
     }
 
     /**
@@ -71,61 +83,53 @@ class DefaultsController extends BaseController {
      * Body: { fieldId: int, value: string|null }
      */
     #[NoAdminRequired]
+    #[RequireAccess(Access::MetaVoxManager, folder: 'groupfolderId')]
     public function setDefault(int $groupfolderId): JSONResponse {
         $user = $this->requireUser();
-        if ($user instanceof JSONResponse) {
-            return $user;
-        }
-        if ($denied = $this->requireManagePermission($user->getUID(), $groupfolderId)) {
-            return $denied;
+
+        $fieldId = $this->intParam('fieldId', required: true, min: 1);
+        $field = $this->fieldService->getFieldById($fieldId);
+        if ($field === null) {
+            // TRANSLATORS Error when a default value is set for a metadata field that no longer exists
+            throw RequestException::notFound(Translatable::t('Field not found'));
         }
 
-        $fieldId = (int)$this->request->getParam('fieldId', 0);
-        $value = $this->request->getParam('value', null);
-        if ($value !== null) {
-            $value = (string)$value;
-        }
-
-        if ($fieldId <= 0) {
-            return new JSONResponse(['error' => 'fieldId is required'], Http::STATUS_BAD_REQUEST);
-        }
-
-        // For file-link defaults the picker yields a bare path; resolve it to the
-        // canonical "<fileid>:path" form (and dedup) before validating/storing,
-        // exactly like a normal file-link value save.
-        if ($value !== null && $value !== '') {
-            $field = $this->fieldService->getFieldById($fieldId);
-            if ($field !== null && ($field['field_type'] ?? '') === 'filelink') {
-                $resolved = [];
-                foreach (FileReferenceService::parseValue($value) as $token) {
-                    if ($token['fileId'] === null) {
-                        $id = $this->fileReferenceService->resolvePathToFileId($token['path'], $user->getUID());
-                        if ($id !== null) {
-                            $token['fileId'] = $id;
-                        }
-                    }
-                    $resolved[] = $token;
-                }
-                $value = FileReferenceService::joinTokens(FileReferenceService::dedupeTokens($resolved));
+        // A default takes what the field takes; no value is no default.
+        try {
+            $value = $this->fieldValues->stored($field, $this->request->getParam('value'));
+            if ($value !== '' && in_array($field['field_type'], FileReferenceService::FILELINK_TYPES, true)) {
+                $value = $this->defaultFileLinks($value, $groupfolderId, $fieldId);
             }
+        } catch (InvalidValue $e) {
+            throw new ApiValidationException(['value' => $e->getMessage()]);
         }
+        $value = $value === '' ? null : $value;
 
-        // Validate the default against the field type (date format, option
-        // membership, numeric, user exists, file-link resolvable, …).
-        $validationError = $this->fieldService->validateDefaultValue($fieldId, $value);
-        if ($validationError !== null) {
-            return new JSONResponse(['error' => $validationError], Http::STATUS_BAD_REQUEST);
-        }
-
-        $ok = $this->defaultsService->setFieldDefault($groupfolderId, $fieldId, $value);
-        if (!$ok) {
-            return new JSONResponse(
-                ['error' => 'Field is not an assigned file field for this folder'],
-                Http::STATUS_BAD_REQUEST
-            );
+        if (!$this->defaultsService->setFieldDefault($groupfolderId, $fieldId, $value)) {
+            // TRANSLATORS Error when a default value is set for a field that this Team folder does not use for its files
+            throw RequestException::invalid(Translatable::t('This Team folder does not use this field for its files'));
         }
 
         return new JSONResponse(['success' => true]);
+    }
+
+    /**
+     * A file-link default in its stored form, as a value is: a link outside
+     * this team folder, or to a file the user may not open, is left out; one
+     * already in the default stays. One that is all left out, or that points at
+     * nothing, would be no default at all, so it is refused.
+     *
+     * @throws InvalidValue
+     */
+    private function defaultFileLinks(string $value, int $groupfolderId, int $fieldId): string {
+        $current = $this->defaultsService->getFolderDefaultsByFieldId($groupfolderId)[$fieldId] ?? '';
+        $stored = $this->fileReferenceService->normalize($value, $groupfolderId, null, $current);
+        $links = FileReferenceService::parseValue($stored);
+        if ($links === [] || in_array(null, array_column($links, 'fileId'), true)) {
+            // TRANSLATORS Error when a default value of a file link field points at something that is not a file in this Team folder
+            throw new InvalidValue(Translatable::t('Link to a file in this Team folder'));
+        }
+        return $stored;
     }
 
     /**
@@ -133,18 +137,13 @@ class DefaultsController extends BaseController {
      * newly configured defaults are applied without waiting for the cron tick.
      */
     #[NoAdminRequired]
+    #[RequireAccess(Access::MetaVoxManager, folder: 'groupfolderId')]
     public function trigger(int $groupfolderId): JSONResponse {
         $user = $this->requireUser();
-        if ($user instanceof JSONResponse) {
-            return $user;
-        }
-        if ($denied = $this->requireManagePermission($user->getUID(), $groupfolderId)) {
-            return $denied;
-        }
 
-        // Reset this folder's cursor so the next discovery run rescans from the
-        // top and picks up files that the changed defaults now apply to.
-        $this->appConfig->setValueString(Application::APP_ID, 'defaults_cursor_gf_' . $groupfolderId, '0');
+        // Look through all files of the folder again: the changed defaults may
+        // now apply to files that were done.
+        $this->discovery->startSweep($groupfolderId, $this->time->getTime());
 
         // Ensure a discovery run is queued. The TimedJob is registered, but
         // adding it to the job list nudges it to run on the next cron tick
@@ -156,29 +155,16 @@ class DefaultsController extends BaseController {
         return new JSONResponse(['success' => true, 'queued' => true]);
     }
 
-    /**
-     * Report whether the folder still has files awaiting defaults. Cheap: it
-     * probes for a single missing file rather than counting the whole folder.
-     */
+    /** Whether the folder is still being filled in, from where discovery stands: no scan. */
     #[NoAdminRequired]
+    #[RequireAccess(Access::MetaVoxManager, folder: 'groupfolderId')]
     public function status(int $groupfolderId): JSONResponse {
         $user = $this->requireUser();
-        if ($user instanceof JSONResponse) {
-            return $user;
-        }
-        if ($denied = $this->requireManagePermission($user->getUID(), $groupfolderId)) {
-            return $denied;
-        }
 
-        try {
-            $pending = $this->defaultsService->hasMissingDefaults($groupfolderId);
-            return new JSONResponse([
-                'state' => $pending ? 'running' : 'idle',
-                'pending' => $pending,
-            ]);
-        } catch (\Exception $e) {
-            $this->logger->error('MetaVox: defaults status failed', ['exception' => $e, 'groupfolderId' => $groupfolderId]);
-            return new JSONResponse(['error' => 'status check failed'], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        $pending = $this->discovery->isBusy($groupfolderId, $this->time->getTime());
+        return new JSONResponse([
+            'state' => $pending ? 'running' : 'idle',
+            'pending' => $pending,
+        ]);
     }
 }

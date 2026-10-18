@@ -2,7 +2,7 @@
   <div class="url-field-wrapper">
     <div class="url-input-container">
       <!-- TRANSLATORS Placeholder of a web address field. {example} is a sample address, e.g. "https://example.com"; URL is a web address -->
-      <NcTextField :placeholder="placeholder || t('metavox', 'Enter URL ({example})', { example: 'https://example.com' })"
+      <NcTextField :placeholder="placeholder || t('metavox', 'Enter URL ({example})', { example: 'https://example.com' }, undefined, PLAIN_TEXT)"
         :id="inputId"
         :model-value="modelValue || ''"
         :disabled="disabled"
@@ -37,11 +37,16 @@
 
 <script>
 import { translate } from '@nextcloud/l10n'
-import { NcTextField } from '@nextcloud/vue'
+import { PLAIN_TEXT } from '../../utils/fieldValue.js'
+import NcTextField from '@nextcloud/vue/components/NcTextField'
 import OpenInNew from 'vue-material-design-icons/OpenInNew.vue'
 
 export default {
   name: 'UrlFieldInput',
+  // Templates read the t() options from the component.
+  setup() {
+    return { PLAIN_TEXT }
+  },
   components: {
     NcTextField,
     OpenInNew
@@ -132,7 +137,7 @@ export default {
 }
 
 .url-preview {
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--color-primary-element);
   text-decoration: none;
   word-break: break-all;
@@ -142,9 +147,12 @@ export default {
   text-decoration: underline;
 }
 
+/* --color-error is the pale background tint; on text it is near-invisible.
+   --color-error-text is the readable tier. 12px is below the platform's
+   smallest size and no theme setting can reach it. */
 .url-error {
-  font-size: 12px;
-  color: var(--color-error);
+  font-size: var(--font-size-small);
+  color: var(--color-error-text);
   margin: 0;
 }
 </style>

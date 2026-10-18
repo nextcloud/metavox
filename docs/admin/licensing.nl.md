@@ -19,52 +19,61 @@ Als MetaVox waardevol is voor je organisatie, helpt een abonnement het onderhoud
 
 ## Prijzen
 
-VoxCloud-apps gaan als bundel samen met Nextcloud aangeboden worden. Het
-prijsmodel wordt op dit moment afgerond en wordt hier niet gepubliceerd.
+MetaVox-abonnementen worden verkocht via Nextcloud. Voor abonnementen en prijzen neem je contact op met je Nextcloud-accountmanager of [sales@nextcloud.com](mailto:sales@nextcloud.com).
 
-Wil je weten hoe een abonnement er voor jouw organisatie uitziet? Kijk op
-[voxcloud.nl/pricing](/pricing/) of mail [info@voxcloud.nl](mailto:info@voxcloud.nl).
+Voor vragen over de app zelf mail je [info@voxcloud.nl](mailto:info@voxcloud.nl).
 
 ## Abonnements-banner
 
-Organisaties die MetaVox intensief gebruiken (meer dan 50 Nextcloud-gebruikers, of meer dan 20 teammappen met metadata-velden) en geen actief abonnement hebben, zien een blauwe informatieve banner bovenaan het MetaVox-admin-paneel. Dit is een vriendelijke herinnering, geen waarschuwing — alle features blijven normaal werken.
+Zonder abonnementssleutel kan de MetaVox-beheerpagina bovenaan een blauwe informatieve banner tonen. Die toont hooguit één melding:
 
-De banner verdwijnt wanneer:
+- Als Nextcloud een Enterprise-abonnement op deze instantie meldt: "Nextcloud Enterprise-abonnement gedetecteerd op deze instantie. MetaVox-abonnementen worden verkocht via Nextcloud — neem contact op met je Nextcloud-accountmanager of sales@nextcloud.com."
+- Anders, als de instantie meer dan 100 gebruikers heeft: "MetaVox draait hier voor {count} gebruikers en blijft volledig werken zonder abonnement. …", met een verwijzing naar je accountmanager of sales@nextcloud.com
 
-- Een geldige abonnements-sleutel wordt ingevoerd
-- De admin hem wegklikt (komt terug bij volgende page load)
+Gelden beide, dan wint de Enterprise-melding. Met 100 gebruikers of minder en geen Enterprise-abonnement is er geen banner. Dit is een vriendelijke herinnering, geen waarschuwing — alle features blijven normaal werken.
+
+Is er een abonnementssleutel ingevoerd die ongeldig of verlopen is, dan zegt de banner in plaats daarvan "Je MetaVox abonnementssleutel vereist aandacht.", met een link **Ga naar Ondersteuning**.
+
+De banner verdwijnt zodra er een abonnementssleutel is ingevoerd. Wegklikken kan niet.
 
 De banner is alleen zichtbaar voor beheerders, nooit voor reguliere gebruikers.
 
 ## Een abonnements-sleutel invoeren
 
 1. Ga naar **Instellingen → Beheer → MetaVox**
-2. Open de **Support**-tab
-3. Vul optioneel je organisatie-naam en contact-e-mail in
-4. Voer je abonnements-sleutel in het **Abonnements-sleutel**-veld in (format: `MVOX-XXXX-XXXX-XXXX-XXXX`)
-5. Klik **Opslaan & activeren**
+2. Open het onderdeel **Ondersteuning**
+3. Voer je abonnements-sleutel in het veld **Abonnementssleutel** in (format: `MVOX-XXXX-XXXX-XXXX-XXXX`)
+4. Klik **Opslaan & activeren**
 
-Bij succes zie je "Abonnement geactiveerd!" en verdwijnt de banner.
+MetaVox slaat de sleutel op, valideert hem bij de VoxCloud-licentieserver en meldt daar het gebruik om hem aan deze instantie te binden. Bij succes zie je "Abonnement geactiveerd!" en verdwijnt de banner. Mislukt de validatie, dan is de sleutel wel opgeslagen en noemt de melding de reden.
+
+MetaVox vraagt nooit om een organisatienaam of contact-e-mail.
 
 ## Een abonnements-sleutel verwijderen
 
 Als je abonnement afloopt en je kiest om niet te verlengen, kun je de sleutel verwijderen:
 
-1. Ga naar **Instellingen → Beheer → MetaVox → Support**
-2. Klik **Abonnements-sleutel verwijderen**
+1. Ga naar **Instellingen → Beheer → MetaVox → Ondersteuning**
+2. Klik **Abonnementssleutel verwijderen**
 3. De sleutel wordt verwijderd en je keert terug naar de gratis gebruikssituatie
 
-## Organisatie-details
+## Wat een abonnementssleutel verstuurt
 
-In de Support-tab kun je optioneel je organisatie-naam en contact-e-mail invullen. Deze worden verstuurd met je anonieme gebruiksstatistieken zodat we je kunnen bereiken indien nodig. Ze worden nooit gedeeld met derden.
+Met een abonnementssleutel valideert een dagelijkse achtergrondtaak de sleutel en meldt hij het gebruik aan de VoxCloud-licentieserver (`licenses.voxcloud.nl`). Dit staat los van [telemetrie](telemetry.md) en draait ook als anonieme gebruiksstatistieken uit staan. Het verstuurt:
+
+- De abonnementssleutel en de gehashte instantie-URL
+- Het aantal Team folders met metadata-velden, metadata-items, gebruikers en uitgeschakelde gebruikers
+- Een organisatienaam, alleen als een oudere MetaVox-versie er een heeft opgeslagen
+
+Zonder abonnementssleutel verstuurt deze taak niets.
 
 ## Single-instance binding
 
-Elke abonnements-sleutel is gebonden aan één Nextcloud-instantie. Wanneer je een sleutel opslaat en activeert, wordt hij gebonden via een SHA-256-hash van je instantie-URL. Wil je je abonnement naar een nieuwe instantie verhuizen (bv. server-migratie)? Mail [info@voxcloud.nl](mailto:info@voxcloud.nl).
+Elke abonnements-sleutel is gebonden aan één Nextcloud-instantie. Wanneer je een sleutel opslaat en activeert, wordt hij gebonden via een SHA-256-hash van je instantie-URL: `overwrite.cli.url` uit `config.php`, of anders het eerste trusted domain. De URL zelf wordt nooit verstuurd. Wil je je abonnement naar een nieuwe instantie verhuizen (bv. server-migratie)? Mail [info@voxcloud.nl](mailto:info@voxcloud.nl).
 
 ## Offline / server onbereikbaar
 
-Als de VoxCloud-licentie-server onbereikbaar is tijdens validatie, valt MetaVox terug op de laatst bekende validatie-uitkomst. MetaVox blokkeert nooit functionaliteit vanwege connectiviteits-problemen.
+Als de VoxCloud-licentie-server onbereikbaar is tijdens validatie, valt MetaVox terug op de laatst bekende validatie-uitkomst: een sleutel die geldig was, blijft geldig. MetaVox blokkeert nooit functionaliteit vanwege connectiviteits-problemen.
 
 ## Zie ook
 

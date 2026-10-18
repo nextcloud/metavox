@@ -1,19 +1,46 @@
-/* Alleen basis variabelen en overrides */
-:root {
-    --color-main-background: #ffffff;
-    --color-main-text: #222222;
-    --color-border: #e0e0e0;
-    /* etc. */
+/**
+ * Admin settings.
+ *
+ * This file used to redefine --color-main-background, --color-main-text and
+ * --color-border in :root, with a second set under [data-theme-dark]. That
+ * overrides the theme the user chose: it defeats the high-contrast theme,
+ * which is Nextcloud's AAA provision, and it hardcodes a light-mode value
+ * that renders wrong in every other theme. The variables are Nextcloud's to
+ * set and ours to read.
+ *
+ * The .metavox-content measure lives in MetaVoxAdmin.vue, with the markup it
+ * applies to, rather than in a stylesheet loaded separately from it.
+ */
+
+/**
+ * The placeholder in templates/admin.php, shown until the Vue app mounts and
+ * replaces it. It is styled here rather than in MetaVoxAdmin.vue because a
+ * scoped style cannot reach markup the component does not render.
+ */
+.metavox-admin-loading {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 16px;
+	padding-block: 48px;
+	color: var(--color-text-maxcontrast);
 }
 
-[data-theme-dark] {
-    --color-main-background: #181818;
-    --color-main-text: #e6e6e6;
-    /* etc. */
+.metavox-admin-loading p {
+	margin: 0;
 }
 
-/* App-specific overrides */
-.metavox-content {
-    max-width: 1200px;
-    margin: 0 auto;
+/**
+ * Reduced motion, §8 MUST. This file is loaded unscoped on the settings page,
+ * so one block reaches every component; there were five infinite rotations and
+ * several transitions with no such guard anywhere in the app.
+ */
+@media (prefers-reduced-motion: reduce) {
+	#metavox-admin *,
+	#metavox-admin *::before,
+	#metavox-admin *::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
 }

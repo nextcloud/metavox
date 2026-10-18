@@ -6,10 +6,109 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [Unreleased]
+## [3.0.0] - 2026-10-18
+
+**MetaVox 3.0 is here.** Notably faster at any size, a permission system that follows Nextcloud's own, and a new design with a new icon. Plus saved searches right in Files, highlighted cells and values you can trust.
+
+### Upgrade notes
+Read these before you update: 3.0 is stricter than 2.x in a few places.
+- **Required fields are enforced.** The edit dialog saves once every required field has a value, and the API refuses to empty one (400). Files that still miss a value are marked in the grid and get one at their next save. A checkbox is never required (see below).
+- **The API is strict and says why.** A wrong or unknown parameter is refused with a 400 that names it, instead of being ignored, and changing a field sends only what changes. Check scripts and integrations that write fields or metadata.
+- **Field names carry the prefix of their kind.** A file field's name starts with `file_gf_`, a team folder field's with `gf_`, then lowercase letters, numbers and underscores. Other names are refused (400) on the admin page and the API alike; existing fields keep their names.
+- **Permissions follow Nextcloud's.** Seeing and changing a file's metadata follows what Nextcloud allows for that file, ACL included. Views and a team folder's own metadata take write access to the team folder; assigning fields and default values also takes the MetaVox manage permission; field definitions are for Nextcloud administrators.
+- **Browser routes removed.** For integrations that called them instead of the OCS API: `GET /admin`, `GET /user`, `GET /api/permissions/check`, `GET /api/permissions/me`, `GET` and `POST /api/groupfolders/{groupfolderId}/files/{fileId}/metadata` (use `/api/files/{fileId}/metadata`), `POST /api/groupfolders/{groupfolderId}/filter-values` and `POST /api/user/groupfolders/{groupfolderId}/metadata`. The OCS API (`/ocs/v2.php/apps/metavox/api/v1/…`) keeps every route.
+
+### New: saved searches, right in Files
+- **Keep a filter as a folder.** Save any metadata filter from the search bar and find it under Metadata searches in Files, always up to date. *(Nextcloud 33 and newer)*
+- **Off until you turn it on.** Switch on "Save a filter as a folder in Files" under Search in the MetaVox admin settings. The search filter itself is on.
+- **Search all your team folders at once.** Pick "All my Team folders" in the filter.
+- **Yours alone.** Each person keeps their own saved searches.
+- **Only what you may see.** A saved search shows the files you can open, ACL included.
+- **Lighter than a normal folder.\*** Up to 500 files in about a tenth of a second.
+
+\* *On the same 1.4 million files, opening a folder of 500 found files took 73–125 ms and 37–346 database queries; a normal folder of 1,000 files took 182 ms and 1,060 queries.*
+
+### Faster, at any size
+- **Search filters up to 60× faster.\*\*** Filtering by a field value takes about 20 milliseconds, even in a team folder with half a million files.
+- **Dramatically reduced impact on your database.\*\*** Up to 3,000× less work per search, so MetaVox stays snappy all the time.
+- **Folders open up to 4× faster.\*\*** Request load reduced 6×.
+- **No more jumping grid.** The metadata comes with the folder listing, so the columns fill in as the files appear.
+- **3× less to download in Files.\*\*\*** The sidebar, the view editor and bulk edit load when you first open them.
+- **Filters open up to 25× faster.\*\*\*\*** Even with 10,000 values: the list shows the first 100, and a search finds the rest.
+- **Much smoother scrolling.\*\*\*\*** By redrawing each row in a single step and watching only what changes, scrolling through large folders is much smoother.
+- **Sorting by date, 40% faster.\*\*\*\***
+- **Smart loading.** Using smart loading, we were able to keep MetaVox out of the way: the sidebar loads once, nothing polls in the background, and the login page and public links load nothing of MetaVox at all.
+
+\*\* *Version 2.2.3 against this version, on the same 5,000 team folders, 1.4 million files and 11 million metadata values, MariaDB with a 256 MB cache; warm cache, the median of 5. Under load this version answers over 300 searches a second at about 0.1 s each: enough for 10,000 people who each search once a minute.*
+
+\*\*\* *What a Files page downloads from MetaVox: about 2.7 MB in 2.2.3, under 0.9 MB in this version.*
+
+\*\*\*\* *A folder of 10,000 files, in Chrome. Opening the filter froze the page for 1.8 s, now under 0.1 s; sorting by date for 0.23 s, now 0.14 s; while scrolling, the page was blocked for 26 ms, now 8 ms.*
+
+### Highlight what needs attention
+- **Color cells by their value.** Overdue in red, due soon in orange, approved in green: rules per column in a view.
+- **Presets for the usual cases.** Overdue, due today, due soon (the next 7 days), missing, checked, not checked, assigned to you.
+- **See it while you build it.** A live preview in the view editor.
+- **Say why.** A short text on the highlight says what to do, and screen readers read it with the cell.
+
+### Values you can trust
+- **Every value is checked, however it arrives.** In the grid, the sidebar, bulk edit and the API alike. Values saved before stay as they are.
+- **Required means required.** The edit dialog saves once every required field is filled in, and the grid marks files that still miss one.
+- **A checkbox is never required.** A checkbox always has an answer, ticked or not, so "required" would only forbid "No". Checkbox fields no longer offer the Required switch. A checkbox you marked required in an earlier version, such as "Contains personal data" from the compliance templates, saves either way and shows no Required badge, and the API reports it as not required. Nothing to do after updating.
+- **Safe links.** Links that run code are refused. In the new General tab you can allow only web addresses, and block or allow domains.
+- **You see why.** A refused value says what is wrong, under the field it is about.
+- **Option labels everywhere.** A dropdown option shows its label in the grid and the filters too.
+
+### Permissions, the Nextcloud way
+- **MetaVox follows Nextcloud's permissions, ACL included.** You see and change the metadata of exactly the files you can see and change.
+- **Nothing shows of files you can't see.** Not in search, filter values, file-link names or live updates, and a file link only points to files you may open.
+- **Views and a team folder's own metadata** take write access to the team folder. Assigning fields and setting default values also takes the MetaVox manage permission.
+
+### In your language
+- **Dutch, French, German and Swedish,** the new screens included.
 
 ### Changed
+- **A new MetaVox icon.**
+- **Editing goes through a dialog.** The sidebar shows a file's metadata; **Edit file metadata** opens it for editing, with the AI suggestions there too.
+- **One view picker above the grid,** instead of a row of view tabs.
+- **Delete several fields at once** on the admin page: tick them, or **Select all deletable**, then **Delete selected**.
+- **After an update, MetaVox asks you to reload the page,** instead of failing quietly.
+- **Flow rules on multi-select fields work now.** A rule with "contains" or "contains all" never matched a file with two or more options. Check your rules: they now apply.
+- **The Flow editor offers the conditions of the highlight rules,** such as "is checked" and "is not". Existing rules keep working.
+- **A field in use can be made required.** Its name and type stay fixed.
+- **Metadata in any WebDAV folder listing.** Add `<nc:metavox/>` to a PROPFIND and every file comes back with its metadata, in the same request.
+- **Other apps can show MetaVox's metadata panel.** `<metavox-metadata-form>` is the panel from the Files sidebar as a custom element: a host app loads it through `MetadataFormEmbed`, sets a file id, and gets the same fields, edit dialog and permissions as Files. See [Embedding the metadata panel](https://github.com/nextcloud/metavox/blob/main/docs/architecture/integration.md#embedding-the-metadata-panel).
+- **MetaVox shows up in Nextcloud's setup checks.**
 - **The English texts use American spelling** ("organization", not "organisation"), as Nextcloud's own do.
+
+### Removed
+- **The Statistics tab** in the admin settings.
+
+### Fixed
+- **On Nextcloud 31, people who are not an administrator saw no team folders.**
+- **On Nextcloud 34, removing a folder could delete the metadata of unrelated files.** Nextcloud reported numbers that are not file ids; MetaVox now removes metadata only when the file is really gone.
+- **Team folders in the older storage layout were not found.**
+- **Long values could not be saved on PostgreSQL.**
+- **Dropdown choices in team folder metadata were not saved.**
+- **The edit dialog closed when saving failed.**
+- **Importing the compliance templates lost their dropdown options.**
+- **Starting a second backup marked the running one as failed.**
+- **Default values were lost when a team folder's fields were assigned again.**
+- **Sorting failed on PostgreSQL.**
+- **Live updates could be missed right after the connection came back.**
+- **A lock badge stayed on screen after leaving a folder.**
+- **The column headers slid under the view tabs when the tabs bar grew.**
+- **A restore lost the last row of every table:** the newest field definition, team folder value and file value, while its report counted one short. Backups made by earlier versions now restore completely too.
+- **Values written without a team folder no longer end up under team folder 0** ([#98](https://github.com/nextcloud/metavox/issues/98)). The old writer that stored them there is gone.
+
+### Security
+- **Changing metadata takes the right to change it, on every route.** Web and OCS endpoints check write access on the file or team folder; before, some answered 200 without changing or being allowed to change anything ([#98](https://github.com/nextcloud/metavox/issues/98)).
+- **Metadata follows file access everywhere.** Search, filter values, value suggestions, saved searches and live updates include only files the user can open, ACL included. Live updates no longer carry the values themselves.
+- **Locks, AI suggestions and the start data check access too.**
+- **File links no longer reveal names.** A file link stores the file's id; each person sees the name of a file they can open, and nothing of one they can't. Names stored by earlier versions are removed on update.
+- **What you may not see answers 404,** not 403, so a refusal does not confirm that a file or team folder exists.
+- **Links that run code are refused** in URL fields, such as `javascript:`.
+- **Dependency updates** with security fixes for `dompurify` and `source-map-js`.
 
 ## [2.2.3] - 2026-09-23
 

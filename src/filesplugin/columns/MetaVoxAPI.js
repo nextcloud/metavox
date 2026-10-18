@@ -6,7 +6,7 @@
  */
 
 import axios from '@nextcloud/axios'
-import { generateOcsUrl, generateUrl } from '@nextcloud/router'
+import { generateUrl } from '@nextcloud/router'
 import {
 	getActiveColumnConfigs,
 	getActiveGroupfolderId,
@@ -14,7 +14,12 @@ import {
 	setMetavoxGroupfolders,
 	getMetavoxGroupfolders,
 } from './MetaVoxState.js'
+import { getListingFolderPath, getListingGroupfolderId } from './ListingSync.js'
+import { applyMutation } from './MetadataStore.js'
 import { pushUndo } from './UndoSupport.js'
+import { errorText } from '../../utils/errorText.js'
+import { translate as t } from '@nextcloud/l10n'
+import { showError } from '../../utils/toast.js'
 
 // ========================================
 // Field / metadata fetching
@@ -28,12 +33,12 @@ import { pushUndo } from './UndoSupport.js'
  */
 export async function fetchAvailableFields(groupfolderId) {
 	try {
-		const url = generateOcsUrl(
-			'/apps/metavox/api/v1/groupfolders/{groupfolderId}/file-fields',
+		const url = generateUrl(
+			'/apps/metavox/api/groupfolders/{groupfolderId}/file-fields',
 			{ groupfolderId },
 		)
 		const resp = await axios.get(url)
-		return resp.data?.ocs?.data || resp.data || []
+		return resp.data || []
 	} catch (e) {
 		console.error('MetaVox: Failed to fetch available fields', e)
 		return []
@@ -45,38 +50,36 @@ export async function fetchAvailableFields(groupfolderId) {
  *
  * @param {number}   groupfolderId
  * @param {number[]} fileIds
- * @return {Promise<Object>}
+ * @return {Promise<{data: Object, okIds: number[]}>} okIds: the files of chunks that succeeded
  */
 export async function fetchDirectoryMetadata(groupfolderId, fileIds) {
-	if (fileIds.length === 0) return {}
+	if (fileIds.length === 0) return { data: {}, okIds: [] }
 
-	const activeColumnConfigs = getActiveColumnConfigs()
-	const visibleFields = activeColumnConfigs.map(c => c.field_name).filter(Boolean)
-	const url = generateOcsUrl(
-		'/apps/metavox/api/v1/groupfolders/{groupfolderId}/directory-metadata',
+	const url = generateUrl(
+		'/apps/metavox/api/groupfolders/{groupfolderId}/directory-metadata',
 		{ groupfolderId },
 	)
 
 	// Chunk to avoid 414 URI Too Long (max ~200 IDs per GET request)
 	const CHUNK_SIZE = 200
-	const allData = {}
+	const data = {}
+	const okIds = []
 
 	for (let i = 0; i < fileIds.length; i += CHUNK_SIZE) {
 		const chunk = fileIds.slice(i, i + CHUNK_SIZE)
+		// All fields, so an entry is complete whatever view is shown.
 		const params = { file_ids: chunk.join(',') }
-		if (visibleFields.length > 0) {
-			params.field_names = visibleFields.join(',')
-		}
 		try {
 			const resp = await axios.get(url, { params })
-			const data = resp.data?.ocs?.data || resp.data || {}
-			Object.assign(allData, data)
+			Object.assign(data, resp.data || {})
+			okIds.push(...chunk)
 		} catch (e) {
+			// The ids of a failed chunk stay missing, so they are loaded again later.
 			console.error('MetaVox: Failed to fetch directory metadata chunk', e)
 		}
 	}
 
-	return allData
+	return { data, okIds }
 }
 
 // ========================================
@@ -109,35 +112,6 @@ export async function fetchViews(groupfolderId) {
 }
 
 // ========================================
-// Filter values
-// ========================================
-
-/**
- * Fetch all unique filter values for the current groupfolder.
- *
- * @param {number}      groupfolderId
- * @param {number[]|null} fileIds  Optional subset of file IDs
- * @return {Promise<Object>}
- */
-export async function fetchAllFilterValues(groupfolderId, fileIds = null) {
-	try {
-		const url = generateUrl(
-			'/apps/metavox/api/groupfolders/{gfId}/filter-values',
-			{ gfId: groupfolderId },
-		)
-		const body = {}
-		if (fileIds && fileIds.length > 0) {
-			body.file_ids = fileIds
-		}
-		const resp = await axios.post(url, body)
-		return resp.data || {}
-	} catch (e) {
-		console.error('MetaVox: Failed to fetch filter values', e)
-		return {}
-	}
-}
-
-// ========================================
 // Groupfolder loading & detection
 // ========================================
 
@@ -154,9 +128,9 @@ export async function loadGroupfolders() {
 	}
 
 	try {
-		const url = generateOcsUrl('/apps/metavox/api/v1/groupfolders')
-		const resp = await axios.get(url)
-		setMetavoxGroupfolders(resp.data?.ocs?.data || resp.data || [])
+		const url = generateUrl('/apps/metavox/api/groupfolders')
+		const resp = await axios.get(url, { params: { scope: 'member' } })
+		setMetavoxGroupfolders(resp.data || [])
 	} catch (e) {
 		setMetavoxGroupfolders([])
 	}
@@ -176,12 +150,19 @@ export function detectCurrentGroupfolder() {
 	const path = dir.startsWith('/') ? dir.substring(1) : dir
 	const gfs = getMetavoxGroupfolders() || []
 
+	// The longest mount point wins, so a team folder nested in another is found.
+	let best = null
 	for (const gf of gfs) {
-		if (path === gf.mount_point || path.startsWith(gf.mount_point + '/')) {
-			return gf.id
+		const mountPoint = gf.mount_point
+		if ((path === mountPoint || path.startsWith(mountPoint + '/')) && (!best || mountPoint.length > best.mount_point.length)) {
+			best = gf
 		}
 	}
-	return null
+	if (best) {
+		return best.id
+	}
+	// Not in our list: trust the team folder the server reported for this listing.
+	return getListingFolderPath() === '/' + path ? getListingGroupfolderId() : null
 }
 
 // ========================================
@@ -198,6 +179,82 @@ let _updateAllRowCells = null
  */
 export function setUpdateAllRowCells(fn) { _updateAllRowCells = fn }
 
+const fileMetadataUrl = (fileId) => generateUrl('/apps/metavox/api/files/{fileId}/metadata', { fileId })
+
+const savesUnderWay = new Map() // fileId -> settles when its last save is done
+
+/**
+ * Settles when the saves of this file that are under way are done, so a
+ * reload does not fetch the value from before the save.
+ *
+ * @param {number} fileId
+ * @return {Promise<void>}
+ */
+export function whenSaved(fileId) {
+	return savesUnderWay.get(fileId) ?? Promise.resolve()
+}
+
+/**
+ * Everything the sidebar shows for a file. The server finds the team folder
+ * and says whether the user may change the file, by the rule every save checks.
+ *
+ * @param {number} fileId
+ * @param {{signal?: AbortSignal}} [options]
+ * @return {Promise<{groupfolderId: number, editable: boolean, fields: Array<Object>, teamFolderFields: Array<Object>}>}
+ */
+export async function loadFileMetadata(fileId, { signal } = {}) {
+	const { data } = await axios.get(fileMetadataUrl(fileId), { signal })
+	return {
+		groupfolderId: Number(data.groupfolder_id),
+		editable: data.editable === true,
+		fields: data.fields || [],
+		teamFolderFields: data.team_folder_fields || [],
+	}
+}
+
+/**
+ * Save changed fields of one file in one request. The grid shows them right
+ * away; when saving fails they go back and the error is thrown.
+ *
+ * @param {number} fileId
+ * @param {Object<string, string>} patch field name -> new value
+ * @param {{unlockField?: string}} [options] release the cell lock of this field too
+ */
+export async function saveFileFields(fileId, patch, { unlockField } = {}) {
+	const payload = { metadata: patch }
+	if (unlockField) {
+		payload.unlock = true
+		payload.unlock_field = unlockField
+	}
+	// Known as under way before the grid shows it: whoever hears of the change waits for it.
+	const request = axios.post(fileMetadataUrl(fileId), payload)
+	const settled = request.then(() => {}, () => {})
+	savesUnderWay.set(fileId, settled)
+	settled.then(() => {
+		if (savesUnderWay.get(fileId) === settled) {
+			savesUnderWay.delete(fileId)
+		}
+	})
+
+	// Only files the grid holds: others belong to another team folder.
+	const cached = metadataCache.get(fileId)
+	const before = cached ? Object.fromEntries(Object.keys(patch).map((field) => [field, cached[field]])) : null
+	if (cached) {
+		applyMutation(fileId, patch)
+		if (_updateAllRowCells) _updateAllRowCells()
+	}
+
+	try {
+		await request
+	} catch (e) {
+		if (before) {
+			applyMutation(fileId, before)
+			if (_updateAllRowCells) _updateAllRowCells()
+		}
+		throw e
+	}
+}
+
 /**
  * Save a single metadata field value for a file.
  *
@@ -212,52 +269,29 @@ export function setUpdateAllRowCells(fn) { _updateAllRowCells = fn }
  * @param {boolean} [options.unlock] - Release cell lock after save (combined save+unlock)
  */
 export async function saveSingleField(fileId, fieldName, newValue, options = {}) {
-	const activeGroupfolderId = getActiveGroupfolderId()
-	// Update cache immediately
-	const meta = metadataCache.get(fileId) || {}
-	const oldValue = meta[fieldName]
+	// The editor loaded the full value before opening, so undo gets the full old value.
+	const oldValue = metadataCache.get(fileId)?.[fieldName]
 
 	// Skip if value didn't change
 	if (oldValue === newValue) return
 
-	meta[fieldName] = newValue
-	metadataCache.set(fileId, meta)
-
-	// Update the cell display
-	if (_updateAllRowCells) _updateAllRowCells()
-
-	// Save via API (with optional combined unlock)
-	const payload = { metadata: { [fieldName]: newValue } }
-	if (options.unlock) {
-		payload.unlock = true
-		payload.unlock_field = fieldName
-	}
-
 	try {
-		await axios.post(
-			generateUrl('/apps/metavox/api/groupfolders/{groupfolderId}/files/{fileId}/metadata', {
-				groupfolderId: activeGroupfolderId,
-				fileId,
-			}),
-			payload,
-		)
-
-		// Dispatch event so sidebar stays in sync
-		window.dispatchEvent(new CustomEvent('metavox:metadata:saved', {
-			detail: { fileId, metadata: { ...meta } },
-		}))
-
+		await saveFileFields(fileId, { [fieldName]: newValue }, { unlockField: options.unlock ? fieldName : undefined })
 		// Show undo toast (unless suppressed by fill-handle)
 		if (!options.skipUndo) {
 			pushUndo([{ fileId, fieldName, oldValue }])
 		}
 	} catch (e) {
-		console.error('MetaVox: Failed to save inline edit', e)
-		// Revert on error
-		meta[fieldName] = oldValue
-		metadataCache.set(fileId, meta)
-		if (_updateAllRowCells) _updateAllRowCells()
+		showRefusal(e, fieldName)
 	}
+}
+
+/** Why a value from the grid was not saved, as the server said it; the cell has its old value back. */
+function showRefusal(error, fieldName) {
+	const field = getActiveColumnConfigs()?.find((c) => c.field_name === fieldName)?.field_label || fieldName
+	const reason = errorText(error, t('metavox', 'Could not save metadata. Try again.'))
+	// TRANSLATORS Error after a value typed in the grid was not saved; {field} is the column name, {reason} why, e.g. "Budget not saved: Enter a number"
+	showError(t('metavox', '{field} not saved: {reason}', { field, reason }))
 }
 
 /**
@@ -272,11 +306,10 @@ export async function saveBulkFields(fileIds, fieldName, value) {
 	const activeGroupfolderId = getActiveGroupfolderId()
 	if (!activeGroupfolderId || fileIds.length === 0) return
 
-	// Update cache immediately for all files
+	// Show the new value right away; put the old values back if saving fails.
+	const oldValues = fileIds.map((fileId) => [fileId, metadataCache.get(fileId)?.[fieldName]])
 	for (const fileId of fileIds) {
-		const meta = metadataCache.get(fileId) || {}
-		meta[fieldName] = value
-		metadataCache.set(fileId, meta)
+		applyMutation(fileId, { [fieldName]: value })
 	}
 	if (_updateAllRowCells) _updateAllRowCells()
 
@@ -291,6 +324,10 @@ export async function saveBulkFields(fileIds, fieldName, value) {
 			},
 		)
 	} catch (e) {
-		console.error('MetaVox: Bulk save failed', e)
+		for (const [fileId, oldValue] of oldValues) {
+			applyMutation(fileId, { [fieldName]: oldValue })
+		}
+		if (_updateAllRowCells) _updateAllRowCells()
+		showRefusal(e, fieldName)
 	}
 }

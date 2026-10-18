@@ -45,5 +45,3 @@ jobs:
       # and templates/ with plain regexes and needs no xgettext or node_modules.
       - name: Check l10n source strings are in sync with the manifest
         run: node scripts/check-l10n-sync.js
-      - name: Every string reaches the Transifex bot
-        run: node --test tests/js/

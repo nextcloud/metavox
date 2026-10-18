@@ -18,7 +18,7 @@ Een eenvoudig eenregelig tekstveld voor korte waarden.
 
 ---
 
-### Tekstvak (Textarea)
+### Lange tekst (Textarea)
 
 Een meerregelig tekstveld voor langere inhoud.
 
@@ -55,11 +55,11 @@ Een datumkiezer voor het selecteren van datums. Optioneel met een tijd-component
 
 **Opties**:
 
-- **Tijd-component meenemen** (standaard: uit) — legt uren, minuten en seconden vast naast de datum. Opgeslagen als floating ISO 8601-string (zonder tijdzone), conform SharePoint's `SPFieldDateTime` met `DisplayFormat = DateTime`.
+- **Tijd meenemen** (standaard: uit) — legt uren, minuten en seconden vast naast de datum. Opgeslagen als floating ISO 8601-string (zonder tijdzone), conform SharePoint's `SPFieldDateTime` met `DisplayFormat = DateTime`.
 
-Bij het aanmaken of bewerken van een Datum-veld in de admin-instellingen, vink **Tijd-component meenemen** aan om het tijdgedeelte in te schakelen:
+Bij het aanmaken of bewerken van een Datum-veld in de admin-instellingen, vink **Tijd meenemen** aan om het tijdgedeelte in te schakelen:
 
-![Datum-veld met "Tijd-component meenemen" checkbox](../../screenshots/fields-datetime.png)
+![Datum-veld met "Tijd meenemen" checkbox](../../screenshots/fields-datetime.png)
 
 In de bestandszijbalk en inline-grid-editor toont het veld dan een datetime-picker:
 
@@ -79,6 +79,8 @@ Een boolean ja/nee-schakelaar.
 
 **Opties**: geen
 
+Een selectievakje is nooit verplicht: het heeft altijd een antwoord, aangevinkt of niet. De schakelaar **Verplicht veld** ontbreekt daarom bij dit veldtype.
+
 ---
 
 ### Select (Dropdown)
@@ -89,7 +91,7 @@ Een dropdown-menu met voor-gedefinieerde opties. Gebruikers selecteren één waa
 
 **Voorbeeld**: "In review" (uit opties: Concept, In review, Goedgekeurd, Gearchiveerd)
 
-**Opties**: definieer de beschikbare keuzes als komma-gescheiden waarden in de veld-configuratie.
+**Opties**: voer de keuzes in de veld-configuratie in onder **Dropdown-opties**, één per regel. Klik op **Optie toevoegen** voor elke extra keuze. Een veld heeft minstens één optie nodig.
 
 ---
 
@@ -101,7 +103,7 @@ Vergelijkbaar met Select, maar staat meerdere selecties toe.
 
 **Voorbeeld**: "Juridisch, Financiën" (uit opties: Juridisch, Financiën, HR, IT)
 
-**Opties**: definieer de beschikbare keuzes als komma-gescheiden waarden in de veld-configuratie.
+**Opties**: voer de keuzes in de veld-configuratie in onder **Dropdown-opties**, één per regel. Klik op **Optie toevoegen** voor elke extra keuze. Een veld heeft minstens één optie nodig.
 
 ---
 
@@ -122,9 +124,9 @@ Een URL-veld met validatie en een klikbare externe-link-knop.
 
 ---
 
-### Gebruiker-picker
+### Gebruiker
 
-Selecteer een Nextcloud-gebruiker uit een doorzoekbare dropdown. Toont gebruikers-avatars.
+Selecteer een Nextcloud-account uit een doorzoekbare dropdown. Toont avatars.
 
 **Use cases**: document-eigenaar, reviewer, verantwoordelijk persoon, auteur
 
@@ -134,7 +136,7 @@ Selecteer een Nextcloud-gebruiker uit een doorzoekbare dropdown. Toont gebruiker
 - Toont gebruikers-avatar en weergavenaam
 - Integreert met de Nextcloud-gebruikersdatabase
 
-![Gebruiker-picker-veld](../../screenshots/Fields-User.png)
+![Gebruiker-veld](../../screenshots/Fields-User.png)
 
 ---
 
@@ -149,9 +151,12 @@ Blader en link naar één of meer bestanden of mappen binnen Nextcloud via de na
 - Native Nextcloud-file-picker-integratie
 - **Meerdere bestanden per veld** — gebruik **Bestand toevoegen** om meerdere bestanden te koppelen; verwijder er een met de **×**-knop
 - Koppelingen worden opgeslagen op **bestands-ID**, zodat een verwijzing blijft werken nadat het doelbestand hernoemd of verplaatst is
+- Alleen bestanden en mappen binnen dezelfde Team folder kunnen gekoppeld worden
+- Een bestand kan niet naar zichzelf verwijzen
 - Hetzelfde bestand kan niet twee keer worden toegevoegd (duplicaten worden geweigerd)
 - Klik op een gekoppeld bestand om het te openen
-- **Referenced by** — op een gekoppeld bestand zie je welke items ernaar verwijzen (backlinks)
+- Is een gekoppeld bestand verwijderd of heb je er geen toegang meer toe, dan staat het er als **Bestand niet beschikbaar**
+- **Gelinkt vanuit** — in de zijbalk van een gekoppeld bestand zie je welke bestanden ernaar verwijzen (backlinks)
 
 ![Bestand-link-veld met meerdere gekoppelde bestanden](../../screenshots/fields-filelink-multiselect.png)
 
@@ -165,12 +170,12 @@ Bij het aanmaken van een veld in de admin-instellingen kun je configureren:
 
 | Instelling | Beschrijving |
 |------------|--------------|
-| **Veldnaam** | Interne identifier (geen spaties, lowercase aanbevolen) |
-| **Veldlabel** | Display-naam getoond aan gebruikers |
+| **Veldnaam** | Interne identifier. Alleen kleine letters (a-z), cijfers (0-9) en underscores (_), beginnend met een letter |
+| **Veld Label** | Display-naam getoond aan gebruikers |
 | **Veldtype** | Een van de hierboven beschreven typen |
 | **Beschrijving** | Help-tekst getoond onder het veld |
-| **Verplicht** | Of het veld moet worden ingevuld |
-| **Opties** | Voor Select en Multi-select velden: komma-gescheiden lijst van keuzes |
+| **Verplicht veld** | Of het veld moet worden ingevuld. Ontbreekt bij een selectievakje, dat nooit verplicht is |
+| **Dropdown-opties** | Voor Select en Multi-select velden: één keuze per regel, toegevoegd met **Optie toevoegen** |
 
 ---
 
@@ -187,13 +192,13 @@ bestand-link):
 
 ![Standaardwaarden per veld instellen op een Team folder](../../screenshots/manage-teamfolders-defaultvalue.png)
 
-- Vink een veld aan en voer de standaardwaarde in bij het **Default value**-invoerveld dat verschijnt.
+- Vink een veld aan en voer de standaardwaarde in bij het **Standaardwaarde**-invoerveld dat verschijnt.
 - Laat het veld leeg om een standaardwaarde te wissen.
-- Gebruik na het opslaan **Apply defaults now** om bestaande bestanden direct bij te werken
+- Gebruik na het opslaan **Standaardwaarden nu toepassen** om bestaande bestanden direct bij te werken
   (anders past een achtergrondtaak ze binnen enkele minuten toe).
 
-**Wie kan standaardwaarden instellen:** beheerders (voor elke folder) en gebruikers met de
-per-folder-rechten **Velden beheren** (`manage_fields`). Die laatsten configureren velden en
+**Wie kan standaardwaarden instellen:** beheerders (voor elke folder) en leden met het
+MetaVox-beheerrecht die de folder mogen wijzigen. Die laatsten configureren velden en
 standaardwaarden voor hun folder via **Instellingen → Persoonlijk → MetaVox**, waar alleen de
 folders staan die zij mogen beheren. Zie [Rechten](../admin/permissions.md).
 
@@ -217,5 +222,6 @@ Metadata specifiek voor individuele documenten binnen een Team folder. Bewerkbaa
 
 - [Gebruikersoverzicht](overview.md) — Aan de slag met metadata
 - [Weergaven](views.md) — Filteren en sorteren op veldwaarden
+- [Cellen markeren](highlight-rules.md) — Cellen kleuren op hun waarde
 - [Bulk-bewerken](bulk-editing.md) — Velden voor meerdere bestanden bewerken
 - [Data exporteren](exporting-data.md) — Metadata naar CSV exporteren

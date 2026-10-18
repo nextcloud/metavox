@@ -3,8 +3,10 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Service;
 
-use OCP\DB\QueryBuilder\IQueryBuilder;
+use OCA\MetaVox\Exception\RequestException;
+use OCA\MetaVox\L10n\Translatable;
 use OCP\IDBConnection;
+use OCP\IRequest;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -18,38 +20,38 @@ class ApiFieldService {
     private IDBConnection $db;
     private FieldService $fieldService;
     private LoggerInterface $logger;
+    private IRequest $request;
+    private MetadataVersions $versions;
 
     public function __construct(
         IDBConnection $db,
         FieldService $fieldService,
-        LoggerInterface $logger
+        LoggerInterface $logger,
+        IRequest $request,
+        MetadataVersions $versions
     ) {
         $this->db = $db;
         $this->fieldService = $fieldService;
         $this->logger = $logger;
+        $this->request = $request;
+        $this->versions = $versions;
+    }
+
+    /**
+     * A file the batch could not handle: a fixed text and code for the caller,
+     * and the request id that finds the details in the Nextcloud log.
+     */
+    private function failure(string $reason): array {
+        return [
+            'error' => $reason === 'delete_failed' ? 'Could not delete the metadata of this file' : 'Could not save the metadata of this file',
+            'reason' => $reason,
+            'requestId' => $this->request->getId(),
+        ];
     }
 
     // ========================================
     // Single-file metadata operations
     // ========================================
-
-    /**
-     * Get metadata for a single file (API-safe).
-     *
-     * @deprecated Guesses the group folder from the metadata table, which is
-     * unreliable (stale rows under folder 0 / deleted folders — issue #98). The
-     * controller now resolves the folder from the user's mount and calls
-     * getGroupfolderFileMetadata() directly. Kept only for backward
-     * compatibility; do not use for new code.
-     */
-    public function getFileMetadata(int $fileId): array {
-        $groupfolderId = $this->detectGroupfolderIdForFile($fileId);
-        if ($groupfolderId !== null) {
-            return $this->fieldService->getGroupfolderFileMetadata($groupfolderId, $fileId);
-        }
-        // Fallback: use FieldService's basic query (no groupfolder context)
-        return $this->fieldService->getFieldMetadata($fileId);
-    }
 
     /**
      * Get metadata for a file within a specific groupfolder (API-safe).
@@ -59,182 +61,14 @@ class ApiFieldService {
     }
 
     /**
-     * Save metadata for a single file (API-safe).
-     * Translates field_name → field_id and handles array values.
+     * Save metadata for a file within a specific groupfolder (API-safe). Each
+     * value is checked against its field (see FieldValue); a multi-select may
+     * come as a list.
      *
-     * @deprecated Writes rows under groupfolder_id=0 (a non-existent folder), so
-     * saved values become unreadable via the folder-scoped read path — this was
-     * the core of issue #98. The controller now resolves the file's real team
-     * folder and calls saveGroupfolderFileMetadata() instead. Kept only for
-     * backward compatibility; do not use for new code.
-     *
-     * @throws ApiValidationException if any date value fails the format contract.
-     */
-    public function saveFileMetadata(int $fileId, array $metadata): void {
-        $fields = $this->fieldService->getAllFields();
-        $this->validateMetadataValues($metadata, $fields);
-
-        $fieldMap = [];
-        foreach ($fields as $field) {
-            $fieldMap[$field['field_name']] = $field['id'];
-        }
-
-        foreach ($metadata as $fieldName => $value) {
-            if (isset($fieldMap[$fieldName])) {
-                if (is_array($value)) {
-                    $value = implode(';#', $value);
-                }
-                $this->fieldService->saveFieldValue($fileId, $fieldMap[$fieldName], (string)$value);
-            }
-        }
-    }
-
-    /**
-     * Save metadata for a file within a specific groupfolder (API-safe).
-     * Translates field_name → field_id and handles array values.
-     *
-     * Value format contract for `date` fields:
-     *   - field_options.includeTime = false → value MUST match YYYY-MM-DD
-     *   - field_options.includeTime = true  → value MUST match YYYY-MM-DDTHH:mm:ss
-     *     (floating ISO 8601 — no `Z`, no timezone offset)
-     *
-     * @throws ApiValidationException if any date value fails the format contract.
+     * @throws ApiValidationException a value a field does not take, by field name
      */
     public function saveGroupfolderFileMetadata(int $groupfolderId, int $fileId, array $metadata): void {
-        $fields = $this->fieldService->getFieldsByScope('groupfolder');
-        $this->validateMetadataValues($metadata, $fields);
-
-        $fieldMap = [];
-        foreach ($fields as $field) {
-            $fieldMap[$field['field_name']] = $field['id'];
-        }
-
-        foreach ($metadata as $fieldName => $value) {
-            if (isset($fieldMap[$fieldName])) {
-                if (is_array($value)) {
-                    $value = implode(';#', $value);
-                }
-                $this->fieldService->saveGroupfolderFileFieldValue($groupfolderId, $fileId, $fieldMap[$fieldName], (string)$value, $fieldName);
-            }
-        }
-    }
-
-    // ========================================
-    // Validation helpers (external API contract)
-    // ========================================
-
-    /**
-     * Normalise the `field_options` payload submitted to the field-create/update
-     * endpoints. For `date` fields, casts incoming `includeTime` to a real bool
-     * (the param can arrive as `"1"`, `"true"`, `1`, true, …) and rejects any
-     * other keys. For other field types this is a no-op.
-     *
-     * Returns the normalised value to store. Throws ApiValidationException
-     * if the shape is invalid for a `date` field.
-     *
-     * @param string $fieldType   The `field_type` being created/updated
-     * @param mixed  $fieldOptions Raw `field_options` from the request
-     * @return mixed Normalised field_options
-     * @throws ApiValidationException
-     */
-    public function normaliseFieldDefinitionOptions(string $fieldType, $fieldOptions) {
-        if ($fieldType !== 'date') {
-            return $fieldOptions;
-        }
-
-        // Empty payload is fine — defaults to date-only.
-        if ($fieldOptions === null || $fieldOptions === '' || $fieldOptions === []) {
-            return ['includeTime' => false];
-        }
-
-        if (!is_array($fieldOptions)) {
-            throw new ApiValidationException([
-                'field_options' => 'For date fields, field_options must be an object like {"includeTime": true}.',
-            ]);
-        }
-
-        // Reject list-shape (associative-only for date fields).
-        $isList = array_keys($fieldOptions) === range(0, count($fieldOptions) - 1);
-        if ($isList) {
-            throw new ApiValidationException([
-                'field_options' => 'For date fields, field_options must be an object like {"includeTime": true}, not a list.',
-            ]);
-        }
-
-        $unknown = array_diff(array_keys($fieldOptions), ['includeTime']);
-        if (!empty($unknown)) {
-            throw new ApiValidationException([
-                'field_options' => 'Unknown keys for date field_options: ' . implode(', ', $unknown)
-                    . '. Only "includeTime" is supported.',
-            ]);
-        }
-
-        $raw = $fieldOptions['includeTime'] ?? false;
-        $includeTime = filter_var($raw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-        if ($includeTime === null) {
-            throw new ApiValidationException([
-                'field_options' => '"includeTime" must be a boolean (true/false).',
-            ]);
-        }
-
-        return ['includeTime' => $includeTime];
-    }
-
-    /**
-     * Validate the `metadata` payload for a write request.
-     *
-     * Currently enforces the date / datetime format contract; other field types
-     * are passed through unchanged. Pre-2.1.0 date fields (`field_options`
-     * empty/null) are treated as `includeTime = false`.
-     *
-     * All-or-nothing: throws on the first batch of errors, no partial save.
-     *
-     * @param array $metadata field_name → value (from request)
-     * @param array $fields   Field definitions (from FieldService)
-     * @throws ApiValidationException
-     */
-    public function validateMetadataValues(array $metadata, array $fields): void {
-        $fieldDefs = [];
-        foreach ($fields as $field) {
-            $fieldDefs[$field['field_name']] = $field;
-        }
-
-        $errors = [];
-        foreach ($metadata as $fieldName => $value) {
-            if (!isset($fieldDefs[$fieldName])) {
-                // Unknown field — silently skipped by the save loop, so don't error here.
-                continue;
-            }
-            $field = $fieldDefs[$fieldName];
-            if ($field['field_type'] !== 'date') {
-                continue;
-            }
-            // Empty values are allowed (clear-the-field).
-            if ($value === null || $value === '') {
-                continue;
-            }
-            if (!is_string($value)) {
-                $errors[$fieldName] = 'Date value must be a string.';
-                continue;
-            }
-
-            $opts = $field['field_options'] ?? null;
-            $includeTime = is_array($opts) && !empty($opts['includeTime']);
-
-            if ($includeTime) {
-                if (!preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/', $value)) {
-                    $errors[$fieldName] = 'Expected YYYY-MM-DDTHH:mm:ss (floating ISO 8601, no timezone).';
-                }
-            } else {
-                if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
-                    $errors[$fieldName] = 'Expected YYYY-MM-DD.';
-                }
-            }
-        }
-
-        if (!empty($errors)) {
-            throw new ApiValidationException($errors);
-        }
+        $this->fieldService->saveValues($groupfolderId, [$fileId => $metadata]);
     }
 
     /**
@@ -268,49 +102,6 @@ class ApiFieldService {
     }
 
     // ========================================
-    // Groupfolder detection (API-specific)
-    // ========================================
-
-    /**
-     * Detect the groupfolder ID for a file.
-     * Checks metavox_file_gf_meta first, then falls back to storage ID pattern matching.
-     * This logic lives here (not in FieldService) because only the external API
-     * needs auto-detection — internal flows always have groupfolder context.
-     */
-    public function detectGroupfolderIdForFile(int $fileId): ?int {
-        try {
-            // Check if this file has any metadata stored — the groupfolder_id is in that table
-            $qb = $this->db->getQueryBuilder();
-            $qb->selectDistinct('groupfolder_id')
-               ->from('metavox_file_gf_meta')
-               ->where($qb->expr()->eq('file_id', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_INT)))
-               ->setMaxResults(1);
-            $result = $qb->executeQuery();
-            $gfId = $result->fetchOne();
-            $result->closeCursor();
-            if ($gfId !== false && $gfId !== null) {
-                return (int)$gfId;
-            }
-
-            // Fallback: check the file's storage to find the groupfolder
-            $qb2 = $this->db->getQueryBuilder();
-            $qb2->select('s.id')
-                ->from('filecache', 'fc')
-                ->innerJoin('fc', 'storages', 's', 'fc.storage = s.numeric_id')
-                ->where($qb2->expr()->eq('fc.fileid', $qb2->createNamedParameter($fileId, IQueryBuilder::PARAM_INT)));
-            $result2 = $qb2->executeQuery();
-            $storageId = $result2->fetchOne();
-            $result2->closeCursor();
-            if ($storageId && preg_match('/groupfolder[:\/_]+(\d+)/i', $storageId, $matches)) {
-                return (int)$matches[1];
-            }
-        } catch (\Exception $e) {
-            $this->logger->debug('ApiFieldService: detectGroupfolderIdForFile failed', ['fileId' => $fileId, 'exception' => $e->getMessage()]);
-        }
-        return null;
-    }
-
-    // ========================================
     // Batch operations
     // ========================================
 
@@ -321,96 +112,95 @@ class ApiFieldService {
      * @return array Results with success/error per file
      */
     public function batchUpdateFileMetadata(array $updates): array {
-        $results = [];
-
-        // Get groupfolder file fields from metavox_gf_fields table
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('*')
-           ->from('metavox_gf_fields')
-           ->orderBy('sort_order', 'ASC');
-
-        $result = $qb->executeQuery();
-        $fieldMap = [];
-
-        while ($row = $result->fetch()) {
-            // Use lowercase for case-insensitive matching
-            $fieldMap[strtolower($row['field_name'])] = (int)$row['id'];
+        // Field names match regardless of case.
+        $names = [];
+        foreach ($this->fieldService->getAllFields() as $field) {
+            $names[strtolower((string)$field['field_name'])] = (string)$field['field_name'];
         }
-        $result->closeCursor();
 
-        // Debug logging
-        $this->logger->info('ApiFieldService batch update - Available fields: ' . json_encode(array_keys($fieldMap)));
-
-        $this->db->beginTransaction();
-
-        try {
-            foreach ($updates as $update) {
-                $fileId = $update['file_id'] ?? null;
-                $groupfolderId = $update['groupfolder_id'] ?? null;
-                $metadata = $update['metadata'] ?? [];
-
-                if (!$fileId) {
-                    $results[] = [
-                        'file_id' => null,
-                        'success' => false,
-                        'error' => 'Missing file_id'
-                    ];
-                    continue;
-                }
-
-                if (!$groupfolderId) {
-                    $results[] = [
-                        'file_id' => $fileId,
-                        'success' => false,
-                        'error' => 'Missing groupfolder_id'
-                    ];
-                    continue;
-                }
-
-                try {
-                    $fieldsUpdated = 0;
-                    $this->logger->info('ApiFieldService - Processing file_id: ' . $fileId . ', groupfolder_id: ' . $groupfolderId . ', metadata fields: ' . json_encode(array_keys($metadata)));
-
-                    foreach ($metadata as $fieldName => $value) {
-                        // Use lowercase for case-insensitive matching
-                        $fieldNameLower = strtolower($fieldName);
-
-                        if (isset($fieldMap[$fieldNameLower])) {
-                            $this->logger->info('ApiFieldService - Saving field: ' . $fieldName . ' with ID: ' . $fieldMap[$fieldNameLower]);
-                            $this->fieldService->saveGroupfolderFileFieldValue(
-                                (int)$groupfolderId,
-                                (int)$fileId,
-                                $fieldMap[$fieldNameLower],
-                                (string)$value
-                            );
-                            $fieldsUpdated++;
-                        } else {
-                            $this->logger->warning('ApiFieldService - Field not found in map: ' . $fieldName);
-                        }
-                    }
-
-                    $results[] = [
-                        'file_id' => $fileId,
-                        'success' => true,
-                        'fields_updated' => $fieldsUpdated
-                    ];
-                } catch (\Exception $e) {
-                    $results[] = [
-                        'file_id' => $fileId,
-                        'success' => false,
-                        'error' => $e->getMessage()
-                    ];
-                }
+        // Per team folder all values at once; later items for the same file win.
+        $results = [];
+        $values = [];
+        $items = [];
+        foreach ($updates as $i => $update) {
+            $fileId = $update['file_id'] ?? null;
+            $groupfolderId = $update['groupfolder_id'] ?? null;
+            if (!$fileId) {
+                $results[$i] = ['file_id' => null, 'success' => false, 'error' => 'Missing file_id', 'reason' => 'invalid_id'];
+                continue;
+            }
+            if (!$groupfolderId) {
+                $results[$i] = ['file_id' => $fileId, 'success' => false, 'error' => 'Missing groupfolder_id', 'reason' => 'invalid_id'];
+                continue;
             }
 
+            $metadata = $update['metadata'] ?? [];
+            if (!is_array($metadata) || ($metadata !== [] && array_is_list($metadata))) {
+                $results[$i] = ['file_id' => $fileId, 'success' => false, 'fields_updated' => 0,
+                    'error' => 'Validation failed', 'reason' => 'invalid_input', 'fields' => ['metadata' => ViewColumnFormat::MSG_INVALID]];
+                continue;
+            }
+            $known = [];
+            $unknown = [];
+            foreach ($metadata as $fieldName => $value) {
+                $name = $names[strtolower((string)$fieldName)] ?? null;
+                if ($name === null) {
+                    $unknown[] = (string)$fieldName;
+                } else {
+                    $known[$name] = $value;
+                }
+            }
+            // An item with a value its field does not take is refused; the others are saved.
+            $checked = $this->fieldService->refusedValues((int)$groupfolderId, [(int)$fileId => $known]);
+            $unused = $checked['unused'][(int)$fileId] ?? [];
+            $refused = $checked['refused'][(int)$fileId] ?? [];
+            if ($refused !== []) {
+                $results[$i] = ['file_id' => $fileId, 'success' => false, 'fields_updated' => 0,
+                    'error' => 'Validation failed', 'reason' => 'invalid_input', 'fields' => $refused]
+                    + ($unknown === [] ? [] : ['unknown_fields' => $unknown]);
+                continue;
+            }
+            $known = array_diff_key($known, array_flip($unused));
+            $values[(int)$groupfolderId][(int)$fileId] = $known + ($values[(int)$groupfolderId][(int)$fileId] ?? []);
+            $results[$i] = ['file_id' => $fileId, 'success' => true, 'fields_updated' => \count($known)]
+                + ($unknown === [] ? [] : ['unknown_fields' => $unknown])
+                + ($unused === [] ? [] : ['unused_fields' => $unused]);
+            $items[(int)$groupfolderId][$i] = array_keys($known);
+        }
+
+        $this->db->beginTransaction();
+        try {
+            foreach ($values as $groupfolderId => $byFile) {
+                // A file the database refuses leaves the other files saved.
+                try {
+                    $failed = $this->fieldService->saveValuesPerFile($groupfolderId, $byFile);
+                } catch (\Exception $e) {
+                    $this->logger->error('MetaVox: batch update failed for a team folder', ['exception' => $e, 'groupfolderId' => $groupfolderId]);
+                    $failed = array_keys($byFile);
+                }
+                foreach ($items[$groupfolderId] as $i => $fieldNames) {
+                    if (!\in_array((int)$results[$i]['file_id'], $failed, true)) {
+                        continue;
+                    }
+                    $results[$i] = ['file_id' => $results[$i]['file_id'], 'success' => false, 'fields_updated' => 0]
+                        + $this->failure('save_failed')
+                        + ($fieldNames === [] ? [] : ['failed_fields' => $fieldNames])
+                        + array_intersect_key($results[$i], ['unknown_fields' => true]);
+                }
+            }
             $this->db->commit();
         } catch (\Exception $e) {
             $this->db->rollBack();
-            $this->logger->error('Batch update failed: ' . $e->getMessage());
+            $this->logger->error('MetaVox: batch update failed', ['exception' => $e]);
             throw $e;
         }
+        // Again after the commit: a read in between could have cached the old values.
+        foreach (array_keys($values) as $groupfolderId) {
+            $this->versions->bump($groupfolderId);
+        }
 
-        return $results;
+        ksort($results);
+        return array_values($results);
     }
 
     /**
@@ -434,7 +224,8 @@ class ApiFieldService {
                     $results[] = [
                         'file_id' => null,
                         'success' => false,
-                        'error' => 'Missing file_id'
+                        'error' => 'Missing file_id',
+                        'reason' => 'invalid_id'
                     ];
                     continue;
                 }
@@ -443,47 +234,44 @@ class ApiFieldService {
                     $results[] = [
                         'file_id' => $fileId,
                         'success' => false,
-                        'error' => 'Missing groupfolder_id'
+                        'error' => 'Missing groupfolder_id',
+                        'reason' => 'invalid_id'
                     ];
                     continue;
                 }
 
+                if ($fieldNames !== null && (!is_array($fieldNames) || !array_is_list($fieldNames) || array_filter($fieldNames, fn ($name) => !is_string($name)) !== [])) {
+                    $results[] = ['file_id' => $fileId, 'groupfolder_id' => $groupfolderId, 'success' => false,
+                        'error' => 'Validation failed', 'reason' => 'invalid_input', 'fields' => ['field_names' => ViewColumnFormat::MSG_INVALID]];
+                    continue;
+                }
+
+                // A required field keeps its value: deleting all leaves it, naming it is refused.
+                $required = $this->fieldService->requiredFieldNames();
+                if ($fieldNames !== null) {
+                    $named = array_values(array_filter($required, fn (string $name): bool => in_array(strtolower($name), array_map('strtolower', $fieldNames), true)));
+                    if ($named !== []) {
+                        $results[] = ['file_id' => $fileId, 'groupfolder_id' => $groupfolderId, 'success' => false,
+                            'error' => 'Validation failed', 'reason' => 'invalid_input',
+                            'fields' => array_fill_keys($named, Translatable::t('This field is required'))];
+                        continue;
+                    }
+                }
+
                 try {
                     if ($fieldNames === null) {
-                        // Delete all metadata for this file in this groupfolder
-                        $qb = $this->db->getQueryBuilder();
-                        $qb->delete('metavox_file_gf_meta')
-                            ->where($qb->expr()->eq('file_id', $qb->createNamedParameter((int)$fileId)))
-                            ->andWhere($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter((int)$groupfolderId)))
-                            ->executeStatement();
+                        if (!$this->fieldService->clearGroupfolderFileMetadata((int)$groupfolderId, (int)$fileId, true)) {
+                            throw new \RuntimeException('Could not delete the metadata');
+                        }
 
                         $results[] = [
                             'file_id' => $fileId,
                             'groupfolder_id' => $groupfolderId,
                             'success' => true,
                             'message' => 'All metadata deleted'
-                        ];
+                        ] + ($required === [] ? [] : ['kept_required_fields' => $required]);
                     } else {
-                        // Delete specific fields (case-insensitive) - single query with OR conditions
-                        $fieldNamesLower = array_map('strtolower', $fieldNames);
-
-                        // Build quoted field names for SQL IN clause
-                        $quotedFieldNames = array_map(function($name) {
-                            return $this->db->quote($name);
-                        }, $fieldNamesLower);
-
-                        // Single delete query with field names in WHERE clause
-                        $sql = sprintf(
-                            'DELETE FROM *PREFIX*metavox_file_gf_meta
-                             WHERE file_id = %d
-                             AND groupfolder_id = %d
-                             AND LOWER(field_name) IN (%s)',
-                            (int)$fileId,
-                            (int)$groupfolderId,
-                            implode(', ', $quotedFieldNames)
-                        );
-
-                        $this->db->executeStatement($sql);
+                        $this->fieldService->clearGroupfolderFileFields((int)$groupfolderId, (int)$fileId, $fieldNames);
 
                         $results[] = [
                             'file_id' => $fileId,
@@ -493,20 +281,20 @@ class ApiFieldService {
                         ];
                     }
                 } catch (\Exception $e) {
-                    $results[] = [
-                        'file_id' => $fileId,
-                        'groupfolder_id' => $groupfolderId,
-                        'success' => false,
-                        'error' => $e->getMessage()
-                    ];
+                    $this->logger->error('MetaVox: batch delete failed for a file', ['exception' => $e, 'fileId' => $fileId]);
+                    $results[] = ['file_id' => $fileId, 'groupfolder_id' => $groupfolderId, 'success' => false] + $this->failure('delete_failed');
                 }
             }
 
             $this->db->commit();
         } catch (\Exception $e) {
             $this->db->rollBack();
-            $this->logger->error('Batch delete failed: ' . $e->getMessage());
+            $this->logger->error('MetaVox: batch delete failed', ['exception' => $e]);
             throw $e;
+        }
+        // Again after the commit: a read in between could have cached the old values.
+        foreach (array_unique(array_filter(array_map(fn ($delete) => (int)($delete['groupfolder_id'] ?? 0), $deletes))) as $groupfolderId) {
+            $this->versions->bump($groupfolderId);
         }
 
         return $results;
@@ -526,10 +314,8 @@ class ApiFieldService {
         $sourceMetadata = $this->fieldService->getGroupfolderFileMetadata($sourceGroupfolderId, $sourceFileId);
 
         if (empty($sourceMetadata)) {
-            return [
-                'success' => false,
-                'error' => 'Source file has no metadata'
-            ];
+            // TRANSLATORS Error when metadata is copied from a file whose Team folder has no metadata fields
+            throw RequestException::notFound(Translatable::t('This file has no metadata to copy'));
         }
 
         // Filter by field names if specified

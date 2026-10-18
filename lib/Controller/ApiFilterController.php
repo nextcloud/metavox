@@ -4,16 +4,21 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Controller;
 
+use OCA\MetaVox\Access\Access;
+use OCA\MetaVox\Access\RequireAccess;
+use OCA\MetaVox\Exception\RequestException;
+use OCA\MetaVox\L10n\Translatable;
 use OCA\MetaVox\Service\FieldService;
 use OCA\MetaVox\Service\FilterService;
-use OCA\MetaVox\Service\GroupfolderResolver;
-use OCA\MetaVox\Service\PermissionService;
+use OCA\MetaVox\Service\FileAccessService;
+use OCA\MetaVox\Service\ApiValidationException;
+use OCA\MetaVox\Service\ViewColumnFormat;
+use OCA\MetaVox\Validation\FieldOptions;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\CORS;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\DataResponse;
-use OCP\Files\IRootFolder;
 use OCP\IRequest;
 use OCP\IUserSession;
 
@@ -26,12 +31,10 @@ class ApiFilterController extends BaseOCSController {
         IRequest $request,
         FieldService $fieldService,
         FilterService $filterService,
-        PermissionService $permissionService,
         IUserSession $userSession,
-        IRootFolder $rootFolder,
-        GroupfolderResolver $groupfolderResolver
+        FileAccessService $fileAccess
     ) {
-        parent::__construct($appName, $request, $userSession, $permissionService, $fieldService, $rootFolder, $groupfolderResolver);
+        parent::__construct($appName, $request, $userSession, $fieldService, $fileAccess);
         $this->filterService = $filterService;
     }
 
@@ -42,60 +45,18 @@ class ApiFilterController extends BaseOCSController {
     #[CORS]
     #[NoAdminRequired]
     #[NoCSRFRequired]
+    #[RequireAccess(Access::FileList, folder: 'groupfolderId')]
     public function getDirectoryMetadata(int $groupfolderId): DataResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof DataResponse) return $user;
-            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
+        $user = $this->requireUser();
 
-            $fileIdsParam = $this->request->getParam('file_ids');
-            $fileIds = [];
+        $fileIds = $this->getIdListParam('file_ids', required: true, max: 200);
 
-            if (is_array($fileIdsParam) && !empty($fileIdsParam)) {
-                $fileIds = $fileIdsParam;
-            } elseif (is_string($fileIdsParam) && !empty($fileIdsParam)) {
-                $fileIds = explode(',', $fileIdsParam);
-            }
+        // Optional: only fetch specific fields
+        $fieldNames = $this->getStringListParam('field_names');
 
-            $fileIds = array_map('intval', array_filter($fileIds, fn($id) => is_numeric($id) && intval($id) > 0));
-            $fileIds = array_unique($fileIds);
-
-            if (empty($fileIds)) {
-                return new DataResponse(['error' => 'No valid file IDs provided'], Http::STATUS_BAD_REQUEST);
-            }
-
-            if (count($fileIds) > 200) {
-                return new DataResponse(['error' => 'Maximum 200 file IDs per request'], Http::STATUS_BAD_REQUEST);
-            }
-
-            // Single pass: verify access + collect permissions (avoids double getById loop)
-            $result = $this->filterAccessibleFileIdsWithPermissions($fileIds, $user->getUID());
-            $accessibleFileIds = $result['accessible'];
-            $filePermissions = $result['permissions'];
-
-            if (empty($accessibleFileIds)) {
-                return new DataResponse([], Http::STATUS_OK);
-            }
-
-            // Optional: only fetch specific fields
-            $fieldNamesParam = $this->request->getParam('field_names');
-            $fieldNames = [];
-            if (is_string($fieldNamesParam) && !empty($fieldNamesParam)) {
-                $fieldNames = array_filter(array_map('trim', explode(',', $fieldNamesParam)));
-            }
-
-            $metadata = $this->filterService->getDirectoryMetadata($accessibleFileIds, $groupfolderId, $fieldNames);
-
-            // Attach pre-collected permissions (no extra getById calls)
-            foreach ($metadata as $fileId => &$fileMeta) {
-                $fileMeta['_permissions'] = $filePermissions[$fileId] ?? 1;
-            }
-            unset($fileMeta);
-
-            return new DataResponse($metadata, Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        // Same per-file access and permissions as the Files app route.
+        $metadata = $this->filterService->getDirectoryMetadataForUser($user->getUID(), $groupfolderId, $fileIds, $fieldNames);
+        return new DataResponse($metadata, Http::STATUS_OK);
     }
 
     /**
@@ -104,51 +65,43 @@ class ApiFilterController extends BaseOCSController {
     #[CORS]
     #[NoAdminRequired]
     #[NoCSRFRequired]
+    #[RequireAccess(Access::TeamFolderMember, folder: 'groupfolderId')]
     public function getSortedFileIds(int $groupfolderId): DataResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof DataResponse) return $user;
-            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
+        $user = $this->requireUser();
 
-            $sortField = $this->request->getParam('sort_field');
-            $sortOrder = $this->request->getParam('sort_order', 'asc');
-            $sortFieldType = $this->request->getParam('sort_field_type', 'text');
-            $filtersJson = $this->request->getParam('filters');
-
-            $filters = [];
-            if (!empty($filtersJson)) {
-                $decoded = json_decode($filtersJson, true);
-                if (is_array($decoded)) {
-                    $filters = $decoded;
-                }
-            }
-
-            if (empty($sortField) && empty($filters)) {
-                return new DataResponse(['error' => 'No sort_field or filters provided'], Http::STATUS_BAD_REQUEST);
-            }
-
-            $fields = $this->fieldService->getAssignedFieldsWithDataForGroupfolder($groupfolderId);
-            $multiselectFields = [];
-            foreach ($fields as $field) {
-                $type = $field['field_type'] ?? '';
-                if (in_array($type, ['multiselect', 'multi_select'])) {
-                    $multiselectFields[] = $field['field_name'];
-                }
-            }
-
-            $result = $this->filterService->getSortedFilteredFileIds(
-                $groupfolderId,
-                $sortField ?: null,
-                $sortOrder,
-                $filters,
-                $sortFieldType,
-                $multiselectFields
-            );
-
-            return new DataResponse($result, Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        $sortField = $this->textParam('sort_field');
+        $sortOrder = $this->choiceParam('sort_order', ['asc', 'desc'], 'asc');
+        $sortFieldType = $this->textParam('sort_field_type', max: 50) ?? 'text';
+        $filters = self::parseFilters($this->request->getParam('filters'));
+        if ($filters === null) {
+            throw new ApiValidationException(['filters' => ViewColumnFormat::MSG_INVALID]);
         }
+
+        if (empty($sortField) && empty($filters)) {
+            // TRANSLATORS Error from the API when a request to sort or filter files sends neither; keep sort_field and filters as they are
+            throw RequestException::invalid(Translatable::t('Send a sort_field, filters or both'));
+        }
+
+        $fields = $this->fieldService->getAssignedFieldsWithDataForGroupfolder($groupfolderId);
+        $multiselectFields = [];
+        foreach ($fields as $field) {
+            $type = $field['field_type'] ?? '';
+            if (in_array($type, ['multiselect', 'multi_select'])) {
+                $multiselectFields[] = $field['field_name'];
+            }
+        }
+
+        $result = $this->filterService->getSortedFilteredFileIds(
+            $groupfolderId,
+            $this->fileAccess->readableScope($user->getUID(), $groupfolderId),
+            $sortField ?: null,
+            $sortOrder,
+            $filters,
+            $sortFieldType,
+            $multiselectFields
+        );
+
+        return new DataResponse($result, Http::STATUS_OK);
     }
 
     /**
@@ -157,57 +110,45 @@ class ApiFilterController extends BaseOCSController {
     #[CORS]
     #[NoAdminRequired]
     #[NoCSRFRequired]
+    #[RequireAccess(Access::TeamFolderMember, folder: 'groupfolderId')]
     public function getAllFilterValues(int $groupfolderId): DataResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof DataResponse) return $user;
-            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
+        $user = $this->requireUser();
 
-            $fieldNames = $this->request->getParam('field_names');
-            $fieldNamesArray = [];
-            if (!empty($fieldNames)) {
-                $fieldNamesArray = array_filter(array_map('trim', explode(',', $fieldNames)));
-            }
+        $fieldNamesArray = $this->getStringListParam('field_names');
 
-            // For select/multiselect fields, use field_options from config instead of DB GROUP BY
-            $fields = $this->fieldService->getAssignedFieldsWithDataForGroupfolder($groupfolderId);
-            $optionFields = [];
-            $dbFieldNames = [];
+        // For select/multiselect fields, use field_options from config instead of DB GROUP BY
+        $fields = $this->fieldService->getAssignedFieldsWithDataForGroupfolder($groupfolderId);
+        $optionFields = [];
+        $dbFieldNames = [];
 
-            foreach ($fields as $field) {
-                $name = $field['field_name'] ?? '';
-                if (empty($name)) continue;
-                if (!empty($fieldNamesArray) && !in_array($name, $fieldNamesArray)) continue;
+        foreach ($fields as $field) {
+            $name = $field['field_name'] ?? '';
+            if (empty($name)) continue;
+            if (!empty($fieldNamesArray) && !in_array($name, $fieldNamesArray)) continue;
 
-                $type = $field['field_type'] ?? '';
-                if (in_array($type, ['select', 'multiselect', 'multi_select', 'dropdown', 'checkbox'])) {
-                    if ($type === 'checkbox') {
-                        $optionFields[$name] = ['1', '0'];
-                    } else {
-                        $options = $field['field_options'] ?? [];
-                        if (is_array($options) && !empty($options)) {
-                            $optionFields[$name] = array_values($options);
-                        } else {
-                            $dbFieldNames[] = $name;
-                        }
-                    }
+            $type = $field['field_type'] ?? '';
+            if (in_array($type, ['select', 'multiselect', 'multi_select', 'dropdown', 'checkbox'])) {
+                if ($type === 'checkbox') {
+                    $optionFields[$name] = ['1', '0'];
                 } else {
-                    $dbFieldNames[] = $name;
+                    $options = FieldOptions::values($field['field_options'] ?? []);
+                    if ($options !== []) {
+                        $optionFields[$name] = $options;
+                    } else {
+                        $dbFieldNames[] = $name;
+                    }
                 }
+            } else {
+                $dbFieldNames[] = $name;
             }
-
-            $dbValues = [];
-            if (!empty($dbFieldNames)) {
-                $dbValues = $this->filterService->getAllDistinctFieldValues($groupfolderId, $dbFieldNames);
-            }
-
-            $values = array_merge($optionFields, $dbValues);
-            $response = new DataResponse($values, Http::STATUS_OK);
-            $response->addHeader('Cache-Control', 'private, max-age=300');
-            return $response;
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
+
+        $dbValues = [];
+        if (!empty($dbFieldNames)) {
+            $dbValues = $this->filterService->distinctValues($groupfolderId, $this->fileAccess->readableScope($user->getUID(), $groupfolderId), $dbFieldNames);
+        }
+
+        return new DataResponse(array_merge($optionFields, $dbValues), Http::STATUS_OK);
     }
 
     /**
@@ -216,22 +157,42 @@ class ApiFilterController extends BaseOCSController {
     #[CORS]
     #[NoAdminRequired]
     #[NoCSRFRequired]
+    #[RequireAccess(Access::TeamFolderMember, folder: 'groupfolderId')]
     public function getScopedFilterValues(int $groupfolderId): DataResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof DataResponse) return $user;
-            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
+        $user = $this->requireUser();
 
-            $fileIdsParam = $this->request->getParam('file_ids');
-            $fileIds = [];
-            if (is_array($fileIdsParam) && !empty($fileIdsParam)) {
-                $fileIds = array_map('intval', array_filter($fileIdsParam, fn($id) => is_numeric($id) && intval($id) > 0));
-            }
+        // None is the whole team folder; a few at a time, as the other lists.
+        $fileIds = $this->getIdListParam('file_ids', max: 200);
 
-            $values = $this->filterService->getAllDistinctFieldValues($groupfolderId, [], $fileIds);
-            return new DataResponse($values, Http::STATUS_OK);
-        } catch (\Exception $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        $values = $this->filterService->distinctValues($groupfolderId, $this->fileAccess->readableScope($user->getUID(), $groupfolderId), [], $fileIds);
+        return new DataResponse($values, Http::STATUS_OK);
+    }
+
+    /**
+     * JSON object of field name => list of values; null when malformed.
+     *
+     * @return array<string, list<scalar>>|null
+     */
+    public static function parseFilters(mixed $json): ?array {
+        if ($json === null || $json === '') {
+            return [];
         }
+        $decoded = is_string($json) ? json_decode($json, true) : null;
+        if (!is_array($decoded)) {
+            return null;
+        }
+        $filters = [];
+        foreach ($decoded as $field => $values) {
+            if (!is_array($values) || !array_is_list($values)) {
+                return null;
+            }
+            foreach ($values as $value) {
+                if (!is_scalar($value)) {
+                    return null;
+                }
+            }
+            $filters[(string)$field] = $values;
+        }
+        return $filters;
     }
 }

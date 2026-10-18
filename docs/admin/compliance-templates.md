@@ -13,10 +13,16 @@ MetaVox includes predefined metadata templates for Dutch government compliance. 
 
 ## Installation
 
-1. Go to **Settings** > **MetaVox** > **Team folder Metadata**
-2. Click **Select JSON File** under "Import & Export"
-3. Select the desired template file from `/templates/compliance/`
-4. Review the preview and click **Confirm Import**
+The templates come with the app, in its folder `templates/compliance/`, and are in the [GitHub repository](https://github.com/nextcloud/metavox/tree/main/templates/compliance). Save the one you need on your computer first.
+
+1. Go to **Administration settings** → **MetaVox** and open the **Files** pane. The templates describe documents, so they are file fields.
+2. Open the menu next to **New field** and choose **Import from JSON …**.
+3. Pick the template file.
+4. **Import preview** lists the fields in the file, with their internal name and type. Click **Import fields**.
+
+The import adds the prefix of the pane to each name: `file_gf_` on **Files**, `gf_` on **Team folders**. So `bevat_persoonsgegevens` becomes `file_gf_bevat_persoonsgegevens`. A name that already has the prefix stays as it is. A field whose name already exists is not imported; MetaVox then reports how many fields failed.
+
+Then assign the fields to Team folders, on the **Per folder** pane.
 
 ## Template Details
 
@@ -26,9 +32,9 @@ Fields for classifying documents according to the General Data Protection Regula
 
 | Field | Type | Description |
 |-------|------|-------------|
-| Contains personal data | Checkbox | Required - indicates whether document contains personal data |
-| Personal data category | Multiselect | Which categories (name/address, financial, health, etc.) |
-| Processing ground | Select | GDPR legal basis (consent, contract, legal obligation, etc.) |
+| Contains personal data | Checkbox | Indicates whether document contains personal data. Not required: a checkbox always has an answer, ticked or not. The template marks it required; the import ignores that |
+| Personal data category | Multi-select | Which categories (name/address, financial, health, etc.) |
+| Processing ground | Dropdown | GDPR legal basis (consent, contract, legal obligation, etc.) |
 | Retention period (years) | Number | Maximum retention period according to GDPR |
 | Data controller | Text | Who is responsible for data processing |
 
@@ -40,9 +46,9 @@ Fields for classifying documents according to the Open Government Act (Wet Open 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| Publication status | Select | Required - public, partially public, not public |
-| WOO Category | Select | Information category according to article 3.3 |
-| Exception ground | Multiselect | Reason for limited publication (articles 5.1-5.5) |
+| Publication status | Dropdown | Required - public, partially public, not public, to be assessed |
+| WOO Category | Dropdown | Information category according to article 3.3 |
+| Exception ground | Multi-select | Reason for limited publication (articles 5.1-5.5) |
 | WOO request received | Date | Date when WOO request was received |
 | Active publication | Checkbox | Subject to active publication obligation |
 | Publication date | Date | When document was made public |
@@ -55,11 +61,11 @@ Fields for archival and selection list compliance:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| Archive category | Select | Required - to be destroyed, permanent retention, transfer |
+| Archive category | Dropdown | Required - to be destroyed, permanent retention, transfer |
 | Destruction year | Number | Year in which document must be destroyed |
 | Selection list code | Text | Code from VNG or national selection list |
 | Case type | Text | Type of case the document belongs to |
-| Dossier status | Select | Open, closed, archived, destroyed |
+| Dossier status | Dropdown | Open, closed, archived, destroyed |
 | Retention period (years) | Number | Retention period according to selection list |
 | Archive date | Date | Date of archival |
 | Archive location | Text | Physical or digital location |
@@ -100,9 +106,9 @@ The Archives Act sets requirements for:
 
 The templates are a starting point. Customize them for your organization:
 
-1. **Export** current fields via MetaVox Admin
+1. **Export** the fields with **Export to JSON**, in the same menu as the import. The export leaves out the prefix.
 2. **Edit** the JSON file
-3. **Import** the customized version
+3. **Import** the customized version with **Import from JSON …**
 
 ### JSON Structure
 
@@ -122,7 +128,9 @@ The templates are a starting point. Customize them for your organization:
 ]
 ```
 
-**Available field types**: `text`, `textarea`, `number`, `date`, `select`, `multiselect`, `checkbox`, `url`, `usergroup`, `filelink`
+Leave the prefix off `field_name`: the import adds it. `is_required` has no effect on a `checkbox`, which is never required.
+
+**Available field types**: `text`, `textarea`, `number`, `date`, `select`, `multiselect`, `checkbox`, `url`, `user`, `filelink` (`usergroup` from older files is read as `user`)
 
 **Date fields** can optionally include a time component (`includeTime: true`
 in `field_options`) — see [Field Types → Date](../user/field-types.md#date).

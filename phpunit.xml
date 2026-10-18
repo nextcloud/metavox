@@ -6,6 +6,10 @@
          cacheDirectory=".phpunit.cache"
          failOnWarning="true"
          failOnRisky="true">
+    <php>
+        <!-- Stored floats in highlight rules must not depend on php.ini. -->
+        <ini name="serialize_precision" value="-1"/>
+    </php>
     <testsuites>
         <testsuite name="unit">
             <directory>tests/unit</directory>
@@ -16,6 +20,8 @@
             <directory suffix=".php">lib/Service</directory>
             <directory suffix=".php">lib/BackgroundJobs</directory>
             <directory suffix=".php">lib/Listener</directory>
+            <directory suffix=".php">lib/Dav</directory>
+            <directory suffix=".php">lib/Middleware</directory>
         </include>
     </source>
 </phpunit>

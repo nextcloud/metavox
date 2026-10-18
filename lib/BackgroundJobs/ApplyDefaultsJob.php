@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace OCA\MetaVox\BackgroundJobs;
 
 use OCA\MetaVox\Service\DefaultsService;
-use OCA\MetaVox\Service\SearchIndexService;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\QueuedJob;
 use Psr\Log\LoggerInterface;
@@ -26,15 +25,13 @@ use Psr\Log\LoggerInterface;
  * avoiding a retry storm against the job queue.
  *
  * Deliberately silent on the live-collaboration layer: no push events, no
- * per-file cache writes. The search index IS updated, but in bulk via
- * SearchIndexService::bulkUpdateFileIndex.
+ * per-file cache writes. bulkInsertDefaults keeps the search words up to date.
  */
 class ApplyDefaultsJob extends QueuedJob {
 
     public function __construct(
         ITimeFactory $time,
         private readonly DefaultsService $defaultsService,
-        private readonly SearchIndexService $searchIndexService,
         private readonly LoggerInterface $logger,
     ) {
         parent::__construct($time);
@@ -65,11 +62,6 @@ class ApplyDefaultsJob extends QueuedJob {
             }
 
             $written = $this->defaultsService->bulkInsertDefaults($groupfolderId, $fileIds, $defaults);
-
-            // Re-index in bulk so the freshly defaulted files become searchable.
-            // Failure here is non-fatal: search lags slightly but the metadata
-            // is already correct, and the per-file edit path will reconcile it.
-            $this->searchIndexService->bulkUpdateFileIndex($fileIds);
 
             $this->logger->debug('MetaVox: ApplyDefaultsJob wrote defaults', [
                 'groupfolderId' => $groupfolderId,

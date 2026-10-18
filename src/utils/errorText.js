@@ -1,6 +1,6 @@
 /**
  * The message to show for a failed request: the server's own text when it
- * explains what went wrong, our translated fallback for an internal error
+ * explains what went wrong (for refused input, what each field takes), our translated fallback for an internal error
  * (500, a generic English "Internal server error") or when there is no answer.
  *
  * @param {Error} error the axios error
@@ -9,6 +9,13 @@
  */
 export function errorText(error, fallback) {
 	const response = error?.response
+	// A refused input says per field what is wrong: that, not "Validation failed".
+	if (isFieldError(error)) {
+		const reasons = [...new Set(Object.values(response.data.fields).filter((reason) => typeof reason === 'string' && reason !== ''))]
+		if (reasons.length > 0) {
+			return reasons.join(' ')
+		}
+	}
 	const text = response?.data?.error
 	if (!response || response.status === 500 || typeof text !== 'string' || text === '') {
 		return fallback

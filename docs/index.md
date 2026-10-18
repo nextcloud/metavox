@@ -1,6 +1,6 @@
 # MetaVox Documentation
 
-![MetaVox v1.0.0 — metadata columns in the Nextcloud Files app](../screenshots/MetaVox%20v1.0.0.png)
+![Metadata columns in Files, with a view picker, highlighted cells and a missing required value](../screenshots/grid-highlights.png)
 
 Welcome to the MetaVox documentation. MetaVox is a Nextcloud app that adds structured metadata to documents in Team folders — enabling classification, compliance tracking, and searchability without changing your files.
 
@@ -14,6 +14,7 @@ Learn how to work with metadata in your daily workflow.
 - [Field Types](user/field-types.md) - Understanding different metadata field types (incl. default values)
 - [Searching Metadata](user/search.md) - Find files by metadata via Unified Search
 - [Views](user/views.md) - Switch between predefined column, filter, and sort combinations
+- [Highlight Rules](user/highlight-rules.md) - Color cells by their value, and which rule wins
 - [Bulk Editing](user/bulk-editing.md) - Edit metadata for multiple files at once
 - [Exporting Data](user/exporting-data.md) - Export metadata to CSV
 
@@ -46,7 +47,7 @@ Technical documentation for integration and evaluation.
 - [Privacy & Security](architecture/privacy.md) - Data locality and GDPR compliance
 - [API Reference](architecture/api-reference.md) - OCS API endpoints and batch operations
 - [Performance Limits](architecture/performance-limits.md) - Capacity planning and scaling
-- [Integration Guide](architecture/integration.md) - Nextcloud, SharePoint migration, and external systems
+- [Integration Guide](architecture/integration.md) - Nextcloud, SharePoint migration, external systems, and embedding the metadata panel in another app
 
 ## Getting Started
 
@@ -54,8 +55,8 @@ New to MetaVox? Start with our [Getting Started Guide](getting-started.md) to le
 
 ## Support
 
-- **Issues & Feature Requests:** [GitHub Issues](https://github.com/MetaVoxHQ/MetaVox/issues)
-- **Source Code:** [GitHub Repository](https://github.com/MetaVoxHQ/MetaVox)
+- **Issues & Feature Requests:** [GitHub Issues](https://github.com/nextcloud/metavox/issues)
+- **Source Code:** [GitHub Repository](https://github.com/nextcloud/metavox)
 
 ## License
 

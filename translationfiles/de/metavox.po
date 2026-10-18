@@ -3,9 +3,9 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: MetaVox 2.2.3\n"
+"Project-Id-Version: MetaVox 3.0.0\n"
 "Report-Msgid-Bugs-To: translations@nextcloud.com\n"
-"PO-Revision-Date: 2026-10-09 00:00+0000\n"
+"PO-Revision-Date: 2026-10-18 00:00+0000\n"
 "Last-Translator: MetaVox <translations@nextcloud.com>\n"
 "Language-Team: de\n"
 "MIME-Version: 1.0\n"
@@ -17,13 +17,43 @@ msgstr ""
 msgid "— no sorting —"
 msgstr "— keine Sortierung —"
 
+msgid "(required)"
+msgstr "(erforderlich)"
+
+msgid "{column}, rule {position}: {problem}"
+msgstr "{column}, Regel {position}: {problem}"
+
+msgid "{column}: {problem}"
+msgstr ""
+
+msgid "{field} ({values})"
+msgstr ""
+
 msgid "{field} {operator}"
 msgstr ""
 
 msgid "{field} {operator} \"{value}\""
-msgstr ""
+msgstr "{field} {operator} „{value}“"
+
+msgid "{field} not saved: {reason}"
+msgstr "{field} nicht gespeichert: {reason}"
 
 msgid "{field}: {value}"
+msgstr ""
+
+msgid "{field}: {value}, {state}."
+msgstr ""
+
+msgid "{field}: {value}, {state}. Press Enter to edit."
+msgstr "{field}: {value}, {state}. Zum Bearbeiten die Eingabetaste drücken."
+
+msgid "{field}: {value}."
+msgstr ""
+
+msgid "{field}: {value}. Press Enter to edit."
+msgstr "{field}: {value}. Zum Bearbeiten die Eingabetaste drücken."
+
+msgid "{folderFields} · {fileFields}"
 msgstr ""
 
 msgid "{seconds} s"
@@ -32,11 +62,35 @@ msgstr ""
 msgid "+ add value"
 msgstr "+ Wert hinzufügen"
 
-msgid "A subscription includes: guaranteed Nextcloud compatibility, email support, priority bug fixes, and active development."
-msgstr ""
+msgid "A backup or restore is already running"
+msgstr "Es läuft bereits ein Backup oder eine Wiederherstellung"
 
-msgid "Accept"
-msgstr "Akzeptieren"
+msgid "A change shows once a page is loaded again."
+msgstr "Eine Änderung wird sichtbar, sobald eine Seite neu geladen wird."
+
+msgid "A column can have at most 10 rules"
+msgstr "Eine Spalte kann höchstens 10 Regeln haben"
+
+msgid "a condition this version does not know"
+msgstr "eine Bedingung, die diese Version nicht kennt"
+
+msgid "A field with this name already exists"
+msgstr "Ein Feld mit diesem Namen existiert bereits"
+
+msgid "A file field name starts with file_gf_, followed by lowercase letters, numbers and underscores, beginning with a letter (for example file_gf_department)."
+msgstr "Der Name eines Dateifelds beginnt mit file_gf_, gefolgt von Kleinbuchstaben, Ziffern und Unterstrichen, beginnend mit einem Buchstaben (zum Beispiel file_gf_abteilung)."
+
+msgid "A shared cache is set up, so presence and editing locks work across all web servers."
+msgstr "Ein gemeinsamer Cache ist eingerichtet, daher funktionieren Anwesenheit und Bearbeitungssperren auf allen Webservern."
+
+msgid "A Team folder field name starts with gf_, followed by lowercase letters, numbers and underscores, beginning with a letter (for example gf_classification)."
+msgstr "Der Name eines Teamordnerfelds beginnt mit gf_, gefolgt von Kleinbuchstaben, Ziffern und Unterstrichen, beginnend mit einem Buchstaben (zum Beispiel gf_klassifizierung)."
+
+msgid "A view name can have at most 100 characters"
+msgstr "Der Name einer Ansicht darf höchstens 100 Zeichen haben"
+
+msgid "Accept AI suggestion for {field}"
+msgstr "KI-Vorschlag für {field} übernehmen"
 
 msgid "Access denied"
 msgstr "Zugriff verweigert"
@@ -53,14 +107,20 @@ msgstr "Aktionen"
 msgid "Active permissions"
 msgstr "Aktive Berechtigungen"
 
+msgid "Add a word to narrow the search"
+msgstr "Fügen Sie ein Wort hinzu, um die Suche einzugrenzen"
+
+msgid "Add a word, or filter by field"
+msgstr "Fügen Sie ein Wort hinzu oder filtern Sie nach Feld"
+
+msgid "Add at least one option"
+msgstr "Fügen Sie mindestens eine Option hinzu"
+
 msgid "Add field"
 msgstr "Feld Hinzufügen"
 
 msgid "Add file"
 msgstr "Datei hinzufügen"
-
-msgid "Add new metadata field"
-msgstr "Neues Metadatenfeld Hinzufügen"
 
 msgid "Add option"
 msgstr "Option Hinzufügen"
@@ -68,20 +128,32 @@ msgstr "Option Hinzufügen"
 msgid "Add permission"
 msgstr "Berechtigung Hinzufügen"
 
+msgid "Add rule for {column}"
+msgstr "Regel hinzufügen für {column}"
+
 msgid "Add your first metadata field to get started organizing your files."
 msgstr "Fügen Sie Ihr erstes Metadatenfeld hinzu, um mit der Organisation Ihrer Dateien zu beginnen."
 
 msgid "Add your first metadata field to get started organizing your Team folders."
 msgstr "Fügen Sie Ihr erstes Metadatenfeld hinzu, um mit der Organisation Ihrer Teamordner zu beginnen."
 
+msgid "after {date}"
+msgstr "nach dem {date}"
+
+msgid "After a date"
+msgstr "Nach einem Datum"
+
+msgid "after today"
+msgstr "nach heute"
+
+msgid "After today"
+msgstr "Nach heute"
+
 msgid "AI could not generate a new suggestion for this field."
 msgstr "KI konnte keinen neuen Vorschlag für dieses Feld generieren."
 
 msgid "AI could not generate any suggestions for this file."
 msgstr "KI konnte keine Vorschläge für diese Datei generieren."
-
-msgid "AI generation failed. Please try again."
-msgstr "KI-Generierung fehlgeschlagen. Bitte versuchen Sie es erneut."
 
 msgid "AI metadata generation"
 msgstr "KI-Metadatengenerierung"
@@ -101,11 +173,17 @@ msgstr "KI-Aufgabe fehlgeschlagen"
 msgid "AI task timed out"
 msgstr "Zeitüberschreitung bei der KI-Aufgabe"
 
-msgid "All types"
-msgstr "Alle Typen"
+msgid "All fields"
+msgstr "Alle Felder"
+
+msgid "All my Team folders"
+msgstr "Alle meine Teamordner"
 
 msgid "Allow people to generate metadata suggestions using AI. Requires an AI provider to be configured in Nextcloud."
 msgstr "Erlauben Sie Benutzern, Metadatenvorschläge mit KI zu generieren. Erfordert die Konfiguration eines KI-Anbieters in Nextcloud."
+
+msgid "An option cannot contain ;#"
+msgstr "Eine Option darf kein ;# enthalten"
 
 msgid "Anonymous instance identifier (hashed URL)"
 msgstr "Anonyme Instanz-Kennung (gehashte URL)"
@@ -118,6 +196,9 @@ msgstr "Anonyme Nutzungsstatistiken deaktiviert."
 
 msgid "Any personal or sensitive data"
 msgstr "Personenbezogene oder sensible Daten"
+
+msgid "Applies to links people add or change. Links already saved stay as they are."
+msgstr "Gilt für Links, die hinzugefügt oder geändert werden. Bereits gespeicherte Links bleiben unverändert."
 
 msgid "Apply defaults now"
 msgstr "Standardwerte jetzt anwenden"
@@ -134,9 +215,6 @@ msgstr "Standardwerte werden angewendet …"
 msgid "Applying defaults is taking longer than expected. It will continue in the background."
 msgstr "Das Anwenden der Standardwerte dauert länger als erwartet. Es wird im Hintergrund fortgesetzt."
 
-msgid "Are you sure you want to delete the view \"{name}\"?"
-msgstr "Möchten Sie die Ansicht \"{name}\" wirklich löschen?"
-
 msgid "Are you sure you want to restore this backup? This will replace all current metadata with the backup data."
 msgstr "Möchten Sie diese Sicherung wirklich wiederherstellen? Dies ersetzt alle aktuellen Metadaten durch die Sicherungsdaten."
 
@@ -146,11 +224,50 @@ msgstr "Möchten Sie diese Berechtigung wirklich entziehen?"
 msgid "Ascending"
 msgstr "Aufsteigend"
 
+msgid "Ask an administrator to add metadata fields for files here."
+msgstr "Bitten Sie eine Administratorin oder einen Administrator, hier Metadatenfelder für Dateien anzulegen."
+
+msgid "Ask an administrator to add metadata fields for folders here."
+msgstr "Bitten Sie eine Administratorin oder einen Administrator, hier Metadatenfelder für Ordner anzulegen."
+
+msgid "Ask an administrator to add metadata fields for this Team folder."
+msgstr "Bitten Sie eine Administratorin oder einen Administrator, Metadatenfelder für diesen Teamordner anzulegen."
+
+msgid "Assigned to the person viewing"
+msgstr "Der ansehenden Person zugewiesen"
+
+msgid "Assigned to you"
+msgstr "Ihnen zugewiesen"
+
+msgid "At least"
+msgstr "Mindestens"
+
+msgid "at least {value}"
+msgstr "mindestens {value}"
+
+msgid "At most"
+msgstr "Höchstens"
+
+msgid "at most {value}"
+msgstr "höchstens {value}"
+
 msgid "Auto-detect"
 msgstr "Automatisch erkennen"
 
 msgid "Automatic daily backups of all metadata. You can also create manual backups and restore from any backup."
 msgstr "Automatische tägliche Sicherungen aller Metadaten. Sie können auch manuelle Sicherungen erstellen und aus jeder Sicherung wiederherstellen."
+
+msgid "Background jobs last ran more than an hour ago. The search index and default values wait for them."
+msgstr "Hintergrundaufgaben liefen zuletzt vor mehr als einer Stunde. Suchindex und Standardwerte warten darauf."
+
+msgid "Background jobs run via %s. Use the system cron, so the search index and default values keep up."
+msgstr "Hintergrundaufgaben laufen über %s. Verwenden Sie den System-Cron, damit Suchindex und Standardwerte aktuell bleiben."
+
+msgid "Background jobs run via the system cron."
+msgstr "Hintergrundaufgaben laufen über den System-Cron."
+
+msgid "Backup"
+msgstr ""
 
 msgid "Backup and restore"
 msgstr "Sicherung & Wiederherstellung"
@@ -164,14 +281,35 @@ msgstr "Sicherung fehlgeschlagen: {error}"
 msgid "Backup from: {date}"
 msgstr "Sicherung vom: {date}"
 
+msgid "Backup not found"
+msgstr "Sicherung nicht gefunden"
+
 msgid "Basic server configuration (database, OS, web server, language, timezone, country)"
 msgstr "Grundlegende Serverkonfiguration (Datenbank, OS, Webserver, Sprache, Zeitzone, Land)"
+
+msgid "before {date}"
+msgstr "vor dem {date}"
+
+msgid "Before a date"
+msgstr "Vor einem Datum"
+
+msgid "before today"
+msgstr "vor heute"
+
+msgid "Before today"
+msgstr "Vor heute"
 
 msgid "Being edited by {user}"
 msgstr "Wird von {user} bearbeitet"
 
 msgid "Being edited by someone else"
-msgstr ""
+msgstr "Wird von jemand anderem bearbeitet"
+
+msgid "Blocked domains"
+msgstr "Gesperrte Domains"
+
+msgid "Blue"
+msgstr "Blau"
 
 msgid "Cancel"
 msgstr "Abbrechen"
@@ -179,32 +317,80 @@ msgstr "Abbrechen"
 msgid "Cannot delete (in use)"
 msgstr "Kann nicht gelöscht werden (in Verwendung)"
 
-msgid "Cannot delete field - it is currently in use"
-msgstr "Feld kann nicht gelöscht werden - es wird derzeit verwendet"
-
 msgid "Change account"
 msgstr "Benutzer ändern"
 
+msgid "Changes by others appear right away, through Client Push."
+msgstr "Änderungen anderer erscheinen sofort, über Client Push."
+
 msgid "Check configuration:"
-msgstr ""
+msgstr "Eingestellte Prüfung:"
 
 msgid "Checkbox"
 msgstr "Kontrollkästchen"
 
+msgid "Checked"
+msgstr "Angehakt"
+
+msgid "Choose 1 to 50 options of at most 200 characters"
+msgstr "1 bis 50 Optionen mit höchstens 200 Zeichen wählen"
+
+msgid "Choose a field."
+msgstr "Wählen Sie ein Feld."
+
+msgid "Choose a JSON file to import"
+msgstr "JSON-Datei zum Importieren auswählen"
+
+msgid "Choose a Team folder."
+msgstr "Wählen Sie einen Teamordner."
+
+msgid "Choose a value."
+msgstr "Wählen Sie einen Wert."
+
+msgid "Choose an existing account"
+msgstr "Wählen Sie einen vorhandenen Benutzer"
+
+msgid "Choose an existing group"
+msgstr "Wählen Sie eine vorhandene Gruppe"
+
+msgid "Choose an existing Team folder"
+msgstr "Wählen Sie einen vorhandenen Teamordner"
+
+msgid "Choose an option"
+msgstr "Eine Option wählen"
+
 msgid "Choose an option …"
 msgstr "Option wählen …"
 
+msgid "Choose at least one option"
+msgstr "Mindestens eine Option wählen"
+
+msgid "Choose existing fields"
+msgstr "Wählen Sie vorhandene Felder"
+
+msgid "Choose one of the field types"
+msgstr "Wählen Sie einen der Feldtypen"
+
+msgid "Choose one of the options of this field"
+msgstr "Wählen Sie eine der Optionen dieses Feldes"
+
+msgid "Choose one or more options"
+msgstr "Eine oder mehrere Optionen wählen"
+
+msgid "Choose only options of this field"
+msgstr "Wählen Sie nur Optionen dieses Feldes"
+
 msgid "Choose options …"
 msgstr "Optionen wählen …"
-
-msgid "Choose which columns to show and in what order."
-msgstr "Wählen Sie, welche Spalten in welcher Reihenfolge angezeigt werden."
 
 msgid "Clear"
 msgstr "Leeren"
 
 msgid "Clear all"
 msgstr "Alles Löschen"
+
+msgid "Clear metadata"
+msgstr "Metadaten löschen"
 
 msgid "Clear search"
 msgstr "Suche löschen"
@@ -218,11 +404,20 @@ msgstr "Wird gelöscht …"
 msgid "Close"
 msgstr "Schließen"
 
+msgid "Color"
+msgstr "Farbe"
+
 msgid "Columns"
 msgstr "Spalten"
 
+msgid "Compares by day: a time earlier today counts as today."
+msgstr "Vergleicht nach Tagen: eine Uhrzeit früher am Tag zählt als heute."
+
 msgid "Comparison value is required"
 msgstr "Vergleichswert ist erforderlich"
+
+msgid "Condition"
+msgstr "Bedingung"
 
 msgid "Configure custom metadata fields that will be available for all Team folders. These fields help organize and categorize your Team folders."
 msgstr "Konfigurieren Sie benutzerdefinierte Metadatenfelder, die für alle Teamordner verfügbar sind. Diese Felder helfen beim Organisieren und Kategorisieren Ihrer Teamordner."
@@ -232,9 +427,6 @@ msgstr "Konfigurieren Sie benutzerdefinierte Metadatenfelder, die für Dateien i
 
 msgid "Configure fields"
 msgstr "Felder Konfigurieren"
-
-msgid "Configure fields for this Team folder"
-msgstr "Felder für diesen Teamordner konfigurieren"
 
 msgid "Configure fields: Choose which fields are available for each Team folder"
 msgstr "Felder konfigurieren: Wählen Sie, welche Felder für jeden Teamordner verfügbar sind"
@@ -248,41 +440,77 @@ msgstr "Konfigurieren Sie, welche Metadatenfelder für Ihre Teamordner verfügba
 msgid "Configure which metadata search fields are available for each Team folder and manage Team folder-specific metadata."
 msgstr "Konfigurieren Sie, welche Metadaten-Suchfelder für jeden Teamordner verfügbar sind, und verwalten Sie teamordnerspezifische Metadaten."
 
-msgid "Confirm import"
-msgstr "Import Bestätigen"
-
 msgid "contains"
 msgstr "enthält"
+
+msgid "Contains"
+msgstr "Enthält"
+
+msgid "contains {value}"
+msgstr "enthält {value}"
 
 msgid "contains all"
 msgstr "enthält alle"
 
+msgid "Contains all of"
+msgstr "Enthält alle von"
+
+msgid "contains all of {values}"
+msgstr "enthält alle von {values}"
+
+msgid "Contains one of"
+msgstr "Enthält eines von"
+
+msgid "contains one of {values}"
+msgstr "enthält eines von {values}"
+
 msgid "Could not connect to license server"
-msgstr ""
+msgstr "Keine Verbindung zum Lizenzserver möglich"
+
+msgid "Could not delete the fields. Nothing was changed."
+msgstr "Die Felder konnten nicht gelöscht werden. Es wurde nichts geändert."
 
 msgid "Could not delete the view: {reason}"
 msgstr "Ansicht konnte nicht gelöscht werden: {reason}"
 
+msgid "Could not generate metadata. Try again."
+msgstr "Metadaten konnten nicht erzeugt werden. Erneut versuchen."
+
+msgid "Could not load metadata. Check the connection and try again."
+msgstr "Metadaten konnten nicht geladen werden. Verbindung prüfen und erneut versuchen."
+
 msgid "Could not reach the telemetry server. Please try again later."
 msgstr "Der Telemetrie-Server ist nicht erreichbar. Bitte versuchen Sie es später erneut."
+
+msgid "Could not regenerate the suggestion. Try again."
+msgstr "Vorschlag konnte nicht neu erstellt werden. Erneut versuchen."
+
+msgid "Could not save metadata. Try again."
+msgstr "Metadaten konnten nicht gespeichert werden. Erneut versuchen."
+
+msgid "Could not save the setting. It is unchanged."
+msgstr "Die Einstellung konnte nicht gespeichert werden. Sie ist unverändert."
 
 msgid "Could not save the view: {reason}"
 msgstr "Ansicht konnte nicht gespeichert werden: {reason}"
 
+msgid "Create a new view"
+msgstr "Neue Ansicht erstellen"
+
 msgid "Create backup now"
 msgstr "Jetzt Sicherung erstellen"
 
-msgid "Create new view"
-msgstr "Neue Ansicht erstellen"
-
-msgid "Create predefined filter, column and sort combinations for this Team folder."
-msgstr "Erstellen Sie vordefinierte Filter-, Spalten- und Sortierkombinationen für diesen Teamordner."
+msgid "Create field"
+msgstr "Feld erstellen"
 
 msgid "Created"
 msgstr "Erstellt"
 
 msgid "Creating backup …"
 msgstr "Sicherung wird erstellt …"
+
+msgid "Custom rule"
+msgstr "Eigene Regel"
 
 msgid "Date"
 msgstr "Datum"
@@ -299,8 +527,17 @@ msgstr "Löschen"
 msgid "Delete field"
 msgstr "Feld löschen"
 
-msgid "Delete this view?"
-msgstr "Diese Ansicht löschen?"
+msgid "Delete fields"
+msgstr "Felder löschen"
+
+msgid "Delete saved search"
+msgstr "Gespeicherte Suche löschen"
+
+msgid "Delete selected"
+msgstr "Auswahl löschen"
+
+msgid "Delete the view {name}? This cannot be undone."
+msgstr "Die Ansicht {name} löschen? Dies kann nicht rückgängig gemacht werden."
 
 msgid "Delete view"
 msgstr "Ansicht löschen"
@@ -314,8 +551,8 @@ msgstr "Beschreibung"
 msgid "Description:"
 msgstr "Beschreibung:"
 
-msgid "Dismiss"
-msgstr "Verwerfen"
+msgid "Dismiss AI suggestion for {field}"
+msgstr "KI-Vorschlag für {field} verwerfen"
 
 msgid "Display name"
 msgstr "Anzeigename"
@@ -326,11 +563,17 @@ msgstr "Anzeigename für Benutzer"
 msgid "does not contain"
 msgstr "enthält nicht"
 
+msgid "Does not contain"
+msgstr "Enthält nicht"
+
+msgid "does not contain {value}"
+msgstr "enthält nicht {value}"
+
+msgid "Done"
+msgstr "Fertig"
+
 msgid "Download"
 msgstr "Herunterladen"
-
-msgid "Download all metadata fields as a JSON file."
-msgstr "Laden Sie alle Metadatenfelder als JSON-Datei herunter."
 
 msgid "Drag to reorder"
 msgstr "Ziehen zum Sortieren"
@@ -341,6 +584,12 @@ msgstr ""
 msgid "Dropdown options"
 msgstr "Dropdown Optionen"
 
+msgid "Due soon"
+msgstr "Bald fällig"
+
+msgid "Due today"
+msgstr "Heute fällig"
+
 msgid "e.g. Author, Document type, Status"
 msgstr "z.B. Autor, Dokumenttyp, Status"
 
@@ -350,20 +599,29 @@ msgstr "z.B. Abteilung, Projekttyp, Priorität"
 msgid "e.g. MVOX-XXXX-XXXX-XXXX-XXXX"
 msgstr "z.B. MVOX-XXXX-XXXX-XXXX-XXXX"
 
-msgid "e.g. Value 1, Value 2"
-msgstr "z.B. Wert 1, Wert 2"
-
 msgid "e.g., author, document_type, status"
 msgstr "z.B. autor, dokument_typ, status"
 
 msgid "e.g., department, project_type, priority"
 msgstr "z.B. abteilung, projekt_typ, prioritaet"
 
+msgid "Each person sees the files assigned to them."
+msgstr "So sieht jede Person die ihr zugewiesenen Dateien markiert."
+
+msgid "Edit"
+msgstr "Bearbeiten"
+
+msgid "Edit …"
+msgstr "Bearbeiten …"
+
 msgid "Edit field"
 msgstr "Feld bearbeiten"
 
-msgid "Edit field: {name}"
-msgstr "Feld bearbeiten: {name}"
+msgid "Edit file metadata"
+msgstr "Metadaten dieser Datei bearbeiten"
+
+msgid "Edit folder metadata"
+msgstr "Metadaten dieses Ordners bearbeiten"
 
 msgid "Edit metadata"
 msgstr "Metadaten Bearbeiten"
@@ -377,6 +635,9 @@ msgstr "Metadaten bearbeiten für {folder}"
 msgid "Edit metadata: Set Team folder-specific metadata values (admin only)"
 msgstr "Metadaten bearbeiten: Teamordnerspezifische Metadatenwerte festlegen (nur Admin)"
 
+msgid "Edit Team folder metadata"
+msgstr "Teamordner-Metadaten bearbeiten"
+
 msgid "Edit Team folder metadata values"
 msgstr "Teamordner-Metadatenwerte bearbeiten"
 
@@ -386,8 +647,38 @@ msgstr "Bearbeiten Sie die Metadatenwerte für diesen Teamordner"
 msgid "Edit view"
 msgstr "Ansicht bearbeiten"
 
+msgid "Editing metadata for {folder}"
+msgstr "Metadaten bearbeiten für {folder}"
+
+msgid "Empty"
+msgstr "Leer"
+
 msgid "Enable AI metadata generation"
 msgstr "KI-Metadatengenerierung aktivieren"
+
+msgid "Enter 1 to 200 characters"
+msgstr "1 bis 200 Zeichen eingeben"
+
+msgid "Enter a date and time as YYYY-MM-DDTHH:MM:SS"
+msgstr "Geben Sie Datum und Uhrzeit als YYYY-MM-DDTHH:MM:SS ein"
+
+msgid "Enter a date as YYYY-MM-DD"
+msgstr "Geben Sie ein Datum als YYYY-MM-DD ein"
+
+msgid "Enter a label"
+msgstr "Geben Sie eine Bezeichnung ein"
+
+msgid "Enter a label people will see"
+msgstr "Geben Sie eine Bezeichnung ein, die Benutzer sehen"
+
+msgid "Enter a link to a file"
+msgstr "Geben Sie einen Link zu einer Datei ein"
+
+msgid "Enter a list of IDs"
+msgstr "Geben Sie eine Liste von IDs ein"
+
+msgid "Enter a list of names"
+msgstr "Geben Sie eine Liste von Namen ein"
 
 msgid "Enter a name for the view"
 msgstr "Gib der Ansicht einen Namen"
@@ -395,8 +686,35 @@ msgstr "Gib der Ansicht einen Namen"
 msgid "Enter a number"
 msgstr "Zahl eingeben"
 
+msgid "Enter a number, such as 12 or 3.5"
+msgstr "Geben Sie eine Zahl ein, z. B. 12 oder 3.5"
+
+msgid "Enter a valid date"
+msgstr "Gültiges Datum eingeben"
+
+msgid "Enter a web address"
+msgstr "Geben Sie eine Webadresse ein"
+
+msgid "Enter a whole number"
+msgstr "Geben Sie eine ganze Zahl ein"
+
+msgid "Enter a whole number from 1 to 3650"
+msgstr "Ganze Zahl von 1 bis 3650 eingeben"
+
+msgid "Enter an address that starts with http://, https:// or mailto:"
+msgstr "Geben Sie eine Adresse ein, die mit http://, https:// oder mailto: beginnt"
+
+msgid "Enter at most 500 domains"
+msgstr "Geben Sie höchstens 500 Domains ein"
+
+msgid "Enter domains such as example.com or .ru, one per line"
+msgstr "Geben Sie Domains wie example.com oder .ru ein, eine pro Zeile"
+
 msgid "Enter expected value"
 msgstr "Erwarteten Wert eingeben"
+
+msgid "Enter text"
+msgstr "Geben Sie Text ein"
 
 msgid "Enter URL ({example})"
 msgstr "URL eingeben ({example})"
@@ -410,17 +728,17 @@ msgstr "Fehler beim Laden der Metadaten"
 msgid "Error saving metadata: {error}"
 msgstr "Fehler beim Speichern der Metadaten: {error}"
 
+msgid "Exactly what is and is not sent"
+msgstr "Was genau gesendet wird und was nicht"
+
 msgid "Existing metadata fields"
 msgstr "Vorhandene Metadatenfelder"
 
 msgid "Export CSV"
 msgstr "CSV Exportieren"
 
-msgid "Export fields"
-msgstr "Felder Exportieren"
-
-msgid "Export fields to JSON"
-msgstr "Felder nach JSON exportieren"
+msgid "Export to JSON"
+msgstr "Als JSON exportieren"
 
 msgid "Exporting …"
 msgstr "Wird exportiert …"
@@ -452,9 +770,6 @@ msgstr "Felder konnten nicht importiert werden: {error}"
 msgid "Failed to load groups"
 msgstr "Gruppen konnten nicht geladen werden"
 
-msgid "Failed to load metadata"
-msgstr "Metadaten konnten nicht geladen werden"
-
 msgid "Failed to load metadata fields"
 msgstr "Metadatenfelder konnten nicht geladen werden"
 
@@ -463,15 +778,6 @@ msgstr "Berechtigungen konnten nicht geladen werden"
 
 msgid "Failed to load Team folders"
 msgstr "Teamordner konnten nicht geladen werden"
-
-msgid "Failed to parse JSON file: {error}"
-msgstr "JSON-Datei konnte nicht analysiert werden: {error}"
-
-msgid "Failed to read file"
-msgstr ""
-
-msgid "Failed to regenerate suggestion."
-msgstr "Vorschlag konnte nicht neu generiert werden."
 
 msgid "Failed to remove subscription key"
 msgstr "Abonnementschlüssel konnte nicht entfernt werden"
@@ -491,32 +797,26 @@ msgstr "Metadaten konnten nicht gespeichert werden"
 msgid "Failed to save subscription key"
 msgstr "Abonnementschlüssel konnte nicht gespeichert werden"
 
-msgid "Failed to save view"
-msgstr "Ansicht konnte nicht gespeichert werden"
-
 msgid "Failed to send report"
 msgstr "Bericht konnte nicht gesendet werden"
 
 msgid "Failed to update field"
 msgstr "Feld konnte nicht aktualisiert werden"
 
-msgid "Failed to update settings"
-msgstr "Einstellungen konnten nicht aktualisiert werden"
-
 msgid "Field"
 msgstr "Feld"
 
-msgid "Field \"{name}\" added successfully"
-msgstr "Feld \"{name}\" erfolgreich hinzugefügt"
+msgid "Field \"{name}\" added"
+msgstr "Feld \"{name}\" hinzugefügt"
 
-msgid "Field configuration saved successfully"
-msgstr "Feldkonfiguration erfolgreich gespeichert"
+msgid "Field configuration saved"
+msgstr "Feldkonfiguration gespeichert"
 
 msgid "Field definitions"
-msgstr ""
+msgstr "Felddefinitionen"
 
-msgid "Field deleted successfully"
-msgstr "Feld erfolgreich gelöscht"
+msgid "Field deleted"
+msgstr "Feld gelöscht"
 
 msgid "Field label"
 msgstr "Feld Bezeichnung"
@@ -524,23 +824,20 @@ msgstr "Feld Bezeichnung"
 msgid "Field name"
 msgstr "Feldname"
 
-msgid "Field name may only contain lowercase letters, numbers and underscores, and must start with a letter"
-msgstr "Ein Feldname darf nur Kleinbuchstaben, Ziffern und Unterstriche enthalten und muss mit einem Buchstaben beginnen"
-
-msgid "Field name, label, and type are required"
-msgstr "Feldname, Bezeichnung und Typ sind erforderlich"
+msgid "Field not found"
+msgstr "Feld nicht gefunden"
 
 msgid "Field type"
 msgstr "Feldtyp"
 
-msgid "Field type:"
-msgstr "Feldtyp:"
+msgid "Field type cannot be changed when field is in use"
+msgstr "Der Feldtyp kann nicht geändert werden, solange das Feld verwendet wird"
 
-msgid "Field updated successfully"
-msgstr "Feld erfolgreich aktualisiert"
+msgid "Field updated"
+msgstr "Feld aktualisiert"
 
-msgid "File fields"
-msgstr "Datei Felder"
+msgid "File is not in this Team folder"
+msgstr "Die Datei befindet sich nicht in diesem Teamordner"
 
 msgid "File link"
 msgstr "Dateilink"
@@ -560,17 +857,29 @@ msgstr "Dateiname"
 msgid "File names or paths"
 msgstr "Dateinamen oder Pfade"
 
+msgid "File not found"
+msgstr "Datei nicht gefunden"
+
 msgid "File path"
 msgstr "Dateipfad"
 
 msgid "File values"
-msgstr ""
+msgstr "Dateiwerte"
 
-msgid "Files matching all selected options are shown."
-msgstr "Es werden Dateien angezeigt, die allen ausgewählten Optionen entsprechen."
+msgid "Files"
+msgstr "Dateien"
+
+msgid "Files with any of the selected options are shown."
+msgstr "Dateien mit einer der ausgewählten Optionen werden angezeigt."
+
+msgid "Files without a value are marked in the grid, and get one at their next save."
+msgstr "Dateien ohne Wert werden in der Liste markiert und erhalten beim nächsten Speichern einen."
 
 msgid "Filter by metadata"
 msgstr "Nach Metadaten filtern"
+
+msgid "Filter on {column}"
+msgstr "Nach {column} filtern"
 
 msgid "Filterable"
 msgstr "Filterbar"
@@ -578,11 +887,23 @@ msgstr "Filterbar"
 msgid "Filters"
 msgstr "Filter"
 
-msgid "Filters (preset values)"
-msgstr "Filter (voreingestellte Werte)"
+msgid "Finish or cancel this rule to save the view."
+msgstr "Diese Regel abschließen oder abbrechen, um die Ansicht zu speichern."
+
+msgid "Fixed while the field is in use"
+msgstr "Unveränderlich, solange das Feld in Verwendung ist"
 
 msgid "Folder metadata"
 msgstr "Ordner Metadaten"
+
+msgid "For a date field, send {\"includeTime\": true} or false"
+msgstr "Senden Sie für ein Datumsfeld {\"includeTime\": true} oder false"
+
+msgid "Free-text search finds the metadata of all files."
+msgstr "Die Freitextsuche findet die Metadaten aller Dateien."
+
+msgid "General"
+msgstr "Allgemein"
 
 msgid "Generate with AI"
 msgstr "Mit KI generieren"
@@ -592,6 +913,9 @@ msgstr "Generieren …"
 
 msgid "Generating metadata with AI …"
 msgstr "Metadaten werden mit KI generiert …"
+
+msgid "Give the search a name of at most 100 characters."
+msgstr "Geben Sie der Suche einen Namen mit höchstens 100 Zeichen."
 
 msgid "Grant permission"
 msgstr "Berechtigung Erteilen"
@@ -605,11 +929,32 @@ msgstr "größer oder gleich"
 msgid "greater than"
 msgstr "größer als"
 
+msgid "Greater than"
+msgstr "Größer als"
+
+msgid "greater than {value}"
+msgstr "größer als {value}"
+
+msgid "Green"
+msgstr "Grün"
+
 msgid "Group"
 msgstr "Gruppe"
 
+msgid "Handled by Nextcloud. Contact your Nextcloud account manager, or {email}."
+msgstr "Über Nextcloud. Wenden Sie sich an Ihren Nextcloud-Kundenbetreuer oder an {email}."
+
 msgid "Help improve MetaVox by sharing anonymous usage statistics."
 msgstr "Helfen Sie MetaVox zu verbessern, indem Sie anonyme Nutzungsstatistiken teilen."
+
+msgid "Hidden columns keep their rules: {columns}"
+msgstr "Ausgeblendete Spalten behalten ihre Regeln: {columns}"
+
+msgid "Highlight cells"
+msgstr "Zellen markieren"
+
+msgid "Highlights: {names}"
+msgstr "Hervorhebungen: {names}"
 
 msgid "How it works:"
 msgstr "So funktioniert es:"
@@ -620,20 +965,20 @@ msgstr "Inaktiv"
 msgid "Import and export"
 msgstr "Importieren & Exportieren"
 
-msgid "Import completed: {imported} imported, {errors} errors"
-msgstr "Import abgeschlossen: {imported} importiert, {errors} Fehler"
-
 msgid "Import fields"
 msgstr "Felder Importieren"
 
-msgid "Import fields from JSON"
-msgstr "Felder aus JSON importieren"
+msgid "Import from JSON …"
+msgstr "Aus JSON importieren …"
 
 msgid "Import preview"
 msgstr "Import Vorschau"
 
 msgid "Importing …"
 msgstr "Wird importiert …"
+
+msgid "In the file list"
+msgstr "In der Dateiliste"
 
 msgid "Include time component"
 msgstr "Uhrzeit einbeziehen"
@@ -659,14 +1004,20 @@ msgstr "Ungültiges Zeichen \"{char}\" — nur a-z, 0-9 und _ erlaubt"
 msgid "Invalid configuration format"
 msgstr "Ungültiges Konfigurationsformat"
 
+msgid "Invalid ID"
+msgstr "Ungültige ID"
+
 msgid "Invalid JSON file: {error}"
 msgstr "Ungültige JSON-Datei: {error}"
 
-msgid "Invalid JSON format. Expected an array of field definitions."
-msgstr "Ungültiges JSON-Format. Erwartet wird ein Array von Felddefinitionen."
-
 msgid "Invalid operator"
 msgstr "Ungültiger Operator"
+
+msgid "Is"
+msgstr "Ist"
+
+msgid "is {value}"
+msgstr "ist {value}"
 
 msgid "is after"
 msgstr "ist nach"
@@ -674,17 +1025,53 @@ msgstr "ist nach"
 msgid "is before"
 msgstr "ist vor"
 
+msgid "is checked"
+msgstr "ist angehakt"
+
+msgid "Is checked"
+msgstr "Ist angehakt"
+
 msgid "is empty"
 msgstr "ist leer"
+
+msgid "Is empty"
+msgstr "Ist leer"
 
 msgid "is not"
 msgstr "ist nicht"
 
+msgid "Is not"
+msgstr "Ist nicht"
+
+msgid "is not {value}"
+msgstr "ist nicht {value}"
+
+msgid "is not checked"
+msgstr "ist nicht angehakt"
+
+msgid "Is not checked"
+msgstr "Ist nicht angehakt"
+
 msgid "is not empty"
 msgstr "ist nicht leer"
 
+msgid "Is not empty"
+msgstr "Ist nicht leer"
+
 msgid "is one of"
 msgstr "ist eines von"
+
+msgid "Is one of"
+msgstr "Ist eines von"
+
+msgid "is one of {values}"
+msgstr "ist eines von {values}"
+
+msgid "is the person viewing"
+msgstr "ist die ansehende Person"
+
+msgid "Is the person viewing"
+msgstr "Ist die ansehende Person"
 
 msgid "JSON must be an array of field definitions"
 msgstr "JSON muss ein Array von Felddefinitionen sein"
@@ -704,14 +1091,35 @@ msgstr "kleiner oder gleich"
 msgid "less than"
 msgstr "kleiner als"
 
+msgid "Less than"
+msgstr "Kleiner als"
+
+msgid "less than {value}"
+msgstr "kleiner als {value}"
+
+msgid "Let people search on metadata from Nextcloud's search bar, and keep a search as a folder in Files."
+msgstr "Lassen Sie Personen über die Suchleiste von Nextcloud nach Metadaten suchen und eine Suche als Ordner in Dateien behalten."
+
+msgid "Link to a file in this Team folder"
+msgstr "Verweisen Sie auf eine Datei in diesem Teamordner"
+
+msgid "Linked from"
+msgstr "Verlinkt von"
+
+msgid "Links in URL fields"
+msgstr "Links in URL-Feldern"
+
+msgid "Links must start with http://, https:// or mailto:. When off, any link is allowed except one that runs code, such as javascript:."
+msgstr "Links müssen mit http://, https:// oder mailto: beginnen. Ist dies ausgeschaltet, ist jeder Link erlaubt, außer einem, der Code ausführt, wie javascript:."
+
+msgid "Links to this domain are not allowed"
+msgstr "Links zu dieser Domain sind nicht erlaubt"
+
 msgid "Loading …"
 msgstr "Wird geladen …"
 
 msgid "Loading backups …"
 msgstr "Sicherungen werden geladen …"
-
-msgid "Loading field configuration …"
-msgstr "Feldkonfiguration wird geladen …"
 
 msgid "Loading metadata …"
 msgstr "Metadaten werden geladen …"
@@ -731,14 +1139,17 @@ msgstr "Teamordner werden geladen …"
 msgid "Loading your Team folders …"
 msgstr "Teamordner werden geladen …"
 
+msgid "Location"
+msgstr "Ort"
+
 msgid "Long text"
 msgstr "Langer Text"
 
+msgid "Make a column visible under Columns to highlight its cells."
+msgstr "Unter Spalten eine Spalte sichtbar machen, um ihre Zellen zu markieren."
+
 msgid "Make sure the Team Folders app is installed and you have created some Team folders."
 msgstr "Stellen Sie sicher, dass die Teamordner-App installiert ist und Sie Teamordner erstellt haben."
-
-msgid "Manage account and group permissions for metadata fields and views"
-msgstr "Benutzer- und Gruppenberechtigungen für Metadatenfelder und Ansichten verwalten"
 
 msgid "Manage fields permission required"
 msgstr "Berechtigung zum Verwalten von Feldern erforderlich"
@@ -749,8 +1160,14 @@ msgstr "Metadatenfelder & Ansichten verwalten"
 msgid "Manage Team folders"
 msgstr "Teamordner verwalten"
 
+msgid "Mark a field as filterable in the view editor to filter on it here."
+msgstr "Markiere ein Feld im Ansichtseditor als filterbar, um hier danach zu filtern."
+
 msgid "Metadata content or values"
 msgstr "Metadateninhalte oder -werte"
+
+msgid "Metadata entries"
+msgstr "Metadateneinträge"
 
 msgid "Metadata field"
 msgstr "Metadatenfeld"
@@ -761,14 +1178,17 @@ msgstr "Metadatenfeldname ist erforderlich"
 msgid "Metadata fields"
 msgstr "Metadatenfelder"
 
-msgid "Metadata saved successfully"
-msgstr "Metadaten erfolgreich gespeichert"
+msgid "Metadata filter in the search bar"
+msgstr "Metadaten-Filter in der Suchleiste"
 
-msgid "Metadata saved successfully!"
-msgstr "Metadaten erfolgreich gespeichert!"
+msgid "Metadata is only available for files in a Team folder."
+msgstr "Metadaten sind nur für Dateien in einem Teamordner verfügbar."
 
-msgid "Metadata statistics"
-msgstr "Metadaten Statistiken"
+msgid "Metadata saved"
+msgstr "Metadaten gespeichert"
+
+msgid "Metadata searches"
+msgstr "Metadaten-Suchen"
 
 msgid "Metadata updated"
 msgstr "Metadaten aktualisiert"
@@ -776,23 +1196,59 @@ msgstr "Metadaten aktualisiert"
 msgid "MetaVox"
 msgstr ""
 
-msgid "MetaVox - Custom metadata fields"
-msgstr "MetaVox - Benutzerdefinierte Metadatenfelder"
-
 msgid "MetaVox · Filter by field …"
 msgstr "MetaVox · Nach Feld filtern …"
 
-msgid "MetaVox is free and open source (AGPL-3.0). All features work without a subscription. If MetaVox is valuable to your organization, a subscription supports active development and gives you guaranteed Nextcloud compatibility and email support."
-msgstr ""
+msgid "MetaVox background jobs"
+msgstr "MetaVox-Hintergrundaufgaben"
+
+msgid "MetaVox database"
+msgstr "MetaVox-Datenbank"
+
+msgid "MetaVox is built and tested for MySQL, MariaDB and PostgreSQL. On SQLite it works for trying it out, without the search index. For real use, switch to one of those."
+msgstr "MetaVox ist für MySQL, MariaDB und PostgreSQL entwickelt und getestet. Unter SQLite funktioniert es zum Ausprobieren, ohne den Suchindex. Wechseln Sie für den echten Einsatz zu einer dieser Datenbanken."
+
+msgid "MetaVox is built and tested for this database."
+msgstr "MetaVox ist für diese Datenbank entwickelt und getestet."
+
+msgid "MetaVox is free and open source (AGPL-3.0). All features work without a subscription — nothing is gated. If your organization gets value from it, a subscription funds the maintenance and gives you guaranteed Nextcloud compatibility, email support and priority bug fixes."
+msgstr "MetaVox ist kostenlos und quelloffen (AGPL-3.0). Alle Funktionen arbeiten ohne Abonnement — nichts ist gesperrt. Wenn Ihre Organisation davon profitiert, finanziert ein Abonnement die Wartung und bietet Ihnen garantierte Nextcloud-Kompatibilität, E-Mail-Support und bevorzugte Fehlerbehebung."
+
+msgid "MetaVox live updates"
+msgstr "MetaVox Live-Aktualisierungen"
 
 msgid "MetaVox metadata"
 msgstr "MetaVox Metadaten"
 
+msgid "MetaVox presence"
+msgstr "MetaVox-Anwesenheit"
+
+msgid "MetaVox search index"
+msgstr "MetaVox-Suchindex"
+
+msgid "MetaVox shared cache"
+msgstr "MetaVox gemeinsamer Cache"
+
+msgid "MetaVox Team folders"
+msgstr "MetaVox-Teamordner"
+
+msgid "MetaVox was updated. Reload the page to continue."
+msgstr "MetaVox wurde aktualisiert. Laden Sie die Seite neu, um fortzufahren."
+
 msgid "MetaVox, Nextcloud and PHP versions"
 msgstr "MetaVox-, Nextcloud- und PHP-Versionen"
 
+msgid "Missing"
+msgstr "Fehlt"
+
+msgid "More than … days ago"
+msgstr "Vor mehr als … Tagen"
+
 msgid "Move down"
 msgstr "Nach unten"
+
+msgid "Move or delete rule {position} of {column}"
+msgstr "Regel {position} von {column} verschieben oder löschen"
 
 msgid "Move up"
 msgstr "Nach oben"
@@ -803,20 +1259,20 @@ msgstr "Mehrfachauswahl"
 msgid "Must start with a lowercase letter (a-z)"
 msgstr "Muss mit einem Kleinbuchstaben (a-z) beginnen"
 
-msgid "My Team folders"
-msgstr "Meine Teamordner"
-
 msgid "Name"
 msgstr ""
-
-msgid "Name is required"
-msgstr "Name ist erforderlich"
 
 msgid "Name shown to people"
 msgstr "Name für Benutzer angezeigt"
 
 msgid "Never"
 msgstr "Nie"
+
+msgid "New field"
+msgstr "Neues Feld"
+
+msgid "New rule for {column}"
+msgstr "Neue Regel für {column}"
 
 msgid "New view"
 msgstr "Neue Ansicht"
@@ -830,6 +1286,9 @@ msgstr "Nein"
 msgid "No (unchecked)"
 msgstr "Nein (nicht aktiviert)"
 
+msgid "No access to metadata"
+msgstr "Kein Zugriff auf Metadaten"
+
 msgid "No accessible Team folders"
 msgstr "Keine zugänglichen Teamordner"
 
@@ -841,9 +1300,6 @@ msgstr "Kein Anbieter für KI-Textgenerierung verfügbar"
 
 msgid "No backups available yet. Backups are created automatically every 24 hours, or you can create one manually."
 msgstr "Noch keine Sicherungen verfügbar. Sicherungen werden automatisch alle 24 Stunden erstellt, oder Sie können manuell eine erstellen."
-
-msgid "No columns configured. Configure columns first."
-msgstr "Keine Spalten konfiguriert. Konfigurieren Sie zuerst Spalten."
 
 msgid "No fields available"
 msgstr "Keine Felder verfügbar"
@@ -870,19 +1326,16 @@ msgid "No fields to import"
 msgstr "Keine Felder zum Importieren"
 
 msgid "No file IDs provided"
-msgstr ""
+msgstr "Keine Datei-IDs angegeben"
 
-msgid "No file metadata fields are configured for items in this Team folder. Contact your administrator to set up metadata fields."
-msgstr "Für Elemente in diesem Teamordner sind keine Datei-Metadatenfelder konfiguriert. Kontaktieren Sie Ihren Administrator, um Metadatenfelder einzurichten."
+msgid "No file metadata"
+msgstr "Keine Datei-Metadaten"
 
 msgid "No files selected"
 msgstr "Keine Dateien ausgewählt"
 
 msgid "No files specified"
-msgstr ""
-
-msgid "No filterable columns available. Mark columns as filterable in the column settings."
-msgstr "Keine filterbaren Spalten verfügbar. Markieren Sie Spalten in den Spalteneinstellungen als filterbar."
+msgstr "Keine Dateien angegeben"
 
 msgid "No filterable fields"
 msgstr "Keine filterbaren Felder"
@@ -890,17 +1343,26 @@ msgstr "Keine filterbaren Felder"
 msgid "No filterable fields in this folder"
 msgstr "Keine filterbaren Felder in diesem Ordner"
 
-msgid "No folder metadata fields are configured for items in this Team folder. Contact your administrator to set up metadata fields."
-msgstr "Für Elemente in diesem Teamordner sind keine Ordner-Metadatenfelder konfiguriert. Kontaktieren Sie Ihren Administrator, um Metadatenfelder einzurichten."
+msgid "No filters in this view"
+msgstr "Keine Filter in dieser Ansicht"
+
+msgid "No filters to save"
+msgstr "Keine Filter zum Speichern"
+
+msgid "No folder metadata"
+msgstr "Keine Ordner-Metadaten"
 
 msgid "No groups found"
 msgstr "Keine Gruppen gefunden"
 
 msgid "No license key configured"
-msgstr ""
+msgstr "Kein Lizenzschlüssel konfiguriert"
 
 msgid "No matching values in this folder"
 msgstr "Keine passenden Werte in diesem Ordner"
+
+msgid "No metadata available"
+msgstr "Keine Metadaten verfügbar"
 
 msgid "No metadata fields are configured for this Team folder."
 msgstr "Keine Metadatenfelder für diesen Teamordner konfiguriert."
@@ -912,7 +1374,7 @@ msgid "No metadata fields configured"
 msgstr "Keine Metadatenfelder konfiguriert"
 
 msgid "No metadata provided"
-msgstr ""
+msgstr "Keine Metadaten angegeben"
 
 msgid "No metadata to export"
 msgstr "Keine Metadaten zum Exportieren"
@@ -923,26 +1385,65 @@ msgstr "Keine Metadatenwerte zum Speichern"
 msgid "No options available"
 msgstr "Keine Optionen verfügbar"
 
+msgid "No permission to change the metadata of this file"
+msgstr "Keine Berechtigung, die Metadaten dieser Datei zu ändern"
+
+msgid "No permission to change this Team folder"
+msgstr "Keine Berechtigung, diesen Teamordner zu ändern"
+
 msgid "No permissions configured"
 msgstr "Keine Berechtigungen konfiguriert"
 
 msgid "No permissions found matching \"{query}\""
 msgstr "Keine Berechtigungen gefunden für \"{query}\""
 
-msgid "No Team folder metadata fields are configured for this Team folder. Contact your administrator to set up Team folder metadata fields."
-msgstr "Für diesen Teamordner sind keine Teamordner-Metadatenfelder konfiguriert. Kontaktieren Sie Ihren Administrator, um Teamordner-Metadatenfelder einzurichten."
+msgid "No shared cache such as Redis is set up. With more than one web server, presence and editing locks need one."
+msgstr "Es ist kein gemeinsamer Cache wie Redis eingerichtet. Mit mehr als einem Webserver brauchen Anwesenheit und Bearbeitungssperren einen."
+
+msgid "No Team folder metadata"
+msgstr "Keine Teamordner-Metadaten"
 
 msgid "No Team folders found"
 msgstr "Keine Teamordner gefunden"
 
-msgid "No views configured yet."
-msgstr "Noch keine Ansichten konfiguriert."
+msgid "None of these files can be changed"
+msgstr "Keine dieser Dateien kann geändert werden"
+
+msgid "None of these files can be found"
+msgstr "Keine dieser Dateien wurde gefunden"
+
+msgid "Not added — a file cannot be linked to itself"
+msgstr "Nicht hinzugefügt — eine Datei kann nicht mit sich selbst verknüpft werden"
+
+msgid "Not added — only files inside this Team folder can be linked"
+msgstr "Nicht hinzugefügt — es können nur Dateien aus diesem Teamordner verknüpft werden"
+
+msgid "Not added — this file is already linked"
+msgstr "Nicht hinzugefügt — diese Datei ist bereits verknüpft"
+
+msgid "not assigned"
+msgstr "nicht zugewiesen"
+
+msgid "Not checked"
+msgstr "Nicht angehakt"
+
+msgid "Not found"
+msgstr "Nicht gefunden"
 
 msgid "Not logged in"
 msgstr "Nicht angemeldet"
 
+msgid "Nothing found"
+msgstr "Nichts gefunden"
+
+msgid "Nothing was deleted — the fields are still in use."
+msgstr "Es wurde nichts gelöscht — die Felder sind noch in Verwendung."
+
 msgid "Number"
 msgstr "Nummer"
+
+msgid "Number of days"
+msgstr "Anzahl Tage"
 
 msgid "Number of metadata fields and their types"
 msgstr "Anzahl der Metadatenfelder und ihre Typen"
@@ -950,11 +1451,35 @@ msgstr "Anzahl der Metadatenfelder und ihre Typen"
 msgid "Number of Team folders using MetaVox"
 msgstr "Anzahl der Teamordner, die MetaVox verwenden"
 
+msgid "on {date}"
+msgstr "am {date}"
+
+msgid "On a date"
+msgstr "An einem Datum"
+
+msgid "One per line: .ru blocks every .ru address, example.com that site and its subdomains."
+msgstr "Eine pro Zeile: .ru sperrt jede .ru-Adresse, example.com diese Website und ihre Subdomains."
+
+msgid "One per line. Leave empty to allow every domain that is not blocked."
+msgstr "Eine pro Zeile. Leer lassen, um jede nicht gesperrte Domain zu erlauben."
+
+msgid "Only allow these domains"
+msgstr "Nur diese Domains erlauben"
+
 msgid "Only fill empty fields"
 msgstr "Nur leere Felder ausfüllen"
 
+msgid "Only links to approved domains are allowed"
+msgstr "Nur Links zu freigegebenen Domains sind erlaubt"
+
 msgid "Only lowercase letters (a-z), numbers (0-9) and underscores (_)"
 msgstr "Nur Kleinbuchstaben (a-z), Ziffern (0-9) und Unterstriche (_)"
+
+msgid "Only web and email addresses"
+msgstr "Nur Web- und E-Mail-Adressen"
+
+msgid "Open in Files"
+msgstr "In Dateien öffnen"
 
 msgid "Open link"
 msgstr "Link öffnen"
@@ -971,14 +1496,14 @@ msgstr "Optionswert"
 msgid "Optional description for this field"
 msgstr "Optionale Beschreibung für dieses Feld"
 
-msgid "Options:"
-msgstr "Optionen:"
+msgid "Orange"
+msgstr ""
 
 msgid "Organization name or contact email"
 msgstr "Organisationsname oder Kontakt-E-Mail-Adresse"
 
-msgid "Overview of metadata fields and usage in your MetaVox installation."
-msgstr "Übersicht der Metadatenfelder und Nutzung in Ihrer MetaVox-Installation."
+msgid "Overdue"
+msgstr "Überfällig"
 
 msgid "Overwrite existing values"
 msgstr "Vorhandene Werte überschreiben"
@@ -986,26 +1511,26 @@ msgstr "Vorhandene Werte überschreiben"
 msgid "People in the selected groups will be able to manage metadata fields and views"
 msgstr "Benutzer in den ausgewählten Gruppen können Metadatenfelder und Ansichten verwalten"
 
+msgid "Per folder"
+msgstr "Pro Ordner"
+
 msgid "Permission"
 msgstr "Berechtigung"
 
-msgid "Permission revoked successfully"
-msgstr "Berechtigung erfolgreich entzogen"
+msgid "Permission not found"
+msgstr "Berechtigung nicht gefunden"
+
+msgid "Permission revoked"
+msgstr "Berechtigung entzogen"
 
 msgid "Permissions"
 msgstr "Berechtigungen"
 
-msgid "Please add at least one option for dropdown fields"
-msgstr "Bitte fügen Sie mindestens eine Option für Dropdown-Felder hinzu"
+msgid "Personal Team folder settings"
+msgstr "Persönliche Teamordner-Einstellungen"
 
 msgid "Please configure some fields first using the \"Configure fields\" button."
 msgstr "Konfigurieren Sie zuerst Felder mit der Schaltfläche \"Felder Konfigurieren\"."
-
-msgid "Please enter a field label"
-msgstr "Bitte geben Sie eine Feldbezeichnung ein"
-
-msgid "Please enter a field name"
-msgstr "Bitte geben Sie einen Feldnamen ein"
 
 msgid "Please enter a subscription key"
 msgstr "Bitte geben Sie einen Abonnementschlüssel ein"
@@ -1013,29 +1538,29 @@ msgstr "Bitte geben Sie einen Abonnementschlüssel ein"
 msgid "Please enter a valid URL"
 msgstr "Bitte geben Sie eine gültige URL ein"
 
-msgid "Please select a JSON file to import"
-msgstr "Bitte wählen Sie eine JSON-Datei zum Importieren"
-
 msgid "Please try again."
 msgstr "Bitte versuchen Sie es erneut."
 
 msgid "Preparing …"
-msgstr ""
+msgstr "Vorbereiten …"
 
-msgid "Pricing details"
-msgstr "Preisinformationen"
+msgid "Preview"
+msgstr "Vorschau"
 
-msgid "Questions?"
-msgstr ""
+msgid "Questions about the app:"
+msgstr "Fragen zur App:"
 
-msgid "Referenced by"
-msgstr "Referenziert von"
+msgid "Red"
+msgstr "Rot"
 
-msgid "Regenerate"
-msgstr "Neu generieren"
+msgid "Regenerate AI suggestion for {field}"
+msgstr "KI-Vorschlag für {field} neu generieren"
 
 msgid "Remove"
 msgstr "Entfernen"
+
+msgid "Remove filter value {value}"
+msgstr "Filterwert {value} entfernen"
 
 msgid "Remove option"
 msgstr "Option entfernen"
@@ -1043,14 +1568,17 @@ msgstr "Option entfernen"
 msgid "Remove subscription key"
 msgstr "Abonnementschlüssel entfernen"
 
-msgid "Report sent successfully"
-msgstr "Bericht erfolgreich gesendet"
+msgid "Report sent"
+msgstr "Bericht gesendet"
 
 msgid "Required"
 msgstr "Erforderlich"
 
 msgid "Required field"
 msgstr "Pflichtfeld"
+
+msgid "Required, no value yet"
+msgstr "Erforderlich, noch kein Wert"
 
 msgid "Restore"
 msgstr "Wiederherstellen"
@@ -1073,23 +1601,53 @@ msgstr "Wiederholen"
 msgid "Revoke"
 msgstr "Entziehen"
 
+msgid "Revoke permission"
+msgstr "Berechtigung entziehen"
+
+msgid "Rule {position} of {column}"
+msgstr "Regel {position} von {column}"
+
+msgid "Rule deleted"
+msgstr "Regel gelöscht"
+
+msgid "Rule moved to position {position}"
+msgstr "Regel an Position {position} verschoben"
+
 msgid "Save"
 msgstr "Speichern"
 
 msgid "Save & activate"
 msgstr "Speichern & aktivieren"
 
-msgid "Save changes"
-msgstr "Änderungen Speichern"
+msgid "Save a filter as a folder in Files"
+msgstr "Einen Filter als Ordner in Dateien speichern"
+
+msgid "Save as folder"
+msgstr "Als Ordner speichern"
+
+msgid "Save as view"
+msgstr "Als Ansicht speichern"
 
 msgid "Save configuration"
 msgstr "Konfiguration Speichern"
 
-msgid "Save view"
-msgstr "Ansicht speichern"
+msgid "Save filters as view …"
+msgstr "Filter als Ansicht speichern …"
+
+msgid "Saved search not found"
+msgstr "Gespeicherte Suche nicht gefunden"
 
 msgid "Saving …"
 msgstr "Wird gespeichert …"
+
+msgid "Saving searches as folders is turned off"
+msgstr "Das Speichern von Suchen als Ordner ist ausgeschaltet"
+
+msgid "Search"
+msgstr "Suche"
+
+msgid "Search accounts"
+msgstr "Benutzer suchen"
 
 msgid "Search and select groups …"
 msgstr "Gruppen suchen und auswählen …"
@@ -1100,11 +1658,26 @@ msgstr "Felder suchen"
 msgid "Search fields …"
 msgstr "Felder suchen …"
 
+msgid "Search permissions"
+msgstr "Berechtigungen suchen"
+
 msgid "Search permissions …"
 msgstr "Berechtigungen suchen …"
 
 msgid "Search Team folders"
 msgstr "Teamordner suchen"
+
+msgid "Search values"
+msgstr "Werte durchsuchen"
+
+msgid "Searches every Team folder you are a member of."
+msgstr "Durchsucht jeden Teamordner, in dem Sie Mitglied sind."
+
+msgid "Searching metadata"
+msgstr "Nach Metadaten suchen"
+
+msgid "Select {field}"
+msgstr "{field} auswählen"
 
 msgid "Select a field"
 msgstr "Feld auswählen"
@@ -1121,11 +1694,17 @@ msgstr "Team-Ordner auswählen"
 msgid "Select a value"
 msgstr "Wert auswählen"
 
+msgid "Select all deletable"
+msgstr "Alle löschbaren auswählen"
+
 msgid "Select groups"
 msgstr "Gruppen Auswählen"
 
-msgid "Select JSON file"
-msgstr "JSON-Datei auswählen"
+msgid "Send a sort_field, filters or both"
+msgstr "Senden Sie ein sort_field, filters oder beides"
+
+msgid "Send each field name with its value"
+msgstr "Senden Sie jeden Feldnamen mit seinem Wert"
 
 msgid "Send report now"
 msgstr "Bericht jetzt senden"
@@ -1133,35 +1712,65 @@ msgstr "Bericht jetzt senden"
 msgid "Sending …"
 msgstr "Senden …"
 
-msgid "Set as default view"
-msgstr "Als Standardansicht festlegen"
+msgid "Set by the administrator, the same for every file here."
+msgstr "Vom Administrator festgelegt, für jede Datei hier gleich."
 
-msgid "Set preset filter values (comma-separated) per field."
-msgstr "Voreingestellte Filterwerte (kommagetrennt) pro Feld festlegen."
+msgid "Setting saved."
+msgstr "Einstellung gespeichert."
+
+msgid "Settings section"
+msgstr "Einstellungsbereich"
 
 msgid "Share anonymous usage statistics"
 msgstr "Anonyme Nutzungsstatistiken teilen"
 
-msgid "Sort"
-msgstr "Sortieren"
+msgid "Shortened. The full value loads when you edit the cell."
+msgstr "Gekürzt. Der vollständige Wert wird geladen, wenn Sie die Zelle bearbeiten."
+
+msgid "Show"
+msgstr "Anzeigen"
+
+msgid "Show {column}"
+msgstr "{column} anzeigen"
+
+msgid "Showing the newest {count} files. Make the search narrower to see the rest."
+msgstr "Die neuesten {count} Dateien werden angezeigt. Grenzen Sie die Suche ein, um den Rest zu sehen."
+
+msgid "Shown to people beside the field"
+msgstr "Wird Benutzern neben dem Feld angezeigt"
+
+msgid "Shown when you point at the icon in the cell, for example what needs to happen: “Approve first”."
+msgstr "Erscheint, wenn Sie auf das Symbol in der Zelle zeigen, zum Beispiel was zu tun ist: „Noch freigeben“."
+
+msgid "Shown when you point at the icon in the cell, for example what needs to happen: “Approve first”. Empty: “{name}”."
+msgstr "Erscheint, wenn Sie auf das Symbol in der Zelle zeigen, zum Beispiel was zu tun ist: „Noch freigeben“. Leer: „{name}“."
+
+msgid "Some text"
+msgstr "Ein Text"
+
+msgid "Someone else"
+msgstr "Jemand anderes"
+
+msgid "Someone else is editing this value"
+msgstr "Jemand anderes bearbeitet diesen Wert"
+
+msgid "Something else"
+msgstr "Etwas anderes"
 
 msgid "Sorting"
 msgstr "Sortierung"
 
+msgid "Sorting and filtering on MetaVox columns is paused: not all values could be loaded."
+msgstr "Sortieren und Filtern nach MetaVox-Spalten ist pausiert: Nicht alle Werte konnten geladen werden."
+
 msgid "Spaces are not allowed — use underscores instead"
 msgstr "Leerzeichen sind nicht erlaubt — verwenden Sie Unterstriche"
-
-msgid "Standard Nextcloud file view"
-msgstr ""
 
 msgid "Standard view"
 msgstr "Standardansicht"
 
 msgid "Standard view — loads automatically when opening this folder"
 msgstr "Standardansicht — wird beim Öffnen dieses Ordners automatisch geladen"
-
-msgid "Statistics"
-msgstr "Statistiken"
 
 msgid "Subscription activated!"
 msgstr "Abonnement aktiviert!"
@@ -1181,11 +1790,17 @@ msgstr "Abonnementschlüssel entfernt."
 msgid "Subscription key saved but validation failed: {reason}"
 msgstr "Abonnementschlüssel gespeichert, aber Validierung fehlgeschlagen: {reason}"
 
+msgid "Subscriptions and pricing:"
+msgstr "Abonnements und Preise:"
+
 msgid "Support"
 msgstr ""
 
 msgid "Support MetaVox"
 msgstr "MetaVox unterstützen"
+
+msgid "Switch view"
+msgstr "Ansicht wechseln"
 
 msgid "Team folder"
 msgstr "Team-Ordner"
@@ -1196,12 +1811,6 @@ msgstr "Teamordner (optional)"
 msgid "Team folder {id}"
 msgstr "Team-Ordner {id}"
 
-msgid "Team folder fields"
-msgstr "Teamordner Felder"
-
-msgid "Team folder information"
-msgstr "Teamordner Information"
-
 msgid "Team folder metadata"
 msgstr "Teamordner Metadaten"
 
@@ -1209,10 +1818,13 @@ msgid "Team folder metadata fields"
 msgstr "Teamordner Metadatenfelder"
 
 msgid "Team folder values"
-msgstr ""
+msgstr "Teamordner-Werte"
 
 msgid "Team folders"
 msgstr "Teamordner"
+
+msgid "Team Folders %s is on."
+msgstr "Teamordner %s ist aktiviert."
 
 msgid "Team folders with metadata"
 msgstr "Teamordner mit Metadaten"
@@ -1220,14 +1832,56 @@ msgstr "Teamordner mit Metadaten"
 msgid "Text"
 msgstr ""
 
+msgid "Text by the icon (optional)"
+msgstr "Text am Symbol (optional)"
+
 msgid "Thank you for helping improve MetaVox!"
 msgstr "Vielen Dank für Ihren Beitrag zur Verbesserung von MetaVox!"
 
 msgid "Thank you! Anonymous usage statistics enabled."
 msgstr "Vielen Dank! Anonyme Nutzungsstatistiken aktiviert."
 
+msgid "The Client Push app (notify_push) is not set up. Changes by others then appear after a refresh."
+msgstr "Die App Client Push (notify_push) ist nicht eingerichtet. Änderungen anderer erscheinen dann erst nach dem Aktualisieren."
+
+msgid "The current filters are saved as a new view."
+msgstr "Die aktuellen Filter werden als neue Ansicht gespeichert."
+
+msgid "The current view stays as it is."
+msgstr "Die aktuelle Ansicht bleibt unverändert."
+
+msgid "The filters replace those of this view. Everyone with access sees the change."
+msgstr "Die Filter ersetzen die dieser Ansicht. Alle mit Zugriff sehen die Änderung."
+
+msgid "The full value could not be loaded. Try again."
+msgstr "Der vollständige Wert konnte nicht geladen werden. Versuche es erneut."
+
+msgid "The full values could not be loaded. Nothing was filled."
+msgstr "Die vollständigen Werte konnten nicht geladen werden. Es wurde nichts ausgefüllt."
+
+msgid "The metadata check is only available to administrators"
+msgstr "Die Metadatenprüfung steht nur Administratoren zur Verfügung"
+
+msgid "The open rule for {column} was closed without changes."
+msgstr "Die offene Regel für {column} wurde ohne Änderungen geschlossen."
+
+msgid "The rules of this view take up more than 32 KB"
+msgstr "Die Regeln dieser Ansicht sind größer als 32 KB"
+
+msgid "The search could not be saved."
+msgstr "Die Suche konnte nicht gespeichert werden."
+
+msgid "The search index is being built: %1$s of %2$s files. Until then, free-text search finds only the files already done."
+msgstr "Der Suchindex wird aufgebaut: %1$s von %2$s Dateien. Bis dahin findet die Freitextsuche nur die bereits verarbeiteten Dateien."
+
+msgid "The Team Folders app is off. MetaVox adds metadata to Team folders and does nothing without it."
+msgstr "Die App Teamordner ist deaktiviert. MetaVox fügt Teamordnern Metadaten hinzu und tut ohne sie nichts."
+
 msgid "The telemetry server returned an error: {error}"
 msgstr "Der Telemetrie-Server hat einen Fehler zurückgegeben: {error}"
+
+msgid "The User status app is off. Who has a Team folder open then shows for up to 12 hours."
+msgstr "Die App Benutzerstatus ist deaktiviert. Wer einen Teamordner geöffnet hat, wird dann bis zu 12 Stunden angezeigt."
 
 msgid "These fields apply to the Team folder itself"
 msgstr "Diese Felder gelten für den Teamordner selbst"
@@ -1235,20 +1889,59 @@ msgstr "Diese Felder gelten für den Teamordner selbst"
 msgid "These fields can be set on individual files"
 msgstr "Diese Felder können für einzelne Dateien festgelegt werden"
 
-msgid "This file is already linked"
-msgstr "Diese Datei ist bereits verknüpft"
+msgid "This field is required"
+msgstr "Dieses Feld ist erforderlich"
 
-msgid "This file is not in a Team folder. Metadata is only available for Team folder files."
-msgstr "Diese Datei befindet sich nicht in einem Teamordner. Metadaten sind nur für Dateien in Teamordnern verfügbar."
+msgid "This file has no metadata to copy"
+msgstr "Diese Datei hat keine Metadaten zum Kopieren"
 
-msgid "This metadata applies to the entire Team folder and can only be edited by administrators in the administration settings."
-msgstr "Diese Metadaten gelten für den gesamten Teamordner und können nur von Administratoren in den Admin-Einstellungen bearbeitet werden."
+msgid "This is no MetaVox backup file name"
+msgstr "Dies ist kein Dateiname eines MetaVox-Backups"
 
-msgid "Total accounts"
-msgstr "Benutzer gesamt"
+msgid "This kind of link is not allowed"
+msgstr "Diese Art von Link ist nicht erlaubt"
 
-msgid "Total metadata entries"
-msgstr "Gesamte Metadaten-Einträge"
+msgid "This metadata applies to the whole Team folder. Only administrators can change it."
+msgstr "Diese Metadaten gelten für den gesamten Teamordner. Nur Administratoren können sie ändern."
+
+msgid "This rule does not work with this field and highlights nothing."
+msgstr "Diese Regel passt nicht zu diesem Feld und markiert nichts."
+
+msgid "This rule uses an option the field no longer has."
+msgstr "Diese Regel nutzt eine Option, die das Feld nicht mehr hat."
+
+msgid "This saved search does not exist."
+msgstr "Diese gespeicherte Suche existiert nicht."
+
+msgid "This Team folder does not use this field for its files"
+msgstr "Dieser Teamordner verwendet dieses Feld nicht für seine Dateien"
+
+msgid "This text contains a character that cannot be saved"
+msgstr "Dieser Text enthält ein Zeichen, das nicht gespeichert werden kann"
+
+msgid "This text is too long"
+msgstr "Dieser Text ist zu lang"
+
+msgid "This value can only be changed by an administrator."
+msgstr "Dieser Wert kann nur von einer Administratorin oder einem Administrator geändert werden."
+
+msgid "This value is not valid"
+msgstr "Dieser Wert ist ungültig"
+
+msgid "To save, finish or cancel the open rule for {column}."
+msgstr "Zum Speichern die offene Regel für {column} abschließen oder abbrechen."
+
+msgid "today"
+msgstr "heute"
+
+msgid "Today"
+msgstr "Heute"
+
+msgid "Too many IDs in one request"
+msgstr "Zu viele IDs in einer Anfrage"
+
+msgid "Too many matches to search them all"
+msgstr "Zu viele Treffer, um alle zu durchsuchen"
 
 msgid "Total metadata entries count"
 msgstr "Gesamtanzahl der Metadateneinträge"
@@ -1256,26 +1949,35 @@ msgstr "Gesamtanzahl der Metadateneinträge"
 msgid "Total number of accounts and active accounts"
 msgstr "Gesamtzahl der Benutzer und aktive Benutzer"
 
+msgid "Type a word in the search box to see the results of the filter."
+msgstr "Geben Sie ein Wort in das Suchfeld ein, um die Ergebnisse des Filters zu sehen."
+
 msgid "Type at least 2 characters …"
 msgstr "Mindestens 2 Zeichen eingeben …"
 
+msgid "Type the whole value, exactly as it is written. To find part of a value, type it in the search box instead."
+msgstr "Geben Sie den ganzen Wert genau so ein, wie er geschrieben ist. Um einen Teil eines Wertes zu finden, geben Sie ihn stattdessen in das Suchfeld ein."
+
 msgid "Type to search accounts …"
 msgstr "Tippen um Benutzer zu suchen …"
+
+msgid "Unavailable file"
+msgstr "Datei nicht verfügbar"
+
+msgid "Undo"
+msgstr "Rückgängig"
 
 msgid "Unknown"
 msgstr "Unbekannt"
 
 msgid "Unknown error"
-msgstr ""
-
-msgid "Unknown field type: {type}"
-msgstr ""
+msgstr "Unbekannter Fehler"
 
 msgid "Unnamed field"
 msgstr "Unbenanntes Feld"
 
-msgid "Upload a JSON file to import metadata fields."
-msgstr "Laden Sie eine JSON-Datei hoch, um Metadatenfelder zu importieren."
+msgid "Update “{name}”"
+msgstr "„{name}“ aktualisieren"
 
 msgid "Uppercase letters are not allowed — use lowercase only"
 msgstr "Großbuchstaben sind nicht erlaubt — verwenden Sie nur Kleinbuchstaben"
@@ -1283,11 +1985,35 @@ msgstr "Großbuchstaben sind nicht erlaubt — verwenden Sie nur Kleinbuchstaben
 msgid "URL"
 msgstr ""
 
+msgid "Use 1 for ticked or 0 for not ticked"
+msgstr "Verwenden Sie 1 für angehakt oder 0 für nicht angehakt"
+
+msgid "Use at most 40 characters"
+msgstr "Höchstens 40 Zeichen verwenden"
+
+msgid "Use true or false"
+msgstr "Verwenden Sie true oder false"
+
+msgid "Users can find files by a field and its value from Nextcloud's search bar. Light: one search reads an index."
+msgstr "Benutzer können über die Suchleiste von Nextcloud Dateien nach einem Feld und seinem Wert finden. Ressourcenschonend: Eine Suche liest einen Index."
+
+msgid "Users can keep a filter as a folder under \"Metadata searches\" in Files (Nextcloud 33 and newer). Opening one shows up to 500 files and asks more of the server than a search. Works only with the filter on."
+msgstr "Benutzer können einen Filter als Ordner unter „Metadaten-Suchen“ in Dateien behalten (Nextcloud 33 und neuer). Das Öffnen zeigt bis zu 500 Dateien und belastet den Server mehr als eine Suche. Funktioniert nur bei eingeschaltetem Filter."
+
+msgid "Validation failed"
+msgstr "Validierung fehlgeschlagen"
+
 msgid "Value"
 msgstr "Wert"
 
 msgid "Value to check"
 msgstr "Zu prüfender Wert"
+
+msgid "Values"
+msgstr "Werte"
+
+msgid "View created"
+msgstr "Ansicht erstellt"
 
 msgid "View details"
 msgstr "Details anzeigen"
@@ -1301,17 +2027,14 @@ msgstr "Name der Ansicht ist erforderlich"
 msgid "View not found"
 msgstr "Ansicht nicht gefunden"
 
-msgid "Views"
-msgstr "Ansichten"
+msgid "View updated"
+msgstr "Ansicht aktualisiert"
 
 msgid "Visible"
 msgstr "Sichtbar"
 
 msgid "Visit Support"
 msgstr "Support besuchen"
-
-msgid "Warning:"
-msgstr "Warnung:"
 
 msgid "We collect: field counts, Team folder counts, entry counts, version info (MetaVox, Nextcloud, PHP), and basic server configuration. No personal data or file contents are ever shared."
 msgstr "Wir sammeln: Feldanzahlen, Teamordner-Anzahlen, Eintragsanzahlen, Versionsinformationen (MetaVox, Nextcloud, PHP) und grundlegende Serverkonfiguration. Persönliche Daten oder Dateiinhalte werden niemals geteilt."
@@ -1325,6 +2048,9 @@ msgstr "Was wir niemals sammeln:"
 msgid "What you can do:"
 msgstr "Was Sie tun können:"
 
+msgid "When a cell matches more than one rule, the top one counts."
+msgstr "Passt eine Zelle zu mehreren Regeln, zählt die oberste."
+
 msgid "When enabled, people see a \"Generate with AI\" button in the metadata sidebar. The AI reads file content and suggests values for metadata fields."
 msgstr "Wenn aktiviert, sehen Benutzer eine \"Mit KI generieren\"-Schaltfläche in der Metadaten-Seitenleiste. Die KI liest den Dateiinhalt und schlägt Werte für Metadatenfelder vor."
 
@@ -1337,14 +2063,32 @@ msgstr "wo"
 msgid "Whether your Nextcloud has an Extended Support / Enterprise subscription (a single yes/no, sourced from Nextcloud's public API)"
 msgstr "Ob Ihr Nextcloud ein Extended-Support- oder Enterprise-Abonnement hat (nur ja oder nein, aus der öffentlichen API von Nextcloud)"
 
+msgid "Which links people can save in URL fields."
+msgstr "Welche Links in URL-Feldern gespeichert werden können."
+
+msgid "Who has a Team folder open follows the open browsers, through the User status app."
+msgstr "Wer einen Teamordner geöffnet hat, folgt den geöffneten Browsern, über die App Benutzerstatus."
+
+msgid "Within the next … days"
+msgstr "Innerhalb der nächsten … Tage"
+
+msgid "Without thousands separators, for example 10000"
+msgstr "Ohne Tausendertrennzeichen, zum Beispiel 10000"
+
 msgid "Yes"
 msgstr "Ja"
 
 msgid "Yes (checked)"
 msgstr "Ja (aktiviert)"
 
+msgid "You are not a member of a Team folder."
+msgstr "Sie sind kein Mitglied eines Teamordners."
+
 msgid "You can only link files inside this Team folder"
-msgstr "Du kannst nur Dateien innerhalb dieses Teamordners verknüpfen"
+msgstr "Sie können nur Dateien innerhalb dieses Teamordners verknüpfen"
+
+msgid "You can save at most 50 searches."
+msgstr "Sie können höchstens 50 Suchen speichern."
 
 msgid "You do not have access to any Team folders yet. Contact your administrator if you need access."
 msgstr "Sie haben noch keinen Zugriff auf Teamordner. Wenden Sie sich an Ihren Administrator, wenn Sie Zugriff benötigen."
@@ -1361,6 +2105,12 @@ msgstr "Ihre Installation"
 msgid "Your MetaVox subscription key needs attention."
 msgstr "Ihr MetaVox-Abonnementschlüssel erfordert Aufmerksamkeit."
 
+msgid "Your saved metadata searches and the files they find."
+msgstr "Ihre gespeicherten Metadaten-Suchen und die Dateien, die sie finden."
+
+msgid "Your saved metadata searches show here, each with the files it finds. Save one with the metadata filter in the search bar."
+msgstr "Hier erscheinen Ihre gespeicherten Metadaten-Suchen, jeweils mit den Dateien, die sie finden. Speichern Sie eine mit dem Metadaten-Filter in der Suchleiste."
+
 msgid "Your Team folders"
 msgstr "Ihre Teamordner"
 
@@ -1369,60 +2119,120 @@ msgid_plural "{count} cells updated"
 msgstr[0] "{count} Zellen aktualisiert"
 msgstr[1] "{count} Zellen aktualisiert"
 
+msgid "{field} is used in %n Team folder and cannot be deleted"
+msgid_plural "{field} is used in %n Team folders and cannot be deleted"
+msgstr[0] "{field} wird in %n Teamordner verwendet und kann nicht gelöscht werden"
+msgstr[1] "{field} wird in %n Teamordnern verwendet und kann nicht gelöscht werden"
+
+msgid "{removed} deleted, {skipped} skipped because it is still in use"
+msgid_plural "{removed} deleted, {skipped} skipped because they are still in use"
+msgstr[0] "{removed} gelöscht, {skipped} übersprungen, da sie noch verwendet werden"
+msgstr[1] "{removed} gelöscht, {skipped} übersprungen, da sie noch verwendet werden"
+
 msgid "{values} and %n other"
 msgid_plural "{values} and %n others"
-msgstr[0] ""
-msgstr[1] ""
-
-msgid "%n column"
-msgid_plural "%n columns"
-msgstr[0] "%n Spalten"
-msgstr[1] "%n Spalten"
+msgstr[0] "{values} und %n weiterer"
+msgstr[1] "{values} und %n weitere"
 
 msgid "%n entry"
 msgid_plural "%n entries"
 msgstr[0] "%n Eintrag"
 msgstr[1] "%n Einträge"
 
-msgid "%n field configured"
-msgid_plural "%n fields configured"
-msgstr[0] "%n Felder konfiguriert"
-msgstr[1] "%n Felder konfiguriert"
+msgid "%n field"
+msgid_plural "%n fields"
+msgstr[0] "%n Feld"
+msgstr[1] "%n Felder"
 
 msgid "%n field definition"
 msgid_plural "%n field definitions"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%n Felddefinition"
+msgstr[1] "%n Felddefinitionen"
+
+msgid "%n field deleted"
+msgid_plural "%n fields deleted"
+msgstr[0] "%n Feld gelöscht"
+msgstr[1] "%n Felder gelöscht"
 
 msgid "%n field found"
 msgid_plural "%n fields found"
 msgstr[0] "%n Feld gefunden"
 msgstr[1] "%n Felder gefunden"
 
+msgid "%n field selected"
+msgid_plural "%n fields selected"
+msgstr[0] "%n Feld ausgewählt"
+msgstr[1] "%n Felder ausgewählt"
+
+msgid "%n file field"
+msgid_plural "%n file fields"
+msgstr[0] "%n Dateifeld"
+msgstr[1] "%n Dateifelder"
+
 msgid "%n file value"
 msgid_plural "%n file values"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%n Dateiwert"
+msgstr[1] "%n Dateiwerte"
 
-msgid "%n filter"
-msgid_plural "%n filters"
-msgstr[0] "%n Filter"
-msgstr[1] "%n Filter"
+msgid "%n filter active"
+msgid_plural "%n filters active"
+msgstr[0] "%n Filter aktiv"
+msgstr[1] "%n Filter aktiv"
 
 msgid "%n folder"
 msgid_plural "%n folders"
 msgstr[0] "%n Ordner"
 msgstr[1] "%n Ordner"
 
+msgid "%n folder found"
+msgid_plural "%n folders found"
+msgstr[0] "%n Ordner gefunden"
+msgstr[1] "%n Ordner gefunden"
+
+msgid "%n permission"
+msgid_plural "%n permissions"
+msgstr[0] "%n Berechtigung"
+msgstr[1] "%n Berechtigungen"
+
+msgid "%n permission found"
+msgid_plural "%n permissions found"
+msgstr[0] "%n Berechtigung gefunden"
+msgstr[1] "%n Berechtigungen gefunden"
+
+msgid "%n rule"
+msgid_plural "%n rules"
+msgstr[0] "%n Regel"
+msgstr[1] "%n Regeln"
+
+msgid "%n Team folder field"
+msgid_plural "%n Team folder fields"
+msgstr[0] "%n Teamordnerfeld"
+msgstr[1] "%n Teamordnerfelder"
+
 msgid "%n Team folder value"
 msgid_plural "%n Team folder values"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%n Teamordner-Wert"
+msgstr[1] "%n Teamordner-Werte"
+
+msgid "%n value"
+msgid_plural "%n values"
+msgstr[0] "%n Wert"
+msgstr[1] "%n Werte"
+
+msgid "Clear all metadata from this file? Required fields keep their value: {fields}. This cannot be undone."
+msgid_plural "Clear all metadata from {count} files? Required fields keep their value: {fields}. This cannot be undone."
+msgstr[0] "Alle Metadaten dieser Datei löschen? Erforderliche Felder behalten ihren Wert: {fields}. Dies kann nicht rückgängig gemacht werden."
+msgstr[1] "Alle Metadaten von {count} Dateien löschen? Erforderliche Felder behalten ihren Wert: {fields}. Dies kann nicht rückgängig gemacht werden."
 
 msgid "Clear all metadata from this file? This cannot be undone."
 msgid_plural "Clear all metadata from {count} files? This cannot be undone."
 msgstr[0] "Alle Metadaten dieser Datei löschen? Dies kann nicht rückgängig gemacht werden."
 msgstr[1] "Alle Metadaten von {count} Dateien löschen? Dies kann nicht rückgängig gemacht werden."
+
+msgid "Delete %n selected field? Its values are removed everywhere and this cannot be undone."
+msgid_plural "Delete %n selected fields? Their values are removed everywhere and this cannot be undone."
+msgstr[0] "%n ausgewähltes Feld löschen? Die Werte werden überall entfernt und dies kann nicht rückgängig gemacht werden."
+msgstr[1] "%n ausgewählte Felder löschen? Die Werte werden überall entfernt und dies kann nicht rückgängig gemacht werden."
 
 msgid "Edit metadata ({count} item)"
 msgid_plural "Edit metadata ({count} items)"
@@ -1434,30 +2244,35 @@ msgid_plural "Exported %n fields"
 msgstr[0] "%n Feld exportiert"
 msgstr[1] "%n Felder exportiert"
 
-msgid "Found %n field matching \"{query}\""
-msgid_plural "Found %n fields matching \"{query}\""
-msgstr[0] "%n Felder gefunden für \"{query}\""
-msgstr[1] "%n Felder gefunden für \"{query}\""
-
 msgid "Found %n field to import"
 msgid_plural "Found %n fields to import"
 msgstr[0] "%n Feld zum Importieren gefunden"
 msgstr[1] "%n Felder zum Importieren gefunden"
 
-msgid "Found %n Team folder matching \"{query}\""
-msgid_plural "Found %n Team folders matching \"{query}\""
-msgstr[0] "%n Teamordner gefunden für \"{query}\""
-msgstr[1] "%n Teamordner gefunden für \"{query}\""
+msgid "Import completed: {imported} imported, {errors} error"
+msgid_plural "Import completed: {imported} imported, {errors} errors"
+msgstr[0] "Import abgeschlossen: {imported} importiert, {errors} Fehler"
+msgstr[1] "Import abgeschlossen: {imported} importiert, {errors} Fehler"
 
 msgid "Imported %n field"
 msgid_plural "Imported %n fields"
 msgstr[0] "%n Feld importiert"
 msgstr[1] "%n Felder importiert"
 
+msgid "in %n Team folder"
+msgid_plural "in %n Team folders"
+msgstr[0] "in %n Teamordner"
+msgstr[1] "in %n Teamordnern"
+
 msgid "Metadata cleared for {count} file"
 msgid_plural "Metadata cleared for {count} files"
 msgstr[0] "Metadaten für {count} Dateien gelöscht"
 msgstr[1] "Metadaten für {count} Dateien gelöscht"
+
+msgid "Metadata cleared for {count} file. Kept: {fields}"
+msgid_plural "Metadata cleared for {count} files. Kept: {fields}"
+msgstr[0] "Metadaten für {count} Datei gelöscht. Behalten: {fields}"
+msgstr[1] "Metadaten für {count} Dateien gelöscht. Behalten: {fields}"
 
 msgid "Metadata exported for {count} file"
 msgid_plural "Metadata exported for {count} files"
@@ -1474,10 +2289,20 @@ msgid_plural "MetaVox is running for {count} accounts here and keeps working in 
 msgstr[0] "MetaVox läuft hier für {count} Benutzer und funktioniert auch ohne Abonnement vollständig. Wenn Ihre Organisation davon profitiert, ist ein Abonnement sehr willkommen — es finanziert die Wartung. Verkauf über Nextcloud: wenden Sie sich an Ihren Kundenbetreuer oder {email}."
 msgstr[1] "MetaVox läuft hier für {count} Benutzer und funktioniert auch ohne Abonnement vollständig. Wenn Ihre Organisation davon profitiert, ist ein Abonnement sehr willkommen — es finanziert die Wartung. Verkauf über Nextcloud: wenden Sie sich an Ihren Kundenbetreuer oder {email}."
 
+msgid "more than a day ago"
+msgid_plural "more than %n days ago"
+msgstr[0] "vor mehr als einem Tag"
+msgstr[1] "vor mehr als %n Tagen"
+
 msgid "Permission granted to %n group"
 msgid_plural "Permission granted to %n groups"
 msgstr[0] "Berechtigung für %n Gruppe erteilt"
 msgstr[1] "Berechtigung für %n Gruppen erteilt"
+
+msgid "Saves %n filter: {list}"
+msgid_plural "Saves %n filters: {list}"
+msgstr[0] "Speichert %n Filter: {list}"
+msgstr[1] "Speichert %n Filter: {list}"
 
 msgid "Show %n more folder"
 msgid_plural "Show %n more folders"
@@ -1489,12 +2314,22 @@ msgid_plural "Showing {displayed} of {total} folders"
 msgstr[0] "{displayed} von {total} Ordnern angezeigt"
 msgstr[1] "{displayed} von {total} Ordnern angezeigt"
 
+msgid "Showing {shown} of %n match. Type more to narrow it down."
+msgid_plural "Showing {shown} of %n matches. Type more to narrow them down."
+msgstr[0] "{shown} von %n Treffer angezeigt. Tippen Sie weiter, um ihn einzugrenzen."
+msgstr[1] "{shown} von %n Treffern angezeigt. Tippen Sie weiter, um sie einzugrenzen."
+
+msgid "Showing {shown} of %n value. Search to find the rest."
+msgid_plural "Showing {shown} of %n values. Search to find the rest."
+msgstr[0] "{shown} von %n Wert angezeigt. Suchen Sie, um den Rest zu finden."
+msgstr[1] "{shown} von %n Werten angezeigt. Suchen Sie, um den Rest zu finden."
+
 msgid "This field is used in %n Team folder. Some changes may be restricted."
 msgid_plural "This field is used in %n Team folders. Some changes may be restricted."
 msgstr[0] "Dieses Feld wird in %n Teamordner verwendet. Einige Änderungen können eingeschränkt sein."
 msgstr[1] "Dieses Feld wird in %n Teamordnern verwendet. Einige Änderungen können eingeschränkt sein."
 
-msgid "Used in %n Team folder"
-msgid_plural "Used in %n Team folders"
-msgstr[0] "Verwendet in %n Teamordnern"
-msgstr[1] "Verwendet in %n Teamordnern"
+msgid "within the next day"
+msgid_plural "within the next %n days"
+msgstr[0] "innerhalb des nächsten Tages"
+msgstr[1] "innerhalb der nächsten %n Tage"

@@ -1,11 +1,10 @@
 /**
  * Helpers for the "File Link" field type.
  *
- * A `filelink` value holds one OR MORE file references. Each reference is
- * "<fileid>:<path>"; multiple references are joined with the app's ';#'
- * delimiter (e.g. "12:/a.pdf;#34:/b.docx"). A single reference is just a
- * one-element list, so old single-value data keeps working unchanged. The
- * fileid is canonical and survives renames/moves; the path is a display cache.
+ * A `filelink` value holds one OR MORE file references, joined with the app's
+ * ';#' delimiter. The server stores each as "<fileid>:" (e.g. "12:;#34:") and
+ * never sends a path: names come from Nextcloud, as this user sees the file.
+ * A token without an id is text (a picked path, or one we could not resolve).
  * See issue #73 and lib/Service/FileReferenceService.php (same contract).
  */
 
@@ -67,16 +66,30 @@ export function joinTokens(tokens) {
 }
 
 /**
- * Best-effort display name for a token: the server-resolved current name when
- * available, else the basename of the cached path.
+ * Whether a picked path lies in the team folder at base ('' = no folder known).
+ *
+ * @param {string} path
+ * @param {string} base
+ * @return {boolean}
+ */
+export function isWithin(path, base) {
+  if (!base) return true
+  const root = base.replace(/\/+$/, '')
+  return path === root || path.startsWith(root + '/')
+}
+
+/**
+ * What a link shows: the file's current name, or for a token without id the
+ * last part of its path. An id without a known name gives '': the caller
+ * shows it as loading or unavailable.
  *
  * @param {{fileId: ?number, path: string}} token
  * @param {Object<number,string>} [resolvedNames] map fileId => current name
  * @return {string}
  */
 export function displayName(token, resolvedNames) {
-  if (resolvedNames && token.fileId != null && resolvedNames[token.fileId]) {
-    return resolvedNames[token.fileId]
+  if (token.fileId != null) {
+    return (resolvedNames && resolvedNames[token.fileId]) || ''
   }
   const parts = (token.path || '').split('/')
   return parts[parts.length - 1] || token.path || ''

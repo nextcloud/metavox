@@ -6,6 +6,7 @@
 
 import { createApp, h } from 'vue'
 import FilterPicker from './FilterPicker.vue'
+import { watchLoading } from '../utils/updatedPage.js'
 
 /**
  * @return {Promise<{field: string, value: string, groupfolderId: ?number}|null>}
@@ -41,6 +42,6 @@ export function openFilterPicker() {
 			},
 		})
 
-		app.mount(container)
+		watchLoading(app).mount(container)
 	})
 }

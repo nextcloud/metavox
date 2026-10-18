@@ -4,409 +4,228 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Controller;
 
+use OCA\MetaVox\Access\Access;
+use OCA\MetaVox\Access\RequireAccess;
+use OCA\MetaVox\Exception\MetadataAccessException;
+use OCA\MetaVox\Exception\RequestException;
+use OCA\MetaVox\Service\ApiValidationException;
 use OCA\MetaVox\Service\FieldService;
 use OCA\MetaVox\Service\FileReferenceService;
 use OCA\MetaVox\Service\LockService;
-use OCA\MetaVox\Service\PermissionService;
+use OCA\MetaVox\Service\FileAccessService;
 use OCA\MetaVox\Service\PushService;
+use OCA\MetaVox\L10n\Translatable;
+use OCA\MetaVox\Validation\FieldDefinition;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\JSONResponse;
+use OCP\Collaboration\Collaborators\ISearch;
 use OCP\Files\IRootFolder;
 use OCP\IGroupManager;
+use OCP\IL10N;
 use OCP\IRequest;
-use OCP\IUserManager;
 use OCP\IUserSession;
+use OCP\Share\IShare;
 use Psr\Log\LoggerInterface;
 
 class FieldController extends BaseController {
 
-    private IUserManager $userManager;
+    private ISearch $collaboratorSearch;
     private IGroupManager $groupManager;
+    private IRootFolder $rootFolder;
     private LockService $lockService;
     private PushService $pushService;
     private FileReferenceService $fileReferenceService;
+    private FileAccessService $fileAccess;
     private LoggerInterface $logger;
+    private IL10N $l;
 
     public function __construct(
         string $appName,
         IRequest $request,
         FieldService $fieldService,
-        PermissionService $permissionService,
         IUserSession $userSession,
-        IUserManager $userManager,
+        ISearch $collaboratorSearch,
         IGroupManager $groupManager,
         IRootFolder $rootFolder,
         LockService $lockService,
         PushService $pushService,
         FileReferenceService $fileReferenceService,
-        LoggerInterface $logger
+        FileAccessService $fileAccess,
+        LoggerInterface $logger,
+        IL10N $l
     ) {
-        parent::__construct($appName, $request, $userSession, $permissionService, $fieldService, $rootFolder);
-        $this->userManager = $userManager;
+        parent::__construct($appName, $request, $userSession, $fieldService);
+        $this->rootFolder = $rootFolder;
+        $this->collaboratorSearch = $collaboratorSearch;
         $this->groupManager = $groupManager;
         $this->lockService = $lockService;
         $this->pushService = $pushService;
         $this->fileReferenceService = $fileReferenceService;
+        $this->fileAccess = $fileAccess;
         $this->logger = $logger;
+        $this->l = $l;
     }
 
     /**
-     * Search users for user/group picker field.
-     * Accepts ?search= parameter, returns max 25 results.
+     * Search users for the user picker: ?search=, at most 25 results.
      */
     #[NoAdminRequired]
     #[NoCSRFRequired]
+    #[RequireAccess(Access::LoggedIn, reason: 'user search for the user picker: whom you may find, as when sharing')]
     public function getUsers(): JSONResponse {
-        try {
-            $search = $this->request->getParam('search', '');
-            $limit = 25;
+        $user = $this->requireUser();
+        $search = $this->textParam('search') ?? '';
+        $limit = 25;
 
-            // searchDisplayName() replaces the deprecated search(): same backends
-            // and pattern, but it returns the display name up front (no extra
-            // lookup per user). It returns a plain list, so dedupe on uid here to
-            // keep search()'s behaviour for a user present in several backends.
-            $users = $this->userManager->searchDisplayName($search, $limit);
-            $userList = [];
+        // Nextcloud's own sharee search, so the share settings apply: user
+        // enumeration, only your own groups, phone book, full match.
+        [$result] = $this->collaboratorSearch->search($search, [IShare::TYPE_USER], false, $limit, 0);
 
-            foreach ($users as $user) {
-                $userList[$user->getUID()] = [
-                    'id' => $user->getUID(),
-                    'displayname' => $user->getDisplayName(),
-                ];
-            }
-
-            return new JSONResponse(array_values($userList));
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        // It leaves out the one searching; picking yourself is fine.
+        $found = [];
+        if ($search === '' || str_contains(mb_strtolower($user->getUID() . ' ' . $user->getDisplayName()), mb_strtolower($search))) {
+            $found[$user->getUID()] = $user->getDisplayName();
         }
+        foreach (array_merge($result['exact']['users'] ?? [], $result['users'] ?? []) as $item) {
+            $uid = (string)($item['value']['shareWith'] ?? '');
+            if ($uid !== '' && !isset($found[$uid])) {
+                $found[$uid] = (string)($item['label'] ?? $uid);
+            }
+        }
+
+        $users = [];
+        foreach (array_slice($found, 0, $limit, true) as $uid => $name) {
+            $users[] = ['id' => (string)$uid, 'displayname' => $name];
+        }
+        return new JSONResponse($users);
     }
 
     /**
-     * Update a field definition
+     * Change a field definition: only what is sent changes. Admins only, like
+     * the admin page.
      */
-    #[NoAdminRequired]
-    public function updateField(int $id): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
-            if ($deny = $this->requireManagePermission($user->getUID())) return $deny;
-
-            $fieldName = $this->request->getParam('field_name');
-            $fieldLabel = $this->request->getParam('field_label');
-            $fieldType = $this->request->getParam('field_type');
-            $fieldDescription = $this->request->getParam('field_description', '');
-            $fieldOptions = $this->request->getParam('field_options', '');
-            $isRequired = $this->request->getParam('is_required', false);
-            $sortOrder = $this->request->getParam('sort_order', 0);
-            $appliesToGroupfolder = $this->request->getParam('applies_to_groupfolder');
-
-            if (empty($fieldName) || empty($fieldLabel) || empty($fieldType)) {
-                return new JSONResponse(['error' => $this->l10n()->t('Field name, label, and type are required')], Http::STATUS_BAD_REQUEST);
-            }
-
-            // Strip any prefix before validating the base name
-            $baseName = trim($fieldName);
-            $baseName = preg_replace('/^(file_gf_|gf_)/', '', $baseName);
-            if (!preg_match('/^[a-z][a-z0-9_]*$/', $baseName)) {
-                return new JSONResponse(['error' => $this->l10n()->t('Field name may only contain lowercase letters, numbers and underscores, and must start with a letter')], Http::STATUS_BAD_REQUEST);
-            }
-
-            $fieldData = [
-                'field_name' => trim($fieldName),
-                'field_label' => trim($fieldLabel),
-                'field_type' => $fieldType,
-                'field_description' => trim($fieldDescription),
-                'field_options' => $fieldOptions,
-                'is_required' => (bool)$isRequired,
-                'sort_order' => (int)$sortOrder,
-            ];
-
-            if ($appliesToGroupfolder !== null) {
-                $fieldData['applies_to_groupfolder'] = (int)$appliesToGroupfolder;
-            }
-
-            $success = $this->fieldService->updateField($id, $fieldData);
-
-            if ($success) {
-                return new JSONResponse(['success' => true, 'message' => 'Field updated successfully']);
-            } else {
-                return new JSONResponse(['error' => 'Failed to update field'], Http::STATUS_INTERNAL_SERVER_ERROR);
-            }
-        } catch (\Exception $e) {
-            $this->logger->error('MetaVox: updateField error', ['exception' => $e]);
-            return new JSONResponse(['error' => 'Internal server error: ' . $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    #[NoAdminRequired]
-    public function deleteField(int $id): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
-            if ($deny = $this->requireManagePermission($user->getUID())) return $deny;
-
-            $success = $this->fieldService->deleteField($id);
-            return new JSONResponse(['success' => $success]);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    #[NoAdminRequired]
-    public function getGroupfolders(): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
-
-            $userId = $user->getUID();
-            $isAdmin = $this->groupManager->isAdmin($userId);
-            $groupfolders = $this->fieldService->getGroupfolders($userId, $isAdmin);
-            return new JSONResponse($groupfolders);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    #[NoAdminRequired]
-    public function getGroupfolderMetadata(int $groupfolderId): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
-            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
-
-            $metadata = $this->fieldService->getGroupfolderMetadata($groupfolderId);
-            return new JSONResponse($metadata);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    #[NoAdminRequired]
-    public function saveGroupfolderMetadata(int $groupfolderId): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
-            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
-
-            $metadata = $this->request->getParam('metadata', []);
-
-            $fields = $this->fieldService->getFieldsByScope('groupfolder');
-            $fieldMap = [];
-            foreach ($fields as $field) {
-                $fieldMap[$field['field_name']] = $field['id'];
-            }
-
-            foreach ($metadata as $fieldName => $value) {
-                if (isset($fieldMap[$fieldName])) {
-                    $this->fieldService->saveGroupfolderFieldValue($groupfolderId, $fieldMap[$fieldName], (string)$value);
-                }
-            }
-
-            return new JSONResponse(['success' => true]);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage(), 'success' => false], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    #[NoAdminRequired]
-    public function getGroupfolderFields(): JSONResponse {
-        try {
-            $fields = $this->fieldService->getFieldsByScope('groupfolder');
-            return new JSONResponse($fields);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    #[NoAdminRequired]
-    public function createGroupfolderField(): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
-            if ($deny = $this->requireManagePermission($user->getUID())) return $deny;
-
-            $fieldData = [
-                'field_name' => $this->request->getParam('field_name'),
-                'field_label' => $this->request->getParam('field_label'),
-                'field_type' => $this->request->getParam('field_type', 'text'),
-                'field_description' => $this->request->getParam('field_description', ''),
-                'field_options' => $this->request->getParam('field_options', []),
-                'is_required' => $this->request->getParam('is_required', false),
-                'sort_order' => $this->request->getParam('sort_order', 0),
-                'scope' => 'groupfolder',
-                'applies_to_groupfolder' => $this->request->getParam('applies_to_groupfolder', false),
-            ];
-
-            $id = $this->fieldService->createField($fieldData);
-            return new JSONResponse(['id' => $id, 'success' => true], Http::STATUS_CREATED);
-        } catch (\Exception $e) {
-            $this->logger->error('MetaVox: createGroupfolderField error', ['exception' => $e]);
-            return new JSONResponse(['error' => $e->getMessage(), 'success' => false], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
-     * Update groupfolder field (alias for backward compatibility)
-     */
-    #[NoAdminRequired]
+    #[RequireAccess(Access::NcAdmin)]
     public function updateGroupfolderField(int $id): JSONResponse {
-        return $this->updateField($id);
+        if (!$this->fieldService->updateField($id, $this->sentParams(FieldDefinition::PARAMS))) {
+            throw RequestException::notFound(Translatable::t('Field not found'));
+        }
+        return new JSONResponse(['success' => true]);
     }
 
-    /**
-     * Delete groupfolder field (alias for backward compatibility)
-     */
-    #[NoAdminRequired]
+    #[RequireAccess(Access::NcAdmin)]
     public function deleteGroupfolderField(int $id): JSONResponse {
-        return $this->deleteField($id);
+        if (!$this->fieldService->deleteField($id)) {
+            throw RequestException::notFound(Translatable::t('Field not found'));
+        }
+        return new JSONResponse(['success' => true]);
+    }
+
+    /** Several fields at once; one still in use stays and is listed as skipped. */
+    #[RequireAccess(Access::NcAdmin)]
+    public function bulkDeleteFields(): JSONResponse {
+        $this->requireUser();
+
+        $ids = $this->getIdListParam('ids', required: true);
+        return new JSONResponse(['success' => true] + $this->fieldService->deleteFields($ids));
     }
 
     #[NoAdminRequired]
+    #[RequireAccess(Access::LoggedIn, reason: 'only the caller\'s own team folders; admins see all')]
+    public function getGroupfolders(): JSONResponse {
+        $user = $this->requireUser();
+
+        $userId = $user->getUID();
+        // Admins get all folders; scope=member gives only their own (Files app).
+        $adminMode = $this->groupManager->isAdmin($userId) && $this->request->getParam('scope') !== 'member';
+        $groupfolders = $this->fieldService->getGroupfolders($userId, $adminMode);
+        return new JSONResponse($groupfolders);
+    }
+
+    #[NoAdminRequired]
+    #[RequireAccess(Access::TeamFolderMember, folder: 'groupfolderId')]
+    public function getGroupfolderMetadata(int $groupfolderId): JSONResponse {
+        $user = $this->requireUser();
+
+        $metadata = $this->fieldService->getGroupfolderMetadata($groupfolderId);
+        return new JSONResponse($this->fileReferenceService->withNames($metadata, $user->getUID()));
+    }
+
+    #[NoAdminRequired]
+    #[RequireAccess(Access::CanUpdateTeamFolder, folder: 'groupfolderId')]
+    public function saveGroupfolderMetadata(int $groupfolderId): JSONResponse {
+        $user = $this->requireUser();
+
+        $this->fieldService->saveGroupfolderValues($groupfolderId, $this->mapParam('metadata'));
+        return new JSONResponse(['success' => true]);
+    }
+
+    #[RequireAccess(Access::NcAdmin)]
+    public function getGroupfolderFields(): JSONResponse {
+        $fields = $this->fieldService->getFieldsByScope('groupfolder');
+        return new JSONResponse($fields);
+    }
+
+    #[RequireAccess(Access::NcAdmin)]
+    public function createGroupfolderField(): JSONResponse {
+        $id = $this->fieldService->createField($this->sentParams(FieldDefinition::PARAMS));
+        return new JSONResponse(['id' => $id, 'success' => true], Http::STATUS_CREATED);
+    }
+
+    #[NoAdminRequired]
+    #[RequireAccess(Access::TeamFolderMember, folder: 'groupfolderId')]
     public function getGroupfolderAssignedFields(int $groupfolderId): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
-            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
+        $user = $this->requireUser();
 
-            $fields = $this->fieldService->getAssignedFieldsForGroupfolder($groupfolderId);
-            return new JSONResponse($fields);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        $fields = $this->fieldService->getAssignedFieldsForGroupfolder($groupfolderId);
+        return new JSONResponse($fields);
     }
 
     #[NoAdminRequired]
+    #[RequireAccess(Access::MetaVoxManager, folder: 'groupfolderId')]
     public function setGroupfolderFields(int $groupfolderId): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
-            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
-            if ($deny = $this->requireManagePermission($user->getUID(), $groupfolderId)) return $deny;
+        $user = $this->requireUser();
 
-            $fieldIds = $this->request->getParam('field_ids', []);
-            $success = $this->fieldService->setGroupfolderFields($groupfolderId, $fieldIds);
-            return new JSONResponse(['success' => $success]);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        // Left out is no "none": a misspelled key would unassign every field.
+        $this->requireParam('field_ids');
+        $this->fieldService->setGroupfolderFields($groupfolderId, $this->getIdListParam('field_ids'));
+        return new JSONResponse(['success' => true]);
     }
 
+    /**
+     * File-level fields assigned to a team folder: the grid's columns.
+     */
     #[NoAdminRequired]
-    public function getGroupfolderFileMetadata(int $groupfolderId, int $fileId): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
-            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
+    #[RequireAccess(Access::TeamFolderMember, folder: 'groupfolderId')]
+    public function getGroupfolderFileFields(int $groupfolderId): JSONResponse {
+        $user = $this->requireUser();
 
-            $metadata = $this->fieldService->getGroupfolderFileMetadata($groupfolderId, $fileId);
-            $metadata = $this->enrichFilelinkMetadata($metadata, $user->getUID());
-            return new JSONResponse($metadata);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        $fields = $this->fieldService->getAssignedFileFieldsForGroupfolder($groupfolderId);
+        $response = new JSONResponse($fields);
+        $response->addHeader('Cache-Control', 'private, max-age=600');
+        return $response;
     }
 
     /**
-     * Attach a `resolved` array to every filelink field so the
-     * frontend shows the file's CURRENT name even after it has been renamed or
-     * moved. The raw stored `value` ("<id>:<path>") is left unchanged.
-     *
-     * @param array<int, array<string, mixed>> $metadata
-     * @return array<int, array<string, mixed>>
+     * Everything the sidebar shows for a file, in one answer: the team folder
+     * the server finds it in, whether the user may change it (the rule every
+     * save checks), its fields and the team folder's own fields.
      */
-    private function enrichFilelinkMetadata(array $metadata, string $userId): array {
-        // Collect all referenced fileids in one pass for a single batch resolve.
-        $fileIds = [];
-        foreach ($metadata as $field) {
-            if (!in_array($field['field_type'] ?? '', FileReferenceService::FILELINK_TYPES, true)) {
-                continue;
-            }
-            foreach (FileReferenceService::parseValue((string)($field['value'] ?? '')) as $token) {
-                if ($token['fileId'] !== null) {
-                    $fileIds[] = $token['fileId'];
-                }
-            }
-        }
-        if (empty($fileIds)) {
-            return $metadata;
-        }
-        $resolved = $this->fileReferenceService->resolveMany($fileIds, $userId);
+    #[NoAdminRequired]
+    #[RequireAccess(Access::CanRead, file: 'fileId')]
+    public function getFileMetadata(int $fileId): JSONResponse {
+        $userId = $this->requireUser()->getUID();
+        // Checked by the gate already, so this comes from the request's cache.
+        $access = $this->fileAccess->getFileAccess($userId, $fileId);
 
-        foreach ($metadata as &$field) {
-            if (!in_array($field['field_type'] ?? '', FileReferenceService::FILELINK_TYPES, true)) {
-                continue;
-            }
-            $items = [];
-            foreach (FileReferenceService::parseValue((string)($field['value'] ?? '')) as $token) {
-                $info = ($token['fileId'] !== null) ? ($resolved[$token['fileId']] ?? null) : null;
-                if ($info === null) {
-                    // Target unresolved for THIS user — either truly gone or not
-                    // accessible to them. Don't echo the stored (possibly
-                    // manager-resolved) name/path/id: that would disclose a file
-                    // they can't see. Emit a neutral placeholder instead.
-                    $items[] = ['fileId' => null, 'name' => null, 'path' => null, 'exists' => false];
-                    continue;
-                }
-                $items[] = [
-                    'fileId' => $token['fileId'],
-                    'name' => $info['name'],
-                    'path' => $info['path'],
-                    'exists' => true,
-                ];
-            }
-            $field['resolved'] = $items;
-        }
-        unset($field);
-
-        return $metadata;
-    }
-
-    /**
-     * Normalize an incoming filelink value (one or more ';#'-joined tokens) to the canonical
-     * "<fileid>:<path>" form. Tokens that already carry a fileid are left
-     * untouched (a cheap no-op when the frontend already sends ids); bare paths
-     * (e.g. straight from the file picker) are resolved to a fileid. A path
-     * that can't be resolved is kept as-is so nothing is lost.
-     *
-     * Duplicate references are dropped (first occurrence wins): the same file
-     * linked twice makes no sense. Dedup is keyed on the resolved fileid, with
-     * unresolvable bare paths deduped on their path string.
-     */
-    private function normalizeFilelinkValue(string $value, string $fieldType, string $userId, ?int $groupfolderId = null): string {
-        if ($value === '' || !in_array($fieldType, FileReferenceService::FILELINK_TYPES, true)) {
-            return $value;
-        }
-        // Resolve every bare path (from the picker) to its fileid, then dedup
-        // on fileid so the same file can't be linked twice.
-        $resolved = [];
-        foreach (FileReferenceService::parseValue($value) as $token) {
-            if ($token['fileId'] === null) {
-                $id = $this->fileReferenceService->resolvePathToFileId($token['path'], $userId);
-                if ($id !== null) {
-                    $token['fileId'] = $id;
-                }
-            }
-            // Enforce that the link target lives in THIS team folder. A target
-            // outside it would be invisible to other folder members and is
-            // confusing — drop such tokens rather than storing a dangling ref.
-            //
-            // A token we could not resolve to a fileid is NOT such a target: we
-            // simply do not know where it lives. Dropping those made every save
-            // whose path the picker returned in an unexpected shape blank the
-            // whole field while still answering success (github#95). Keep them
-            // as a bare path instead — the contract this method documents — so
-            // the value survives; display and backlinks already handle a token
-            // without a fileid.
-            if ($groupfolderId !== null
-                && $token['fileId'] !== null
-                && !$this->fileReferenceService->isFileInGroupfolder($token['fileId'], $groupfolderId)) {
-                continue;
-            }
-            $resolved[] = $token;
-        }
-        return FileReferenceService::joinTokens(FileReferenceService::dedupeTokens($resolved));
+        $fields = $this->fieldService->getGroupfolderFileMetadata($access->groupfolderId, $fileId);
+        return new JSONResponse([
+            'groupfolder_id' => $access->groupfolderId,
+            'editable' => $access->canWrite,
+            'fields' => $this->fileReferenceService->withNames($fields, $userId),
+            'team_folder_fields' => $this->fileReferenceService->withNames($this->fieldService->getGroupfolderMetadata($access->groupfolderId), $userId),
+        ]);
     }
 
     /**
@@ -414,292 +233,203 @@ class FieldController extends BaseController {
      * ("Referenced by" / backlinks). See issue #73.
      */
     #[NoAdminRequired]
+    #[RequireAccess(Access::CanRead, folder: 'groupfolderId', file: 'fileId')]
     public function getFileBacklinks(int $groupfolderId, int $fileId): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
-            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
+        $user = $this->requireUser();
 
-            // Scope backlinks to the authorized groupfolder. This both engages
-            // the (groupfolder_id, ...) index instead of a full-table LIKE scan
-            // and prevents probing backlinks of files outside this folder
-            // (the {fileId} path segment is otherwise unvalidated — IDOR).
-            $backlinks = $this->fileReferenceService->getBacklinks($fileId, $user->getUID(), $groupfolderId);
-            return new JSONResponse($backlinks);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        // Scoping to the team folder also lets the index do the work.
+        $backlinks = $this->fileReferenceService->getBacklinks($fileId, $user->getUID(), $groupfolderId);
+        return new JSONResponse($backlinks);
     }
 
     #[NoAdminRequired]
-    public function saveGroupfolderFileMetadata(int $groupfolderId, int $fileId): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
-            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
+    #[RequireAccess(Access::CanUpdate, file: 'fileId')]
+    public function saveFileMetadata(int $fileId): JSONResponse {
+        $userId = $this->requireUser()->getUID();
+        $groupfolderId = $this->fileAccess->getFileAccess($userId, $fileId)->groupfolderId;
 
-            $metadata = $this->request->getParam('metadata', []);
+        // Read before saving: a malformed one refuses the request, not half of it.
+        $values = $this->mapParam('metadata');
+        $unlock = $this->boolParam('unlock', false);
+        $unlockField = $this->textParam('unlock_field');
+        $this->fieldService->saveValues($groupfolderId, [$fileId => $values]);
 
-            $fields = $this->fieldService->getFieldsByScope('groupfolder');
-            $fieldMap = [];
-            $typeMap = [];
-            foreach ($fields as $field) {
-                $fieldMap[$field['field_name']] = $field['id'];
-                $typeMap[$field['field_name']] = $field['field_type'] ?? '';
-            }
-
-            foreach ($metadata as $fieldName => $value) {
-                if (isset($fieldMap[$fieldName])) {
-                    $value = $this->normalizeFilelinkValue((string)$value, $typeMap[$fieldName] ?? '', $user->getUID(), $groupfolderId);
-                    $this->fieldService->saveGroupfolderFileFieldValue($groupfolderId, $fileId, $fieldMap[$fieldName], $value, $fieldName);
-                }
-            }
-
-            // Combined save+unlock: release lock and push event in one request
-            $unlock = $this->request->getParam('unlock');
-            $unlockField = $this->request->getParam('unlock_field');
-            if ($unlock && $unlockField) {
-                $this->lockService->unlock($groupfolderId, $fileId, $unlockField, $user->getUID());
-                $this->pushService->cellUnlocked($groupfolderId, $fileId, $unlockField);
-            }
-
-            return new JSONResponse(['success' => true]);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        // Combined save+unlock: release lock and push event in one request
+        if ($unlock && $unlockField
+            && $this->lockService->unlock($groupfolderId, $fileId, $unlockField, $userId)) {
+            $this->pushService->cellUnlocked($groupfolderId, $fileId, $unlockField);
         }
+
+        return new JSONResponse(['success' => true]);
     }
 
     /**
      * Bulk update metadata for multiple files
      */
     #[NoAdminRequired]
+    #[RequireAccess(Access::FileList)]
     public function saveBulkFileMetadata(): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
+        $user = $this->requireUser();
 
-            $userId = $user->getUID();
-            $fileIds = $this->request->getParam('fileIds', []);
-            $metadata = $this->request->getParam('metadata', []);
-            $mergeStrategy = $this->request->getParam('mergeStrategy', 'overwrite');
+        $userId = $user->getUID();
+        $fileIds = $this->getIdListParam('fileIds');
+        $metadata = $this->mapParam('metadata');
+        $mergeStrategy = $this->choiceParam('mergeStrategy', ['overwrite', 'fill-empty'], 'overwrite');
 
-            if (empty($fileIds)) {
-                // TRANSLATORS Error message shown to the user when no files were selected; IDs are the numbers that identify the files
-                return new JSONResponse(['error' => $this->l10n()->t('No file IDs provided')], Http::STATUS_BAD_REQUEST);
-            }
-            if (empty($metadata)) {
-                // TRANSLATORS Error message shown to the user when metadata is saved for several files without any value filled in
-                return new JSONResponse(['error' => $this->l10n()->t('No metadata provided')], Http::STATUS_BAD_REQUEST);
-            }
-
-            $userFolder = $this->rootFolder->getUserFolder($userId);
-            $fields = $this->fieldService->getFieldsByScope('groupfolder');
-            $fieldMap = [];
-            $typeMap = [];
-            foreach ($fields as $field) {
-                $fieldMap[$field['field_name']] = $field['id'];
-                $typeMap[$field['field_name']] = $field['field_type'] ?? '';
-            }
-
-            $successCount = 0;
-            $errorCount = 0;
-            $errors = [];
-
-            foreach ($fileIds as $fileId) {
-                try {
-                    $nodes = $userFolder->getById((int)$fileId);
-                    if (empty($nodes)) {
-                        $errors[] = "File $fileId: Access denied";
-                        $errorCount++;
-                        continue;
-                    }
-
-                    $node = $nodes[0];
-                    $path = $node->getPath();
-
-                    $groupfolderId = $this->detectGroupfolderFromPath($path, $userId);
-                    if (!$groupfolderId) {
-                        $errors[] = "File $fileId: Not in a groupfolder";
-                        $errorCount++;
-                        continue;
-                    }
-
-                    $existingMetadataMap = [];
-                    if ($mergeStrategy === 'fill-empty') {
-                        $existingFields = $this->fieldService->getGroupfolderFileMetadata($groupfolderId, (int)$fileId);
-                        foreach ($existingFields as $field) {
-                            if (isset($field['field_name'])) {
-                                $existingMetadataMap[$field['field_name']] = $field['value'] ?? '';
-                            }
-                        }
-                    }
-
-                    foreach ($metadata as $fieldName => $value) {
-                        if (!isset($fieldMap[$fieldName])) {
-                            continue;
-                        }
-                        if ($mergeStrategy === 'fill-empty') {
-                            $existingValue = $existingMetadataMap[$fieldName] ?? '';
-                            if (!empty($existingValue)) {
-                                continue;
-                            }
-                        }
-                        $normalized = $this->normalizeFilelinkValue((string)$value, $typeMap[$fieldName] ?? '', $userId, $groupfolderId);
-                        $this->fieldService->saveGroupfolderFileFieldValue(
-                            $groupfolderId, (int)$fileId, $fieldMap[$fieldName], $normalized, $fieldName
-                        );
-                    }
-
-                    $successCount++;
-                } catch (\Exception $e) {
-                    $errors[] = "File $fileId: " . $e->getMessage();
-                    $errorCount++;
-                }
-            }
-
-            return new JSONResponse([
-                'success' => $errorCount === 0,
-                'successCount' => $successCount,
-                'errorCount' => $errorCount,
-                'errors' => $errors,
-            ]);
-        } catch (\Exception $e) {
-            $this->logger->error('MetaVox: saveBulkFileMetadata error', ['exception' => $e]);
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        if (empty($fileIds)) {
+            // TRANSLATORS Error message shown to the user when no files were selected; IDs are the numbers that identify the files
+            throw RequestException::invalid(Translatable::t('No file IDs provided'));
         }
+        if (empty($metadata)) {
+            // TRANSLATORS Error message shown to the user when metadata is saved for several files without any value filled in
+            throw RequestException::invalid(Translatable::t('No metadata provided'));
+        }
+
+        $values = $metadata;
+        $this->fileAccess->prime($userId, $fileIds);
+        $errors = [];
+        $byFolder = [];
+        foreach ($fileIds as $fileId) {
+            try {
+                $byFolder[$this->fileAccess->requireWritableFile($userId, $fileId)][$fileId] = $values;
+            } catch (MetadataAccessException $e) {
+                $errors[] = "File $fileId: " . $e->getMessage();
+            }
+        }
+
+        // A value a field does not take is refused before anything is saved.
+        $refused = [];
+        foreach ($byFolder as $groupfolderId => $byFile) {
+            $refused += array_merge([], ...array_values($this->fieldService->refusedValues($groupfolderId, $byFile)['refused']));
+        }
+        if ($refused !== []) {
+            throw new ApiValidationException($refused);
+        }
+
+        $successCount = 0;
+        foreach ($byFolder as $groupfolderId => $byFile) {
+            try {
+                // "fill-empty" leaves what is filled in, a stored '0' too. A file the
+                // database refuses leaves the other files saved.
+                $failed = $this->fieldService->saveValuesPerFile($groupfolderId, $byFile, $mergeStrategy === 'fill-empty');
+            } catch (\Exception $e) {
+                $this->logger->error('MetaVox: bulk save failed', ['groupfolderId' => $groupfolderId, 'exception' => $e]);
+                $failed = array_keys($byFile);
+            }
+            $successCount += \count($byFile) - \count($failed);
+            foreach ($failed as $fileId) {
+                $errors[] = "File $fileId: Internal server error";
+            }
+        }
+        $errorCount = \count($errors);
+
+        return new JSONResponse([
+            'success' => $errorCount === 0,
+            'successCount' => $successCount,
+            'errorCount' => $errorCount,
+            'errors' => $errors,
+        ]);
     }
 
     /**
      * Clear all metadata for multiple files
      */
     #[NoAdminRequired]
+    #[RequireAccess(Access::FileList)]
     public function clearFileMetadata(): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
+        $user = $this->requireUser();
 
-            $userId = $user->getUID();
-            $fileIds = $this->request->getParam('fileIds', []);
-            if (empty($fileIds)) {
-                // TRANSLATORS Error message shown to the user when an action on several files is started without any file selected
-                return new JSONResponse(['error' => $this->l10n()->t('No files specified')], Http::STATUS_BAD_REQUEST);
-            }
-
-            $userFolder = $this->rootFolder->getUserFolder($userId);
-            $successCount = 0;
-            $errorCount = 0;
-
-            foreach ($fileIds as $fileId) {
-                try {
-                    $nodes = $userFolder->getById((int)$fileId);
-                    if (empty($nodes)) {
-                        $errorCount++;
-                        continue;
-                    }
-
-                    $groupfolderId = $this->detectGroupfolderFromPath($nodes[0]->getPath(), $userId);
-                    if (!$groupfolderId) {
-                        $errorCount++;
-                        continue;
-                    }
-
-                    $this->fieldService->clearGroupfolderFileMetadata($groupfolderId, (int)$fileId);
-                    $successCount++;
-                } catch (\Exception $e) {
-                    $this->logger->error('MetaVox: clearFileMetadata error for file', ['fileId' => $fileId, 'exception' => $e]);
-                    $errorCount++;
-                }
-            }
-
-            return new JSONResponse([
-                'status' => 'success',
-                'successCount' => $successCount,
-                'errorCount' => $errorCount,
-            ]);
-        } catch (\Exception $e) {
-            $this->logger->error('MetaVox: clearFileMetadata error', ['exception' => $e]);
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        $userId = $user->getUID();
+        $fileIds = $this->getIdListParam('fileIds');
+        if ($fileIds === []) {
+            // TRANSLATORS Error message shown to the user when an action on several files is started without any file selected
+            throw RequestException::invalid(Translatable::t('No files specified'));
         }
+
+        $files = $this->fileAccess->filterWritableFiles($userId, $fileIds);
+        $errorCount = \count($files['denied']);
+        $byFolder = [];
+        foreach ($files['allowed'] as $fileId => $groupfolderId) {
+            $byFolder[$groupfolderId][] = $fileId;
+        }
+
+        $successCount = 0;
+        foreach ($byFolder as $groupfolderId => $ids) {
+            try {
+                // Required fields keep their values: clearing all is no way around them.
+                $this->fieldService->clearFilesMetadata($groupfolderId, $ids, true);
+                $successCount += \count($ids);
+            } catch (\Exception $e) {
+                $this->logger->error('MetaVox: clearing metadata failed', ['groupfolderId' => $groupfolderId, 'exception' => $e]);
+                $errorCount += \count($ids);
+            }
+        }
+
+        return new JSONResponse([
+            'success' => $errorCount === 0,
+            'successCount' => $successCount,
+            'errorCount' => $errorCount,
+        ]);
     }
 
     /**
      * Export metadata for multiple files
      */
     #[NoAdminRequired]
+    #[RequireAccess(Access::FileList)]
     public function exportFileMetadata(): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
+        $user = $this->requireUser();
 
-            $userId = $user->getUID();
-            $fileIds = $this->request->getParam('fileIds', []);
-            if (empty($fileIds)) {
-                // TRANSLATORS Error message shown to the user when an action on several files is started without any file selected
-                return new JSONResponse(['error' => $this->l10n()->t('No files specified')], Http::STATUS_BAD_REQUEST);
-            }
-
-            $userFolder = $this->rootFolder->getUserFolder($userId);
-            $result = [];
-
-            foreach ($fileIds as $fileId) {
-                try {
-                    $nodes = $userFolder->getById((int)$fileId);
-                    if (empty($nodes)) {
-                        continue;
-                    }
-
-                    $node = $nodes[0];
-                    $path = $node->getPath();
-                    $name = $node->getName();
-                    $displayPath = str_replace($userFolder->getPath(), '', $path);
-
-                    $groupfolderId = $this->detectGroupfolderFromPath($path, $userId);
-                    if (!$groupfolderId) {
-                        $result[] = ['fileId' => $fileId, 'path' => $displayPath, 'name' => $name, 'metadata' => []];
-                        continue;
-                    }
-
-                    $metadataFields = $this->fieldService->getGroupfolderFileMetadata($groupfolderId, (int)$fileId);
-                    $metadataMap = [];
-                    foreach ($metadataFields as $field) {
-                        if (isset($field['field_name'])) {
-                            $metadataMap[$field['field_name']] = $field['value'] ?? '';
-                        }
-                    }
-
-                    $result[] = ['fileId' => $fileId, 'path' => $displayPath, 'name' => $name, 'metadata' => $metadataMap];
-                } catch (\Exception $e) {
-                    $this->logger->error('MetaVox: exportFileMetadata error for file', ['fileId' => $fileId, 'exception' => $e]);
-                }
-            }
-
-            return new JSONResponse($result);
-        } catch (\Exception $e) {
-            $this->logger->error('MetaVox: exportFileMetadata error', ['exception' => $e]);
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        $userId = $user->getUID();
+        $fileIds = $this->getIdListParam('fileIds');
+        if ($fileIds === []) {
+            // TRANSLATORS Error message shown to the user when an action on several files is started without any file selected
+            throw RequestException::invalid(Translatable::t('No files specified'));
         }
+
+        $userFolder = $this->rootFolder->getUserFolder($userId);
+        $result = [];
+
+        $this->fileAccess->prime($userId, $fileIds);
+        foreach ($fileIds as $fileId) {
+            try {
+                // Only files the user sees in their team folder.
+                $access = $this->fileAccess->getFileAccess($userId, (int)$fileId);
+                $node = $access->node;
+                if ($node === null) {
+                    continue;
+                }
+                $groupfolderId = $access->groupfolderId;
+                $name = $node->getName();
+                $displayPath = str_replace($userFolder->getPath(), '', $node->getPath());
+
+                $metadataFields = $this->fileReferenceService->withNames(
+                    $this->fieldService->getGroupfolderFileMetadata($groupfolderId, (int)$fileId), $userId
+                );
+                $metadataMap = [];
+                foreach ($metadataFields as $field) {
+                    if (isset($field['field_name'])) {
+                        $metadataMap[$field['field_name']] = isset($field['resolved']) ? $this->linkNames($field) : ($field['value'] ?? '');
+                    }
+                }
+
+                $result[] = ['fileId' => $fileId, 'path' => $displayPath, 'name' => $name, 'metadata' => $metadataMap];
+            } catch (\Exception $e) {
+                $this->logger->error('MetaVox: exportFileMetadata error for file', ['fileId' => $fileId, 'exception' => $e]);
+            }
+        }
+
+        return new JSONResponse($result);
     }
 
-    /**
-     * Detect groupfolder ID from file path
-     */
-    private function detectGroupfolderFromPath(string $path, string $userId): ?int {
-        try {
-            if (preg_match('/\/__groupfolders\/(\d+)/', $path, $matches)) {
-                return (int)$matches[1];
-            }
-
-            $groupfolders = $this->fieldService->getGroupfolders($userId);
-            foreach ($groupfolders as $gf) {
-                $mountPoint = $gf['mount_point'] ?? '';
-                if (!empty($mountPoint) && strpos($path, "/$mountPoint/") !== false) {
-                    return (int)$gf['id'];
-                }
-            }
-
-            return null;
-        } catch (\Exception $e) {
-            return null;
+    /** An export shows linked files by name, as the exporter sees them. */
+    private function linkNames(array $field): string {
+        $tokens = FileReferenceService::parseValue((string)($field['value'] ?? ''));
+        $names = [];
+        foreach ($field['resolved'] as $i => $item) {
+            // TRANSLATORS Shown instead of a file name when a linked file was deleted or the user cannot see it
+            $names[] = $item['name'] ?? ($tokens[$i]['fileId'] === null ? $tokens[$i]['path'] : $this->l->t('Unavailable file'));
         }
+        return implode(', ', $names);
     }
 }

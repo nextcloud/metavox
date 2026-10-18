@@ -1,91 +1,49 @@
 # MetaVox Permissions Guide
 
-MetaVox uses Nextcloud's existing permission system. This guide explains how permissions work for metadata.
+MetaVox follows Nextcloud's own permissions. Whether someone may see or change metadata depends on what Nextcloud allows for the file and its Team folder, advanced permissions (ACL) included. MetaVox adds one right of its own: assigning fields and setting default values.
 
-## Permission Model
+## Who may do what
 
-MetaVox uses a granular permission system with three levels that can be assigned per user, per group, and per groupfolder:
+| Action | Who |
+|--------|-----|
+| See the metadata of a file (columns, sidebar, search, export) | Anyone who can open the file in its Team folder |
+| Change the metadata of a file (grid, sidebar, bulk editor, API) | Anyone who may change the file in its Team folder |
+| Create, change, reorder and delete views | Members who may change the Team folder |
+| Change the metadata of the Team folder itself | Members who may change the Team folder |
+| Assign fields to a Team folder, set default values | Members with the MetaVox manage permission who may change the Team folder |
+| Create, change and delete field definitions | Nextcloud administrators |
+| MetaVox admin settings | Nextcloud administrators |
 
-| Permission | Description | Default |
-|------------|-------------|---------|
-| `view_metadata` | View metadata values | All users with folder access |
-| `edit_metadata` | Edit metadata values for files | Users with write access |
-| `manage_fields` | Create/edit/delete fields, manage views | Administrators only |
+Nextcloud administrators may do all of this in every Team folder.
 
-Nextcloud administrators always have all permissions regardless of configuration.
+- **May change the file** means Nextcloud's update permission on the file in its Team folder, ACL included. A file you only reach through a share does not count: metadata belongs to the Team folder.
+- With ACL, the rights apply per file. In a folder where you may write everywhere, a file you may only read stays read-only, in the grid and in the sidebar.
+- **May change the Team folder** means Nextcloud's update permission on the Team folder's top folder, ACL included.
+- Views are shared by all members. Whoever may change the Team folder may also change or delete views made by others.
+- In the web interface, the Team folder's own metadata is edited in personal settings → MetaVox, which only users with the manage permission see. Other members who may change the Team folder can change it through the API. In the Files sidebar it is always read-only.
 
-### Permission Matrix
+## The manage permission
 
-| Action | view_metadata | edit_metadata | manage_fields | Admin |
-|--------|:---:|:---:|:---:|:---:|
-| View metadata in sidebar | Yes | Yes | Yes | Yes |
-| View metadata columns in file list | Yes | Yes | Yes | Yes |
-| Edit document metadata | No | Yes | Yes | Yes |
-| Use bulk metadata editor | No | Yes | Yes | Yes |
-| Export metadata to CSV | No | Yes | Yes | Yes |
-| Create/edit/delete fields | No | No | Yes | Yes |
-| Create/edit/delete views | No | No | Yes | Yes |
-| Import/export field definitions | No | No | Yes | Yes |
-| Access MetaVox admin settings | No | No | No | Yes |
+An administrator gives it to groups on the MetaVox admin page: Administration settings → MetaVox → **Permissions** → **Add permission**. Pick one or more groups under **Select groups** and click **Grant permission**. The grant shows as **Manage metadata fields & views** and applies to every Team folder. **Revoke** takes it away again.
 
-## Granting Permissions
+What the permission allows, in a Team folder where the user is a member and may change the Team folder:
 
-### To a User
+- Assign fields to the Team folder
+- Set default values for its file fields
 
-```bash
-curl -X POST "https://your-nextcloud.com/apps/metavox/api/permissions/user" \
-  -H "Content-Type: application/json" \
-  -b "session-cookie" \
-  -d '{"user_id": "jane", "permission": "edit_metadata", "groupfolder_id": 3}'
-```
+Whoever has it for at least one Team folder finds a MetaVox section in their personal settings. There they use **Configure fields** to assign fields and set default values, and **Edit metadata** to change the Team folder's own metadata.
 
-### To a Group
+What the permission does not do:
 
-```bash
-curl -X POST "https://your-nextcloud.com/apps/metavox/api/permissions/group" \
-  -H "Content-Type: application/json" \
-  -b "session-cookie" \
-  -d '{"group_id": "woo-beheerders", "permission": "manage_fields", "groupfolder_id": 3}'
-```
+- It gives no access to files or metadata. Seeing and changing file metadata follow Nextcloud's own permissions.
+- It is not needed for views, despite its label. Creating and changing views needs write permission on the Team folder's top folder, nothing more.
+- It does not allow creating, changing or deleting field definitions. That stays with Nextcloud administrators.
 
-### Viewing Permissions
+## When something is not allowed
 
-```bash
-# View all permissions
-curl "https://your-nextcloud.com/apps/metavox/api/permissions" -b "session-cookie"
-
-# Check your own permissions
-curl "https://your-nextcloud.com/apps/metavox/api/permissions/me" -b "session-cookie"
-
-# Check a specific permission
-curl "https://your-nextcloud.com/apps/metavox/api/permissions/check?permission=edit_metadata&groupfolder_id=3" -b "session-cookie"
-```
-
-### Revoking Permissions
-
-```bash
-# Revoke user permission
-curl -X DELETE "https://your-nextcloud.com/apps/metavox/api/permissions/user/{permissionId}" -b "session-cookie"
-
-# Revoke group permission
-curl -X DELETE "https://your-nextcloud.com/apps/metavox/api/permissions/group/{permissionId}" -b "session-cookie"
-```
-
-## Inheritance
-
-Permissions are scoped to groupfolders. If a permission is granted without a `groupfolder_id`, it applies to all groupfolders:
-
-```
-Team Folder A (user has edit_metadata)
-├── Subfolder A (inherits edit_metadata)
-│   ├── Document 1 (user can edit metadata)
-│   └── Document 2 (user can edit metadata)
-└── Subfolder B
-    └── Document 3 (user can edit metadata)
-
-Team Folder B (user has view_metadata only)
-├── Document 4 (user can only view metadata)
-```
+- What you may not see (a file, or a Team folder you are not a member of) answers **404**, as if it is not there.
+- What you see but may not do answers **403**.
+- API answers carry a fixed `reason`, such as `not_found`, `read_only`, `not_manager` or `forbidden`. See the [API reference](../architecture/api-reference.md).
 
 ## Best Practices
 
@@ -107,20 +65,23 @@ Team Folder B (user has view_metadata only)
 
 ### User can't see metadata
 
-1. Check if user has read access to the Team folder
-2. Verify MetaVox is enabled
-3. Confirm fields are defined for this Team folder
+1. Can the user open the file in the Team folder? A file hidden by ACL shows no metadata.
+2. Is MetaVox enabled for the user?
+3. Are fields assigned to this Team folder?
 
 ### User can't edit document metadata
 
-1. Check if the user has `edit_metadata` permission for this groupfolder
-2. Verify user has write access to the specific document in Nextcloud
-3. Check if the document is in a Team folder (not personal folder)
-4. Ensure metadata fields are defined for this Team folder
+1. Does the user have write permission on this file? With ACL, check the file itself, not only the folder.
+2. Does the Team folder give the user's group only read permission?
+3. Is the file in a Team folder? Metadata of files reached only through a share can't be edited.
 
-### User wants to manage fields or views
+### User can't create or change views
 
-The user needs the `manage_fields` permission. Grant it via the admin API or ask an administrator to assign it.
+The user needs write permission on the Team folder's top folder. Write permission in a subfolder only is not enough.
+
+### User can't assign fields or set default values
+
+The user needs the manage permission, through one of their groups (MetaVox admin page → **Permissions**), and write permission on the Team folder's top folder.
 
 ## See Also
 

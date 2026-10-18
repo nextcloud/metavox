@@ -1,9 +1,7 @@
 <template>
 	<div class="backup-restore">
-		<div class="settings-section">
-			<!-- TRANSLATORS Heading of the settings section for metadata backups -->
-			<h2>{{ t('metavox', 'Backup and restore') }}</h2>
-			<p class="settings-section-desc">
+		<div class="mv-block">
+			<p class="mv-block__desc">
 				{{ t('metavox', 'Automatic daily backups of all metadata. You can also create manual backups and restore from any backup.') }}
 			</p>
 
@@ -31,7 +29,7 @@
 				<NcNoteCard type="success">
 					{{ completedLabel }}
 					<!-- TRANSLATORS: Duration of a backup or restore, {seconds} is a number, "s" abbreviates seconds. -->
-					&middot; {{ t('metavox', '{seconds} s', { seconds: formatNumber(operationStatus.duration) }) }}
+					&middot; {{ t('metavox', '{seconds} s', { seconds: formatNumber(operationStatus.duration) }, undefined, PLAIN_TEXT) }}
 					<template v-if="operationStatus.size">
 						&middot; {{ formatSize(operationStatus.size) }}
 					</template>
@@ -41,13 +39,13 @@
 			<!-- Error message -->
 			<div v-if="operationStatus && operationStatus.status === 'error'" class="progress-section">
 				<NcNoteCard type="error">
-					{{ errorLabel }}
+					{{ failedLabel }}
 				</NcNoteCard>
 			</div>
 
 			<!-- Create backup -->
 			<div class="backup-actions">
-				<NcButton type="primary"
+				<NcButton variant="primary"
 					:disabled="isOperationRunning"
 					@click="createBackup">
 					<!-- TRANSLATORS Button that starts a manual backup of all metadata -->
@@ -75,19 +73,18 @@
 						<span class="backup-date">{{ formatDate(backup.created_at) }}</span>
 						<span class="backup-meta">
 							v{{ backup.version }} &middot;
-							<!-- TRANSLATORS %n is the number of metadata records in a backup, shown in the backup list -->
-							{{ n('metavox', '%n entry', '%n entries', totalEntries(backup)) }} &middot;
+							{{ entryCount(backup) }} &middot;
 							{{ formatSize(backup.size) }}
 							<template v-if="backup.compressed"> &middot; gz</template>
 						</span>
 					</div>
 					<div class="backup-actions-row">
-						<NcButton type="secondary"
+						<NcButton variant="secondary"
 							@click="downloadBackup(backup.filename)">
 							<!-- TRANSLATORS Verb: button that downloads this backup file; keep it short -->
 							{{ t('metavox', 'Download') }}
 						</NcButton>
-						<NcButton type="secondary"
+						<NcButton variant="secondary"
 							:disabled="isOperationRunning"
 							@click="confirmRestore(backup)">
 							<!-- TRANSLATORS Verb: button that restores the metadata from this backup; keep it short -->
@@ -105,6 +102,10 @@
 			<p>{{ t('metavox', 'Are you sure you want to restore this backup? This will replace all current metadata with the backup data.') }}</p>
 			<!-- TRANSLATORS {date} is the date and time the backup was made, e.g. "9 October 2026, 02:00" -->
 			<p><strong>{{ t('metavox', 'Backup from: {date}', { date: formatDate(selectedBackup?.created_at) }, undefined, PLAIN_TEXT) }}</strong></p>
+			<!-- One sentence with placeholders, not six fragments. A number
+			     glued to a noun cannot be reordered by a translator and has no
+			     plural (§13); "groupfolder" is also out of date — the installed
+			     app calls them Team folders. -->
 			<ul v-if="selectedBackup" class="backup-counts">
 				<!-- TRANSLATORS %n is the number of metadata field definitions in the backup -->
 				<li>{{ n('metavox', '%n field definition', '%n field definitions', selectedBackup.counts?.metavox_gf_fields || 0) }}</li>
@@ -114,11 +115,11 @@
 				<li>{{ n('metavox', '%n file value', '%n file values', selectedBackup.counts?.metavox_file_gf_meta || 0) }}</li>
 			</ul>
 			<template #actions>
-				<NcButton type="tertiary" @click="showConfirmDialog = false">
+				<NcButton variant="tertiary" @click="showConfirmDialog = false">
 					<!-- TRANSLATORS Button that closes the restore dialog without restoring -->
 					{{ t('metavox', 'Cancel') }}
 				</NcButton>
-				<NcButton type="error" @click="doRestore">
+				<NcButton variant="error" @click="doRestore">
 					<!-- TRANSLATORS Verb: confirm button of the restore dialog; keep it short -->
 					{{ t('metavox', 'Restore') }}
 				</NcButton>
@@ -128,11 +129,13 @@
 </template>
 
 <script>
-import { translate, translatePlural, getCanonicalLocale } from '@nextcloud/l10n'
-import { PLAIN_TEXT } from '../utils/fieldValue.js'
-import { NcButton, NcDialog, NcNoteCard } from '@nextcloud/vue'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcDialog from '@nextcloud/vue/components/NcDialog'
+import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import axios from '@nextcloud/axios'
+import { translate, translatePlural, getCanonicalLocale } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
+import { PLAIN_TEXT } from '../utils/fieldValue.js'
 
 export default {
 	name: 'BackupRestore',
@@ -170,25 +173,28 @@ export default {
 			return this.operationStatus?.error
 		},
 		progressLabel() {
-			return this.operationStatus?.operation === 'export'
+			if (this.operationStatus?.operation === 'export') {
 				// TRANSLATORS Progress text while a backup is being made
-				? this.t('metavox', 'Creating backup …')
-				// TRANSLATORS Progress text while a backup is being restored
-				: this.t('metavox', 'Restoring backup …')
+				return this.t('metavox', 'Creating backup …')
+			}
+			// TRANSLATORS Progress text while a backup is being restored
+			return this.t('metavox', 'Restoring backup …')
 		},
 		completedLabel() {
-			return this.operationStatus?.operation === 'export'
+			if (this.operationStatus?.operation === 'export') {
 				// TRANSLATORS Notice after a backup finished; the duration follows it
-				? this.t('metavox', 'Backup completed')
-				// TRANSLATORS Notice after a restore finished; the duration follows it
-				: this.t('metavox', 'Restore completed')
+				return this.t('metavox', 'Backup completed')
+			}
+			// TRANSLATORS Notice after a restore finished; the duration follows it
+			return this.t('metavox', 'Restore completed')
 		},
-		errorLabel() {
-			return this.operationStatus?.operation === 'export'
+		failedLabel() {
+			if (this.operationStatus?.operation === 'export') {
 				// TRANSLATORS {error} is the reason the backup failed, e.g. "Internal server error"
-				? this.t('metavox', 'Backup failed: {error}', { error: this.statusError }, undefined, PLAIN_TEXT)
-				// TRANSLATORS {error} is the reason the restore failed, e.g. "Internal server error"
-				: this.t('metavox', 'Restore failed: {error}', { error: this.statusError }, undefined, PLAIN_TEXT)
+				return this.t('metavox', 'Backup failed: {error}', { error: this.statusError }, undefined, PLAIN_TEXT)
+			}
+			// TRANSLATORS {error} is the reason the restore failed, e.g. "Internal server error"
+			return this.t('metavox', 'Restore failed: {error}', { error: this.statusError }, undefined, PLAIN_TEXT)
 		},
 		isOperationRunning() {
 			return this.operationStatus?.status === 'running'
@@ -319,6 +325,11 @@ export default {
 			}
 		},
 
+		entryCount(backup) {
+			// TRANSLATORS %n is the number of metadata records in a backup, shown in the backup list
+			return this.n('metavox', '%n entry', '%n entries', this.totalEntries(backup))
+		},
+
 		totalEntries(backup) {
 			if (!backup.counts) return 0
 			return Object.values(backup.counts).reduce((sum, count) => sum + Number(count), 0)
@@ -328,13 +339,26 @@ export default {
 			// TRANSLATORS Shown instead of a date when a backup has no creation date
 			if (!dateStr) return this.t('metavox', 'Unknown')
 			const date = new Date(dateStr)
-			return date.toLocaleString(undefined, {
+			return date.toLocaleString(getCanonicalLocale(), {
 				year: 'numeric',
 				month: 'long',
 				day: 'numeric',
 				hour: '2-digit',
 				minute: '2-digit',
 			})
+		},
+
+		formatSize(bytes) {
+			if (!bytes) return '0 B'
+			const units = ['B', 'KB', 'MB', 'GB']
+			let i = 0
+			let size = bytes
+			while (size >= 1024 && i < units.length - 1) {
+				size /= 1024
+				i++
+			}
+			const number = size.toLocaleString(getCanonicalLocale(), { maximumFractionDigits: i > 0 ? 1 : 0 })
+			return number + ' ' + units[i]
 		},
 
 		// The progress line names the part being copied, not its table.
@@ -352,24 +376,13 @@ export default {
 			}
 		},
 
-		formatSize(bytes) {
-			if (!bytes) return '0 B'
-			const units = ['B', 'KB', 'MB', 'GB']
-			let i = 0
-			let size = bytes
-			while (size >= 1024 && i < units.length - 1) {
-				size /= 1024
-				i++
-			}
-			const number = size.toLocaleString(getCanonicalLocale(), { maximumFractionDigits: i > 0 ? 1 : 0 })
-			return number + ' ' + units[i]
-		},
-
 		formatNumber(n) {
 			if (!n) return '0'
-			return Number(n).toLocaleString()
+			return Number(n).toLocaleString(getCanonicalLocale())
 		},
 
+		// The platform's own; the helper this replaced had no plural form, and
+		// its {key} replacer only replaced the first occurrence.
 		t: translate,
 		n: translatePlural,
 	},
@@ -377,21 +390,24 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.backup-restore {
-	max-width: 800px;
-}
+/* No measure and no inset here: NcSettingsSection owns both (§6, "The measure
+   belongs on the form"), and a second one on the child pushed this section's
+   content 20px further in than the sections that had none — measured as three
+   different left edges, 28 / 40 / 48, down one page. */
 
-.settings-section {
+.mv-block {
 	margin-bottom: 32px;
 }
 
-.settings-section h2 {
+.mv-block h3 {
+	/* Nextcloud uses 20px for a heading; weight comes from the token rather
+	   than `bold`, which does not follow a theme that changes it. */
 	font-size: 20px;
-	font-weight: bold;
+	font-weight: var(--font-weight-heading, 600);
 	margin-bottom: 8px;
 }
 
-.settings-section-desc {
+.mv-block-desc {
 	color: var(--color-text-maxcontrast);
 	margin-bottom: 20px;
 }
@@ -410,13 +426,17 @@ export default {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 8px;
 	padding: 16px 20px;
 	background: var(--color-background-hover);
-	border-radius: var(--border-radius-large);
+	border-radius: var(--border-radius-element);
 }
 
 .backup-actions-row {
 	display: flex;
+	/* Two labelled buttons do not fit beside a date on a phone. */
+	flex-wrap: wrap;
 	gap: 8px;
 }
 
@@ -437,7 +457,7 @@ export default {
 }
 
 .backup-meta {
-	font-size: 13px;
+	font-size: var(--font-size-small);
 	color: var(--color-text-maxcontrast);
 }
 
@@ -456,7 +476,7 @@ export default {
 	margin-bottom: 20px;
 	padding: 16px 20px;
 	background: var(--color-background-hover);
-	border-radius: var(--border-radius-large);
+	border-radius: var(--border-radius-element);
 }
 
 .progress-section.completed {
@@ -477,7 +497,7 @@ export default {
 }
 
 .progress-detail {
-	font-size: 13px;
+	font-size: var(--font-size-small);
 	color: var(--color-text-maxcontrast);
 }
 
@@ -498,9 +518,26 @@ export default {
 
 .progress-percent {
 	display: block;
-	text-align: right;
-	font-size: 13px;
+	text-align: end;
+	font-size: var(--font-size-small);
 	color: var(--color-text-maxcontrast);
 	margin-top: 4px;
+}
+
+/* Phone. The guidelines ask for a 16px side gutter and no horizontal page
+   scroll; the 20px insets above stack up on a narrow screen and leave the
+   content box too small for a row of labelled buttons. */
+@media (max-width: 512px) {
+	.mv-block {
+		padding-inline: 0;
+	}
+
+	.backup-row {
+		align-items: stretch;
+	}
+
+	.backup-actions-row {
+		width: 100%;
+	}
 }
 </style>

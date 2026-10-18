@@ -5,10 +5,11 @@
  */
 
 import axios from '@nextcloud/axios'
+import { showError } from '../../utils/toast.js'
 import { translate, translate as t } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
 import { createApp, h } from 'vue'
-import ViewEditorPanel from './ViewEditorPanel.vue'
+import { loadPart, watchLoading } from '../../utils/updatedPage.js'
 
 import {
 	getActiveColumnConfigs,
@@ -23,26 +24,28 @@ import {
 	getAvailableFields,
 	getViewTabsEl,
 	setViewTabsEl,
-	getViewCleared,
-	setViewCleared,
-	getPrefetchedFilterValues,
-	setPrefetchedFilterValues,
+	setDefaultChosen,
+	getDefaultChosen,
 	metadataCache,
-	permissionCache,
 } from './MetaVoxState.js'
 
-import { registerMetaVoxFilter, removeFilters, getFilterInstance } from './MetadataFilter.js'
+import { registerMetaVoxFilter, getFilterInstance } from './MetadataFilter.js'
 import {
 	injectHeaderColumns,
 	injectFooterColumns,
 	removeAllInjectedColumns,
 	updateTableMinWidth,
-	updateAllRowCells,
 	injectRowColumns,
 } from './ColumnDOM.js'
 import { injectColumnStyles, MARKER_CLASS } from './ColumnStyles.js'
-import { fetchViews, fetchDirectoryMetadata, fetchAllFilterValues } from './MetaVoxAPI.js'
-import { handleSort, updateSortIndicators, ensureSortBypass, _findFilesList } from './Sorting.js'
+import { DEFAULT_VIEW, sortFieldType, viewColumnConfigs, viewToOpen } from './ColumnUtils.js'
+import { writeUrl } from './UrlState.js'
+import { fetchViews } from './MetaVoxAPI.js'
+import { folderFilterValues } from './FilterOptions.js'
+import { errorText } from '../../utils/errorText.js'
+import { openSaveFiltersDialog } from './SaveFilters.js'
+import { handleSort, updateSortIndicators } from './Sorting.js'
+import { watchStickyOffsets } from './StickyOffsets.js'
 
 // ========================================
 // Constants
@@ -51,7 +54,6 @@ import { handleSort, updateSortIndicators, ensureSortBypass, _findFilesList } fr
 const VIEW_TABS_ID = 'metavox-view-tabs'
 const VIEW_EDITOR_ID = 'metavox-view-editor'
 const VIEW_STYLE_ID = 'metavox-view-styles'
-let draggedViewId = null
 
 // Need FILTER_ID from MetadataFilter — re-declare locally for DOM lookup
 const FILTER_ID = 'metavox-metadata'
@@ -65,18 +67,25 @@ export function injectViewStyles() {
 	const style = document.createElement('style')
 	style.id = VIEW_STYLE_ID
 	style.textContent = `
-		/* ── Tab bar container (sticky horizontally + vertically) ── */
+		/* ── View bar container (sticky) ── */
 		#${VIEW_TABS_ID} {
 			display: flex;
 			align-items: center;
 			gap: calc(var(--default-grid-baseline, 4px) / 2);
-			padding: var(--default-grid-baseline, 4px) 0;
+			padding-block: var(--default-grid-baseline, 4px);
 			border-bottom: 1px solid var(--color-border);
 			background: var(--color-main-background);
 			position: sticky;
 			top: 0;
-			left: 44px;
+			left: 0;
 			z-index: 50;
+			/* Hold the bar at the viewport width. Without this it stretches to
+			   the width of the column table below it — 3997px against a 900px
+			   screen — which pushed its bottom edge beneath the horizontal
+			   scrollbar of #app-content-vue. */
+			width: 100%;
+			max-width: 100vw;
+			box-sizing: border-box;
 		}
 		/* Sticky stacking: tabs (top:0) → filters (top:tabs) → thead (top:tabs+filters).
 		   All offsets via CSS custom properties, computed by JS ResizeObserver. */
@@ -95,312 +104,262 @@ export function injectViewStyles() {
 			top: var(--mv-filters-top, 0px) !important;
 			z-index: 51 !important;
 		}
-		/* Sticky "Default" tab with separator */
-		#${VIEW_TABS_ID} > .mv-tab-all {
-			flex-shrink: 0;
-			margin-left: calc(var(--default-grid-baseline, 4px) * 2);
-			margin-right: calc(var(--default-grid-baseline, 4px) * 2);
-			z-index: 1;
-		}
-		#${VIEW_TABS_ID} > .mv-tab-all::after {
-			content: '';
-			position: absolute;
-			right: -5px;
-			top: 6px;
-			bottom: 6px;
-			width: 1px;
-			background: var(--color-border-dark, #ccc);
-		}
-		.mv-tab-home-icon {
+		/* ── The view picker ─────────────────────────────────────────────────
+		   One control naming the view you are in. It replaced a row of tabs,
+		   which only worked while the tabs fitted — eight views overflowed a
+		   1583px viewport, and whenever the row scrolled the active view could
+		   sit off screen with nothing on the bar naming it. */
+		/* Secondary, not tertiary. NcActions makes exactly this call itself:
+		   a menu WITH a name renders secondary, one without renders tertiary
+		   (NcActions.mjs:258). That is the library's own answer to "how does a
+		   dropdown showing a value differ from plain chrome", and without it
+		   this control was pixel-identical to the breadcrumb above it —
+		   15px/500/--color-main-text, no background, a chevron — while doing
+		   something entirely different. A breadcrumb can never carry a fill at
+		   rest (NcBreadcrumb.css:19-24), so the fill alone separates them. */
+		#${VIEW_TABS_ID} .mv-view-picker {
 			display: inline-flex;
 			align-items: center;
-			opacity: 0.5;
-			margin-right: 2px;
-		}
-		#${VIEW_TABS_ID} .mv-tab-active .mv-tab-home-icon {
-			opacity: 0.8;
-		}
-		/* Sticky default view tab */
-		#${VIEW_TABS_ID} > .mv-tab-default {
-			flex-shrink: 0;
-			z-index: 1;
-		}
-		.mv-tab-default-icon {
-			font-size: 11px;
-			opacity: 0.6;
-			margin-right: 2px;
-		}
-		/* Scrollable area for view tabs */
-		.mv-tabs-scroll {
-			display: flex;
-			align-items: center;
-			gap: calc(var(--default-grid-baseline, 4px) / 2);
-			overflow-x: auto;
-			overflow-y: hidden;
-			flex: 1;
+			gap: var(--default-grid-baseline, 4px);
+			max-width: 100%;
 			min-width: 0;
-			padding-right: calc(var(--default-grid-baseline, 4px) * 2);
-			scrollbar-width: thin;
-			scrollbar-color: var(--color-border-dark, #ccc) transparent;
+			margin-inline-start: calc(var(--default-grid-baseline, 4px) * 2);
+			min-height: var(--default-clickable-area, 34px);
+			padding-inline: calc(2 * var(--default-grid-baseline, 4px));
+			border-radius: var(--border-radius-element, 8px);
+			background-color: var(--color-primary-element-light);
+			color: var(--color-primary-element-light-text);
+			font-size: var(--default-font-size, 15px);
+			font-weight: var(--font-weight-element, 500);
+			transition: background-color var(--animation-quick, 100ms);
 		}
-		/* Fade indicators for scroll overflow */
-		.mv-tabs-scroll-wrap {
-			position: relative;
-			display: flex;
-			flex: 1;
-			min-width: 0;
+		#${VIEW_TABS_ID} .mv-view-picker:hover,
+		#${VIEW_TABS_ID} .mv-view-picker.mv-tab-menu-open {
+			background-color: var(--color-primary-element-light-hover);
 		}
-		.mv-tabs-scroll-wrap::before,
-		.mv-tabs-scroll-wrap::after {
-			content: '';
-			position: absolute;
-			top: 0;
-			bottom: 0;
-			width: 24px;
-			pointer-events: none;
-			z-index: 1;
-			opacity: 0;
-			transition: opacity 0.2s ease;
-		}
-		.mv-tabs-scroll-wrap::before {
-			left: 0;
-			background: linear-gradient(to right, var(--color-main-background), transparent);
-		}
-		.mv-tabs-scroll-wrap::after {
-			right: 0;
-			background: linear-gradient(to left, var(--color-main-background), transparent);
-		}
-		.mv-tabs-scroll-wrap.can-scroll-left::before { opacity: 1; }
-		.mv-tabs-scroll-wrap.can-scroll-right::after { opacity: 1; }
-		.mv-tab {
+		/* Every Files filter button carries an icon saying what kind of thing it
+		   selects (FileListFilters.vue:36-38). This one says: a view. */
+		#${VIEW_TABS_ID} .mv-view-picker-icon {
 			display: inline-flex;
 			align-items: center;
-			gap: 4px;
-			height: 30px;
-			padding: 0 10px;
+			flex-shrink: 0;
+		}
+		/* Core styles bare buttons — font-weight: bold, a background and its own
+		   padding — so every one of those is restated here. */
+		#${VIEW_TABS_ID} .mv-view-picker-label {
+			display: inline-flex;
+			align-items: center;
+			gap: var(--default-grid-baseline, 4px);
+			min-width: 0;
+			/* 24px is the floor (SC 2.5.8). min-height: 0 with no padding
+			   measured 23px — one pixel under, which no reviewer spots and
+			   a conformance test does. */
+			min-height: 24px;
+			margin: 0;
+			padding: 0;
 			border: none;
-			border-radius: var(--border-radius-element, 32px);
 			background: transparent;
-			color: var(--color-text-maxcontrast);
+			color: inherit;
 			font: inherit;
-			font-size: 13px;
 			cursor: pointer;
+			overflow: hidden;
+			text-overflow: ellipsis;
 			white-space: nowrap;
+		}
+		#${VIEW_TABS_ID} .mv-view-picker-label:focus-visible {
+			outline: 2px solid var(--color-main-text);
+			outline-offset: 2px;
+			border-radius: var(--border-radius-element, 8px);
+		}
+		#${VIEW_TABS_ID} .mv-view-picker-label:focus:not(:focus-visible) {
+			background: transparent;
+		}
+		#${VIEW_TABS_ID} .mv-view-picker-name {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+		#${VIEW_TABS_ID} .mv-view-picker-star,
+		#${VIEW_TABS_ID} .mv-view-picker-caret {
+			display: inline-flex;
+			align-items: center;
 			flex-shrink: 0;
-			position: relative;
+			color: var(--color-text-maxcontrast);
 		}
-		.mv-tab:hover {
-			background: var(--color-background-hover);
-			color: var(--color-main-text);
-		}
-		#${VIEW_TABS_ID} .mv-tab-active {
-			background: var(--color-primary-element-light, #e8f0fe);
-			color: var(--color-primary-element);
-			font-weight: 600;
-		}
-		#${VIEW_TABS_ID} .mv-tab-active:hover {
-			background: var(--color-primary-element-light, #e8f0fe);
-		}
-		.mv-tab-edit-hint {
-			font-size: 11px;
-			opacity: 0.6;
-		}
-		.mv-tab-add {
-			margin-left: 4px;
-			font-size: 18px;
-			font-weight: 400;
-			line-height: 1;
-		}
-		/* ── Slide-over editor panel ── */
-		#${VIEW_EDITOR_ID} {
+
+		/* ── Actions menu ────────────────────────────────────────────────────
+		   Matched to NcActions: the popover shell from NcPopover, the rows
+		   from NcActionButton. Values are taken from those stylesheets rather
+		   than approximated, so this menu sits next to the file-row menu in
+		   the same list without looking like a different app.
+
+		   Fixed and attached to <body>: the tab scroll area clips on
+		   overflow-y, which would cut the menu off. */
+		.mv-tab-menu {
 			position: fixed;
-			top: var(--header-height, 50px);
-			right: -480px;
-			width: 460px;
-			max-width: 95vw;
-			height: calc(100vh - var(--header-height, 50px));
+			/* NcPopover: no border, a soft shadow on the theme token. */
+			padding: 4px;
+			box-sizing: border-box;
+			border-radius: var(--border-radius-element, 8px);
 			background: var(--color-main-background);
-			border-left: 1px solid var(--color-border);
-			box-shadow: -4px 0 24px rgba(0,0,0,0.15);
-			z-index: 2000;
+			box-shadow: 0 1px 10px var(--color-box-shadow);
+			z-index: 60;
+			white-space: nowrap;
+			/* No overflow, so the menu does not become a scroll container.
+			   overflow-y: auto alone was enough to make one, and a scroll
+			   container measures its trailing padding differently: a menu
+			   whose content fitted exactly reported scrollWidth 3px over
+			   clientWidth and drew a horizontal scrollbar for those 3px.
+			   A tab menu holds a handful of rows, so it never needs to
+			   scroll; the taller picker below sets its own max-height. */
+			max-height: none;
+		}
+		/* The list scrolls, the actions under it stay put. Only a long list
+		   needs this; the max-height is set in JS against the space actually
+		   available, because the placement maths has to run against the
+		   capped size. */
+		.mv-tab-menu.mv-tab-menu-scrollable {
 			display: flex;
 			flex-direction: column;
-			transition: right 0.25s ease;
 			overflow: hidden;
 		}
-		#${VIEW_EDITOR_ID}.open {
-			right: 0;
+		.mv-tab-menu.mv-tab-menu-scrollable .mv-tab-menu-list {
+			overflow-x: hidden;
+			overflow-y: auto;
+			min-height: 0;
 		}
-		.mv-editor-overlay {
-			position: fixed;
-			inset: var(--header-height, 50px) 0 0 0;
-			z-index: 1999;
-			background: rgba(0, 0, 0, 0.15);
+		/* A rule rather than a gap: this is a section boundary, which is the
+		   one place Nextcloud does use a separator. */
+		.mv-tab-menu-actions:not(:first-child) {
+			border-block-start: 1px solid var(--color-border);
+			margin-block-start: var(--default-grid-baseline, 4px);
+			padding-block-start: var(--default-grid-baseline, 4px);
 		}
-		/* ── Action icon on active tab (pencil for admin, eye for viewer) ── */
-		.mv-tab-action-icon {
-			cursor: pointer;
-			line-height: 1;
+		.mv-tab-menu-actions {
 			flex-shrink: 0;
-			display: inline-flex;
+		}
+		/* A long name must wrap or ellipsise rather than widen the menu past
+		   the screen: at 58 views it measured 452px against a 390px phone. */
+		.mv-tab-menu .mv-tab-menu-item {
+			max-width: 100%;
+		}
+		.mv-tab-menu .mv-tab-menu-label {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+			min-width: 0;
+		}
+		/* NcActionButton: the icon box is a full clickable-area square and the
+		   row's height comes from line-height, not padding. */
+		/* Every property core sets on a bare button is restated here, or its
+		   bold weight, grey fill and focus ring leak through — the same trap
+		   the tabs fell into. */
+		.mv-tab-menu .mv-tab-menu-item {
+			display: flex;
 			align-items: center;
-			opacity: 0.6;
+			width: 100%;
+			/* border-box, so the trailing padding is inside the 100% rather
+			   than added to it. */
+			box-sizing: border-box;
+			min-height: 0;
+			margin: 0;
+			padding: 0;
+			padding-inline-end: calc((var(--default-clickable-area, 34px) - 16px) / 2);
+			border: 0;
+			border-radius: 6px;
+			background-color: transparent;
+			box-shadow: none;
+			color: var(--color-main-text);
+			font-size: var(--default-font-size, 15px);
+			font-weight: var(--font-weight-element, 500);
+			line-height: var(--default-clickable-area, 34px);
+			white-space: nowrap;
+			text-align: start;
+			cursor: pointer;
 		}
-		.mv-tab-action-icon.mv-tab-edit-icon {
-			color: var(--color-primary-element);
+		.mv-tab-menu .mv-tab-menu-item:hover,
+		.mv-tab-menu .mv-tab-menu-item:focus,
+		.mv-tab-menu .mv-tab-menu-item:active {
+			background-color: var(--color-background-hover);
+			box-shadow: none;
 		}
-		.mv-tab-action-icon.mv-tab-view-icon {
+		.mv-tab-menu-item:focus-visible {
+			outline: 2px solid var(--color-main-text);
+			outline-offset: -2px;
+		}
+		/* A 20px glyph centred in a clickable-area-wide box. That box is what
+		   gives NC menus their consistent text indent, so it is the box and
+		   not the glyph that carries the width. */
+		.mv-tab-menu .mv-tab-menu-icon {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			flex-shrink: 0;
+			inline-size: var(--default-clickable-area, 34px);
+			block-size: var(--default-clickable-area, 34px);
+		}
+		/* Pushed to the trailing edge: it marks the row, it is not part of
+		   the name. */
+		.mv-tab-menu .mv-tab-menu-star {
+			margin-inline-start: auto;
+			padding-inline-start: 12px;
+			font-size: 12px;
 			color: var(--color-text-maxcontrast);
 		}
-		.mv-tab-action-icon:hover { opacity: 1; }
-
-		/* ── Tab drag-and-drop ── */
-		.mv-tab[draggable="true"] { cursor: grab; }
-		.mv-tab[draggable="true"]:active { cursor: grabbing; }
-		.mv-tab.mv-tab-dragging { opacity: 0.4; }
-		.mv-tab.mv-tab-drop-left { box-shadow: -2px 0 0 0 var(--color-primary-element); }
-		.mv-tab.mv-tab-drop-right { box-shadow: 2px 0 0 0 var(--color-primary-element); }
-
-		/* ── Responsive (NC33 breakpoints) ── */
-		@media only screen and (max-width: 1024px) {
-			#${VIEW_TABS_ID} {
-				padding: var(--default-grid-baseline, 4px) 0;
-			}
-			#${VIEW_TABS_ID} > .mv-tab-all,
-			#${VIEW_TABS_ID} > .mv-tab-default {
-				margin-left: var(--default-grid-baseline, 4px);
-			}
-			.mv-tab {
-				height: 28px;
-				padding: 0 calc(var(--default-grid-baseline, 4px) * 2);
-				font-size: 12px;
-			}
+		.mv-tab-menu .mv-tab-menu-item-danger {
+			color: var(--color-error, #c9326b);
 		}
 
+		/* ── Responsive ── */
 		@media only screen and (max-width: 512px) {
-			.mv-tab {
-				height: 26px;
-				padding: 0 calc(var(--default-grid-baseline, 4px) * 1.5);
-				font-size: 11px;
-			}
-			.mv-tab-add {
-				font-size: 16px;
+			#${VIEW_TABS_ID} .mv-view-picker {
+				margin-inline-start: var(--default-grid-baseline, 4px);
+				padding-inline: calc(var(--default-grid-baseline, 4px) * 1.5);
 			}
 		}
 	`
 	document.head.appendChild(style)
 }
 
-export function removeViewStyles() {
-	document.getElementById(VIEW_STYLE_ID)?.remove()
-}
-
 // ========================================
-// View Tabs
+// View Picker
 // ========================================
 
 /**
- * Inject tab-bar above the file list filters.
+ * Inject the view bar above the file list filters.
  */
 export function injectViewTabs(views) {
 	removeViewTabs()
 
 	injectViewStyles()
 
-	const activeView = getActiveView()
-	const canManageViews = getCanManageViews()
-
 	const container = document.createElement('div')
 	container.id = VIEW_TABS_ID
 
-	// "Default" tab — sticky, always visible, shows original NC Files view
-	const allTab = document.createElement('button')
-	allTab.type = 'button'
-	allTab.className = 'mv-tab mv-tab-all' + (!activeView ? ' mv-tab-active' : '')
-	// TRANSLATORS Tooltip on the "Default" tab, which shows the files without any saved view; Nextcloud is a product name
-	allTab.title = t('metavox', 'Standard Nextcloud file view')
-	// Home icon + label
-	const homeIcon = document.createElement('span')
-	homeIcon.className = 'mv-tab-home-icon'
-	homeIcon.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></svg>'
-	allTab.appendChild(homeIcon)
-	const allLabel = document.createElement('span')
-	// TRANSLATORS Name of the built-in view without saved settings, shown on the view picker button; keep it short
-	allLabel.textContent = t('metavox', 'Default')
-	allTab.appendChild(allLabel)
-	allTab.addEventListener('click', () => clearView())
-	container.appendChild(allTab)
-
-	// Standard view tab — sticky, next to "Default"
-	const defaultView = views.find(v => v.is_default)
-	if (defaultView) {
-		const defTab = _makeViewTab(defaultView)
-		defTab.classList.add('mv-tab-default')
-		// Add star icon before the name
-		const star = document.createElement('span')
-		star.className = 'mv-tab-default-icon'
-		star.textContent = '\u2605'
-		defTab.insertBefore(star, defTab.firstChild)
-		// TRANSLATORS Tooltip on the star next to the view that opens by default in this folder
-		defTab.title = t('metavox', 'Standard view — loads automatically when opening this folder')
-		container.appendChild(defTab)
-	}
-
-	// Scrollable wrapper for view tabs
-	const scrollWrap = document.createElement('div')
-	scrollWrap.className = 'mv-tabs-scroll-wrap'
-	const scrollArea = document.createElement('div')
-	scrollArea.className = 'mv-tabs-scroll'
-
-	// View tabs (skip default — already rendered as sticky)
-	for (const view of views) {
-		if (view.is_default) continue
-		const tab = _makeViewTab(view)
-		scrollArea.appendChild(tab)
-	}
-
-	// "+ Add" button
-	if (canManageViews) {
-		const addBtn = document.createElement('button')
-		addBtn.type = 'button'
-		addBtn.className = 'mv-tab mv-tab-add'
-		// TRANSLATORS Menu item in the view menu that opens the editor for a new view; also the title of that panel
-		addBtn.title = t('metavox', 'New view')
-		addBtn.textContent = '+'
-		addBtn.addEventListener('click', () => openViewEditor(null))
-		scrollArea.appendChild(addBtn)
-	}
-
-	scrollWrap.appendChild(scrollArea)
-	container.appendChild(scrollWrap)
-
-	// Update fade indicators on scroll
-	const updateFades = () => {
-		const sl = scrollArea.scrollLeft
-		const maxScroll = scrollArea.scrollWidth - scrollArea.clientWidth
-		scrollWrap.classList.toggle('can-scroll-left', sl > 2)
-		scrollWrap.classList.toggle('can-scroll-right', maxScroll - sl > 2)
-	}
-	scrollArea.addEventListener('scroll', updateFades, { passive: true })
-	// Initial fade check after DOM insertion
-	requestAnimationFrame(updateFades)
+	_renderViewPicker(container, views)
 
 	// Insert before .files-list__filters
 	const filterBar = document.querySelector('.files-list__filters')
 	if (filterBar) {
 		filterBar.insertAdjacentElement('beforebegin', container)
+		// A new bar: the sticky offsets follow this one, not the bar it replaced.
+		watchStickyOffsets()
 	} else {
 		// Fallback: insert before the files-list table
 		const table = document.querySelector('.files-list__table')
 		if (table) {
 			table.insertAdjacentElement('beforebegin', container)
+			watchStickyOffsets()
 		} else {
 			// DOM not ready yet — retry shortly
 			setTimeout(() => {
 				const fb = document.querySelector('.files-list__filters')
 				const tbl = document.querySelector('.files-list__table')
 				const target = fb || tbl
-				if (target) target.insertAdjacentElement('beforebegin', container)
+				if (target) {
+					target.insertAdjacentElement('beforebegin', container)
+					watchStickyOffsets()
+				}
 			}, 150)
 		}
 	}
@@ -408,194 +367,396 @@ export function injectViewTabs(views) {
 	setViewTabsEl(container)
 }
 
-function _makeViewTab(view) {
-	const activeView = getActiveView()
-	const canManageViews = getCanManageViews()
-	const activeViews = getActiveViews()
+/** Gap between the menu and the edge of the viewport. */
+const MENU_MARGIN = 8
 
-	const tab = document.createElement('button')
-	tab.type = 'button'
-	tab.dataset.viewId = view.id
-	const isActive = activeView?.id === view.id
-	tab.className = 'mv-tab' + (isActive ? ' mv-tab-active' : '')
+/**
+ * Put the menu under its trigger and keep it inside the viewport.
+ *
+ * The menu is fixed and attached to <body>, so nothing constrains it for us.
+ * With a long list this bit twice: at 58 views the menu measured 452px wide
+ * and 940px tall, running 70px past the right edge of a 390px phone and 72px
+ * below the fold, with the rows scrolling sideways as well.
+ *
+ * Width and height are therefore capped against the viewport before the menu
+ * is positioned — capping in CSS alone is too late, because the placement
+ * maths has already run against the unconstrained size.
+ *
+ * @param {HTMLElement} menu the menu element, already in the document
+ * @param {HTMLElement} trigger the element it hangs from
+ */
+function _placeMenu(menu, trigger) {
+	const anchor = trigger.getBoundingClientRect()
+	const vw = window.innerWidth
+	const vh = window.innerHeight
 
-	const nameSpan = document.createElement('span')
-	nameSpan.textContent = view.name
-	tab.appendChild(nameSpan)
+	// Width first: a narrow screen decides it, and it changes the height.
+	menu.style.maxWidth = (vw - 2 * MENU_MARGIN) + 'px'
 
-	if (isActive) {
-		const icon = document.createElement('span')
-		if (canManageViews) {
-			icon.className = 'mv-tab-action-icon mv-tab-edit-icon'
-			// TRANSLATORS Title of the view editor when it changes an existing view
-			icon.title = t('metavox', 'Edit view')
-			icon.innerHTML = '<svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/></svg>'
-			icon.addEventListener('click', (e) => { e.stopPropagation(); openViewEditor(view) })
-		} else {
-			icon.className = 'mv-tab-action-icon mv-tab-view-icon'
-			// TRANSLATORS Menu item in the view menu that shows the settings of the current view read-only; also the title of that panel
-			icon.title = t('metavox', 'View details')
-			icon.innerHTML = '<svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5M3.18,12C4.83,15.36 8.24,17.5 12,17.5C15.76,17.5 19.17,15.36 20.82,12C19.17,8.64 15.76,6.5 12,6.5C8.24,6.5 4.83,8.64 3.18,12Z"/></svg>'
-			icon.addEventListener('click', (e) => { e.stopPropagation(); openViewEditor(view, true) })
+	// Prefer below the trigger; flip above when there is more room there.
+	const spaceBelow = vh - anchor.bottom - MENU_MARGIN
+	const spaceAbove = anchor.top - MENU_MARGIN
+	const below = spaceBelow >= spaceAbove
+	const room = Math.max(below ? spaceBelow : spaceAbove, 120)
+
+	const natural = menu.getBoundingClientRect().height
+	if (natural > room) {
+		menu.style.maxHeight = room + 'px'
+		menu.classList.add('mv-tab-menu-scrollable')
+		// Cap the list, not the menu: the actions keep their full height and
+		// the list gives up whatever is left, so they stay reachable without
+		// scrolling past every view.
+		const list = menu.querySelector('.mv-tab-menu-list')
+		const actions = menu.querySelector('.mv-tab-menu-actions')
+		if (list) {
+			const actionsHeight = actions ? actions.getBoundingClientRect().height : 0
+			list.style.maxHeight = Math.max(room - actionsHeight - 8, 80) + 'px'
 		}
-		tab.appendChild(icon)
 	}
 
-	tab.addEventListener('click', () => {
-		applyView(view, getFilterInstance())
-	})
-
-	// Drag-and-drop for reordering (non-default tabs only, when user can manage)
-	if (canManageViews && !view.is_default) {
-		tab.draggable = true
-		tab.addEventListener('dragstart', (e) => {
-			draggedViewId = view.id
-			tab.classList.add('mv-tab-dragging')
-			e.dataTransfer.effectAllowed = 'move'
-		})
-		tab.addEventListener('dragend', () => {
-			draggedViewId = null
-			tab.classList.remove('mv-tab-dragging')
-			// Clear all drop indicators
-			document.querySelectorAll('.mv-tab-drop-left, .mv-tab-drop-right').forEach(el => {
-				el.classList.remove('mv-tab-drop-left', 'mv-tab-drop-right')
-			})
-		})
-		tab.addEventListener('dragover', (e) => {
-			if (!draggedViewId || draggedViewId === view.id) return
-			e.preventDefault()
-			e.dataTransfer.dropEffect = 'move'
-			// Show drop indicator based on mouse position
-			const rect = tab.getBoundingClientRect()
-			const mid = rect.left + rect.width / 2
-			document.querySelectorAll('.mv-tab-drop-left, .mv-tab-drop-right').forEach(el => {
-				el.classList.remove('mv-tab-drop-left', 'mv-tab-drop-right')
-			})
-			tab.classList.add(e.clientX < mid ? 'mv-tab-drop-left' : 'mv-tab-drop-right')
-		})
-		tab.addEventListener('dragleave', () => {
-			tab.classList.remove('mv-tab-drop-left', 'mv-tab-drop-right')
-		})
-		tab.addEventListener('drop', (e) => {
-			e.preventDefault()
-			tab.classList.remove('mv-tab-drop-left', 'mv-tab-drop-right')
-			if (!draggedViewId || draggedViewId === view.id) return
-			const rect = tab.getBoundingClientRect()
-			const mid = rect.left + rect.width / 2
-			const dropAfter = e.clientX >= mid
-			_handleTabDrop(draggedViewId, view.id, dropAfter)
-		})
-	} else {
-		tab.draggable = false
-	}
-
-	return tab
+	const size = menu.getBoundingClientRect()
+	menu.style.left = Math.max(MENU_MARGIN, Math.min(anchor.left, vw - size.width - MENU_MARGIN)) + 'px'
+	menu.style.top = (below ? anchor.bottom : anchor.top - size.height) + 'px'
 }
 
+/**
+ * The filters a view stores, as fieldName -> Set(values).
+ *
+ * The same resolution applyView does when it puts them into effect, so the
+ * two are comparable: a view keys its filters by field_id, while the filter
+ * instance keys them by field name.
+ *
+ * @param {object|null} view the view to read
+ * @return {Map<string, Set<string>>} its stored filters
+ */
+function _viewFiltersAsMap(view) {
+	const out = new Map()
+	if (!view) return out
+	const availableFields = getAvailableFields() || []
+	for (const [fieldId, valuesStr] of Object.entries(view.filters || {})) {
+		if (!valuesStr) continue
+		const col = (view.columns || []).find(c => String(c.field_id) === String(fieldId))
+		const fieldName = col?.field_name
+			?? availableFields.find(c => String(c.id) === String(fieldId))?.field_name
+		if (!fieldName) continue
+		const values = String(valuesStr).split(',').map(v => v.trim()).filter(Boolean)
+		if (values.length > 0) out.set(fieldName, new Set(values))
+	}
+	return out
+}
+
+/**
+ * Whether the filters in effect differ from what the active view stores.
+ *
+ * Counting active filters was not enough: applying a view writes its own
+ * filters into the very same set that filtering by hand fills, so a view
+ * that carries filters looked exactly like a view someone had filtered on
+ * top of — and the menu offered to save a state that was already saved.
+ *
+ * @param {object|null} view the active view, or null outside one
+ * @param {object|null} filterInstance the filter instance
+ * @return {boolean} true when there is something worth saving
+ */
+function _filtersDifferFromView(view, filterInstance) {
+	const active = filterInstance?.getActiveFilters?.() ?? new Map()
+	const stored = _viewFiltersAsMap(view)
+	if (active.size !== stored.size) return true
+	for (const [field, values] of active) {
+		const other = stored.get(field)
+		if (!other || other.size !== values.size) return true
+		for (const v of values) {
+			if (!other.has(v)) return true
+		}
+	}
+	return false
+}
+
+/**
+ * The view picker: one control naming the view you are in.
+ *
+ * A row of tabs only works while the tabs fit, and these never reliably do
+ * — eight views overflowed a 1583px viewport, so a width breakpoint moved
+ * the failure rather than removing it. Whenever the row scrolled, the
+ * active view could sit off screen with nothing on the bar naming it, and
+ * the bar spent its width on views nobody was using.
+ *
+ * A picker inverts that: the name of the current view is always on the bar
+ * at any width and any number of views, and the rest stay one click away.
+ * It is also what Nextcloud reaches for when a row does not fit — the Files
+ * app collapses its own filter row into a popover — and the only difference
+ * here is that this row never fits, so there is nothing to collapse from.
+ *
+ * @param {HTMLElement} container the tab bar
+ * @param {Array<object>} views all views for this folder
+ */
+function _renderViewPicker(container, views) {
+	container.querySelector('.mv-view-picker')?.remove()
+
+	const activeView = getActiveView()
+	const canManageViews = getCanManageViews()
+
+	const picker = document.createElement('span')
+	picker.className = 'mv-view-picker'
+
+	const label = document.createElement('button')
+	label.type = 'button'
+	label.className = 'mv-view-picker-label'
+	label.setAttribute('aria-haspopup', 'menu')
+	label.setAttribute('aria-expanded', 'false')
+	// The button shows the active view's name, which is its value, not its
+	// purpose; the purpose belongs in an aria-label rather than a title (§4).
+	// TRANSLATORS Accessible name of the view picker button in the file list toolbar, which opens the list of views
+	label.setAttribute('aria-label', t('metavox', 'Switch view'))
+
+	// A category icon, as every Files filter trigger carries one. Columns:
+	// a view is a choice of which columns the list shows, and how.
+	const icon = document.createElement('span')
+	icon.className = 'mv-view-picker-icon'
+	icon.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="' + ICON_VIEW_COLUMNS + '"/></svg>'
+	label.appendChild(icon)
+
+	// A star when the view you are in is the folder's default, matching the
+	// mark the menu puts beside it.
+	if (activeView?.is_default) {
+		const star = document.createElement('span')
+		star.className = 'mv-view-picker-star'
+		star.textContent = '\u2605'
+		label.appendChild(star)
+	}
+
+	// The button carries the current view's name, so the answer to "which
+	// view am I looking at" is always on the bar, whatever the list length.
+	const name = document.createElement('span')
+	name.className = 'mv-view-picker-name'
+	// TRANSLATORS Name of the built-in view without saved settings, shown on the view picker button; keep it short
+	name.textContent = activeView ? activeView.name : t('metavox', 'Default')
+	label.appendChild(name)
+
+	const caret = document.createElement('span')
+	caret.className = 'mv-view-picker-caret'
+	caret.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"/></svg>'
+	label.appendChild(caret)
+
+	label.addEventListener('click', (e) => {
+		e.stopPropagation()
+		if (openTabMenu && openTabMenu.trigger === label) {
+			closeTabMenu(false)
+			return
+		}
+		closeTabMenu(false)
+
+		const menu = document.createElement('div')
+		menu.className = 'mv-tab-menu'
+		menu.setAttribute('role', 'menu')
+		menu.addEventListener('click', (ev) => ev.stopPropagation())
+
+		// The list scrolls; the actions below it do not. With 58 views the
+		// actions sat past the end of a long scroll, so reaching "Edit" meant
+		// paging through every view first.
+		const list = document.createElement('div')
+		list.className = 'mv-tab-menu-list'
+
+		// Every view, the current one marked — a radio group, not a list of
+		// commands, so the checkmark carries the state.
+		list.appendChild(_makeMenuItem(
+			// TRANSLATORS Name of the built-in view without saved settings, shown as the first item in the view menu; keep it short
+			t('metavox', 'Default'),
+			activeView ? '' : ICON_CHECK,
+			() => clearView(), false, !activeView))
+		for (const view of views) {
+			const isActive = String(activeView?.id) === String(view.id)
+			const item = _makeMenuItem(
+				view.name,
+				isActive ? ICON_CHECK : '',
+				() => applyView(view), false, isActive)
+			// The folder's default view is marked, so "which one opens by
+			// default" is answerable without opening the editor.
+			if (view.is_default) {
+				const star = document.createElement('span')
+				star.className = 'mv-tab-menu-star'
+				star.textContent = '\u2605'
+				// TRANSLATORS Tooltip on the star next to the view that opens by default in this folder
+				star.title = t('metavox', 'Standard view — loads automatically when opening this folder')
+				item.appendChild(star)
+			}
+			list.appendChild(item)
+		}
+		menu.appendChild(list)
+
+		// Filters set by hand can be kept, but only while there are any. The
+		// action sits here rather than beside the filter chips: every other
+		// thing you can do to a view is in this menu, and a chip means "an
+		// active filter you can clear" — Nextcloud gives each one a remove
+		// cross, which made the action read as something to dismiss.
+		const filterInstance = getFilterInstance()
+		// Views are shared per Team folder and creating one needs manage
+		// rights, so offering this without them produced a 403 after the user
+		// had already named the view.
+		const hasUnsavedFilters = canManageViews
+			&& _filtersDifferFromView(activeView, filterInstance)
+
+		const actions = document.createElement('div')
+		actions.className = 'mv-tab-menu-actions'
+		if (hasUnsavedFilters) {
+			actions.appendChild(_makeMenuItem(
+				// TRANSLATORS Menu item in the view menu that saves the current filters as a view; the dots mean a dialog opens
+				t('metavox', 'Save filters as view …'), ICON_CONTENT_SAVE,
+				() => openSaveFiltersDialog(filterInstance)))
+		}
+		if (activeView) {
+			actions.appendChild(_makeMenuItem(
+				canManageViews
+					// TRANSLATORS Verb: menu item in the view menu that opens the editor of the current view
+					? t('metavox', 'Edit …')
+					// TRANSLATORS Menu item in the view menu that shows the settings of the current view read-only; also the title of that panel
+					: t('metavox', 'View details'),
+				canManageViews ? ICON_PENCIL : ICON_EYE,
+				() => openViewEditor(activeView, !canManageViews)))
+		}
+		if (canManageViews) {
+			actions.appendChild(_makeMenuItem(
+				// TRANSLATORS Menu item in the view menu that opens the editor for a new view; also the title of that panel
+				t('metavox', 'New view'), ICON_PLUS,
+				() => openViewEditor(null)))
+		}
+		if (actions.childElementCount > 0) {
+			menu.appendChild(actions)
+		}
+
+		document.body.appendChild(menu)
+		label.setAttribute('aria-expanded', 'true')
+		picker.classList.add('mv-tab-menu-open')
+		openTabMenu = { menu, trigger: label, tab: picker }
+
+		_placeMenu(menu, picker)
+		menu.querySelector('.mv-tab-menu-item')?.focus()
+	})
+
+	picker.appendChild(label)
+	container.insertBefore(picker, container.firstChild)
+}
+
+// Material Design icon paths, as used throughout Nextcloud.
+// Columns: a view is a choice of which columns the list shows.
+const ICON_VIEW_COLUMNS = 'M3,5V19H21V5H3M5,7H9V17H5V7M11,7H13V17H11V7M15,7H19V17H15V7Z'
+const ICON_CHECK = 'M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z'
+const ICON_PLUS = 'M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z'
+const ICON_CONTENT_SAVE = 'M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z'
+const ICON_DOTS = 'M16,12A2,2 0 0,1 18,10A2,2 0 0,1 20,12A2,2 0 0,1 18,14A2,2 0 0,1 16,12M10,12A2,2 0 0,1 12,10A2,2 0 0,1 14,12A2,2 0 0,1 12,14A2,2 0 0,1 10,12M4,12A2,2 0 0,1 6,10A2,2 0 0,1 8,12A2,2 0 0,1 6,14A2,2 0 0,1 4,12Z'
+const ICON_PENCIL = 'M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z'
+const ICON_EYE = 'M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5M3.18,12C4.83,15.36 8.24,17.5 12,17.5C15.76,17.5 19.17,15.36 20.82,12C19.17,8.64 15.76,6.5 12,6.5C8.24,6.5 4.83,8.64 3.18,12Z'
+
+/** The open tab menu, so a second click elsewhere can close it. */
+let openTabMenu = null
+
+/**
+ * Close whichever tab menu is open, and restore focus if asked.
+ *
+ * @param {boolean} restoreFocus whether to focus the trigger again
+ */
+function closeTabMenu(restoreFocus = false) {
+	if (!openTabMenu) return
+	const { menu, trigger, tab } = openTabMenu
+	menu.remove()
+	trigger.setAttribute('aria-expanded', 'false')
+	tab.classList.remove('mv-tab-menu-open')
+	openTabMenu = null
+	if (restoreFocus) trigger.focus()
+}
+
+// One document-level listener, not one per menu: re-registering on every
+// rebuild of the tab bar leaked handlers.
+document.addEventListener('click', () => closeTabMenu(false))
+document.addEventListener('keydown', (e) => {
+	if (e.key !== 'Escape' || !openTabMenu) return
+	// Back to the menu button only from the menu itself: an Escape in a cell
+	// editor must not pull the focus away from it.
+	closeTabMenu(openTabMenu.menu.contains(e.target) || e.target === openTabMenu.trigger)
+})
+
+/**
+ * Build one row in the tab actions menu.
+ *
+ * @param {string} label the visible text
+ * @param {string} iconPath Material Design path data
+ * @param {Function} onClick invoked after the menu closes
+ * @param {boolean} danger whether to style it as destructive
+ * @return {HTMLButtonElement} the menu item
+ */
+function _makeMenuItem(label, iconPath, onClick, danger = false, checked = null) {
+	const item = document.createElement('button')
+	item.type = 'button'
+	item.className = 'mv-tab-menu-item' + (danger ? ' mv-tab-menu-item-danger' : '')
+	// A row that selects one of several views is a radio, not a command, so
+	// a screen reader announces which one is current rather than reading a
+	// list of identical-sounding commands.
+	if (checked === null) {
+		item.setAttribute('role', 'menuitem')
+	} else {
+		item.setAttribute('role', 'menuitemradio')
+		item.setAttribute('aria-checked', String(checked))
+	}
+	// The icon box is kept even when empty, so labels line up whether or not
+	// a row carries a checkmark.
+	item.innerHTML = '<span class="mv-tab-menu-icon">'
+		+ (iconPath ? '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="' + iconPath + '"/></svg>' : '')
+		+ '</span>'
+	// The label is its own element so it can ellipsise; as a bare text node it
+	// widened the menu past the screen on a phone.
+	const text = document.createElement('span')
+	text.className = 'mv-tab-menu-label'
+	text.textContent = label
+	item.appendChild(text)
+	item.addEventListener('click', (e) => {
+		e.stopPropagation()
+		closeTabMenu(false)
+		onClick()
+	})
+	return item
+}
+
+
 export function removeViewTabs() {
+	// The menu lives on <body>, not inside the bar, so removing the bar would
+	// otherwise strand it: it stayed on screen listing the views from before
+	// the switch, with its trigger already gone.
+	closeTabMenu(false)
 	const viewTabsEl = getViewTabsEl()
 	viewTabsEl?.remove()
 	setViewTabsEl(null)
 }
 
-async function _handleTabDrop(dragId, targetId, dropAfter) {
-	const activeViews = getActiveViews()
-	const activeGroupfolderId = getActiveGroupfolderId()
-
-	// Build new order from current non-default views
-	const ids = activeViews.filter(v => !v.is_default).map(v => v.id)
-	const fromIdx = ids.indexOf(dragId)
-	if (fromIdx === -1) return
-
-	ids.splice(fromIdx, 1)
-	let toIdx = ids.indexOf(targetId)
-	if (toIdx === -1) return
-	if (dropAfter) toIdx++
-	ids.splice(toIdx, 0, dragId)
-
-	// Prepend default view id if exists
-	const defaultView = activeViews.find(v => v.is_default)
-	const allIds = defaultView ? [defaultView.id, ...ids] : ids
-
-	try {
-		const reorderUrl = generateUrl('/apps/metavox/api/groupfolders/{gfId}/views/reorder', { gfId: activeGroupfolderId })
-		await axios.put(reorderUrl, { view_ids: allIds })
-		// Refresh views and re-render tabs
-		const result = await fetchViews(activeGroupfolderId)
-		setActiveViews(result.views)
-		injectViewTabs(result.views)
-	} catch (err) {
-		console.error('MetaVox: Failed to reorder views', err)
-	}
-}
 
 export function updateActiveTabs() {
 	const viewTabsEl = getViewTabsEl()
 	if (!viewTabsEl) return
 
-	const activeView = getActiveView()
-	const activeViews = getActiveViews()
-	const canManageViews = getCanManageViews()
-
-	viewTabsEl.querySelectorAll('.mv-tab').forEach(tab => {
-		const viewId = tab.dataset.viewId
-		if (!viewId) {
-			// "All" tab — preserve mv-tab-all class
-			const isAll = tab.classList.contains('mv-tab-all')
-			tab.className = 'mv-tab' + (isAll ? ' mv-tab-all' : '') + (!activeView ? ' mv-tab-active' : '')
-			return
-		}
-
-		const isDefault = tab.classList.contains('mv-tab-default')
-		const isActive = activeView && String(activeView.id) === String(viewId)
-		if (isActive) {
-			tab.className = 'mv-tab mv-tab-active' + (isDefault ? ' mv-tab-default' : '')
-			tab.querySelector('.mv-tab-dot')?.remove()
-			// Add action icon if not already present
-			if (!tab.querySelector('.mv-tab-action-icon')) {
-				const view = activeViews.find(v => String(v.id) === String(viewId))
-				if (view) {
-					const icon = document.createElement('span')
-					if (canManageViews) {
-						icon.className = 'mv-tab-action-icon mv-tab-edit-icon'
-						// TRANSLATORS Title of the view editor when it changes an existing view
-						icon.title = t('metavox', 'Edit view')
-						icon.innerHTML = '<svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/></svg>'
-						icon.addEventListener('click', (e) => { e.stopPropagation(); openViewEditor(view) })
-					} else {
-						icon.className = 'mv-tab-action-icon mv-tab-view-icon'
-						// TRANSLATORS Menu item in the view menu that shows the settings of the current view read-only; also the title of that panel
-						icon.title = t('metavox', 'View details')
-						icon.innerHTML = '<svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5M3.18,12C4.83,15.36 8.24,17.5 12,17.5C15.76,17.5 19.17,15.36 20.82,12C19.17,8.64 15.76,6.5 12,6.5C8.24,6.5 4.83,8.64 3.18,12Z"/></svg>'
-						icon.addEventListener('click', (e) => { e.stopPropagation(); openViewEditor(view, true) })
-					}
-					tab.appendChild(icon)
-				}
-			}
-		} else {
-			tab.className = 'mv-tab' + (isDefault ? ' mv-tab-default' : '')
-			tab.querySelector('.mv-tab-dot')?.remove()
-			tab.querySelector('.mv-tab-action-icon')?.remove()
-		}
-	})
-
-	// Scroll active tab into view within the scroll area
-	const activeTabEl = viewTabsEl.querySelector('.mv-tab-active[data-view-id]')
-	if (activeTabEl) {
-		activeTabEl.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
-	}
+	// The bar holds one picker, not a row of tabs, so "update the active tab"
+	// is now just: relabel the picker with the view we are in.
+	_renderViewPicker(viewTabsEl, getActiveViews())
 }
 
 // ========================================
 // View Editor Panel
 // ========================================
 
+// The editor, with its rules and preview (about 100 KB), loads when it opens.
+let editorPanel = null
+async function loadEditorPanel() {
+	editorPanel ??= (await loadPart(() => import(/* webpackChunkName: "metavox-view-editor" */ './ViewEditorPanel.vue'))).default
+	return editorPanel
+}
+
 /**
  * Open the slide-over view editor (Vue component).
  * @param {Object|null} view - Existing view to edit, or null for new
  * @param {boolean} readonly - Open in readonly mode (view details only)
  */
-export function openViewEditor(view, readonly = false) {
+export async function openViewEditor(view, readonly = false) {
+	// When it does not load, loadPart says to reload and nothing changes.
+	const ViewEditorPanel = await loadEditorPanel().catch(() => null)
+	if (!ViewEditorPanel) return
+
 	// Remove existing editor
 	closeViewEditor()
 
@@ -610,19 +771,14 @@ export function openViewEditor(view, readonly = false) {
 	const activeGroupfolderId = getActiveGroupfolderId()
 	const availableFields = getAvailableFields()
 
-	// Overlay to close on outside click
-	const overlay = document.createElement('div')
-	overlay.className = 'mv-editor-overlay'
-	overlay.addEventListener('click', closeViewEditor)
-	document.body.appendChild(overlay)
-
-	// Panel container
+	// A bare mount point: NcDialog teleports itself to the body and brings its
+	// own overlay, focus trap and Escape handling, so none of that is built
+	// here any more.
 	const panel = document.createElement('div')
 	panel.id = VIEW_EDITOR_ID
 	document.body.appendChild(panel)
 
 	const mountEl = document.createElement('div')
-	mountEl.style.height = '100%'
 	panel.appendChild(mountEl)
 
 	const vueApp = createApp({
@@ -632,103 +788,76 @@ export function openViewEditor(view, readonly = false) {
 			availableFields,
 			totalViews: activeViews.length,
 			fetchFilterValuesFn: async (fieldName) => {
-				// Lazy load: fetch filter values on demand when user opens filter dropdown
-				let prefetchedFilterValues = getPrefetchedFilterValues()
-				if (!prefetchedFilterValues && activeGroupfolderId) {
-					prefetchedFilterValues = await fetchAllFilterValues(activeGroupfolderId)
-					setPrefetchedFilterValues(prefetchedFilterValues)
-				}
-				const values = (prefetchedFilterValues || {})[fieldName]
-				return Array.isArray(values) ? values : []
+				// The values of the folder you are in, like the filter panel.
+				const field = availableFields.find((f) => f.field_name === fieldName)
+				return field ? (await folderFilterValues([field]))[fieldName] ?? [] : []
 			},
 			onClose: () => closeViewEditor(),
-			onSave: (payload) => _handleEditorSave(view, payload),
+			submit: (payload) => _submitView(view, payload),
 			onDelete: (v) => _confirmDeleteView(v),
 		}),
 	})
 
 	vueApp.config.globalProperties.t = translate
-	vueApp.mount(mountEl)
+	watchLoading(vueApp).mount(mountEl)
 	panel._vueApp = vueApp
-
-	// Trigger animation
-	requestAnimationFrame(() => {
-		requestAnimationFrame(() => panel.classList.add('open'))
-	})
-
-	// Escape key
-	const onKeyDown = (e) => {
-		if (e.key === 'Escape') { closeViewEditor(); document.removeEventListener('keydown', onKeyDown) }
-	}
-	document.addEventListener('keydown', onKeyDown)
 }
 
-/** Handle save from Vue editor component */
-async function _handleEditorSave(view, payload) {
+/**
+ * Save from the view editor. A refusal goes back to the editor, which keeps
+ * the dialog and the edits and says what went wrong.
+ */
+async function _submitView(view, payload) {
+	const gfId = getActiveGroupfolderId()
+	const resp = view
+		? await axios.put(generateUrl('/apps/metavox/api/groupfolders/{gfId}/views/{viewId}', { gfId, viewId: view.id }), payload)
+		: await axios.post(generateUrl('/apps/metavox/api/groupfolders/{gfId}/views', { gfId }), payload)
+	closeViewEditor()
+	// Saved is saved: a refresh that fails afterwards is no failed save.
+	_afterViewSaved(resp.data, payload.position).catch((e) => console.error('MetaVox: Failed to refresh the views after saving', e))
+	return resp.data
+}
+
+/** After a save: the order, the tabs and the grid follow. */
+async function _afterViewSaved(savedView, desiredPos) {
 	const activeGroupfolderId = getActiveGroupfolderId()
 
-	try {
-		let savedView
-		if (!view) {
-			const url = generateUrl('/apps/metavox/api/groupfolders/{gfId}/views', { gfId: activeGroupfolderId })
-			const resp = await axios.post(url, payload)
-			savedView = resp.data
-		} else {
-			const url = generateUrl('/apps/metavox/api/groupfolders/{gfId}/views/{viewId}', {
-				gfId: activeGroupfolderId,
-				viewId: view.id,
-			})
-			const resp = await axios.put(url, payload)
-			savedView = resp.data
-		}
-
-		closeViewEditor()
-
-		// If position was changed, reorder all views
-		const desiredPos = payload.position
-		if (desiredPos !== undefined && desiredPos !== null) {
-			// Fetch current view list to compute new order
-			const currentResult = await fetchViews(activeGroupfolderId)
-			const currentViews = currentResult.views || []
-			const savedId = savedView?.id
-			if (savedId && currentViews.length > 1) {
-				// Build ordered ID list, then move savedId to desiredPos
-				const ids = currentViews.map(v => v.id)
-				const fromIdx = ids.indexOf(savedId)
-				if (fromIdx !== -1 && fromIdx !== desiredPos) {
-					ids.splice(fromIdx, 1)
-					ids.splice(desiredPos, 0, savedId)
-					try {
-						const reorderUrl = generateUrl('/apps/metavox/api/groupfolders/{gfId}/views/reorder', { gfId: activeGroupfolderId })
-						await axios.put(reorderUrl, { view_ids: ids })
-					} catch (reorderErr) {
-						console.error('MetaVox: Failed to reorder views', reorderErr)
-					}
+	// If position was changed, reorder all views
+	if (desiredPos !== undefined && desiredPos !== null) {
+		// Fetch current view list to compute new order
+		const currentResult = await fetchViews(activeGroupfolderId)
+		const currentViews = currentResult.views || []
+		const savedId = savedView?.id
+		if (savedId && currentViews.length > 1) {
+			// Build ordered ID list, then move savedId to desiredPos
+			const ids = currentViews.map(v => v.id)
+			const fromIdx = ids.indexOf(savedId)
+			if (fromIdx !== -1 && fromIdx !== desiredPos) {
+				ids.splice(fromIdx, 1)
+				ids.splice(desiredPos, 0, savedId)
+				try {
+					const reorderUrl = generateUrl('/apps/metavox/api/groupfolders/{gfId}/views/reorder', { gfId: activeGroupfolderId })
+					await axios.put(reorderUrl, { view_ids: ids })
+				} catch (reorderErr) {
+					console.error('MetaVox: Failed to reorder views', reorderErr)
 				}
 			}
 		}
+	}
 
-		const result = await fetchViews(activeGroupfolderId)
-		setActiveViews(result.views)
-		setCanManageViews(result.canManage)
-		injectViewTabs(result.views)
+	const result = await fetchViews(activeGroupfolderId)
+	setActiveViews(result.views)
+	setCanManageViews(result.canManage)
+	injectViewTabs(result.views)
 
-		// Invalidate prefetch cache so navigation sees the updated views
-		if (window._metavoxAllGfData?.[activeGroupfolderId]) {
-			window._metavoxAllGfData[activeGroupfolderId].views = result.views
-			window._metavoxAllGfData[activeGroupfolderId].can_manage = result.canManage
-		}
+	// Invalidate prefetch cache so navigation sees the updated views
+	if (window._metavoxAllGfData?.[activeGroupfolderId]) {
+		window._metavoxAllGfData[activeGroupfolderId].views = result.views
+		window._metavoxAllGfData[activeGroupfolderId].can_manage = result.canManage
+	}
 
-		if (savedView) {
-			applyView(savedView, getFilterInstance())
-		}
-	} catch (e) {
-		console.error('MetaVox: Failed to save view', e)
-		// TRANSLATORS Error message; {reason} is the server's error text, e.g. "Could not save the view: Internal server error"
-		alert(t('metavox', 'Could not save the view: {reason}', {
-			// TRANSLATORS Fallback error reason when the server gives none; shown as {reason} in an error message, e.g. "Could not save the view: {reason}"
-			reason: e.response?.data?.error || t('metavox', 'Internal server error'),
-		}))
+	if (savedView) {
+		applyView(savedView)
 	}
 }
 
@@ -738,12 +867,14 @@ export function closeViewEditor() {
 		panel._vueApp.unmount()
 	}
 	panel?.remove()
-	document.querySelector('.mv-editor-overlay')?.remove()
 }
 
 async function _confirmDeleteView(view) {
 	// Confirmation already handled by NcDialog in ViewEditorPanel.vue
 	const activeGroupfolderId = getActiveGroupfolderId()
+	// Where we stood matters: only leave the current view if it is the one
+	// being deleted. Deleting another view used to drop you out of yours too.
+	const wasViewing = String(getActiveView()?.id) === String(view.id)
 
 	try {
 		const url = generateUrl('/apps/metavox/api/groupfolders/{gfId}/views/{viewId}', {
@@ -753,13 +884,26 @@ async function _confirmDeleteView(view) {
 		await axios.delete(url)
 
 		closeViewEditor()
-		clearView()
 
 		// Reload views and rebuild tabs
 		const result = await fetchViews(activeGroupfolderId)
 		setActiveViews(result.views)
 		setCanManageViews(result.canManage)
-		injectViewTabs(result.views)
+
+		if (wasViewing) {
+			// Fall back to the starred default view when there is one, so the
+			// folder keeps its intended columns; only drop to the plain
+			// Nextcloud listing when no default exists.
+			const fallback = result.views.find(v => v.is_default)
+			if (fallback) {
+				applyView(fallback)
+			} else {
+				clearView()
+				injectViewTabs(result.views)
+			}
+		} else {
+			injectViewTabs(result.views)
+		}
 
 		// Update prefetch cache
 		if (window._metavoxAllGfData?.[activeGroupfolderId]) {
@@ -769,9 +913,9 @@ async function _confirmDeleteView(view) {
 	} catch (e) {
 		console.error('MetaVox: Failed to delete view', e)
 		// TRANSLATORS Error message; {reason} is the server's error text, e.g. "Could not delete the view: Internal server error"
-		alert(t('metavox', 'Could not delete the view: {reason}', {
+		showError(t('metavox', 'Could not delete the view: {reason}', {
 			// TRANSLATORS Fallback error reason when the server gives none; shown as {reason} in an error message, e.g. "Could not save the view: {reason}"
-			reason: e.response?.data?.error || t('metavox', 'Internal server error'),
+			reason: errorText(e, t('metavox', 'Internal server error')),
 		}))
 	}
 }
@@ -781,13 +925,12 @@ async function _confirmDeleteView(view) {
 // ========================================
 
 /**
- * Apply a view: reset filters, apply view filters, apply column visibility, update URL.
+ * Apply a view: its columns, filters and sort, and the URL.
  * @param {Object} view
- * @param {Object} filterInstance
  */
-export function applyView(view, filterInstance) {
+export function applyView(view) {
 	setActiveView(view)
-	setViewCleared(false)
+	setDefaultChosen(false)
 
 	const availableFields = getAvailableFields()
 
@@ -806,63 +949,35 @@ export function applyView(view, filterInstance) {
 		window.OCA.Files.Sidebar.close()
 	}
 
-	// Reset existing filters (suppresses URL update; we'll set URL after)
-	if (filterInstance) {
-		filterInstance._activeFilters.clear()
-		filterInstance._emitChips()
-	}
-
-	// Apply view filters — stored as { field_id: "val1, val2" } dict
-	if (filterInstance) {
-		const filtersDict = view.filters || {}
-		for (const [fieldId, valuesStr] of Object.entries(filtersDict)) {
-			if (!valuesStr) continue
-			const col = (view.columns || []).find(c => String(c.field_id) === String(fieldId))
-			const fieldName = col?.field_name
-				?? availableFields.find(c => String(c.id) === String(fieldId))?.field_name
-			if (!fieldName) continue
-			const values = String(valuesStr).split(',').map(v => v.trim()).filter(Boolean)
-			if (values.length > 0) {
-				filterInstance._activeFilters.set(fieldName, new Set(values))
-			}
-		}
-
-		// Emit filter update
-		filterInstance._emitChips()
-		filterInstance.dispatchEvent(new CustomEvent('update:filter'))
-		window._nc_event_bus?.emit('files:filters:changed')
-	}
-
-	// Apply column visibility and update filter registration
+	// Columns and filter first, so there is always a registered filter to fill.
 	_applyViewColumns(view)
-	const activeColumnConfigs = getActiveColumnConfigs()
-	const activeGroupfolderId = getActiveGroupfolderId()
-	registerMetaVoxFilter(activeColumnConfigs, activeGroupfolderId, metadataCache)
-
-	// Apply sort if specified (data-level via filter)
+	registerMetaVoxFilter(getActiveColumnConfigs(), getActiveGroupfolderId(), metadataCache)
 	const fi = getFilterInstance()
-	if (view.sort_field && fi) {
-		const col = (view.columns || []).find(c => c.field_name === view.sort_field)
-			?? availableFields.find(c => c.field_name === view.sort_field)
-		fi.setSortState({
-			fieldName: view.sort_field,
-			fieldType: col?.field_type || 'text',
-			direction: view.sort_order || 'asc',
-		})
-		ensureSortBypass()
-		updateSortIndicators()
-		fi.triggerResort()
-	} else if (fi) {
-		fi.setSortState(null)
-		fi.clearServerState()
-		fi.triggerResort()
-	}
 
-	// Update URL: set mvview, clear mvfilter
-	const params = new URLSearchParams(window.location.search)
-	params.set('mvview', view.id)
-	params.delete('mvfilter')
-	history.replaceState(null, '', window.location.pathname + '?' + params.toString() + window.location.hash)
+	// The view's filters, stored as { field_id: "val1, val2" }
+	fi._activeFilters.clear()
+	for (const [fieldId, valuesStr] of Object.entries(view.filters || {})) {
+		if (!valuesStr) continue
+		const col = (view.columns || []).find(c => String(c.field_id) === String(fieldId))
+		const fieldName = col?.field_name
+			?? availableFields.find(c => String(c.id) === String(fieldId))?.field_name
+		if (!fieldName) continue
+		const values = String(valuesStr).split(',').map(v => v.trim()).filter(Boolean)
+		if (values.length > 0) {
+			fi._activeFilters.set(fieldName, new Set(values))
+		}
+	}
+	// The chips now; the Files app hears it from reapply() below, once.
+	fi._emitChips()
+
+	fi.setSortState(view.sort_field
+		? { fieldName: view.sort_field, fieldType: sortFieldType(view, availableFields), direction: view.sort_order || 'asc' }
+		: null)
+	updateSortIndicators()
+	fi.reapply()
+
+	// The view's own filters: none from before in the URL.
+	writeUrl({ view: view.id, filters: null })
 
 	updateActiveTabs()
 }
@@ -888,7 +1003,7 @@ export function buildDefaultFilterConfigs() {
  */
 export function clearView() {
 	setActiveView(null)
-	setViewCleared(true)
+	setDefaultChosen(true)
 
 	const activeGroupfolderId = getActiveGroupfolderId()
 
@@ -906,31 +1021,45 @@ export function clearView() {
 	if (window.OCA?.Files?.Sidebar?.close) {
 		window.OCA.Files.Sidebar.close()
 	}
-	const fi = getFilterInstance()
-	if (fi) {
-		fi.reset()
-	}
-
-	// No view active — show default NC view without MetaVox filters
+	// As the folder opens without a view: no MetaVox columns, and the filter over
+	// every field, still registered, so the view picked next works as on opening.
 	_applyViewColumns(null)
-	removeFilters()
+	registerMetaVoxFilter(buildDefaultFilterConfigs(), activeGroupfolderId, metadataCache)
+	getFilterInstance().reset()
 
-	// Clear sort and server state
-	if (fi) {
-		fi.setSortState(null)
-		fi.clearServerState()
-		fi.triggerResort()
-	}
-	updateSortIndicators()
-
-	// Update URL: remove mvview and mvfilter
-	const params = new URLSearchParams(window.location.search)
-	params.delete('mvview')
-	params.delete('mvfilter')
-	const search = params.toString()
-	history.replaceState(null, '', window.location.pathname + (search ? '?' + search : '') + window.location.hash)
+	// "Default" in the URL, so a reload or a shared link opens it again
+	writeUrl({ view: DEFAULT_VIEW, filters: null })
 
 	updateActiveTabs()
+}
+
+/**
+ * Open a team folder in a view: a link first, then the view you were in,
+ * then the starred one. The URL follows, so a reload opens the same.
+ *
+ * @param {{views: object[], canManage: boolean}} viewsResult
+ * @param {object} [options]
+ * @param {?{view: ?string, filters: ?string}} [options.link] from the page or back/forward
+ * @param {?{viewId: ?number}} [options.stayed] the view of the same team folder
+ */
+export function openFolderView({ views, canManage }, { link = null, stayed = null } = {}) {
+	if (views.length > 0 || canManage) {
+		injectViewTabs(views)
+		const view = viewToOpen(views, { linkView: link?.view ?? null, stayed })
+		if (view) {
+			applyView(view)
+		} else if (link?.view === DEFAULT_VIEW || stayed?.viewId === null) {
+			// "Default" on purpose: a subfolder keeps it, and so does a reload.
+			setDefaultChosen(true)
+		}
+	}
+	// No view: the URL says so too, so an old mvview cannot come back.
+	if (!getActiveView()) {
+		writeUrl({ view: getDefaultChosen() ? DEFAULT_VIEW : null, filters: null })
+	}
+	if (link?.filters) {
+		getFilterInstance()?.loadFromEncoded(link.filters, getActiveColumnConfigs())
+	}
 }
 
 /**
@@ -950,27 +1079,7 @@ function _applyViewColumns(view) {
 		const filesList = document.querySelector('.files-list')
 		if (filesList) filesList.style.minWidth = ''
 	} else {
-		// Build activeColumnConfigs from visible view columns, enriched with availableFields data
-		const ordered = []
-		const usedNames = new Set()
-		for (const vc of view.columns) {
-			const visible = vc.visible !== false && vc.show_as_column !== false
-			if (!visible) continue
-			const fieldName = vc.field_name
-			if (fieldName && !usedNames.has(fieldName)) {
-				// Enrich with field metadata from availableFields if missing
-				if (!vc.field_type) {
-					const af = availableFields.find(f => f.field_name === fieldName || String(f.id) === String(vc.field_id))
-					if (af) {
-						vc.field_type = af.field_type
-						if (!vc.field_options) vc.field_options = af.field_options
-					}
-				}
-				ordered.push(vc)
-				usedNames.add(fieldName)
-			}
-		}
-		setActiveColumnConfigs(ordered)
+		setActiveColumnConfigs(viewColumnConfigs(view, availableFields))
 	}
 
 	// Reset table width before re-injecting so it shrinks when fewer columns are shown
@@ -983,39 +1092,6 @@ function _applyViewColumns(view) {
 	injectHeaderColumns()
 	injectFooterColumns()
 
-	// Check if cached metadata has all fields needed by the new view.
-	// If not, clear cache so metadata is re-fetched with the correct field_names.
-	const activeColumnConfigs = getActiveColumnConfigs()
-	const newFieldNames = activeColumnConfigs.map(c => c.field_name).filter(Boolean)
-	if (newFieldNames.length > 0 && metadataCache.size > 0) {
-		const sample = metadataCache.values().next().value
-		if (sample && newFieldNames.some(f => !(f in sample))) {
-			metadataCache.clear()
-			// Re-fetch metadata for all files with the new field set
-			if (activeGroupfolderId) {
-				const fl = _findFilesList()
-				let ids = fl?.dirContents?.map(n => n.fileid).filter(Boolean) || []
-				if (ids.length === 0) {
-					ids = [...document.querySelectorAll('tr[data-cy-files-list-row]')]
-						.map(r => Number(r.getAttribute('data-cy-files-list-row-fileid'))).filter(Boolean)
-				}
-				if (ids.length > 0) {
-					fetchDirectoryMetadata(activeGroupfolderId, ids).then(data => {
-						for (const [fileId, fields] of Object.entries(data)) {
-							const id = Number(fileId)
-							if (fields._permissions !== undefined) {
-								permissionCache.set(id, (fields._permissions & 2) !== 0)
-								delete fields._permissions
-							}
-							metadataCache.set(id, fields)
-						}
-						updateAllRowCells()
-					})
-				}
-			}
-		}
-	}
-
 	// Batch remove all existing data cells in one query, then re-inject per row
 	document.querySelectorAll('tr[data-cy-files-list-row] .' + MARKER_CLASS).forEach(el => el.remove())
 	document.querySelectorAll('tr[data-cy-files-list-row]').forEach(row => {
@@ -1026,18 +1102,3 @@ function _applyViewColumns(view) {
 	requestAnimationFrame(() => updateTableMinWidth())
 }
 
-/**
- * Check URL for ?mvview= and apply that view if found.
- * @param {Array<Object>} views
- * @param {Object} filterInstance
- */
-export function restoreViewFromUrl(views, filterInstance) {
-	const params = new URLSearchParams(window.location.search)
-	const viewId = params.get('mvview')
-	if (!viewId) return
-
-	const view = views.find(v => String(v.id) === String(viewId))
-	if (view) {
-		applyView(view, filterInstance)
-	}
-}

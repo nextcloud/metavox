@@ -76,6 +76,10 @@ class ViewService {
         ?string $sortField,
         ?string $sortOrder
     ): array {
+        // Before anything is written: a refused rule must change nothing.
+        $columns = self::encode(ViewColumnFormat::normalizeColumns($columns), 'columns');
+        $filters = self::encode($filters, 'filters');
+
         if ($isDefault) {
             $this->clearDefaultForGroupfolder($gfId);
         }
@@ -96,8 +100,8 @@ class ViewService {
                'gf_id'      => $qb->createNamedParameter($gfId, IQueryBuilder::PARAM_INT),
                'name'       => $qb->createNamedParameter($name),
                'is_default' => $qb->createNamedParameter($isDefault ? 1 : 0, IQueryBuilder::PARAM_INT),
-               'columns'    => $qb->createNamedParameter(json_encode($columns)),
-               'filters'    => $qb->createNamedParameter(json_encode($filters)),
+               'columns'    => $qb->createNamedParameter($columns),
+               'filters'    => $qb->createNamedParameter($filters),
                'sort_field' => $qb->createNamedParameter($sortField),
                'sort_order' => $qb->createNamedParameter($sortOrder),
                'position'   => $qb->createNamedParameter($maxPos + 1, IQueryBuilder::PARAM_INT),
@@ -121,8 +125,14 @@ class ViewService {
         array $filters,
         ?string $sortField,
         ?string $sortOrder,
+        array $existingColumns,
         ?int $position = null
     ): array {
+        // A column sent without "format" keeps the rules in $existingColumns,
+        // the view as it is stored now.
+        $columns = self::encode(ViewColumnFormat::normalizeColumns($columns, $existingColumns), 'columns');
+        $filters = self::encode($filters, 'filters');
+
         if ($isDefault) {
             $this->clearDefaultForGroupfolder($gfId, $viewId);
         }
@@ -132,8 +142,8 @@ class ViewService {
         $qb->update('metavox_gf_views')
            ->set('name', $qb->createNamedParameter($name))
            ->set('is_default', $qb->createNamedParameter($isDefault ? 1 : 0, IQueryBuilder::PARAM_INT))
-           ->set('columns', $qb->createNamedParameter(json_encode($columns)))
-           ->set('filters', $qb->createNamedParameter(json_encode($filters)))
+           ->set('columns', $qb->createNamedParameter($columns))
+           ->set('filters', $qb->createNamedParameter($filters))
            ->set('sort_field', $qb->createNamedParameter($sortField))
            ->set('sort_order', $qb->createNamedParameter($sortOrder))
            ->set('updated_at', $qb->createNamedParameter($now, IQueryBuilder::PARAM_DATE));
@@ -334,6 +344,16 @@ class ViewService {
         }
 
         $qb->executeStatement();
+    }
+
+    // json_encode gives false for INF or broken UTF-8, which was stored as a
+    // view without columns. The depth limit keeps it readable for OCS.
+    private static function encode(array $value, string $key): string {
+        try {
+            return json_encode($value, JSON_THROW_ON_ERROR, 64);
+        } catch (\JsonException) {
+            throw new ApiValidationException([$key => ViewColumnFormat::MSG_INVALID]);
+        }
     }
 
     private function rowToArray(array $row): array {

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Service;
 
+use OCA\MetaVox\L10n\Translatable;
+use OCA\MetaVox\Validation\FieldDefinition;
+use OCA\MetaVox\Validation\FieldValue;
+use OCA\MetaVox\Validation\InvalidValue;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 use OCP\IGroupManager;
@@ -14,33 +18,106 @@ use Psr\Log\LoggerInterface;
 
 class FieldService {
 
+    /** Types whose value is a ';#' list of items; the grid's filter has the same set (FilterSortCore.js). */
+    public const LIST_TYPES = ['multiselect', 'multi_select', ...FileReferenceService::FILELINK_TYPES];
+
+    /** Rows per upsert or IN list when many values are saved at once. */
+    private const SAVE_CHUNK = 500;
+
+    /** Cache key, plus the field id: the team folders a field is assigned to. */
+    private const FIELD_FOLDERS_KEY = 'field_folders_';
+
+    /** Whether a field of this type holds a ';#' list. */
+    public static function holdsList(string $fieldType): bool {
+        return \in_array($fieldType, self::LIST_TYPES, true);
+    }
+
+    /** The field type by field name; null for a field that doesn't exist. */
+    public function fieldType(string $fieldName): ?string {
+        $field = $this->fieldByName($fieldName);
+        return $field === null ? null : (string)$field['field_type'];
+    }
+
+    /**
+     * Which of these team folders have the field: a search needs to look in no
+     * other. From the cache, else one query; changing assignments clears it.
+     *
+     * @param list<int|string> $groupfolderIds
+     * @return list<int>
+     */
+    public function groupfoldersWithField(string $fieldName, array $groupfolderIds): array {
+        $field = $this->fieldByName($fieldName);
+        if ($field === null || $groupfolderIds === []) {
+            return [];
+        }
+        $assigned = $this->foldersOfField((int)$field['id']);
+        return array_values(array_filter(array_map('intval', $groupfolderIds), fn (int $id) => isset($assigned[$id])));
+    }
+
+    /** @return array<int, true> the team folders the field is assigned to; cached, cleared when that changes */
+    public function foldersOfField(int $fieldId): array {
+        $key = self::FIELD_FOLDERS_KEY . $fieldId;
+        $cached = $this->cache->get($key);
+        if (\is_array($cached)) {
+            return $cached;
+        }
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('groupfolder_id')
+           ->from('metavox_gf_assigns')
+           ->where($qb->expr()->eq('field_id', $qb->createNamedParameter($fieldId, IQueryBuilder::PARAM_INT)));
+        $result = $qb->executeQuery();
+        $folders = [];
+        while (($id = $result->fetchOne()) !== false) {
+            $folders[(int)$id] = true;
+        }
+        $result->closeCursor();
+        $this->cache->set($key, $folders, 600);
+        return $folders;
+    }
+
+    /** The field definition by field name; null for a field that doesn't exist. */
+    public function fieldByName(string $fieldName): ?array {
+        foreach ($this->getAllFields() as $field) {
+            if ($field['field_name'] === $fieldName) {
+                return $field;
+            }
+        }
+        return null;
+    }
+
     private IDBConnection $db;
     private IGroupManager $groupManager;
     private IUserManager $userManager;
-    private SearchIndexService $searchIndexService;
+    private SearchWordsService $searchWords;
     private ViewService $viewService;
-    private MetaVoxCacheService $cacheService;
     private PushService $pushService;
     private LoggerInterface $logger;
+    private FileReferenceService $fileReferences;
+    private MetadataVersions $versions;
+    private FieldValue $fieldValues;
     private ICache $cache;
 
     // Request-scope cache for fields
     private ?array $fieldsCache = null;
+    /** @var array<int, array<int, array<string, true>>> team folder => [team folder fields?] => fields it uses */
+    private array $usedFields = [];
     private array $fieldsByScopeCache = [];
 
     // Request-scope cache for groupfolders (avoids repeated DB/API calls within same request)
     private array $groupfoldersCache = [];
     private array $folderAccessCache = [];
 
-    public function __construct(IDBConnection $db, IGroupManager $groupManager, IUserManager $userManager, SearchIndexService $searchIndexService, ViewService $viewService, MetaVoxCacheService $cacheService, PushService $pushService, ICacheFactory $cacheFactory, LoggerInterface $logger) {
+    public function __construct(IDBConnection $db, IGroupManager $groupManager, IUserManager $userManager, SearchWordsService $searchWords, ViewService $viewService, PushService $pushService, ICacheFactory $cacheFactory, LoggerInterface $logger, FileReferenceService $fileReferences, MetadataVersions $versions, FieldValue $fieldValues) {
         $this->db = $db;
         $this->groupManager = $groupManager;
         $this->userManager = $userManager;
-        $this->searchIndexService = $searchIndexService;
+        $this->searchWords = $searchWords;
         $this->viewService = $viewService;
-        $this->cacheService = $cacheService;
         $this->pushService = $pushService;
         $this->logger = $logger;
+        $this->fileReferences = $fileReferences;
+        $this->versions = $versions;
+        $this->fieldValues = $fieldValues;
         // Prefer distributed cache (Redis) for cross-process presence & locking.
         // Falls back to local cache (APCu) if distributed is not configured.
         $this->cache = $cacheFactory->createDistributed('metavox')
@@ -88,7 +165,8 @@ public function getAllFields(): array {
     $qb = $this->db->getQueryBuilder();
     $qb->select('*')
        ->from('metavox_gf_fields')
-       ->orderBy('sort_order', 'ASC');
+       ->orderBy('sort_order', 'ASC')
+       ->addOrderBy('id', 'ASC');
 
     $result = $qb->executeQuery();
     $fields = [];
@@ -100,7 +178,7 @@ public function getAllFields(): array {
             'field_type' => $row['field_type'],
             'field_description' => $row['field_description'] ?? '',
             'field_options' => $this->parseFieldOptions($row['field_options'] ?? null),
-            'is_required' => (bool)$row['is_required'],
+            'is_required' => FieldValue::isRequired($row),
             'sort_order' => (int)$row['sort_order'],
             'scope' => 'groupfolder',
             'applies_to_groupfolder' => isset($row['applies_to_groupfolder']) ? (int)$row['applies_to_groupfolder'] : 0,
@@ -135,7 +213,7 @@ public function getFieldById(int $id): ?array {
                 'field_type' => $row['field_type'],
                 'field_description' => $row['field_description'] ?? '',
                 'field_options' => $this->parseFieldOptions($row['field_options'] ?? null),
-                'is_required' => (bool)$row['is_required'],
+                'is_required' => FieldValue::isRequired($row),
                 'sort_order' => (int)$row['sort_order'],
                 'scope' => 'groupfolder',
                 'applies_to_groupfolder' => isset($row['applies_to_groupfolder']) ? (int)$row['applies_to_groupfolder'] : 0,
@@ -149,126 +227,6 @@ public function getFieldById(int $id): ?array {
     }
 }
 
-/**
- * Validate a default value against a field's type. Returns an error message
- * (string) when invalid, or null when the value is acceptable.
- *
- * filelink is validated structurally here (must be canonical "<id>:path");
- * the controller resolves bare picker paths to ids before calling this, so a
- * filelink default that still lacks an id is genuinely unresolvable.
- *
- * @param ?string $value null or '' clears the default and is always allowed.
- */
-public function validateDefaultValue(int $fieldId, ?string $value): ?string {
-    $field = $this->getFieldById($fieldId);
-    if ($field === null) {
-        return 'Field not found';
-    }
-    return self::validateDefaultValueForType(
-        (string)($field['field_type'] ?? 'text'),
-        $value,
-        $field['field_options'] ?? [],
-        fn(string $uid): bool => $this->userManager->userExists($uid)
-    );
-}
-
-/**
- * Pure per-type validation of a default value (no DB). Returns an error
- * message or null. Separated so it can be unit-tested directly.
- *
- * @param mixed    $options     field_options array
- * @param callable $userExists  fn(string $uid): bool — injected so the
- *                              `user` check stays DB-free in tests.
- */
-public static function validateDefaultValueForType(string $type, ?string $value, $options, callable $userExists): ?string {
-    // Clearing a default is always allowed.
-    if ($value === null || $value === '') {
-        return null;
-    }
-
-    switch ($type) {
-        case 'date':
-            $includeTime = is_array($options) && !empty($options['includeTime']);
-            $pattern = $includeTime
-                ? '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/'
-                : '/^\d{4}-\d{2}-\d{2}$/';
-            if (!preg_match($pattern, $value)) {
-                return $includeTime
-                    ? 'Expected date/time as YYYY-MM-DDTHH:mm:ss'
-                    : 'Expected date as YYYY-MM-DD';
-            }
-            return null;
-
-        case 'number':
-            return is_numeric($value) ? null : 'Default must be a number';
-
-        case 'checkbox':
-            return in_array($value, ['0', '1'], true) ? null : 'Default must be 0 or 1';
-
-        case 'select': {
-            $allowed = self::optionValueList($options);
-            return in_array($value, $allowed, true) ? null : 'Default is not one of the field options';
-        }
-
-        case 'multiselect': {
-            $allowed = self::optionValueList($options);
-            foreach (explode(';#', $value) as $token) {
-                $token = trim($token);
-                if ($token === '') {
-                    continue;
-                }
-                if (!in_array($token, $allowed, true)) {
-                    return 'Default contains an option that is not configured: ' . $token;
-                }
-            }
-            return null;
-        }
-
-        case 'user':
-            return $userExists($value) ? null : 'User does not exist: ' . $value;
-
-        case 'filelink': {
-            // Each token must carry a numeric fileid (controller already
-            // resolved picker paths). A bare path here means unresolvable.
-            foreach (\OCA\MetaVox\Service\FileReferenceService::parseValue($value) as $token) {
-                if ($token['fileId'] === null) {
-                    return 'File link default could not be resolved to a file';
-                }
-            }
-            return null;
-        }
-
-        // text, textarea, url and anything else: free-form.
-        default:
-            return null;
-    }
-}
-
-/**
- * Normalise a field_options blob to the list of option VALUE strings, for
- * select/multiselect membership checks. Handles both a flat list
- * (["A","B"]) and the {value,label} object shape.
- *
- * @param mixed $options
- * @return string[]
- */
-private static function optionValueList($options): array {
-    if (!is_array($options)) {
-        return [];
-    }
-    $values = [];
-    foreach ($options as $opt) {
-        if (is_array($opt)) {
-            if (isset($opt['value'])) {
-                $values[] = (string)$opt['value'];
-            }
-        } else {
-            $values[] = (string)$opt;
-        }
-    }
-    return $values;
-}
-
 public function getFieldsByScope(string $scope = 'global'): array {
     // Return from cache if available
     if (isset($this->fieldsByScopeCache[$scope])) {
@@ -279,7 +237,8 @@ public function getFieldsByScope(string $scope = 'global'): array {
     $qb = $this->db->getQueryBuilder();
     $qb->select('*')
        ->from('metavox_gf_fields')
-       ->orderBy('sort_order', 'ASC');
+       ->orderBy('sort_order', 'ASC')
+       ->addOrderBy('id', 'ASC');
 
     $result = $qb->executeQuery();
     $fields = [];
@@ -291,7 +250,7 @@ public function getFieldsByScope(string $scope = 'global'): array {
             'field_type' => $row['field_type'],
             'field_description' => $row['field_description'] ?? '',
             'field_options' => $this->parseFieldOptions($row['field_options'] ?? null),
-            'is_required' => (bool)$row['is_required'],
+            'is_required' => FieldValue::isRequired($row),
             'sort_order' => (int)$row['sort_order'],
             'scope' => 'groupfolder',
             'applies_to_groupfolder' => isset($row['applies_to_groupfolder']) ? (int)$row['applies_to_groupfolder'] : 0,
@@ -307,8 +266,31 @@ public function getFieldsByScope(string $scope = 'global'): array {
     return $fields;
 }
 
-    public function getAllFieldsForGroupfolderConfig(): array {
-        return $this->getFieldsByScope('groupfolder');
+    /**
+     * The field definitions a user may see: all of them (null), or only the
+     * fields assigned to these team folders.
+     *
+     * @param int[]|null $groupfolderIds
+     */
+    public function getCatalogue(?array $groupfolderIds): array {
+        $fields = $this->getAllFields();
+        if ($groupfolderIds === null) {
+            return $fields;
+        }
+        if ($groupfolderIds === []) {
+            return [];
+        }
+        $qb = $this->db->getQueryBuilder();
+        $qb->selectDistinct('field_id')
+           ->from('metavox_gf_assigns')
+           ->where($qb->expr()->in('groupfolder_id', $qb->createNamedParameter(array_map('intval', $groupfolderIds), IQueryBuilder::PARAM_INT_ARRAY)));
+        $result = $qb->executeQuery();
+        $assigned = [];
+        while (($id = $result->fetchOne()) !== false) {
+            $assigned[(int)$id] = true;
+        }
+        $result->closeCursor();
+        return array_values(array_filter($fields, fn (array $field) => isset($assigned[$field['id']])));
     }
 
     /**
@@ -321,144 +303,152 @@ public function getFieldsByScope(string $scope = 'global'): array {
     }
 
     // Universal update method - only groupfolder fields supported now
-public function updateField(int $id, array $fieldData): bool {
-    try {
-        // Verify field exists in metavox_gf_fields
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('id')
-           ->from('metavox_gf_fields')
-           ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
+/**
+ * Whether the field is assigned to a team folder that still exists. The admin
+ * page calls such a field "in use" and locks its name, required flag and
+ * deletion; the API follows the same rules.
+ */
+public function isFieldInUse(int $id): bool {
+    $qb = $this->db->getQueryBuilder();
+    $qb->select('a.field_id')
+       ->from('metavox_gf_assigns', 'a')
+       ->innerJoin('a', 'group_folders', 'g', $qb->expr()->eq('g.folder_id', 'a.groupfolder_id'))
+       ->where($qb->expr()->eq('a.field_id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)))
+       ->setMaxResults(1);
+    $result = $qb->executeQuery();
+    $inUse = $result->fetchOne() !== false;
+    $result->closeCursor();
+    return $inUse;
+}
 
-        $result = $qb->executeQuery();
-        $exists = $result->fetchOne();
-        $result->closeCursor();
-
-        if (!$exists) {
-            return false;
-        }
-
-        // Process field_options — preserve associative-array shape (e.g. date includeTime),
-        // flatten list-shape arrays/strings (select/multiselect options) the legacy way.
-        $fieldOptionsRaw = $fieldData['field_options'] ?? '';
-        if (is_array($fieldOptionsRaw)
-            && $fieldOptionsRaw !== []
-            && array_keys($fieldOptionsRaw) !== range(0, count($fieldOptionsRaw) - 1)) {
-            $fieldOptionsJson = json_encode($fieldOptionsRaw);
-        } else {
-            $flat = is_array($fieldOptionsRaw) ? implode("\n", $fieldOptionsRaw) : (string)$fieldOptionsRaw;
-            $fieldOptionsJson = json_encode(array_values(array_filter(explode("\n", $flat), fn($v) => $v !== '')));
-        }
-
-        $qb = $this->db->getQueryBuilder();
-        $qb->update('metavox_gf_fields')
-           ->set('field_name', $qb->createNamedParameter($fieldData['field_name']))
-           ->set('field_label', $qb->createNamedParameter($fieldData['field_label']))
-           ->set('field_type', $qb->createNamedParameter($fieldData['field_type']))
-           ->set('field_description', $qb->createNamedParameter($fieldData['field_description'] ?? ''))
-           ->set('field_options', $qb->createNamedParameter($fieldOptionsJson))
-           ->set('is_required', $qb->createNamedParameter($fieldData['is_required'] ? 1 : 0, IQueryBuilder::PARAM_INT))
-           ->set('sort_order', $qb->createNamedParameter($fieldData['sort_order'] ?? 0, IQueryBuilder::PARAM_INT))
-           ->set('updated_at', $qb->createNamedParameter(date('Y-m-d H:i:s')))
-           ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
-
-        // Add applies_to_groupfolder if it exists
-        if (isset($fieldData['applies_to_groupfolder'])) {
-            try {
-                $qb->set('applies_to_groupfolder', $qb->createNamedParameter($fieldData['applies_to_groupfolder'], IQueryBuilder::PARAM_INT));
-            } catch (\Exception $e) {
-                // Column might not exist
-            }
-        }
-
-        $result = $qb->executeStatement() > 0;
-
-        // Clear cache after successful update
-        if ($result) {
-            $this->clearFieldCache();
-        }
-
-        return $result;
-
-    } catch (\Exception $e) {
+/**
+ * Changes a field: only what was sent, checked as FieldDefinition says. False
+ * when there is no such field; a refused change throws, a database error too.
+ *
+ * @param array<string, mixed> $sent the parameters the request carries
+ * @throws ApiValidationException
+ */
+public function updateField(int $id, array $sent): bool {
+    $qb = $this->db->getQueryBuilder();
+    $qb->select('*')
+       ->from('metavox_gf_fields')
+       ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
+    $result = $qb->executeQuery();
+    $current = $result->fetch();
+    $result->closeCursor();
+    if (!$current) {
         return false;
     }
-}
-public function createField(array $fieldData): int {
-    // Only groupfolder fields are supported now
-    return $this->createGroupfolderField($fieldData);
-}
 
-    /**
-     * Create groupfolder field in separate table
-     */
-private function createGroupfolderField(array $fieldData): int {
-    try {
-        $this->logger->debug('MetaVox: createGroupfolderField called', ['fieldData' => $fieldData]);
-        
-        // CHECK FOR DUPLICATE FIELD NAME
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('id')
-           ->from('metavox_gf_fields')
-           ->where($qb->expr()->eq('field_name', $qb->createNamedParameter($fieldData['field_name'])));
+    $field = FieldDefinition::stored($sent, $current);
 
-        $result = $qb->executeQuery();
-        $existingId = $result->fetchOne();
-        $result->closeCursor();
-        
-        if ($existingId) {
-            throw new \Exception('A groupfolder field with the name "' . $fieldData['field_name'] . '" already exists. Please choose a different name.');
-        }
-        
-        // Check if applies_to_groupfolder column exists
-        $useAppliesToGroupfolder = true;
-        try {
-            $qb = $this->db->getQueryBuilder();
-            $qb->select('applies_to_groupfolder')
-               ->from('metavox_gf_fields')
-               ->setMaxResults(1);
-            $qb->executeQuery()->closeCursor();
-        } catch (\Exception $e) {
-            $this->logger->debug('MetaVox: applies_to_groupfolder column does not exist yet, skipping');
-            $useAppliesToGroupfolder = false;
-        }
-        
-        $qb = $this->db->getQueryBuilder();
-        $values = [
-            'field_name' => $qb->createNamedParameter($fieldData['field_name']),
-            'field_label' => $qb->createNamedParameter($fieldData['field_label']),
-            'field_type' => $qb->createNamedParameter($fieldData['field_type']),
-            'field_description' => $qb->createNamedParameter($fieldData['field_description'] ?? ''), // ← ADD THIS LINE
-            'field_options' => $qb->createNamedParameter(json_encode($fieldData['field_options'] ?? [])),
-            'is_required' => $qb->createNamedParameter($fieldData['is_required'] ? 1 : 0, IQueryBuilder::PARAM_INT),
-            'sort_order' => $qb->createNamedParameter($fieldData['sort_order'] ?? 0, IQueryBuilder::PARAM_INT),
-            'created_at' => $qb->createNamedParameter(date('Y-m-d H:i:s')),
-            'updated_at' => $qb->createNamedParameter(date('Y-m-d H:i:s')),
-        ];
-        
-        // Only add applies_to_groupfolder if column exists
-        if ($useAppliesToGroupfolder) {
-            $values['applies_to_groupfolder'] = $qb->createNamedParameter($fieldData['applies_to_groupfolder'] ?? 0, IQueryBuilder::PARAM_INT);
-        }
-        
-        $qb->insert('metavox_gf_fields')
-           ->values($values);
-
-        $result = $qb->executeStatement();
-        $insertId = $qb->getLastInsertId();
-
-        // Clear cache after successful create
-        $this->clearFieldCache();
-
-        $this->logger->debug('MetaVox: createGroupfolderField success', ['insertId' => $insertId]);
-        return $insertId;
-        
-    } catch (\Exception $e) {
-        $this->logger->error('MetaVox: createGroupfolderField failed', ['exception' => $e]);
-        throw $e;
+    // Values hang on the name and are stored in the form of the type: a field
+    // in use keeps both. Its required flag may change: files without a value
+    // then show as missing one.
+    $renamed = $field['field_name'] !== (string)$current['field_name'];
+    $retyped = $field['field_type'] !== (FieldDefinition::type($current['field_type']) ?? (string)$current['field_type']);
+    if (($renamed || $retyped) && $this->isFieldInUse($id)) {
+        throw new ApiValidationException($renamed
+            // TRANSLATORS Error message under the "Internal name" box of a metadata field that already has values
+            ? ['field_name' => Translatable::t('Internal name cannot be changed when field is in use')]
+            // TRANSLATORS Error message under the type of a metadata field that is already used in a Team folder
+            : ['field_type' => Translatable::t('Field type cannot be changed when field is in use')]);
     }
+    if ($renamed && $this->fieldNameTaken($field['field_name'])) {
+        throw new ApiValidationException(['field_name' => Translatable::t('A field with this name already exists')]);
+    }
+
+    $qb = $this->db->getQueryBuilder();
+    $qb->update('metavox_gf_fields')
+       ->set('field_name', $qb->createNamedParameter($field['field_name']))
+       ->set('field_label', $qb->createNamedParameter($field['field_label']))
+       ->set('field_type', $qb->createNamedParameter($field['field_type']))
+       ->set('field_description', $qb->createNamedParameter($field['field_description']))
+       ->set('field_options', $qb->createNamedParameter($field['field_options']))
+       ->set('is_required', $qb->createNamedParameter($field['is_required'] ? 1 : 0, IQueryBuilder::PARAM_INT))
+       ->set('sort_order', $qb->createNamedParameter($field['sort_order'], IQueryBuilder::PARAM_INT))
+       ->set('applies_to_groupfolder', $qb->createNamedParameter($field['applies_to_groupfolder'], IQueryBuilder::PARAM_INT))
+       ->set('updated_at', $qb->createNamedParameter(date('Y-m-d H:i:s')))
+       ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
+    $qb->executeStatement();
+    $this->clearFieldCache();
+    return true;
+}
+
+/**
+ * Creates a field from what was sent, checked as FieldDefinition says.
+ *
+ * @param array<string, mixed> $sent the parameters the request carries
+ * @return int the new field's id
+ * @throws ApiValidationException
+ */
+public function createField(array $sent): int {
+    $field = FieldDefinition::stored($sent);
+    if ($this->fieldNameTaken($field['field_name'])) {
+        throw new ApiValidationException(['field_name' => Translatable::t('A field with this name already exists')]);
+    }
+
+    $now = date('Y-m-d H:i:s');
+    $qb = $this->db->getQueryBuilder();
+    $qb->insert('metavox_gf_fields')
+       ->values([
+           'field_name' => $qb->createNamedParameter($field['field_name']),
+           'field_label' => $qb->createNamedParameter($field['field_label']),
+           'field_type' => $qb->createNamedParameter($field['field_type']),
+           'field_description' => $qb->createNamedParameter($field['field_description']),
+           'field_options' => $qb->createNamedParameter($field['field_options']),
+           'is_required' => $qb->createNamedParameter($field['is_required'] ? 1 : 0, IQueryBuilder::PARAM_INT),
+           'sort_order' => $qb->createNamedParameter($field['sort_order'], IQueryBuilder::PARAM_INT),
+           'applies_to_groupfolder' => $qb->createNamedParameter($field['applies_to_groupfolder'], IQueryBuilder::PARAM_INT),
+           'created_at' => $qb->createNamedParameter($now),
+           'updated_at' => $qb->createNamedParameter($now),
+       ]);
+    $qb->executeStatement();
+    $id = $qb->getLastInsertId();
+    $this->clearFieldCache();
+    return $id;
+}
+
+private function fieldNameTaken(string $fieldName): bool {
+    $qb = $this->db->getQueryBuilder();
+    $qb->select('id')
+       ->from('metavox_gf_fields')
+       ->where($qb->expr()->eq('field_name', $qb->createNamedParameter($fieldName)));
+    $result = $qb->executeQuery();
+    $taken = $result->fetchOne() !== false;
+    $result->closeCursor();
+    return $taken;
+}
+
+/**
+ * Deletes several fields. One still in use stays, as deleteField refuses it.
+ *
+ * @param array<mixed> $ids
+ * @return array{deleted: list<int>, skipped: list<array{id: int, reason: string}>}
+ */
+public function deleteFields(array $ids): array {
+    $deleted = [];
+    $skipped = [];
+    foreach (array_values(array_unique(array_map('intval', $ids))) as $id) {
+        try {
+            if ($this->deleteField($id)) {
+                $deleted[] = $id;
+            } else {
+                $skipped[] = ['id' => $id, 'reason' => 'not_deleted'];
+            }
+        } catch (ApiValidationException) {
+            $skipped[] = ['id' => $id, 'reason' => 'in_use'];
+        }
+    }
+    return ['deleted' => $deleted, 'skipped' => $skipped];
 }
 
 public function deleteField(int $id): bool {
+    // Deleting a field in use would wipe its values in every team folder.
+    if ($this->isFieldInUse($id)) {
+        // TRANSLATORS Error message shown when an administrator deletes a metadata field that still has values
+        throw new ApiValidationException(['field' => Translatable::t('Cannot delete (in use)')]);
+    }
     $this->db->beginTransaction();
 
     try {
@@ -483,7 +473,8 @@ public function deleteField(int $id): bool {
            ->where($qb->expr()->eq('field_name', $qb->createNamedParameter($fieldName)));
         $qb->executeStatement();
 
-        // 2. Delete file-in-groupfolder metadata
+        // 2. Delete file-in-groupfolder metadata, and its search words first
+        $this->searchWords->removeField($id, (string)$fieldName);
         $qb = $this->db->getQueryBuilder();
         $qb->delete('metavox_file_gf_meta')
            ->where($qb->expr()->eq('field_name', $qb->createNamedParameter($fieldName)));
@@ -494,6 +485,8 @@ public function deleteField(int $id): bool {
         $qb->delete('metavox_gf_assigns')
            ->where($qb->expr()->eq('field_id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
         $qb->executeStatement();
+        $this->cache->remove(self::FIELD_FOLDERS_KEY . $id);
+        $this->usedFields = [];
 
         // 4. Delete the groupfolder field itself
         $qb = $this->db->getQueryBuilder();
@@ -511,123 +504,17 @@ public function deleteField(int $id): bool {
 
         // Clear cache after successful delete
         $this->clearFieldCache();
+        $this->versions->bumpAll();
 
         return true;
 
     } catch (\Exception $e) {
-        // Rollback on any error
+        // All or nothing; the error is the middleware's to answer.
         $this->db->rollBack();
-        return false;
+        throw $e;
     }
 }
-public function getFieldMetadata(int $fileId): array {
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('f.id', 'f.field_name', 'f.field_label', 'f.field_type', 'f.field_options', 'f.is_required', 'v.field_value as value')
-           ->from('metavox_gf_fields', 'f')
-           ->leftJoin('f', 'metavox_file_gf_meta', 'v', 'f.field_name = v.field_name AND v.file_id = :file_id')
-           ->setParameter('file_id', $fileId)
-           ->orderBy('f.sort_order', 'ASC');
-
-        $result = $qb->executeQuery();
-        $metadata = [];
-        while ($row = $result->fetch()) {
-            $metadata[] = [
-                'id' => (int)$row['id'],
-                'field_name' => $row['field_name'],
-                'field_label' => $row['field_label'],
-                'field_type' => $row['field_type'],
-                'field_options' => $this->parseFieldOptions($row['field_options'] ?? null),
-                'is_required' => (bool)$row['is_required'],
-                'value' => $row['value'],
-            ];
-        }
-        $result->closeCursor();
-
-        return $metadata;
-    }
-
-public function saveFieldValue(int $fileId, int $fieldId, string $value): bool {
-    try {
-        // Get field name from metavox_gf_fields
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('field_name')
-           ->from('metavox_gf_fields')
-           ->where($qb->expr()->eq('id', $qb->createNamedParameter($fieldId, IQueryBuilder::PARAM_INT)));
-
-        $result = $qb->executeQuery();
-        $fieldName = $result->fetchOne();
-        $result->closeCursor();
-
-        if (!$fieldName) {
-            return false;
-        }
-
-        $dbProvider = $this->db->getDatabaseProvider();
-        $now = date('Y-m-d H:i:s');
-
-        if ($dbProvider === IDBConnection::PLATFORM_MYSQL) {
-            $sql = "INSERT INTO *PREFIX*metavox_file_gf_meta
-                    (file_id, groupfolder_id, field_name, field_value, created_at, updated_at)
-                    VALUES (?, 0, ?, ?, ?, ?)
-                    ON DUPLICATE KEY UPDATE
-                    field_value = VALUES(field_value),
-                    updated_at = VALUES(updated_at)";
-        } else {
-            $sql = "INSERT INTO *PREFIX*metavox_file_gf_meta
-                    (file_id, groupfolder_id, field_name, field_value, created_at, updated_at)
-                    VALUES (?, 0, ?, ?, ?, ?)
-                    ON CONFLICT (file_id, groupfolder_id, field_name)
-                    DO UPDATE SET
-                    field_value = EXCLUDED.field_value,
-                    updated_at = EXCLUDED.updated_at";
-        }
-
-        $this->db->executeStatement($sql, [
-            $fileId,
-            $fieldName,
-            $value,
-            $now,
-            $now
-        ]);
-
-        $this->queueSearchIndexUpdate($fileId);
-        return true;
-
-    } catch (\Exception $e) {
-        return false;
-    }
-}
-
     // Groupfolder functionality
-
-/**
- * Look up the groupfolder ID for a file by checking the metadata database.
- * Returns the first groupfolder_id found, or null if the file has no metadata stored.
- */
-public function getGroupfolderIdByFileId(int $fileId): ?int {
-    try {
-        $qb = $this->db->getQueryBuilder();
-        $qb->selectDistinct('groupfolder_id')
-           ->from('metavox_file_gf_meta')
-           ->where($qb->expr()->eq('file_id', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_INT)))
-           ->setMaxResults(1);
-
-        $result = $qb->executeQuery();
-        $gfId = $result->fetchOne();
-        $result->closeCursor();
-
-        if ($gfId !== false && $gfId !== null) {
-            return (int)$gfId;
-        }
-    } catch (\Exception $e) {
-        $this->logger->debug('MetaVox: getGroupfolderIdByFileId failed', [
-            'exception' => $e,
-            'fileId' => $fileId,
-        ]);
-    }
-
-    return null;
-}
 
 public function getGroupfolders(string $userId, bool $adminMode = false): array {
     // Request-scope cache
@@ -765,12 +652,13 @@ public function hasAccessToGroupfolder(string $userId, int $groupfolderId): bool
 public function getGroupfolderMetadata(int $groupfolderId): array {
         try {
             $qb = $this->db->getQueryBuilder();
-            $qb->select('f.id', 'f.field_name', 'f.field_label', 'f.field_type', 'f.field_options', 'f.is_required', 'f.applies_to_groupfolder', 'v.field_value as value')
+            $qb->select('f.id', 'f.field_name', 'f.field_label', 'f.field_type', 'f.field_options', 'f.is_required', 'f.field_description', 'f.applies_to_groupfolder', 'v.field_value as value')
                ->from('metavox_gf_fields', 'f')
                ->innerJoin('f', 'metavox_gf_assigns', 'gf', 'f.id = gf.field_id AND gf.groupfolder_id = :groupfolder_id')
                ->leftJoin('f', 'metavox_gf_metadata', 'v', 'f.field_name = v.field_name AND v.groupfolder_id = :groupfolder_id')
                ->setParameter('groupfolder_id', $groupfolderId)
-               ->orderBy('f.sort_order', 'ASC');
+               ->orderBy('f.sort_order', 'ASC')
+               ->addOrderBy('f.id', 'ASC');
 
             $result = $qb->executeQuery();
             $metadata = [];
@@ -781,7 +669,8 @@ public function getGroupfolderMetadata(int $groupfolderId): array {
                     'field_label' => $row['field_label'],
                     'field_type' => $row['field_type'],
                     'field_options' => $this->parseFieldOptions($row['field_options'] ?? null),
-                    'is_required' => (bool)$row['is_required'],
+                    'is_required' => FieldValue::isRequired($row),
+                    'field_description' => $row['field_description'] ?? '',
                     'applies_to_groupfolder' => (int)($row['applies_to_groupfolder'] ?? 0),
                     'value' => $row['value'],
                 ];
@@ -840,7 +729,8 @@ public function getAssignedFieldsWithDataForGroupfolder(int $groupfolderId): arr
         $qb->select('*')
            ->from('metavox_gf_fields')
            ->where($qb->expr()->in('id', $qb->createNamedParameter($fieldIds, IQueryBuilder::PARAM_INT_ARRAY)))
-           ->orderBy('sort_order', 'ASC');
+           ->orderBy('sort_order', 'ASC')
+       ->addOrderBy('id', 'ASC');
 
         $result = $qb->executeQuery();
         $fields = [];
@@ -852,7 +742,7 @@ public function getAssignedFieldsWithDataForGroupfolder(int $groupfolderId): arr
                 'field_type' => $row['field_type'],
                 'field_description' => $row['field_description'] ?? '',
                 'field_options' => $this->parseFieldOptions($row['field_options'] ?? null),
-                'is_required' => (bool)$row['is_required'],
+                'is_required' => FieldValue::isRequired($row),
                 'sort_order' => (int)$row['sort_order'],
                 'scope' => 'groupfolder',
                 'applies_to_groupfolder' => isset($row['applies_to_groupfolder']) ? (int)$row['applies_to_groupfolder'] : 0,
@@ -868,20 +758,46 @@ public function getAssignedFieldsWithDataForGroupfolder(int $groupfolderId): arr
     }
 }
 
-public function setGroupfolderFields(int $groupfolderId, array $fieldIds): bool {
+/**
+ * The fields of a team folder: exactly these ids.
+ *
+ * @throws ApiValidationException for an id of no field
+ */
+public function setGroupfolderFields(int $groupfolderId, array $fieldIds): void {
+    $fieldIds = array_values(array_unique(array_map('intval', $fieldIds)));
+    if (array_diff($fieldIds, array_column($this->getAllFields(), 'id')) !== []) {
+        // TRANSLATORS Error when fields are assigned to a Team folder and one of them no longer exists
+        throw new ApiValidationException(['field_ids' => Translatable::t('Choose existing fields')]);
+    }
     $this->db->beginTransaction();
     try {
-        // Delete all existing assignments for this groupfolder
+        // Only remove and add what changed: the default value lives on the
+        // assignment row, so a field that stays assigned keeps its default.
         $qb = $this->db->getQueryBuilder();
-        $qb->delete('metavox_gf_assigns')
-           ->where($qb->expr()->eq('groupfolder_id',
-                   $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)));
-        $qb->executeStatement();
+        $qb->select('field_id')
+           ->from('metavox_gf_assigns')
+           ->where($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)));
+        $result = $qb->executeQuery();
+        $current = [];
+        while (($id = $result->fetchOne()) !== false) {
+            $current[] = (int)$id;
+        }
+        $result->closeCursor();
 
-        // Batch insert all new assignments - use chunks of 100 to avoid query size limits
-        if (!empty($fieldIds)) {
+        $removed = array_values(array_diff($current, $fieldIds));
+        foreach (array_chunk($removed, 100) as $chunk) {
+            $qb = $this->db->getQueryBuilder();
+            $qb->delete('metavox_gf_assigns')
+               ->where($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)))
+               ->andWhere($qb->expr()->in('field_id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));
+            $qb->executeStatement();
+        }
+
+        // Batch insert the new assignments - use chunks of 100 to avoid query size limits
+        $added = array_values(array_diff($fieldIds, $current));
+        if (!empty($added)) {
             $timestamp = date('Y-m-d H:i:s');
-            $chunks = array_chunk($fieldIds, 100);
+            $chunks = array_chunk($added, 100);
 
             foreach ($chunks as $chunk) {
                 // Build batch insert with raw SQL for better performance
@@ -904,6 +820,10 @@ public function setGroupfolderFields(int $groupfolderId, array $fieldIds): bool 
         }
 
         $this->db->commit();
+        foreach ([...$removed, ...$added] as $fieldId) {
+            $this->cache->remove(self::FIELD_FOLDERS_KEY . $fieldId);
+            $this->usedFields = [];
+        }
 
         // Cascade: prune views — remove references to fields no longer assigned
         $activeFieldNames = [];
@@ -919,24 +839,24 @@ public function setGroupfolderFields(int $groupfolderId, array $fieldIds): bool 
             $result->closeCursor();
         }
         $this->viewService->pruneViewsForGroupfolder($groupfolderId, $fieldIds, $activeFieldNames);
-
-        return true;
     } catch (\Exception $e) {
-        $this->db->rollBack();
-        $this->logger->error('MetaVox: setGroupfolderFields failed', ['exception' => $e, 'groupfolderId' => $groupfolderId]);
-        return false;
+        if ($this->db->inTransaction()) {
+            $this->db->rollBack();
+        }
+        throw $e;
     }
 }
 public function getGroupfolderFileMetadata(int $groupfolderId, int $fileId): array {
         try {
             $qb = $this->db->getQueryBuilder();
-            $qb->select('f.id', 'f.field_name', 'f.field_label', 'f.field_type', 'f.field_options', 'f.is_required', 'f.applies_to_groupfolder', 'v.field_value as value')
+            $qb->select('f.id', 'f.field_name', 'f.field_label', 'f.field_type', 'f.field_options', 'f.is_required', 'f.field_description', 'f.applies_to_groupfolder', 'v.field_value as value')
                ->from('metavox_gf_fields', 'f')
                ->innerJoin('f', 'metavox_gf_assigns', 'gf', 'f.id = gf.field_id AND gf.groupfolder_id = :groupfolder_id')
                ->leftJoin('f', 'metavox_file_gf_meta', 'v', 'f.field_name = v.field_name AND v.groupfolder_id = :groupfolder_id AND v.file_id = :file_id')
                ->setParameter('groupfolder_id', $groupfolderId)
                ->setParameter('file_id', $fileId)
-               ->orderBy('f.sort_order', 'ASC');
+               ->orderBy('f.sort_order', 'ASC')
+               ->addOrderBy('f.id', 'ASC');
 
             $result = $qb->executeQuery();
             $metadata = [];
@@ -947,7 +867,8 @@ public function getGroupfolderFileMetadata(int $groupfolderId, int $fileId): arr
                     'field_label' => $row['field_label'],
                     'field_type' => $row['field_type'],
                     'field_options' => $this->parseFieldOptions($row['field_options'] ?? null),
-                    'is_required' => (bool)$row['is_required'],
+                    'is_required' => FieldValue::isRequired($row),
+                    'field_description' => $row['field_description'] ?? '',
                     'applies_to_groupfolder' => (int)($row['applies_to_groupfolder'] ?? 0),
                     'value' => $row['value'],
                 ];
@@ -963,56 +884,14 @@ public function getGroupfolderFileMetadata(int $groupfolderId, int $fileId): arr
         }
     }
 
-public function saveGroupfolderFieldValue(int $groupfolderId, int $fieldId, string $value): bool {
-    try {
-        // Get field name
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('field_name')
-           ->from('metavox_gf_fields')
-           ->where($qb->expr()->eq('id', $qb->createNamedParameter($fieldId, IQueryBuilder::PARAM_INT)));
-        
-        $result = $qb->executeQuery();
-        $fieldName = $result->fetchOne();
-        $result->closeCursor();
-        
-        if (!$fieldName) {
-            return false;
-        }
 
-        $dbProvider = $this->db->getDatabaseProvider();
-        
-        if ($dbProvider === IDBConnection::PLATFORM_MYSQL) {
-            $sql = "INSERT INTO *PREFIX*metavox_gf_metadata 
-                    (groupfolder_id, field_name, field_value, created_at, updated_at) 
-                    VALUES (?, ?, ?, ?, ?)
-                    ON DUPLICATE KEY UPDATE 
-                    field_value = VALUES(field_value), 
-                    updated_at = VALUES(updated_at)";
-        } else {
-            $sql = "INSERT INTO *PREFIX*metavox_gf_metadata 
-                    (groupfolder_id, field_name, field_value, created_at, updated_at) 
-                    VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT (groupfolder_id, field_name) 
-                    DO UPDATE SET 
-                    field_value = EXCLUDED.field_value, 
-                    updated_at = EXCLUDED.updated_at";
-        }
-        
-        $now = date('Y-m-d H:i:s');
-        $this->db->executeStatement($sql, [
-            $groupfolderId, 
-            $fieldName, 
-            $value, 
-            $now,
-            $now
-        ]);
-        
-        return true;
-        
-    } catch (\Exception $e) {
-        $this->logger->error('MetaVox: saveGroupfolderFieldValue failed', ['exception' => $e, 'groupfolderId' => $groupfolderId]);
-        return false;
-    }
+private function upsertGroupfolderValue(int $groupfolderId, string $fieldName, string $value): void {
+    $sql = 'INSERT INTO *PREFIX*metavox_gf_metadata (groupfolder_id, field_name, field_value, created_at, updated_at) VALUES (?, ?, ?, ?, ?) '
+        . ($this->db->getDatabaseProvider() === IDBConnection::PLATFORM_MYSQL
+            ? 'ON DUPLICATE KEY UPDATE field_value = VALUES(field_value), updated_at = VALUES(updated_at)'
+            : 'ON CONFLICT (groupfolder_id, field_name) DO UPDATE SET field_value = EXCLUDED.field_value, updated_at = EXCLUDED.updated_at');
+    $now = date('Y-m-d H:i:s');
+    $this->db->executeStatement($sql, [$groupfolderId, $fieldName, $value, $now, $now]);
 }
 
 
@@ -1036,7 +915,8 @@ public function getBulkFileMetadata(array $fileIds): array {
                      'f.field_name = v.field_name AND v.file_id IN (:file_ids)')
            ->setParameter('file_ids', $fileIds, IQueryBuilder::PARAM_INT_ARRAY)
            ->orderBy('v.file_id', 'ASC')
-           ->addOrderBy('f.sort_order', 'ASC');
+           ->addOrderBy('f.sort_order', 'ASC')
+           ->addOrderBy('f.id', 'ASC');
 
         $result = $qb->executeQuery();
         $metadataByFile = [];
@@ -1057,7 +937,7 @@ public function getBulkFileMetadata(array $fileIds): array {
                     'field_type' => $row['field_type'],
                     'field_description' => $row['field_description'] ?? '',
                     'field_options' => $this->parseFieldOptions($row['field_options'] ?? null),
-                    'is_required' => (bool)$row['is_required'],
+                    'is_required' => FieldValue::isRequired($row),
                 ];
             }
 
@@ -1086,93 +966,417 @@ public function getBulkFileMetadata(array $fileIds): array {
     }
 }
 
-public function saveGroupfolderFileFieldValue(int $groupfolderId, int $fileId, int $fieldId, string $value, ?string $fieldName = null): bool {
-    try {
-        // Resolve field name if not provided (avoids DB lookup when caller already has it)
-        if ($fieldName === null) {
-            $qb = $this->db->getQueryBuilder();
-            $qb->select('field_name')
-               ->from('metavox_gf_fields')
-               ->where($qb->expr()->eq('id', $qb->createNamedParameter($fieldId, IQueryBuilder::PARAM_INT)));
 
-            $result = $qb->executeQuery();
-            $fieldName = $result->fetchOne();
-            $result->closeCursor();
-
-            if (!$fieldName) {
-                return false;
-            }
-        }
-
-        $dbProvider = $this->db->getDatabaseProvider();
-        
-        if ($dbProvider === IDBConnection::PLATFORM_MYSQL) {
-            $sql = "INSERT INTO *PREFIX*metavox_file_gf_meta 
-                    (file_id, groupfolder_id, field_name, field_value, created_at, updated_at) 
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    ON DUPLICATE KEY UPDATE 
-                    field_value = VALUES(field_value), 
-                    updated_at = VALUES(updated_at)";
-        } else {
-            $sql = "INSERT INTO *PREFIX*metavox_file_gf_meta 
-                    (file_id, groupfolder_id, field_name, field_value, created_at, updated_at) 
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    ON CONFLICT (file_id, groupfolder_id, field_name) 
-                    DO UPDATE SET 
-                    field_value = EXCLUDED.field_value, 
-                    updated_at = EXCLUDED.updated_at";
-        }
-        
-        $now = date('Y-m-d H:i:s');
-        $this->db->executeStatement($sql, [
-            $fileId,
-            $groupfolderId,
-            $fieldName,
-            $value,
-            $now,
-            $now
-        ]);
-
-        $this->cache->remove("gf_{$groupfolderId}_fv_{$fieldName}");
-
-        // Write-through cache: update the cached metadata directly instead of
-        // invalidating. This prevents a DB read on the next fetch and avoids
-        // race conditions with concurrent edits.
-        $this->cacheService->updateFileField($groupfolderId, $fileId, $fieldName, $value);
-
-        $this->queueSearchIndexUpdate($fileId);
-        $this->pushService->metadataChanged($groupfolderId, $fileId, $fieldName, $value);
-        return true;
-
-    } catch (\Exception $e) {
-        $this->logger->error('MetaVox: saveGroupfolderFileFieldValue failed', ['exception' => $e, 'fileId' => $fileId, 'groupfolderId' => $groupfolderId]);
-        return false;
+/**
+ * The fields this team folder uses: its file fields, or with $folderLevel its
+ * team folder fields. From the cache of foldersOfField, which changing an
+ * assignment clears, and once per request.
+ *
+ * @return array<string, true> field name => true
+ */
+private function usedFieldNames(int $groupfolderId, bool $folderLevel): array {
+    if (isset($this->usedFields[$groupfolderId][(int)$folderLevel])) {
+        return $this->usedFields[$groupfolderId][(int)$folderLevel];
     }
+    $used = [];
+    foreach ($this->getAllFields() as $field) {
+        if (((int)($field['applies_to_groupfolder'] ?? 0) === 1) === $folderLevel
+            && isset($this->foldersOfField((int)$field['id'])[$groupfolderId])) {
+            $used[(string)$field['field_name']] = true;
+        }
+    }
+    return $this->usedFields[$groupfolderId][(int)$folderLevel] = $used;
 }
 
-private function queueSearchIndexUpdate(int $fileId): void {
+/**
+ * Saves values of the team folder itself, each checked as in saveValues: when
+ * one is refused nothing is saved. A field that is no team folder field of
+ * this folder is left out.
+ *
+ * @param array<string, mixed> $values field name => value
+ * @return int how many values were saved
+ * @throws ApiValidationException a value a field does not take, by field name
+ */
+public function saveGroupfolderValues(int $groupfolderId, array $values): int {
+    $fields = [];
+    foreach ($this->getAllFields() as $field) {
+        $fields[(string)$field['field_name']] = $field;
+    }
+    $used = $this->usedFieldNames($groupfolderId, true);
+
+    $stored = [];
+    $refused = [];
+    $current = null;
+    foreach ($values as $fieldName => $value) {
+        $fieldName = (string)$fieldName;
+        if (!isset($used[$fieldName], $fields[$fieldName])) {
+            continue;
+        }
+        try {
+            $checked = $this->fieldValues->stored($fields[$fieldName], $value);
+            if (in_array($fields[$fieldName]['field_type'] ?? '', FileReferenceService::FILELINK_TYPES, true)) {
+                $current ??= $this->getGroupfolderMetadataValues($groupfolderId);
+            }
+            $stored[$fieldName] = $this->storedValue($fields[$fieldName], $checked, $groupfolderId, null, $current[$fieldName] ?? '');
+            FieldValue::requireFilled($fields[$fieldName], $stored[$fieldName]);
+        } catch (InvalidValue $e) {
+            unset($stored[$fieldName]);
+            $refused[$fieldName] = [$e->getMessage(), $value];
+        }
+    }
+    if ($refused !== []) {
+        $current = $this->getGroupfolderMetadataValues($groupfolderId);
+        $left = [];
+        foreach ($refused as $fieldName => [$message, $value]) {
+            $now = $current[$fieldName] ?? '';
+            if (!(is_string($value) && $value === $now) && !($value === null && $now === '')) {
+                $left[$fieldName] = $message;
+            }
+        }
+        if ($left !== []) {
+            throw new ApiValidationException($left);
+        }
+    }
+    foreach ($stored as $fieldName => $value) {
+        $this->upsertGroupfolderValue($groupfolderId, $fieldName, $value);
+    }
+    return \count($stored);
+}
+
+/** @return array<string, string> the stored values of the team folder itself */
+private function getGroupfolderMetadataValues(int $groupfolderId): array {
+    $qb = $this->db->getQueryBuilder();
+    $qb->select('field_name', 'field_value')
+       ->from('metavox_gf_metadata')
+       ->where($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)));
+    $result = $qb->executeQuery();
+    $values = [];
+    while ($row = $result->fetch()) {
+        $values[(string)$row['field_name']] = (string)$row['field_value'];
+    }
+    $result->closeCursor();
+    return $values;
+}
+
+/**
+ * Saves the values of many files in one team folder: one upsert and one search
+ * word update per block, so a bulk edit or a copied folder costs a few queries
+ * instead of a few per value. Each value is checked first (see checkedValues);
+ * when one is refused nothing is saved. With $onlyEmpty a value that is already
+ * filled in stays.
+ *
+ * @param array<int, array<string, mixed>> $values file id => [field name => value]
+ * @param bool $asStored values copied from another file, already in their stored form
+ * @return int how many values were saved
+ * @throws ApiValidationException a value a field does not take, by field name
+ */
+public function saveValues(int $groupfolderId, array $values, bool $onlyEmpty = false, bool $asStored = false): int {
+    $checked = $this->checkedValues($groupfolderId, $values, $onlyEmpty, $asStored);
+    if ($checked['refused'] !== []) {
+        throw new ApiValidationException(array_merge(...array_values($checked['refused'])));
+    }
+    $rows = $checked['rows'];
+    $words = $checked['words'];
+    if ($rows === []) {
+        return 0;
+    }
+
+    $isMysql = $this->db->getDatabaseProvider() === IDBConnection::PLATFORM_MYSQL;
+    $now = date('Y-m-d H:i:s');
+    // The values and their search index: all of it or none. The rows stay
+    // locked until the index has them, so of two saves at once the last one
+    // is what the filter finds. Inside a caller's transaction that one does it.
+    $own = !$this->db->inTransaction();
+    if ($own) {
+        $this->db->beginTransaction();
+    }
     try {
-        $this->searchIndexService->updateFileIndex($fileId);
+        foreach (array_chunk($rows, self::SAVE_CHUNK) as $chunk) {
+            $params = [];
+            foreach ($chunk as $row) {
+                array_push($params, ...$row);
+                array_push($params, $now, $now);
+            }
+            $this->db->executeStatement($this->upsertSql(\count($chunk), $isMysql), $params);
+        }
+        $this->searchWords->replaceValues($groupfolderId, $words);
+        if ($own) {
+            $this->db->commit();
+        }
     } catch (\Exception $e) {
-        $this->logger->error('MetaVox: failed to update search index', ['exception' => $e, 'fileId' => $fileId]);
+        if ($own) {
+            $this->db->rollBack();
+        }
+        throw $e;
+    }
+
+    $this->versions->bump($groupfolderId);
+    $savedFiles = array_values(array_unique(array_column($rows, 0)));
+    foreach ($savedFiles as $fileId) {
+        $this->pushService->metadataChanged($groupfolderId, $fileId);
+    }
+    return \count($rows);
+}
+
+/**
+ * saveValues for many files; when the database refuses them together, file by
+ * file, so one file it cannot store does not keep the others from being saved.
+ * A value a field does not take is still refused for the lot.
+ *
+ * @param array<int, array<string, mixed>> $values file id => [field name => value]
+ * @return int[] the files that could not be saved
+ * @throws ApiValidationException
+ */
+public function saveValuesPerFile(int $groupfolderId, array $values, bool $onlyEmpty = false): array {
+    try {
+        $this->inSavepoint(fn () => $this->saveValues($groupfolderId, $values, $onlyEmpty));
+        return [];
+    } catch (ApiValidationException $e) {
+        throw $e;
+    } catch (\Exception $e) {
+        $this->logger->error('MetaVox: saving together failed, trying file by file', ['groupfolderId' => $groupfolderId, 'exception' => $e]);
+    }
+    $failed = [];
+    foreach ($values as $fileId => $fileValues) {
+        try {
+            $this->inSavepoint(fn () => $this->saveValues($groupfolderId, [$fileId => $fileValues], $onlyEmpty));
+        } catch (\Exception $e) {
+            $this->logger->error('MetaVox: could not save a file\'s values', ['groupfolderId' => $groupfolderId, 'fileId' => $fileId, 'exception' => $e]);
+            $failed[] = (int)$fileId;
+        }
+    }
+    return $failed;
+}
+
+/** One try that leaves the transaction usable when it fails (a savepoint inside one). */
+private function inSavepoint(callable $save): void {
+    $this->db->beginTransaction();
+    try {
+        $save();
+        $this->db->commit();
+    } catch (\Exception $e) {
+        $this->db->rollBack();
+        throw $e;
     }
 }
 
 /**
- * Clear all metadata for a file in a groupfolder
+ * What saveValues would refuse, per file and field, and the fields this team
+ * folder does not use, which it leaves out. For callers that save many files
+ * and answer per file.
+ *
+ * @param array<int, array<string, mixed>> $values file id => [field name => value]
+ * @return array{refused: array<int, array<string, string>>, unused: array<int, list<string>>}
  */
-public function clearGroupfolderFileMetadata(int $groupfolderId, int $fileId): bool {
-    try {
+public function refusedValues(int $groupfolderId, array $values): array {
+    $checked = $this->checkedValues($groupfolderId, $values, false, false);
+    return ['refused' => $checked['refused'], 'unused' => $checked['unused']];
+}
+
+/**
+ * The rows to save, each value in its stored form. A value is refused when its
+ * field does not take it or when it would empty a required field; one that is
+ * stored like that already stays as it is, so an old value never blocks a save.
+ * A field this team folder does not use is left out, like an unknown one.
+ *
+ * @param array<int, array<string, mixed>> $values file id => [field name => value]
+ * @return array{rows: list<array{0: int, 1: int, 2: string, 3: string}>, words: array<int, array<int, string>>, refused: array<int, array<string, string>>, unused: array<int, list<string>>}
+ */
+private function checkedValues(int $groupfolderId, array $values, bool $onlyEmpty, bool $asStored): array {
+    $fields = [];
+    foreach ($this->getAllFields() as $field) {
+        $fields[$field['field_name']] = $field;
+    }
+    $used = $asStored ? null : $this->usedFieldNames($groupfolderId, false);
+    $filled = $onlyEmpty ? $this->filledValues($groupfolderId, array_keys($values)) : [];
+    $links = $asStored ? [] : $this->currentFileLinks($groupfolderId, $values, $fields);
+
+    $rows = [];
+    $words = [];
+    $refused = [];
+    $unused = [];
+    foreach ($values as $fileId => $fileValues) {
+        foreach ($fileValues as $fieldName => $value) {
+            $fieldName = (string)$fieldName;
+            $field = $fields[$fieldName] ?? null;
+            if ($field === null || isset($filled[(int)$fileId][$fieldName])) {
+                continue;
+            }
+            if ($used !== null && !isset($used[$fieldName])) {
+                $unused[(int)$fileId][] = $fieldName;
+                continue;
+            }
+            try {
+                $stored = $asStored ? (string)$value : $this->fieldValues->stored($field, $value);
+                $stored = $this->storedValue($field, $stored, $groupfolderId, (int)$fileId, $links[(int)$fileId][$fieldName] ?? '', !$asStored);
+                if (!$asStored) {
+                    FieldValue::requireFilled($field, $stored);
+                }
+            } catch (InvalidValue $e) {
+                $refused[(int)$fileId][$fieldName] = [$e->getMessage(), $value];
+                continue;
+            }
+            $rows[] = [(int)$fileId, $groupfolderId, $fieldName, $stored];
+            $words[(int)$field['id']][(int)$fileId] = $stored;
+        }
+    }
+    return ['rows' => $rows, 'words' => $words, 'refused' => $this->withoutUnchanged($groupfolderId, $refused), 'unused' => $unused];
+}
+
+/**
+ * Refused values without the ones stored like that already: those stay as they
+ * are. Looked up only when something was refused.
+ *
+ * @param array<int, array<string, array{0: string, 1: mixed}>> $refused file id => [field name => [message, value]]
+ * @return array<int, array<string, string>> file id => [field name => message]
+ */
+private function withoutUnchanged(int $groupfolderId, array $refused): array {
+    if ($refused === []) {
+        return [];
+    }
+    $current = $this->storedValues($groupfolderId, array_keys($refused));
+    $left = [];
+    foreach ($refused as $fileId => $byField) {
+        foreach ($byField as $fieldName => [$message, $value]) {
+            $now = $current[$fileId][$fieldName] ?? '';
+            if (!(is_string($value) && $value === $now) && !($value === null && $now === '')) {
+                $left[$fileId][$fieldName] = $message;
+            }
+        }
+    }
+    return $left;
+}
+
+/**
+ * The stored values of these files.
+ *
+ * @param int[] $fileIds
+ * @return array<int, array<string, string>>
+ */
+private function storedValues(int $groupfolderId, array $fileIds): array {
+    $stored = [];
+    foreach (array_chunk(array_values(array_unique(array_map('intval', $fileIds))), self::SAVE_CHUNK) as $chunk) {
         $qb = $this->db->getQueryBuilder();
-        $qb->delete('metavox_file_gf_meta')
+        $qb->select('file_id', 'field_name', 'field_value')
+           ->from('metavox_file_gf_meta')
            ->where($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)))
-           ->andWhere($qb->expr()->eq('file_id', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_INT)));
+           ->andWhere($qb->expr()->in('file_id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));
+        $result = $qb->executeQuery();
+        while ($row = $result->fetch()) {
+            $stored[(int)$row['file_id']][(string)$row['field_name']] = (string)$row['field_value'];
+        }
+        $result->closeCursor();
+    }
+    return $stored;
+}
 
-        $qb->executeStatement();
+public function upsertSql(int $rows, bool $isMysql): string {
+    $sql = 'INSERT INTO *PREFIX*metavox_file_gf_meta (file_id, groupfolder_id, field_name, field_value, created_at, updated_at) VALUES '
+        . implode(', ', array_fill(0, $rows, '(?, ?, ?, ?, ?, ?)'));
+    return $isMysql
+        ? $sql . ' ON DUPLICATE KEY UPDATE field_value = VALUES(field_value), updated_at = VALUES(updated_at)'
+        : $sql . ' ON CONFLICT (file_id, groupfolder_id, field_name) DO UPDATE SET field_value = EXCLUDED.field_value, updated_at = EXCLUDED.updated_at';
+}
 
-        // Also clear from search index
-        $this->clearSearchIndex($fileId);
+/**
+ * The fields that already have a value, per file.
+ *
+ * @param int[] $fileIds
+ * @return array<int, array<string, true>>
+ */
+private function filledValues(int $groupfolderId, array $fileIds): array {
+    $filled = [];
+    foreach (array_chunk(array_values(array_unique(array_map('intval', $fileIds))), self::SAVE_CHUNK) as $chunk) {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('file_id', 'field_name')
+           ->from('metavox_file_gf_meta')
+           ->where($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)))
+           ->andWhere($qb->expr()->in('file_id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)))
+           ->andWhere($qb->expr()->isNotNull('field_value'))
+           ->andWhere($qb->expr()->neq('field_value', $qb->createNamedParameter('')));
+        $result = $qb->executeQuery();
+        while ($row = $result->fetch()) {
+            $filled[(int)$row['file_id']][(string)$row['field_name']] = true;
+        }
+        $result->closeCursor();
+    }
+    return $filled;
+}
 
+/**
+ * $fileId: the file the value belongs to, which a file link may not point at.
+ * $current: its stored value, whose links stay; $asUser false for a copy.
+ */
+private function storedValue(array $field, string $value, int $groupfolderId, ?int $fileId = null, string $current = '', bool $asUser = true): string {
+    return in_array($field['field_type'] ?? '', FileReferenceService::FILELINK_TYPES, true)
+        ? $this->fileReferences->normalize($value, $groupfolderId, $fileId, $current, $asUser)
+        : $value;
+}
+
+/**
+ * The stored values of the file-link fields being saved, per file: one query,
+ * none when no file link is saved.
+ *
+ * @param array<int, array<string, mixed>> $values file id => [field name => value]
+ * @param array<string, array> $fields field name => field
+ * @return array<int, array<string, string>>
+ */
+private function currentFileLinks(int $groupfolderId, array $values, array $fields): array {
+    $names = [];
+    foreach ($values as $fileValues) {
+        foreach (array_keys($fileValues) as $fieldName) {
+            if (in_array($fields[$fieldName]['field_type'] ?? '', FileReferenceService::FILELINK_TYPES, true)) {
+                $names[(string)$fieldName] = true;
+            }
+        }
+    }
+    if ($names === []) {
+        return [];
+    }
+    $links = [];
+    foreach (array_chunk(array_map('intval', array_keys($values)), self::SAVE_CHUNK) as $chunk) {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('file_id', 'field_name', 'field_value')
+           ->from('metavox_file_gf_meta')
+           ->where($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)))
+           ->andWhere($qb->expr()->in('file_id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)))
+           ->andWhere($qb->expr()->in('field_name', $qb->createNamedParameter(array_keys($names), IQueryBuilder::PARAM_STR_ARRAY)));
+        $result = $qb->executeQuery();
+        while ($row = $result->fetch()) {
+            $links[(int)$row['file_id']][(string)$row['field_name']] = (string)$row['field_value'];
+        }
+        $result->closeCursor();
+    }
+    return $links;
+}
+
+/**
+ * The value is saved even when its search words are not.
+ *
+ * @param int[] $fileIds
+ */
+private function updateWords(callable $update, array $fileIds): void {
+    try {
+        $update();
+    } catch (\Exception $e) {
+        $this->logger->error('MetaVox: failed to update search words', ['exception' => $e, 'fileIds' => \array_slice($fileIds, 0, 20)]);
+        $this->rebuildSearchIndex();
+    }
+}
+
+/** The index no longer matches: build it again; the filter reads the metadata meanwhile. */
+private function rebuildSearchIndex(): void {
+    try {
+        $this->searchWords->rebuildAll();
+    } catch (\Exception $e) {
+        $this->logger->error('MetaVox: could not start rebuilding the search index', ['exception' => $e]);
+    }
+}
+
+/** Clear all metadata for a file in a groupfolder; with $keepRequired the required fields keep theirs. */
+public function clearGroupfolderFileMetadata(int $groupfolderId, int $fileId, bool $keepRequired = false): bool {
+    try {
+        $this->clearFilesMetadata($groupfolderId, [$fileId], $keepRequired);
         return true;
     } catch (\Exception $e) {
         $this->logger->error('MetaVox: clearGroupfolderFileMetadata failed', ['exception' => $e, 'fileId' => $fileId, 'groupfolderId' => $groupfolderId]);
@@ -1181,18 +1385,49 @@ public function clearGroupfolderFileMetadata(int $groupfolderId, int $fileId): b
 }
 
 /**
- * Clear search index for a file
+ * Clear all metadata of these files in a team folder. Errors are thrown.
+ * With $keepRequired the required fields keep their values: clearing all is
+ * no way around them.
+ *
+ * @param int[] $fileIds
  */
-private function clearSearchIndex(int $fileId): void {
-    try {
+public function clearFilesMetadata(int $groupfolderId, array $fileIds, bool $keepRequired = false): void {
+    $fileIds = array_values(array_unique(array_map('intval', $fileIds)));
+    $kept = $keepRequired ? $this->requiredFieldNames() : [];
+    foreach (array_chunk($fileIds, self::SAVE_CHUNK) as $chunk) {
         $qb = $this->db->getQueryBuilder();
-        $qb->delete('metavox_search_index')
-           ->where($qb->expr()->eq('file_id', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_INT)));
-
+        $qb->delete('metavox_file_gf_meta')
+           ->where($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)))
+           ->andWhere($qb->expr()->in('file_id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));
+        if ($kept !== []) {
+            $qb->andWhere($qb->expr()->notIn('field_name', $qb->createNamedParameter($kept, IQueryBuilder::PARAM_STR_ARRAY)));
+        }
         $qb->executeStatement();
-    } catch (\Exception $e) {
-        $this->logger->error('MetaVox: clearSearchIndex failed', ['exception' => $e, 'fileId' => $fileId]);
     }
+    $this->versions->bump($groupfolderId);
+    $this->updateWords($kept === []
+        ? fn () => $this->searchWords->removeFiles($fileIds, $groupfolderId)
+        : fn () => $this->searchWords->reindexFiles($fileIds), $fileIds);
+}
+
+/** @return list<string> the names of the required fields */
+public function requiredFieldNames(): array {
+    return array_values(array_map(fn (array $field): string => (string)$field['field_name'],
+        array_filter($this->getAllFields(), fn (array $field): bool => FieldValue::isRequired($field))));
+}
+
+/** Field names match regardless of case, as the API always did. */
+public function clearGroupfolderFileFields(int $groupfolderId, int $fileId, array $fieldNames): void {
+    $qb = $this->db->getQueryBuilder();
+    $qb->delete('metavox_file_gf_meta')
+       ->where($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)))
+       ->andWhere($qb->expr()->eq('file_id', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_INT)))
+       ->andWhere($qb->expr()->in($qb->func()->lower('field_name'),
+           $qb->createNamedParameter(array_values(array_map('strtolower', $fieldNames)), IQueryBuilder::PARAM_STR_ARRAY)));
+    $qb->executeStatement();
+
+    $this->versions->bump($groupfolderId);
+    $this->updateWords(fn() => $this->searchWords->reindexFiles([$fileId]), [$fileId]);
 }
 
 /**

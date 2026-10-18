@@ -1,0 +1,33 @@
+{
+ "_comment": "A field's options in every shape they were stored or sent in, and how both lib/Validation/FieldOptions.php and src/utils/fieldOptions.js read them.",
+ "items": [
+  {"name": "JSON text, one option per line", "options": "\"Draft\\nFinal\"", "items": [{"value": "Draft", "label": "Draft"}, {"value": "Final", "label": "Final"}]},
+  {"name": "raw text, one option per line", "options": "Draft\nFinal", "items": [{"value": "Draft", "label": "Draft"}, {"value": "Final", "label": "Final"}]},
+  {"name": "raw text with Windows line ends", "options": "Draft\r\nFinal", "items": [{"value": "Draft", "label": "Draft"}, {"value": "Final", "label": "Final"}]},
+  {"name": "JSON list", "options": "[\"Draft\",\"Final\"]", "items": [{"value": "Draft", "label": "Draft"}, {"value": "Final", "label": "Final"}]},
+  {"name": "JSON list of value and label", "options": "[{\"value\":\"nl\",\"label\":\"Nederland\"}]", "items": [{"value": "nl", "label": "Nederland"}]},
+  {"name": "decoded list", "options": ["Draft", "Final"], "items": [{"value": "Draft", "label": "Draft"}, {"value": "Final", "label": "Final"}]},
+  {"name": "value and label", "options": [{"value": "d", "label": "Draft"}], "items": [{"value": "d", "label": "Draft"}]},
+  {"name": "value only", "options": [{"value": "Draft"}, {"value": "Final"}], "items": [{"value": "Draft", "label": "Draft"}, {"value": "Final", "label": "Final"}]},
+  {"name": "label only, used as value", "options": [{"label": "Draft"}, {"label": "Final"}], "items": [{"value": "Draft", "label": "Draft"}, {"value": "Final", "label": "Final"}]},
+  {"name": "spaces trimmed, empties and repeats left out", "options": [" Draft ", "", "Draft", "Final"], "items": [{"value": "Draft", "label": "Draft"}, {"value": "Final", "label": "Final"}]},
+  {"name": "a repeat keeps the first label", "options": [{"value": "a", "label": "Alpha"}, {"value": "a", "label": "Other"}], "items": [{"value": "a", "label": "Alpha"}]},
+  {"name": "numbers", "options": [1, 2.5], "items": [{"value": "1", "label": "1"}, {"value": "2.5", "label": "2.5"}]},
+  {"name": "a yes/no or a list is no option", "options": [true, ["a"], "Draft", "Final"], "items": [{"value": "Draft", "label": "Draft"}, {"value": "Final", "label": "Final"}]},
+  {"name": "a date field has none", "options": {"includeTime": true}, "items": []},
+  {"name": "a date field's JSON has none", "options": "{\"includeTime\":true}", "items": []},
+  {"name": "nothing", "options": null, "items": []},
+  {"name": "empty text", "options": "", "items": []},
+  {"name": "empty list", "options": "[]", "items": []}
+ ],
+ "includeTime": [
+  {"name": "decoded, on", "options": {"includeTime": true}, "includeTime": true},
+  {"name": "JSON text, on", "options": "{\"includeTime\":true}", "includeTime": true},
+  {"name": "as a number", "options": {"includeTime": 1}, "includeTime": true},
+  {"name": "off", "options": {"includeTime": false}, "includeTime": false},
+  {"name": "off as text 0", "options": {"includeTime": "0"}, "includeTime": false},
+  {"name": "the options of a dropdown", "options": ["Draft", "Final"], "includeTime": false},
+  {"name": "nothing", "options": null, "includeTime": false},
+  {"name": "empty list", "options": "[]", "includeTime": false}
+ ]
+}

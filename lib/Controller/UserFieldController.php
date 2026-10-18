@@ -4,89 +4,85 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Controller;
 
+use OCA\MetaVox\Access\Access;
+use OCA\MetaVox\Access\RequireAccess;
 use OCA\MetaVox\Service\FieldService;
-use OCA\MetaVox\Service\PermissionService;
-use OCA\MetaVox\Service\SearchIndexService;
+use OCA\MetaVox\Service\FileReferenceService;
+use OCA\MetaVox\Service\FileAccessService;
+use OCA\MetaVox\Service\TeamFolderAccessService;
+use OCA\MetaVox\Service\FilterService;
 use OCA\MetaVox\Service\UserFieldService;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
-use OCP\Files\IRootFolder;
 use OCP\IRequest;
 use OCP\IUserSession;
-use Psr\Log\LoggerInterface;
 
 class UserFieldController extends BaseController {
 
     private UserFieldService $userFieldService;
-    private SearchIndexService $searchIndexService;
-    private LoggerInterface $logger;
+    private FilterService $filterService;
+    private FileAccessService $fileAccess;
+    private TeamFolderAccessService $teamFolders;
+    private FileReferenceService $fileReferences;
 
     public function __construct(
         string $appName,
         IRequest $request,
         UserFieldService $userFieldService,
         FieldService $fieldService,
-        PermissionService $permissionService,
-        SearchIndexService $searchIndexService,
+        FilterService $filterService,
         IUserSession $userSession,
-        IRootFolder $rootFolder,
-        LoggerInterface $logger
+        FileAccessService $fileAccess,
+        TeamFolderAccessService $teamFolders,
+        FileReferenceService $fileReferences
     ) {
-        parent::__construct($appName, $request, $userSession, $permissionService, $fieldService, $rootFolder);
+        parent::__construct($appName, $request, $userSession, $fieldService);
         $this->userFieldService = $userFieldService;
-        $this->searchIndexService = $searchIndexService;
-        $this->logger = $logger;
+        $this->filterService = $filterService;
+        $this->fileAccess = $fileAccess;
+        $this->teamFolders = $teamFolders;
+        $this->fileReferences = $fileReferences;
     }
 
     /**
      * Get groupfolders accessible by current user
      */
     #[NoAdminRequired]
+    #[RequireAccess(Access::LoggedIn, reason: 'only the team folders the caller may manage')]
     public function getAccessibleGroupfolders(): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
+        $user = $this->requireUser();
 
-            $userId = $user->getUID();
-            $groupfolders = $this->userFieldService->getAccessibleGroupfolders($userId);
+        $userId = $user->getUID();
+        $groupfolders = $this->userFieldService->getAccessibleGroupfolders($userId);
 
-            // Annotate each folder with whether this user may manage its fields,
-            // and return only the manageable ones — the Personal settings page
-            // is for configuring fields/defaults, not browsing every membership.
-            $manageable = [];
-            foreach ($groupfolders as $folder) {
-                $gfId = (int)($folder['id'] ?? 0);
-                if ($gfId <= 0) {
-                    continue;
-                }
-                if ($this->permissionService->hasPermission($userId, PermissionService::PERM_MANAGE_FIELDS, $gfId)) {
-                    $folder['can_manage'] = true;
-                    $manageable[] = $folder;
-                }
+        // Annotate each folder with whether this user may manage its fields,
+        // and return only the manageable ones — the Personal settings page
+        // is for configuring fields/defaults, not browsing every membership.
+        $manageable = [];
+        foreach ($groupfolders as $folder) {
+            $gfId = (int)($folder['id'] ?? 0);
+            if ($gfId <= 0) {
+                continue;
             }
-            return new JSONResponse($manageable);
-        } catch (\Exception $e) {
-            $this->logger->error('MetaVox: getAccessibleGroupfolders error', ['exception' => $e]);
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+            if ($this->teamFolders->canManageGroupfolder($userId, $gfId)) {
+                $folder['can_manage'] = true;
+                $manageable[] = $folder;
+            }
         }
+        return new JSONResponse($manageable);
     }
 
     /**
      * Get assigned fields for a groupfolder
      */
     #[NoAdminRequired]
+    #[RequireAccess(Access::TeamFolderMember, folder: 'groupfolderId')]
     public function getGroupfolderFields(int $groupfolderId): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
-            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
+        $user = $this->requireUser();
 
-            $fields = $this->userFieldService->getGroupfolderFields($groupfolderId);
-            return new JSONResponse($fields);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        $fields = $this->userFieldService->getGroupfolderFields($groupfolderId);
+        return new JSONResponse($fields);
     }
 
     /**
@@ -97,90 +93,65 @@ class UserFieldController extends BaseController {
      * read endpoints; the field name comes as a query param.
      */
     #[NoAdminRequired]
+    #[RequireAccess(Access::TeamFolderMember, folder: 'groupfolderId')]
     public function getFieldValues(int $groupfolderId): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
-            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
+        $user = $this->requireUser();
 
-            $fieldName = (string)$this->request->getParam('field', '');
-            if ($fieldName === '') {
-                return new JSONResponse(['values' => []]);
-            }
-
-            $values = $this->searchIndexService->getDistinctFieldValues($fieldName, $groupfolderId);
-            return new JSONResponse(['values' => $values]);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        $fieldName = $this->textParam('field') ?? '';
+        if ($fieldName === '') {
+            return new JSONResponse(['values' => []]);
         }
+
+        $type = $this->fieldService->fieldType($fieldName);
+        if ($type === null) {
+            return new JSONResponse(['values' => []]);
+        }
+        $values = $this->filterService->suggestedValues($fieldName, $groupfolderId, $this->fileAccess->readableScope($user->getUID(), $groupfolderId),
+            50, FieldService::holdsList($type));
+        return new JSONResponse(['values' => $values]);
     }
 
     /**
      * Get all available groupfolder fields (for configuration)
      */
     #[NoAdminRequired]
+    #[RequireAccess(Access::LoggedIn, reason: 'only the fields of the caller\'s team folders; all of them for admins and managers')]
     public function getAllGroupfolderFields(): JSONResponse {
-        try {
-            $fields = $this->userFieldService->getAllGroupfolderFields();
-            return new JSONResponse($fields);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        $userId = $this->requireUser()->getUID();
+
+        // The search picker's "all my team folders": the fields of the team
+        // folders the user is in, admins and managers too, as its folder list.
+        if ($this->request->getParam('scope') === 'member') {
+            $folderIds = array_map(fn (array $folder) => (int)$folder['id'], $this->fieldService->getGroupfolders($userId));
+            return new JSONResponse($this->fieldService->getCatalogue($folderIds));
         }
+        return new JSONResponse($this->fieldService->getCatalogue($this->teamFolders->catalogueFolders($userId)));
     }
 
     /**
      * Get metadata for a groupfolder
      */
     #[NoAdminRequired]
+    #[RequireAccess(Access::TeamFolderMember, folder: 'groupfolderId')]
     public function getGroupfolderMetadata(int $groupfolderId): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
-            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
+        $user = $this->requireUser();
 
-            $metadata = $this->userFieldService->getGroupfolderMetadata($groupfolderId);
-            return new JSONResponse($metadata);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    /**
-     * Save metadata for a groupfolder
-     */
-    #[NoAdminRequired]
-    public function saveGroupfolderMetadata(int $groupfolderId): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
-            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
-
-            $metadata = $this->request->getParam('metadata', []);
-            $success = $this->userFieldService->saveGroupfolderMetadata($groupfolderId, $metadata);
-
-            return new JSONResponse(['success' => $success]);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        $metadata = $this->userFieldService->getGroupfolderMetadata($groupfolderId);
+        return new JSONResponse($this->fileReferences->withNames($metadata, $user->getUID()));
     }
 
     /**
      * Set which fields are assigned to a groupfolder
      */
     #[NoAdminRequired]
+    #[RequireAccess(Access::MetaVoxManager, folder: 'groupfolderId')]
     public function setGroupfolderFields(int $groupfolderId): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
-            if ($deny = $this->requireGroupfolderAccess($user->getUID(), $groupfolderId)) return $deny;
-            if ($deny = $this->requireManagePermission($user->getUID(), $groupfolderId)) return $deny;
+        $user = $this->requireUser();
 
-            $fieldIds = $this->request->getParam('field_ids', []);
-            $success = $this->userFieldService->setGroupfolderFields($groupfolderId, $fieldIds);
+        // Left out is no "none": a misspelled key would unassign every field.
+        $this->requireParam('field_ids');
+        $this->fieldService->setGroupfolderFields($groupfolderId, $this->getIdListParam('field_ids'));
 
-            return new JSONResponse(['success' => $success]);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        return new JSONResponse(['success' => true]);
     }
 }

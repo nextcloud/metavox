@@ -4,166 +4,130 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Controller;
 
+use OCA\MetaVox\Access\Access;
+use OCA\MetaVox\Access\RequireAccess;
+use OCA\MetaVox\Exception\RequestException;
+use OCA\MetaVox\Service\ApiValidationException;
 use OCA\MetaVox\Service\FieldService;
-use OCA\MetaVox\Service\PermissionService;
+use OCA\MetaVox\Service\TeamFolderAccessService;
 use OCA\MetaVox\Service\PresenceService;
 use OCA\MetaVox\Service\UserFieldService;
+use OCA\MetaVox\Service\ViewColumnFormat;
 use OCA\MetaVox\Service\ViewService;
+use OCA\MetaVox\L10n\Translatable;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
-use OCP\Files\IRootFolder;
 use OCP\IRequest;
 use OCP\IUserSession;
 
 class ViewController extends BaseController {
 
+    use ReadsViewParams;
+
     private PresenceService $presenceService;
     private UserFieldService $userFieldService;
     private ViewService $viewService;
+    private TeamFolderAccessService $teamFolders;
 
     public function __construct(
         string $appName,
         IRequest $request,
         FieldService $fieldService,
-        PermissionService $permissionService,
         PresenceService $presenceService,
         UserFieldService $userFieldService,
         ViewService $viewService,
         IUserSession $userSession,
-        IRootFolder $rootFolder
+        TeamFolderAccessService $teamFolders
     ) {
-        parent::__construct($appName, $request, $userSession, $permissionService, $fieldService, $rootFolder);
+        parent::__construct($appName, $request, $userSession, $fieldService);
         $this->presenceService = $presenceService;
         $this->userFieldService = $userFieldService;
         $this->viewService = $viewService;
+        $this->teamFolders = $teamFolders;
     }
 
     /**
      * List all views for a groupfolder
      */
     #[NoAdminRequired]
+    #[RequireAccess(Access::TeamFolderMember, folder: 'gfId')]
     public function listViews(int $gfId): JSONResponse {
-        try {
-            $user = $this->userSession->getUser();
-            $canManage = $user
-                ? $this->permissionService->hasPermission($user->getUID(), PermissionService::PERM_MANAGE_FIELDS, $gfId)
-                : false;
+        $user = $this->userSession->getUser();
+        $canManage = $user !== null && $this->teamFolders->canUpdateTeamFolder($user->getUID(), $gfId);
 
-            $views = $this->viewService->getViewsForGroupfolder($gfId);
-            $response = new JSONResponse(['views' => $views, 'can_manage' => $canManage]);
-            $response->addHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-            return $response;
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        $views = $this->viewService->getViewsForGroupfolder($gfId);
+        $response = new JSONResponse(['views' => $views, 'can_manage' => $canManage]);
+        $response->addHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        return $response;
     }
 
     /**
      * Create a new view for a groupfolder
      */
+    #[NoAdminRequired]
+    #[RequireAccess(Access::CanUpdateTeamFolder, folder: 'gfId')]
     public function createView(int $gfId): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
-            if ($deny = $this->requireManagePermission($user->getUID(), $gfId)) return $deny;
+        $user = $this->requireUser();
+        $p = $this->viewParams();
 
-            $name = $this->request->getParam('name');
-            if (empty($name)) {
-                // TRANSLATORS Error message shown to the user when a view is saved without a name; a view is a saved combination of columns, filters and sort order
-                return new JSONResponse(['error' => $this->l10n()->t('View name is required')], Http::STATUS_BAD_REQUEST);
-            }
-
-            $isDefault = (bool)$this->request->getParam('is_default', false);
-            $columns   = $this->request->getParam('columns', []);
-            $filters   = $this->request->getParam('filters', []);
-            $sortField = $this->request->getParam('sort_field');
-            $sortOrder = $this->request->getParam('sort_order');
-
-            $view = $this->viewService->createView($gfId, $name, $isDefault, $columns, $filters, $sortField, $sortOrder);
-            return new JSONResponse($view, Http::STATUS_CREATED);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
+        $view = $this->viewService->createView($gfId, $p['name'], $p['is_default'], $p['columns'], $p['filters'], $p['sort_field'], $p['sort_order']);
+        return new JSONResponse($view, Http::STATUS_CREATED);
     }
 
     /**
      * Update an existing view
      */
+    #[NoAdminRequired]
+    #[RequireAccess(Access::CanUpdateTeamFolder, folder: 'gfId')]
     public function updateView(int $gfId, int $viewId): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
-            if ($deny = $this->requireManagePermission($user->getUID(), $gfId)) return $deny;
+        $user = $this->requireUser();
+        $p = $this->viewParams();
+        $position = $this->positionParam();
 
-            $name = $this->request->getParam('name');
-            if (empty($name)) {
-                // TRANSLATORS Error message shown to the user when a view is saved without a name; a view is a saved combination of columns, filters and sort order
-                return new JSONResponse(['error' => $this->l10n()->t('View name is required')], Http::STATUS_BAD_REQUEST);
-            }
-
-            $existing = $this->viewService->getView($viewId, $gfId);
-            if ($existing === null) {
-                // TRANSLATORS Error message shown to the user when the view no longer exists; a view is a saved combination of columns, filters and sort order
-                return new JSONResponse(['error' => $this->l10n()->t('View not found')], Http::STATUS_NOT_FOUND);
-            }
-
-            $isDefault = (bool)$this->request->getParam('is_default', false);
-            $columns   = $this->request->getParam('columns', []);
-            $filters   = $this->request->getParam('filters', []);
-            $sortField = $this->request->getParam('sort_field');
-            $sortOrder = $this->request->getParam('sort_order');
-            $position  = $this->request->getParam('position');
-            $position  = $position !== null ? (int)$position : null;
-
-            $view = $this->viewService->updateView($viewId, $gfId, $name, $isDefault, $columns, $filters, $sortField, $sortOrder, $position);
-            return new JSONResponse($view);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        $existing = $this->viewService->getView($viewId, $gfId);
+        if ($existing === null) {
+            // TRANSLATORS Error message shown to the user when the view no longer exists; a view is a saved combination of columns, filters and sort order
+            throw RequestException::notFound(Translatable::t('View not found'));
         }
+
+        $view = $this->viewService->updateView($viewId, $gfId, $p['name'], $p['is_default'], $p['columns'], $p['filters'], $p['sort_field'], $p['sort_order'], (array)($existing['columns'] ?? []), $position);
+        return new JSONResponse($view);
     }
 
     /**
      * Reorder views for a groupfolder
      */
+    #[NoAdminRequired]
+    #[RequireAccess(Access::CanUpdateTeamFolder, folder: 'gfId')]
     public function reorderViews(int $gfId): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
-            if ($deny = $this->requireManagePermission($user->getUID(), $gfId)) return $deny;
+        $user = $this->requireUser();
 
-            $viewIds = $this->request->getParam('view_ids', []);
-            if (empty($viewIds) || !is_array($viewIds)) {
-                return new JSONResponse(['error' => 'view_ids array is required'], Http::STATUS_BAD_REQUEST);
-            }
-
-            $this->viewService->reorderViews($gfId, $viewIds);
-            return new JSONResponse(['success' => true]);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        $viewIds = $this->getIdListParam('view_ids');
+        if ($viewIds === []) {
+            throw new ApiValidationException(['view_ids' => ViewColumnFormat::MSG_INVALID]);
         }
+
+        $this->viewService->reorderViews($gfId, $viewIds);
+        return new JSONResponse(['success' => true]);
     }
 
     /**
      * Delete a view
      */
+    #[NoAdminRequired]
+    #[RequireAccess(Access::CanUpdateTeamFolder, folder: 'gfId')]
     public function deleteView(int $gfId, int $viewId): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
-            if ($deny = $this->requireManagePermission($user->getUID(), $gfId)) return $deny;
+        $user = $this->requireUser();
 
-            $existing = $this->viewService->getView($viewId, $gfId);
-            if ($existing === null) {
-                // TRANSLATORS Error message shown to the user when the view no longer exists; a view is a saved combination of columns, filters and sort order
-                return new JSONResponse(['error' => $this->l10n()->t('View not found')], Http::STATUS_NOT_FOUND);
-            }
-
-            $this->viewService->deleteView($viewId, $gfId);
-            return new JSONResponse(['success' => true]);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        $existing = $this->viewService->getView($viewId, $gfId);
+        if ($existing === null) {
+            // TRANSLATORS Error message shown to the user when the view no longer exists; a view is a saved combination of columns, filters and sort order
+            throw RequestException::notFound(Translatable::t('View not found'));
         }
+
+        $this->viewService->deleteView($viewId, $gfId);
+        return new JSONResponse(['success' => true]);
     }
 
     /**
@@ -171,57 +135,51 @@ class ViewController extends BaseController {
      * Returns groupfolders + fields + views + filter values in one response.
      */
     #[NoAdminRequired]
+    #[RequireAccess(Access::LoggedIn, reason: 'data only for a team folder the caller is a member of')]
     public function init(): JSONResponse {
-        try {
-            $user = $this->requireUser();
-            if ($user instanceof JSONResponse) return $user;
+        $user = $this->requireUser();
 
-            $userId = $user->getUID();
-            $dir = $this->request->getParam('dir', '');
+        $userId = $user->getUID();
+        $dir = $this->textParam('dir', max: 4000) ?? '';
 
-            $groupfolders = $this->userFieldService->getAccessibleGroupfolders($userId);
+        $groupfolders = $this->userFieldService->getAccessibleGroupfolders($userId);
 
-            if (empty($groupfolders)) {
-                // No groupfolders accessible for this user — normal for non-team-folder users
-            }
-
-            // Detect groupfolder from dir path
-            $groupfolderId = null;
-            $path = ltrim($dir, '/');
-            foreach ($groupfolders as $gf) {
-                $mp = $gf['mount_point'] ?? '';
-                if ($mp !== '' && ($path === $mp || str_starts_with($path, $mp . '/'))) {
-                    $groupfolderId = (int)$gf['id'];
-                    break;
-                }
-            }
-
-            // Register presence for the detected groupfolder
-            if ($groupfolderId !== null) {
-                $this->presenceService->register($groupfolderId, $userId);
-            }
-
-            $result = [
-                'groupfolders' => $groupfolders,
-                'groupfolder_id' => $groupfolderId,
-                'fields' => [],
-                'views' => [],
-                'can_manage' => false,
-            ];
-
-            if ($groupfolderId !== null) {
-                $result['fields'] = $this->fieldService->getAssignedFileFieldsForGroupfolder($groupfolderId);
-                $result['views'] = $this->viewService->getViewsForGroupfolder($groupfolderId);
-                $result['can_manage'] = $this->permissionService->hasPermission(
-                    $userId, PermissionService::PERM_MANAGE_FIELDS, $groupfolderId
-                );
-            }
-
-            $response = new JSONResponse($result);
-            $response->addHeader('Cache-Control', 'private, max-age=30');
-            return $response;
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+        if (empty($groupfolders)) {
+            // No groupfolders accessible for this user — normal for non-team-folder users
         }
+
+        // Detect groupfolder from dir path
+        $groupfolderId = null;
+        $path = ltrim($dir, '/');
+        foreach ($groupfolders as $gf) {
+            $mp = $gf['mount_point'] ?? '';
+            if ($mp !== '' && ($path === $mp || str_starts_with($path, $mp . '/'))) {
+                $groupfolderId = (int)$gf['id'];
+                break;
+            }
+        }
+
+        // Register presence for the detected groupfolder
+        if ($groupfolderId !== null) {
+            $this->presenceService->register($groupfolderId, $userId);
+        }
+
+        $result = [
+            'groupfolders' => $groupfolders,
+            'groupfolder_id' => $groupfolderId,
+            'fields' => [],
+            'views' => [],
+            'can_manage' => false,
+        ];
+
+        if ($groupfolderId !== null) {
+            $result['fields'] = $this->fieldService->getAssignedFileFieldsForGroupfolder($groupfolderId);
+            $result['views'] = $this->viewService->getViewsForGroupfolder($groupfolderId);
+            $result['can_manage'] = $this->teamFolders->canUpdateTeamFolder($userId, $groupfolderId);
+        }
+
+        $response = new JSONResponse($result);
+        $response->addHeader('Cache-Control', 'private, max-age=30');
+        return $response;
     }
 }

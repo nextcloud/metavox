@@ -1,14 +1,18 @@
 <template>
-	<NcModal
+	<!-- NcDialog, not NcModal: this is a form, and §3 makes NcDialog the
+	     default for one. As an NcModal it showed TWO titles at once — the
+	     modal's own floating header, absolutely positioned over whatever
+	     was behind it, plus this component's <h2> — and that header said
+	     "MetaVox", naming the app rather than the dialog. -->
+	<!-- TRANSLATORS Title of the dialog that edits the metadata of the selected files -->
+	<NcDialog :name="t('metavox', 'Edit metadata')"
 		v-if="show"
-		:name="'MetaVox'"
+		:buttons="dialogButtons"
 		size="normal"
-		@close="close">
+		@closing="close">
 		<div class="bulk-metadata-modal">
 			<!-- Header -->
 			<div class="modal-header">
-				<!-- TRANSLATORS Title of the dialog that edits the metadata of the selected files -->
-				<h2 class="modal-title">{{ t('metavox', 'Edit metadata') }}</h2>
 				<div class="file-badges">
 					<span v-for="(file, i) in files.slice(0, 5)" :key="i" class="file-badge">
 						{{ file.basename }}
@@ -45,7 +49,7 @@
 						v-model="searchQuery"
 						type="text"
 						class="search-input"
-						:placeholder="t('metavox', 'Search fields …')"> <!-- TRANSLATORS Placeholder of the search box that filters the field list -->
+						:placeholder="t('metavox', 'Search fields')"> <!-- TRANSLATORS Placeholder of the search box that filters the fields in the dialog -->
 				</div>
 			</div>
 
@@ -69,63 +73,56 @@
 			<!-- No fields message -->
 			<div v-else-if="fields.length > 0 && searchQuery" class="no-fields">
 				<!-- TRANSLATORS {query} is the text typed in the field search box, e.g. "No fields match status" -->
-				<p>{{ t('metavox', 'No fields match {query}', { query: searchQuery }) }}</p>
+				<p>{{ t('metavox', 'No fields match {query}', { query: searchQuery }, undefined, PLAIN_TEXT) }}</p>
 			</div>
 			<div v-else class="no-fields">
 				<p>{{ t('metavox', 'No metadata fields available for these files.') }}</p>
 			</div>
 
-			<!-- Actions -->
-			<div class="modal-actions">
-				<div class="actions-left">
-					<NcButton
-						type="error"
-						:disabled="clearing || fields.length === 0"
-						@click="confirmClearAll">
-						<template #icon>
-							<NcLoadingIcon v-if="clearing" :size="20" />
-							<DeleteIcon v-else :size="20" />
-						</template>
-						{{ clearButtonLabel }}
-					</NcButton>
-					<NcButton
-						type="secondary"
-						:disabled="exporting || fields.length === 0"
-						@click="exportToCsv">
-						<template #icon>
-							<NcLoadingIcon v-if="exporting" :size="20" />
-							<DownloadIcon v-else :size="20" />
-						</template>
-						{{ exportButtonLabel }}
-					</NcButton>
-				</div>
-				<div class="actions-right">
-					<NcButton type="tertiary" @click="close">
-						<!-- TRANSLATORS Button that closes the dialog without saving; keep it short -->
-						{{ t('metavox', 'Cancel') }}
-					</NcButton>
-					<NcButton
-						type="primary"
-						:disabled="saving || !hasChanges"
-						@click="save">
-						<template #icon>
-							<NcLoadingIcon v-if="saving" :size="20" />
-						</template>
-						{{ saveButtonLabel }}
-					</NcButton>
-				</div>
+			<!-- Clear all and Export CSV act on the content, not on the
+			     dialog, so they stay with it. Cancel and Save are the
+			     dialog's own and moved to :buttons, which places them in
+			     order with the primary last (§6). -->
+			<div class="content-actions">
+				<NcButton
+					variant="error"
+					:disabled="clearing || fields.length === 0"
+					@click="confirmClearAll">
+					<template #icon>
+						<NcLoadingIcon v-if="clearing" :size="20" />
+						<DeleteIcon v-else :size="20" />
+					</template>
+					{{ clearLabel }}
+				</NcButton>
+				<NcButton
+					variant="secondary"
+					:disabled="exporting || fields.length === 0"
+					@click="exportToCsv">
+					<template #icon>
+						<NcLoadingIcon v-if="exporting" :size="20" />
+						<DownloadIcon v-else :size="20" />
+					</template>
+					{{ exportLabel }}
+				</NcButton>
 			</div>
 		</div>
-	</NcModal>
+	</NcDialog>
 </template>
 
 <script>
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
+import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
+import NcDialog from '@nextcloud/vue/components/NcDialog'
+import { showSuccess, showError } from '../utils/toast.js'
+import { showConfirmation } from '../utils/confirm.js'
 import { translate, translatePlural } from '@nextcloud/l10n'
+import { PLAIN_TEXT } from '../utils/fieldValue.js'
 import { errorText } from '../utils/errorText.js'
-import { NcModal, NcButton, NcCheckboxRadioSwitch, NcLoadingIcon } from '@nextcloud/vue'
-import { showSuccess, showError } from '@nextcloud/dialogs'
+import { isRequired } from '../utils/requiredFields.js'
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
+import { loadFileMetadata } from './columns/MetaVoxAPI.js'
 import DeleteIcon from 'vue-material-design-icons/Delete.vue'
 import DownloadIcon from 'vue-material-design-icons/Download.vue'
 import PencilIcon from 'vue-material-design-icons/Pencil.vue'
@@ -136,8 +133,13 @@ import MetadataForm from './MetadataForm.vue'
 export default {
 	name: 'BulkMetadataModal',
 
+	// Templates read the t() options from the component.
+	setup() {
+		return { PLAIN_TEXT }
+	},
+
 	components: {
-		NcModal,
+		NcDialog,
 		NcButton,
 		NcCheckboxRadioSwitch,
 		NcLoadingIcon,
@@ -180,8 +182,52 @@ export default {
 	},
 
 	computed: {
+		/** The labels of the required fields: "Clear all" leaves them as they are. */
+		requiredLabels() {
+			return this.fields.filter(isRequired).map((field) => field.field_label).join(', ')
+		},
+
+		/**
+		 * NcDialog renders these in order with the primary last, which is
+		 * the §6 button order, and returning false from a callback keeps
+		 * the dialog open while the save runs.
+		 */
+		dialogButtons() {
+			return [
+				{
+					// TRANSLATORS Button that closes the dialog without saving; keep it short
+					label: this.t('metavox', 'Cancel'),
+					callback: () => this.close(),
+				},
+				{
+					label: this.saving
+						// TRANSLATORS Label of the save button while the metadata is being saved; keep it short
+						? this.t('metavox', 'Saving …')
+						// TRANSLATORS Button that saves the metadata in the dialog; keep it short
+						: this.t('metavox', 'Save'),
+					variant: 'primary',
+					disabled: this.saving || !this.hasChanges,
+					callback: () => { this.save(); return false },
+				},
+			]
+		},
+
 		hasChanges() {
 			return JSON.stringify(this.metadata) !== JSON.stringify(this.originalMetadata)
+		},
+		clearLabel() {
+			return this.clearing
+				// TRANSLATORS Label of the clear button while the metadata is being removed; keep it short
+				? this.t('metavox', 'Clearing …')
+				// TRANSLATORS Button that removes all metadata from the selected files; keep it short
+				: this.t('metavox', 'Clear all')
+		},
+		exportLabel() {
+			return this.exporting
+				// TRANSLATORS Label of the export button while the export file is being made; keep it short
+				? this.t('metavox', 'Exporting …')
+				// TRANSLATORS Button that downloads the metadata of the selected files as a CSV (spreadsheet) file; keep CSV as is
+				: this.t('metavox', 'Export CSV')
 		},
 		filteredFields() {
 			if (!this.searchQuery) return this.fields
@@ -190,30 +236,6 @@ export default {
 				(f.field_label || '').toLowerCase().includes(q) ||
 				(f.field_name || '').toLowerCase().includes(q)
 			)
-		},
-		clearButtonLabel() {
-			if (this.clearing) {
-				// TRANSLATORS Label of the clear button while the metadata is being removed; keep it short
-				return this.t('metavox', 'Clearing …')
-			}
-			// TRANSLATORS Button that removes all metadata from the selected files; keep it short
-			return this.t('metavox', 'Clear all')
-		},
-		exportButtonLabel() {
-			if (this.exporting) {
-				// TRANSLATORS Label of the export button while the export file is being made; keep it short
-				return this.t('metavox', 'Exporting …')
-			}
-			// TRANSLATORS Button that downloads the metadata of the selected files as a CSV (spreadsheet) file; keep CSV as is
-			return this.t('metavox', 'Export CSV')
-		},
-		saveButtonLabel() {
-			if (this.saving) {
-				// TRANSLATORS Label of the save button while the metadata is being saved; keep it short
-				return this.t('metavox', 'Saving …')
-			}
-			// TRANSLATORS Button that saves the metadata in the dialog; keep it short
-			return this.t('metavox', 'Save')
 		},
 	},
 
@@ -229,65 +251,22 @@ export default {
 	},
 
 	methods: {
+		// The library's own functions. The previous local shim called window.t,
+		// fell back to the raw English string when it was missing, and could
+		// not do plurals at all.
 		t: translate,
 		n: translatePlural,
 
 		async loadFields() {
 			this.loading = true
 			try {
-				// Get the groupfolder ID from the first file's path
-				const firstFile = this.files[0]
-				const path = firstFile.path || firstFile.filename || ''
-
-				// Try to detect groupfolder from path
-				const groupfolderMatch = path.match(/^\/__groupfolders\/(\d+)/)
-				let groupfolderId = null
-
-				if (groupfolderMatch) {
-					groupfolderId = groupfolderMatch[1]
-				} else {
-					// Check if files are in a groupfolder mount
-					const response = await axios.get(generateUrl('/apps/metavox/api/groupfolders'))
-					const groupfoldersData = response.data || {}
-					const groupfolders = Array.isArray(groupfoldersData)
-						? groupfoldersData
-						: Object.values(groupfoldersData)
-
-					// Find matching groupfolder based on path
-					// Must match exact mount point boundaries to avoid
-					// "Test" matching "Test sam" (substring false positive)
-					for (const gf of groupfolders) {
-						const mp = gf.mount_point
-						if (path === `/${mp}` ||
-							path === mp ||
-							path.startsWith(`/${mp}/`) ||
-							path.startsWith(`${mp}/`)) {
-							groupfolderId = gf.id
-							break
-						}
-					}
-				}
-
-				if (groupfolderId) {
-					// Load fields for this groupfolder - use same endpoint as sidebar
-					// Use the first file's ID to get the metadata endpoint which includes field definitions
-					const firstFileId = this.files[0].fileid
-					const fieldsResponse = await axios.get(
-						generateUrl('/apps/metavox/api/groupfolders/{groupfolderId}/files/{fileId}/metadata', {
-							groupfolderId,
-							fileId: firstFileId,
-						})
-					)
-
-					// Filter to only file/item fields (applies_to_groupfolder = 0 or null)
-					// Same logic as FilesSidebarTab.vue
-					this.fields = (fieldsResponse.data || []).filter(field => {
-						const appliesTo = field.applies_to_groupfolder
-						return appliesTo === 0 || appliesTo === '0' || appliesTo === null || appliesTo === undefined
-					})
-				} else {
-					this.fields = []
-				}
+				// The server finds the team folder of the first file, and its fields.
+				const { fields } = await loadFileMetadata(this.files[0].fileid)
+				// Only file/item fields (applies_to_groupfolder = 0 or null), like the sidebar
+				this.fields = fields.filter(field => {
+					const appliesTo = field.applies_to_groupfolder
+					return appliesTo === 0 || appliesTo === '0' || appliesTo === null || appliesTo === undefined
+				})
 
 				// Initialize metadata object
 				this.metadata = {}
@@ -300,6 +279,11 @@ export default {
 				// Initialize select values
 				this.initializeSelectValues()
 			} catch (error) {
+				// Not in a team folder: no fields to edit, as before.
+				if (error?.response?.status === 404) {
+					this.fields = []
+					return
+				}
 				console.error('Failed to load fields:', error)
 				showError(this.t('metavox', 'Failed to load metadata fields'))
 			} finally {
@@ -383,10 +367,31 @@ export default {
 		},
 
 		async confirmClearAll() {
-			// TRANSLATORS Confirmation question; {count} is the number of selected files
-			if (!confirm(this.n('metavox', 'Clear all metadata from this file? This cannot be undone.', 'Clear all metadata from {count} files? This cannot be undone.', this.files.length, { count: this.files.length }))) {
-				return
-			}
+			// A native confirm() is unthemeable, traps the browser and ignores
+			// the platform's own dialog. showConfirmation names the destructive
+			// action on its button rather than saying "OK".
+			const ok = await showConfirmation({
+				// TRANSLATORS Title of the dialog that asks to confirm removing all metadata from the selected files
+				name: this.t('metavox', 'Clear metadata'),
+				text: this.requiredLabels
+					// TRANSLATORS Confirmation question; {count} is the number of selected files, {fields} the names of the required fields that keep their value, e.g. "Status, Owner"
+					? this.n('metavox', 'Clear all metadata from this file? Required fields keep their value: {fields}. This cannot be undone.',
+						'Clear all metadata from {count} files? Required fields keep their value: {fields}. This cannot be undone.',
+						this.files.length,
+						{ count: this.files.length, fields: this.requiredLabels }, PLAIN_TEXT,
+					)
+					// TRANSLATORS Confirmation question; {count} is the number of selected files
+					: this.n('metavox', 'Clear all metadata from this file? This cannot be undone.',
+						'Clear all metadata from {count} files? This cannot be undone.',
+						this.files.length,
+						{ count: this.files.length }, PLAIN_TEXT,
+					),
+				// TRANSLATORS Button in the confirmation dialog that removes all metadata from the selected files
+				labelConfirm: this.t('metavox', 'Clear metadata'),
+				// TRANSLATORS Button in the confirmation dialog that keeps the metadata; keep it short
+				labelReject: this.t('metavox', 'Cancel'),
+			})
+			if (!ok) return
 			await this.clearAllMetadata()
 		},
 
@@ -399,8 +404,13 @@ export default {
 					fileIds,
 				})
 
-				// TRANSLATORS Confirmation message; {count} is the number of files the metadata was removed from
-				showSuccess(this.n('metavox', 'Metadata cleared for {count} file', 'Metadata cleared for {count} files', this.files.length, { count: this.files.length }))
+				if (this.requiredLabels) {
+					// TRANSLATORS Confirmation message; {count} is the number of files the metadata was removed from, {fields} the required fields that kept their value
+					showSuccess(this.n('metavox', 'Metadata cleared for {count} file. Kept: {fields}', 'Metadata cleared for {count} files. Kept: {fields}', this.files.length, { count: this.files.length, fields: this.requiredLabels }))
+				} else {
+					// TRANSLATORS Confirmation message; {count} is the number of files the metadata was removed from
+					showSuccess(this.n('metavox', 'Metadata cleared for {count} file', 'Metadata cleared for {count} files', this.files.length, { count: this.files.length }))
+				}
 				this.$emit('saved')
 				this.close()
 			} catch (error) {
@@ -498,12 +508,6 @@ export default {
 	gap: 6px;
 }
 
-.modal-title {
-	margin: 0;
-	font-size: 20px;
-	font-weight: 700;
-}
-
 .file-badges {
 	display: flex;
 	flex-wrap: wrap;
@@ -512,7 +516,7 @@ export default {
 
 .file-badge {
 	display: inline-block;
-	font-size: 12px;
+	font-size: var(--font-size-small);
 	padding: 2px 8px;
 	border-radius: 10px;
 	background: var(--color-primary-element-light, rgba(0,130,201,.1));
@@ -531,6 +535,7 @@ export default {
 /* Toolbar: strategy + search */
 .toolbar {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: 10px;
 	padding-bottom: 8px;
@@ -543,9 +548,9 @@ export default {
 	flex-shrink: 0;
 }
 
-/* Search */
+/* Search: on a line of its own when the choices leave it too little room. */
 .field-search {
-	flex: 1;
+	flex: 1 1 200px;
 	position: relative;
 }
 
@@ -581,20 +586,14 @@ export default {
 	overflow-y: auto;
 }
 
-.metadata-section :deep(.metadata-form) {
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-}
-
+/* MetadataForm owns its own density and got it right: 24px between fields,
+   4px binding a label to its control. This block reached in with :deep()
+   and flattened both to 2px, so the two gaps were identical — the exact
+   failure §6 describes, where a label floats equidistant and attaches to
+   the wrong control. 2px is also half a baseline, which is not on the
+   scale, and 12px is below --font-size-small. */
 .metadata-section :deep(.field-container) {
-	padding: 6px 0;
 	border-bottom: none;
-}
-
-.metadata-section :deep(.field-label) {
-	font-size: 12px;
-	margin-bottom: 2px;
 }
 
 /* Loading / empty */
@@ -614,23 +613,11 @@ export default {
 	font-size: 13px;
 }
 
-/* Actions */
-.modal-actions {
+/* Clear all / Export CSV. Cancel and Save are NcDialog's now. 6px was off
+   the 4px scale; 8px is the NcFormGroup group distance (§6). */
+.content-actions {
 	display: flex;
-	justify-content: space-between;
-	align-items: center;
 	gap: 8px;
 	padding-top: 12px;
-	border-top: 1px solid var(--color-border);
-}
-
-.actions-left {
-	display: flex;
-	gap: 6px;
-}
-
-.actions-right {
-	display: flex;
-	gap: 6px;
 }
 </style>

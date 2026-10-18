@@ -1,14 +1,14 @@
 # Bulk Metadata Editor
 
-MetaVox allows you to edit metadata for multiple files at once using the Bulk Metadata Editor. This feature is available from the Files app toolbar when you select multiple files.
+MetaVox allows you to edit metadata for multiple files at once using the Bulk Metadata Editor. This feature is available from the Files app toolbar when you select two or more files or folders.
 
 ---
 
 ## Accessing the Bulk Editor
 
 1. Navigate to a Team folder in the Files app
-2. Select multiple files using checkboxes or Ctrl/Cmd+click
-3. Click the **"Edit Metadata"** button in the toolbar
+2. Select two or more files using checkboxes or Ctrl/Cmd+click
+3. Click **"Edit metadata ({count} items)"** in the toolbar above the file list (it may be under the **…** menu)
 
 ![Bulk Edit Button](../../screenshots/BulkeditMetadata.png)
 
@@ -16,19 +16,21 @@ MetaVox allows you to edit metadata for multiple files at once using the Bulk Me
 
 ## Using the Bulk Editor
 
-When the bulk editor modal opens, you'll see all available metadata fields for the selected files.
+The **Edit metadata** dialog opens. At the top it lists the names of the selected files (the first five, then a count of the rest). Below that you see the file metadata fields of the Team folder; Team folder metadata can't be changed here.
 
 ![Bulk Edit Modal](../../screenshots/BulkeditMetadataModal.png)
 
 ### Finding Fields
 
-When a Team folder has more than 6 metadata fields, a search bar appears at the top of the modal. Type to filter fields by name — the search is case-insensitive and matches on both field label and internal name.
+When a Team folder has more than 6 metadata fields, a **Search fields** box appears at the top of the dialog. Type to filter fields by name — the search is case-insensitive and matches on both field label and internal name.
 
 ### Editing Fields
 
 - Fill in the fields you want to update
 - Leave fields empty if you don't want to change them
 - All selected files will receive the same values
+- Click **Save**. The button stays disabled until you fill in a field. Afterwards you see *Metadata saved for {count} files*.
+- Files you don't have write access to are skipped
 
 ### Merge Strategies
 
@@ -45,9 +47,10 @@ Choose how to handle existing metadata values:
 
 ### Clear All Metadata
 
-Click the **"Clear All"** button to remove all metadata from the selected files.
+Click the **"Clear all"** button to remove all metadata from the selected files.
 
-- A confirmation dialog will appear to prevent accidental data loss
+- A confirmation dialog asks *Clear all metadata from {count} files? This cannot be undone.* Click **Clear metadata** to go ahead, or **Cancel**
+- Required fields keep their value: clearing all is no way around them
 - This also clears the search index entries for the files
 
 ### Export to CSV
@@ -59,7 +62,7 @@ Export metadata from the selected files to a CSV file. See [Exporting Data](expo
 ## Tips
 
 - **Large selections**: The bulk editor works efficiently with many files, but for very large selections (100+), consider processing in batches
-- **Required fields**: If fields are marked as required, ensure you provide values when using "Overwrite" mode
+- **Required fields**: A field you leave empty stays as it is on every file, in both modes. A required checkbox cannot be set to unticked
 - **Undo**: There is no undo function - use "Only fill empty fields" if you want to preserve existing data
 
 ---

@@ -66,11 +66,14 @@
 </template>
 
 <script>
-import { NcTextField, NcSelect, NcCheckboxRadioSwitch } from '@nextcloud/vue'
+import NcTextField from '@nextcloud/vue/components/NcTextField'
+import NcSelect from '@nextcloud/vue/components/NcSelect'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import UrlFieldInput from './UrlFieldInput.vue'
 import UserGroupFieldInput from './UserGroupFieldInput.vue'
 import FileLinkFieldInput from './FileLinkFieldInput.vue'
 import { dateFieldIncludesTime, padDatetimeLocal } from '../../utils/dateField.js'
+import { optionItems } from '../../utils/fieldOptions.js'
 
 export default {
   name: 'DynamicFieldInput',
@@ -165,7 +168,8 @@ export default {
         case 'multiselect':
         case 'multi_select':
           return {
-            id: this.inputId,
+            // On the input, where a label points; not also on the wrapper.
+            'input-id': this.inputId || undefined,
             'model-value': this.selectValue,
             options: this.selectOptions,
             disabled: this.disabled,
@@ -238,17 +242,7 @@ export default {
         return this.options
       }
 
-      // Fall back to field.field_options
-      if (!this.field.field_options) return []
-
-      const fieldOptions = typeof this.field.field_options === 'string'
-        ? this.field.field_options.split('\n').filter(o => o.trim())
-        : this.field.field_options
-
-      return fieldOptions.map(opt => ({
-        value: typeof opt === 'string' ? opt.trim() : (opt.value || opt),
-        label: typeof opt === 'string' ? opt.trim() : (opt.label || opt.value || opt)
-      }))
+      return optionItems(this.field.field_options)
     },
     selectValue() {
       if (this.type === 'select') {

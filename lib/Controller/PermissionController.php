@@ -4,273 +4,118 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Controller;
 
+use OCA\MetaVox\Access\Access;
+use OCA\MetaVox\Access\RequireAccess;
+use OCA\MetaVox\Exception\RequestException;
+use OCA\MetaVox\L10n\Translatable;
 use OCA\MetaVox\Service\PermissionService;
 use OCP\AppFramework\Controller;
-use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
-use OCP\IUserSession;
 use OCP\IGroupManager;
 
 class PermissionController extends Controller {
 
+    use ReadsParams;
+
     private PermissionService $permissionService;
-    private IUserSession $userSession;
     private IGroupManager $groupManager;
 
     public function __construct(
         string $appName,
         IRequest $request,
         PermissionService $permissionService,
-        IUserSession $userSession,
         IGroupManager $groupManager
     ) {
         parent::__construct($appName, $request);
         $this->permissionService = $permissionService;
-        $this->userSession = $userSession;
         $this->groupManager = $groupManager;
-    }
-
-    /**
-     * Check if current user is admin
-     */
-    private function isAdmin(): bool {
-        $user = $this->userSession->getUser();
-        if (!$user) {
-            return false;
-        }
-        return $this->groupManager->isAdmin($user->getUID());
     }
 
     /**
      * Get all groups (admin only)
      */
     #[NoCSRFRequired]
+    #[RequireAccess(Access::NcAdmin)]
     public function getGroups(): JSONResponse {
-        if (!$this->isAdmin()) {
-            return new JSONResponse(['error' => 'Unauthorized'], 403);
+        $groups = $this->groupManager->search('');
+        $groupList = [];
+
+        foreach ($groups as $group) {
+            $groupList[] = [
+                'id' => $group->getGID(),
+                'displayname' => $group->getDisplayName(),
+            ];
         }
 
-        try {
-            $groups = $this->groupManager->search('');
-            $groupList = [];
-            
-            foreach ($groups as $group) {
-                $groupList[] = [
-                    'id' => $group->getGID(),
-                    'displayname' => $group->getDisplayName(),
-                ];
-            }
-            
-            return new JSONResponse($groupList);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
-        }
+        return new JSONResponse($groupList);
     }
 
     /**
      * Get all permissions (admin only)
      */
     #[NoCSRFRequired]
+    #[RequireAccess(Access::NcAdmin)]
     public function getAllPermissions(): JSONResponse {
-        if (!$this->isAdmin()) {
-            return new JSONResponse(['error' => 'Unauthorized'], 403);
-        }
-
-        try {
-            $permissions = $this->permissionService->getAllPermissions();
-            return new JSONResponse($permissions);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
-        }
+        $permissions = $this->permissionService->getAllPermissions();
+        return new JSONResponse($permissions);
     }
 
     /**
-     * Get current user's permissions
+     * Grant the manage permission to an account (admin only). Without a team
+     * folder it holds for all of them.
      */
-    #[NoAdminRequired]
-    #[NoCSRFRequired]
-    public function getMyPermissions(): JSONResponse {
-        $user = $this->userSession->getUser();
-        if (!$user) {
-            return new JSONResponse(['error' => 'Not logged in'], 401);
-        }
-
-        try {
-            $permissions = $this->permissionService->getUserPermissions($user->getUID());
-            return new JSONResponse($permissions);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
-        }
-    }
-
-    /**
-     * Check if current user has specific permission
-     */
-    #[NoAdminRequired]
-    #[NoCSRFRequired]
-    public function checkPermission(
-        string $permissionType,
-        ?int $groupfolderId = null,
-        ?string $fieldScope = null
-    ): JSONResponse {
-        $user = $this->userSession->getUser();
-        if (!$user) {
-            return new JSONResponse(['hasPermission' => false], 401);
-        }
-
-        try {
-            $hasPermission = $this->permissionService->hasPermission(
-                $user->getUID(),
-                $permissionType,
-                $groupfolderId,
-                $fieldScope
-            );
-            return new JSONResponse(['hasPermission' => $hasPermission]);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
-        }
-    }
-
-    /**
-     * Grant permission to user (admin only)
-     */
+    #[RequireAccess(Access::NcAdmin)]
     public function grantUserPermission(): JSONResponse {
-        if (!$this->isAdmin()) {
-            return new JSONResponse(['error' => 'Unauthorized'], 403);
-        }
-
-        $userId = $this->request->getParam('user_id');
-        $permissionType = $this->request->getParam('permission_type');
-        $groupfolderId = $this->request->getParam('groupfolder_id');
-        $fieldScope = $this->request->getParam('field_scope');
-
-        if (!$userId || !$permissionType) {
-            return new JSONResponse(['error' => 'Missing required parameters'], 400);
-        }
-
-        try {
-            $success = $this->permissionService->grantUserPermission(
-                $userId,
-                $permissionType,
-                $groupfolderId ? (int)$groupfolderId : null,
-                $fieldScope ?: null
-            );
-
-            if ($success) {
-                return new JSONResponse(['success' => true]);
-            } else {
-                return new JSONResponse(['error' => 'Failed to grant permission'], 500);
-            }
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
-        }
+        $userId = $this->textParam('user_id', required: true);
+        $this->permissionService->grantUserPermission($userId, $this->permissionTypeParam(), $this->groupfolderParam());
+        return new JSONResponse(['success' => true]);
     }
 
     /**
-     * Grant permission to group (admin only)
+     * Grant the manage permission to a group (admin only). Without a team
+     * folder it holds for all of them.
      */
+    #[RequireAccess(Access::NcAdmin)]
     public function grantGroupPermission(): JSONResponse {
-        if (!$this->isAdmin()) {
-            return new JSONResponse(['error' => 'Unauthorized'], 403);
-        }
+        $groupId = $this->textParam('group_id', required: true);
+        $this->permissionService->grantGroupPermission($groupId, $this->permissionTypeParam(), $this->groupfolderParam());
+        return new JSONResponse(['success' => true]);
+    }
 
-        $groupId = $this->request->getParam('group_id');
-        $permissionType = $this->request->getParam('permission_type');
-        $groupfolderId = $this->request->getParam('groupfolder_id');
-        $fieldScope = $this->request->getParam('field_scope');
+    /** The one permission MetaVox has. */
+    private function permissionTypeParam(): string {
+        $this->requireParam('permission_type');
+        return $this->choiceParam('permission_type', [PermissionService::PERM_MANAGE_FIELDS]);
+    }
 
-        if (!$groupId || !$permissionType) {
-            return new JSONResponse(['error' => 'Missing required parameters'], 400);
-        }
-
-        try {
-            $success = $this->permissionService->grantGroupPermission(
-                $groupId,
-                $permissionType,
-                $groupfolderId ? (int)$groupfolderId : null,
-                $fieldScope ?: null
-            );
-
-            if ($success) {
-                return new JSONResponse(['success' => true]);
-            } else {
-                return new JSONResponse(['error' => 'Failed to grant permission'], 500);
-            }
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
-        }
+    /** Left out: all team folders. 0, "" or "abc" is no team folder, and no "all" either. */
+    private function groupfolderParam(): ?int {
+        return $this->intParam('groupfolder_id', min: 1);
     }
 
     /**
-     * Revoke user permission (admin only)
+     * Revoke a user's grant by its id (admin only).
      */
+    #[RequireAccess(Access::NcAdmin)]
     public function revokeUserPermission(int $permissionId): JSONResponse {
-        if (!$this->isAdmin()) {
-            return new JSONResponse(['error' => 'Unauthorized'], 403);
-        }
-
-        // For now, we'll use the simpler approach of deleting by parameters
-        $userId = $this->request->getParam('user_id');
-        $permissionType = $this->request->getParam('permission_type');
-        $groupfolderId = $this->request->getParam('groupfolder_id');
-        $fieldScope = $this->request->getParam('field_scope');
-
-        if (!$userId || !$permissionType) {
-            return new JSONResponse(['error' => 'Missing required parameters'], 400);
-        }
-
-        try {
-            $success = $this->permissionService->revokeUserPermission(
-                $userId,
-                $permissionType,
-                $groupfolderId ? (int)$groupfolderId : null,
-                $fieldScope ?: null
-            );
-
-            if ($success) {
-                return new JSONResponse(['success' => true]);
-            } else {
-                return new JSONResponse(['error' => 'Failed to revoke permission'], 500);
-            }
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
-        }
+        return $this->revoke($permissionId, PermissionService::HOLDER_USER);
     }
 
     /**
-     * Revoke group permission (admin only)
+     * Revoke a group's grant by its id (admin only).
      */
+    #[RequireAccess(Access::NcAdmin)]
     public function revokeGroupPermission(int $permissionId): JSONResponse {
-        if (!$this->isAdmin()) {
-            return new JSONResponse(['error' => 'Unauthorized'], 403);
+        return $this->revoke($permissionId, PermissionService::HOLDER_GROUP);
+    }
+
+    private function revoke(int $permissionId, string $holder): JSONResponse {
+        if (!$this->permissionService->revokePermission($permissionId, $holder)) {
+            // TRANSLATORS Error when an admin removes a permission that no longer exists
+            throw RequestException::notFound(Translatable::t('Permission not found'));
         }
-
-        $groupId = $this->request->getParam('group_id');
-        $permissionType = $this->request->getParam('permission_type');
-        $groupfolderId = $this->request->getParam('groupfolder_id');
-        $fieldScope = $this->request->getParam('field_scope');
-
-        if (!$groupId || !$permissionType) {
-            return new JSONResponse(['error' => 'Missing required parameters'], 400);
-        }
-
-        try {
-            $success = $this->permissionService->revokeGroupPermission(
-                $groupId,
-                $permissionType,
-                $groupfolderId ? (int)$groupfolderId : null,
-                $fieldScope ?: null
-            );
-
-            if ($success) {
-                return new JSONResponse(['success' => true]);
-            } else {
-                return new JSONResponse(['error' => 'Failed to revoke permission'], 500);
-            }
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
-        }
+        return new JSONResponse(['success' => true]);
     }
 }

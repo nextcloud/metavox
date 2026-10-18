@@ -1,2 +1,2 @@
-/* MetaVox icon — no custom styling needed.
-   NC handles icon sizing and dark mode via app.svg (#000) and app-dark.svg (#fff). */
+/* MetaVox icon — no custom styling needed. Core picks the file and inverts it
+   where needed: app.svg is the white mark, app-dark.svg the dark one. */

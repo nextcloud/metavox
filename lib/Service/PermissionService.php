@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Service;
 
+use OCA\MetaVox\L10n\Translatable;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 use OCP\IUserManager;
@@ -20,10 +21,11 @@ class PermissionService {
     /** @var array<string, bool> In-request permission cache */
     private array $permissionCache = [];
 
-    // Permission types
-    const PERM_VIEW_METADATA = 'view_metadata';
-    const PERM_EDIT_METADATA = 'edit_metadata';
+    // Who may manage a team folder. File metadata follows NC file permissions.
     const PERM_MANAGE_FIELDS = 'manage_fields';
+    // Whose grant it is.
+    public const HOLDER_USER = 'user';
+    public const HOLDER_GROUP = 'group';
 
     public function __construct(
         IDBConnection $db,
@@ -40,14 +42,9 @@ class PermissionService {
     /**
      * Check if user has a specific permission
      */
-    public function hasPermission(
-        string $userId,
-        string $permissionType,
-        ?int $groupfolderId = null,
-        ?string $fieldScope = null
-    ): bool {
+    public function hasPermission(string $userId, string $permissionType, ?int $groupfolderId = null): bool {
         // In-request cache to avoid repeated DB queries for the same check
-        $cacheKey = $userId . ':' . $permissionType . ':' . ($groupfolderId ?? 'null') . ':' . ($fieldScope ?? 'null');
+        $cacheKey = $userId . ':' . $permissionType . ':' . ($groupfolderId ?? 'null');
         if (isset($this->permissionCache[$cacheKey])) {
             return $this->permissionCache[$cacheKey];
         }
@@ -59,7 +56,7 @@ class PermissionService {
         }
 
         // Check user-specific permissions
-        if ($this->checkUserPermission($userId, $permissionType, $groupfolderId, $fieldScope)) {
+        if ($this->checkUserPermission($userId, $permissionType, $groupfolderId)) {
             $this->permissionCache[$cacheKey] = true;
             return true;
         }
@@ -70,7 +67,7 @@ class PermissionService {
         );
 
         if (!empty($userGroups)) {
-            if ($this->checkGroupPermissions($userGroups, $permissionType, $groupfolderId, $fieldScope)) {
+            if ($this->checkGroupPermissions($userGroups, $permissionType, $groupfolderId)) {
                 $this->permissionCache[$cacheKey] = true;
                 return true;
             }
@@ -83,12 +80,7 @@ class PermissionService {
     /**
      * Check user-specific permission
      */
-    private function checkUserPermission(
-        string $userId,
-        string $permissionType,
-        ?int $groupfolderId,
-        ?string $fieldScope
-    ): bool {
+    private function checkUserPermission(string $userId, string $permissionType, ?int $groupfolderId): bool {
         $qb = $this->db->getQueryBuilder();
         $qb->select('id')
            ->from('metavox_permissions')
@@ -105,14 +97,6 @@ class PermissionService {
             $qb->andWhere($qb->expr()->isNull('groupfolder_id'));
         }
 
-        // Check field scope if specified
-        if ($fieldScope !== null) {
-            $qb->andWhere($qb->expr()->orX(
-                $qb->expr()->eq('field_scope', $qb->createNamedParameter($fieldScope)),
-                $qb->expr()->isNull('field_scope')
-            ));
-        }
-
         $result = $qb->executeQuery();
         $exists = $result->fetchOne();
         $result->closeCursor();
@@ -121,26 +105,9 @@ class PermissionService {
     }
 
     /**
-     * Check group-based permission for a single group
-     */
-    private function checkGroupPermission(
-        string $groupId,
-        string $permissionType,
-        ?int $groupfolderId,
-        ?string $fieldScope
-    ): bool {
-        return $this->checkGroupPermissions([$groupId], $permissionType, $groupfolderId, $fieldScope);
-    }
-
-    /**
      * Check group-based permission for multiple groups in a single query
      */
-    private function checkGroupPermissions(
-        array $groupIds,
-        string $permissionType,
-        ?int $groupfolderId,
-        ?string $fieldScope
-    ): bool {
+    private function checkGroupPermissions(array $groupIds, string $permissionType, ?int $groupfolderId): bool {
         if (empty($groupIds)) {
             return false;
         }
@@ -161,13 +128,6 @@ class PermissionService {
             $qb->andWhere($qb->expr()->isNull('groupfolder_id'));
         }
 
-        if ($fieldScope !== null) {
-            $qb->andWhere($qb->expr()->orX(
-                $qb->expr()->eq('field_scope', $qb->createNamedParameter($fieldScope)),
-                $qb->expr()->isNull('field_scope')
-            ));
-        }
-
         $result = $qb->executeQuery();
         $exists = $result->fetchOne();
         $result->closeCursor();
@@ -176,189 +136,92 @@ class PermissionService {
     }
 
     /**
-     * Does this user have manage_fields on AT LEAST ONE folder (folder-specific
-     * OR global)? Used to decide whether to surface the Personal settings page:
-     * a user who can manage fields on a single team folder should see it, not
-     * only users with a global grant. Admins always qualify.
+     * Grant the permission to an account, for one team folder or, with none,
+     * for all. Errors are thrown.
+     *
+     * @throws ApiValidationException for an account or team folder that does not exist
      */
-    public function hasManageFieldsOnAnyFolder(string $userId): bool {
-        if ($this->groupManager->isAdmin($userId)) {
-            return true;
+    public function grantUserPermission(string $userId, string $permissionType, ?int $groupfolderId = null): void {
+        $refused = $this->refusedHolder('user_id', $this->userManager->userExists($userId), $groupfolderId);
+        if ($refused !== []) {
+            throw new ApiValidationException($refused);
         }
+        if (!$this->checkUserPermission($userId, $permissionType, $groupfolderId)) {
+            $this->insertGrant('user_id', $userId, $permissionType, $groupfolderId);
+        }
+    }
 
-        // User-specific manage_fields rows (any groupfolder_id, incl. NULL).
+    /**
+     * Grant the permission to a group, for one team folder or, with none, for
+     * all. Errors are thrown.
+     *
+     * @throws ApiValidationException for a group or team folder that does not exist
+     */
+    public function grantGroupPermission(string $groupId, string $permissionType, ?int $groupfolderId = null): void {
+        $refused = $this->refusedHolder('group_id', $this->groupManager->groupExists($groupId), $groupfolderId);
+        if ($refused !== []) {
+            throw new ApiValidationException($refused);
+        }
+        if (!$this->checkGroupPermissions([$groupId], $permissionType, $groupfolderId)) {
+            $this->insertGrant('group_id', $groupId, $permissionType, $groupfolderId);
+        }
+    }
+
+    /** @return array<string, string> what does not exist, by parameter */
+    private function refusedHolder(string $holderKey, bool $holderExists, ?int $groupfolderId): array {
+        $refused = [];
+        if (!$holderExists) {
+            $refused[$holderKey] = $holderKey === 'user_id'
+                ? Translatable::t('Choose an existing account')
+                // TRANSLATORS Error when the manage permission is given to a group that does not exist
+                : Translatable::t('Choose an existing group');
+        }
+        if ($groupfolderId !== null && !$this->teamFolderExists($groupfolderId)) {
+            // TRANSLATORS Error when the manage permission is given for a Team folder that does not exist
+            $refused['groupfolder_id'] = Translatable::t('Choose an existing Team folder');
+        }
+        return $refused;
+    }
+
+    private function teamFolderExists(int $groupfolderId): bool {
         $qb = $this->db->getQueryBuilder();
-        $qb->select('id')
-           ->from('metavox_permissions')
-           ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
-           ->andWhere($qb->expr()->eq('permission_type', $qb->createNamedParameter(self::PERM_MANAGE_FIELDS)))
-           ->setMaxResults(1);
+        $qb->select('folder_id')
+           ->from('group_folders')
+           ->where($qb->expr()->eq('folder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)));
         $result = $qb->executeQuery();
-        $found = (bool)$result->fetchOne();
+        $exists = $result->fetchOne() !== false;
         $result->closeCursor();
-        if ($found) {
-            return true;
-        }
+        return $exists;
+    }
 
-        // Group-based manage_fields rows.
-        $userGroups = $this->groupManager->getUserGroupIds($this->userManager->get($userId));
-        if (empty($userGroups)) {
-            return false;
-        }
-
+    private function insertGrant(string $holderKey, string $holder, string $permissionType, ?int $groupfolderId): void {
+        $now = date('Y-m-d H:i:s');
         $qb = $this->db->getQueryBuilder();
-        $qb->select('id')
-           ->from('metavox_permissions')
-           ->where($qb->expr()->in('group_id', $qb->createNamedParameter($userGroups, IQueryBuilder::PARAM_STR_ARRAY)))
-           ->andWhere($qb->expr()->eq('permission_type', $qb->createNamedParameter(self::PERM_MANAGE_FIELDS)))
-           ->setMaxResults(1);
-        $result = $qb->executeQuery();
-        $found = (bool)$result->fetchOne();
-        $result->closeCursor();
-
-        return $found;
+        $qb->insert('metavox_permissions')
+           ->values([
+               $holderKey => $qb->createNamedParameter($holder),
+               'permission_type' => $qb->createNamedParameter($permissionType),
+               'groupfolder_id' => $groupfolderId !== null
+                   ? $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)
+                   : $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL),
+               'created_at' => $qb->createNamedParameter($now),
+               'updated_at' => $qb->createNamedParameter($now),
+           ]);
+        $qb->executeStatement();
+        // A grant changes what the cached checks answered.
+        $this->permissionCache = [];
     }
 
     /**
-     * Grant permission to user
+     * Revoke one grant by its id. $holder says whose it must be (user or
+     * group), so a user grant can't be removed through the group route.
      */
-    public function grantUserPermission(
-        string $userId,
-        string $permissionType,
-        ?int $groupfolderId = null,
-        ?string $fieldScope = null
-    ): bool {
-        try {
-            // Check if permission already exists
-            if ($this->checkUserPermission($userId, $permissionType, $groupfolderId, $fieldScope)) {
-                return true; // Already exists
-            }
-
-            $qb = $this->db->getQueryBuilder();
-            $qb->insert('metavox_permissions')
-               ->values([
-                   'user_id' => $qb->createNamedParameter($userId),
-                   'permission_type' => $qb->createNamedParameter($permissionType),
-                   'groupfolder_id' => $groupfolderId !== null 
-                       ? $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)
-                       : $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL),
-                   'field_scope' => $fieldScope !== null
-                       ? $qb->createNamedParameter($fieldScope)
-                       : $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL),
-                   'created_at' => $qb->createNamedParameter(date('Y-m-d H:i:s')),
-                   'updated_at' => $qb->createNamedParameter(date('Y-m-d H:i:s')),
-               ]);
-
-            return $qb->executeStatement() > 0;
-        } catch (\Exception $e) {
-            $this->logger->error('MetaVox: grantUserPermission failed', ['exception' => $e, 'userId' => $userId, 'permissionType' => $permissionType]);
-            return false;
-        }
-    }
-
-    /**
-     * Grant permission to group
-     */
-    public function grantGroupPermission(
-        string $groupId,
-        string $permissionType,
-        ?int $groupfolderId = null,
-        ?string $fieldScope = null
-    ): bool {
-        try {
-            // Check if permission already exists
-            if ($this->checkGroupPermission($groupId, $permissionType, $groupfolderId, $fieldScope)) {
-                return true; // Already exists
-            }
-
-            $qb = $this->db->getQueryBuilder();
-            $qb->insert('metavox_permissions')
-               ->values([
-                   'group_id' => $qb->createNamedParameter($groupId),
-                   'permission_type' => $qb->createNamedParameter($permissionType),
-                   'groupfolder_id' => $groupfolderId !== null 
-                       ? $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)
-                       : $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL),
-                   'field_scope' => $fieldScope !== null
-                       ? $qb->createNamedParameter($fieldScope)
-                       : $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL),
-                   'created_at' => $qb->createNamedParameter(date('Y-m-d H:i:s')),
-                   'updated_at' => $qb->createNamedParameter(date('Y-m-d H:i:s')),
-               ]);
-
-            return $qb->executeStatement() > 0;
-        } catch (\Exception $e) {
-            $this->logger->error('MetaVox: grantGroupPermission failed', ['exception' => $e, 'groupId' => $groupId, 'permissionType' => $permissionType]);
-            return false;
-        }
-    }
-
-    /**
-     * Revoke user permission
-     */
-    public function revokeUserPermission(
-        string $userId,
-        string $permissionType,
-        ?int $groupfolderId = null,
-        ?string $fieldScope = null
-    ): bool {
-        try {
-            $qb = $this->db->getQueryBuilder();
-            $qb->delete('metavox_permissions')
-               ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
-               ->andWhere($qb->expr()->eq('permission_type', $qb->createNamedParameter($permissionType)));
-
-            if ($groupfolderId !== null) {
-                $qb->andWhere($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)));
-            } else {
-                $qb->andWhere($qb->expr()->isNull('groupfolder_id'));
-            }
-
-            if ($fieldScope !== null) {
-                $qb->andWhere($qb->expr()->eq('field_scope', $qb->createNamedParameter($fieldScope)));
-            } else {
-                $qb->andWhere($qb->expr()->isNull('field_scope'));
-            }
-
-            return $qb->executeStatement() > 0;
-        } catch (\Exception $e) {
-            $this->logger->error('MetaVox: revokeUserPermission failed', ['exception' => $e, 'userId' => $userId, 'permissionType' => $permissionType]);
-            return false;
-        }
-    }
-
-    /**
-     * Revoke group permission
-     */
-    public function revokeGroupPermission(
-        string $groupId,
-        string $permissionType,
-        ?int $groupfolderId = null,
-        ?string $fieldScope = null
-    ): bool {
-        try {
-            $qb = $this->db->getQueryBuilder();
-            $qb->delete('metavox_permissions')
-               ->where($qb->expr()->eq('group_id', $qb->createNamedParameter($groupId)))
-               ->andWhere($qb->expr()->eq('permission_type', $qb->createNamedParameter($permissionType)));
-
-            if ($groupfolderId !== null) {
-                $qb->andWhere($qb->expr()->eq('groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)));
-            } else {
-                $qb->andWhere($qb->expr()->isNull('groupfolder_id'));
-            }
-
-            if ($fieldScope !== null) {
-                $qb->andWhere($qb->expr()->eq('field_scope', $qb->createNamedParameter($fieldScope)));
-            } else {
-                $qb->andWhere($qb->expr()->isNull('field_scope'));
-            }
-
-            return $qb->executeStatement() > 0;
-        } catch (\Exception $e) {
-            $this->logger->error('MetaVox: revokeGroupPermission failed', ['exception' => $e, 'groupId' => $groupId, 'permissionType' => $permissionType]);
-            return false;
-        }
+    public function revokePermission(int $id, string $holder): bool {
+        $qb = $this->db->getQueryBuilder();
+        $qb->delete('metavox_permissions')
+           ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)))
+           ->andWhere($qb->expr()->isNotNull($holder === self::HOLDER_GROUP ? 'group_id' : 'user_id'));
+        return $qb->executeStatement() > 0;
     }
 
     /**
@@ -380,7 +243,6 @@ class PermissionService {
                 'group_id' => $row['group_id'],
                 'permission_type' => $row['permission_type'],
                 'groupfolder_id' => $row['groupfolder_id'] ? (int)$row['groupfolder_id'] : null,
-                'field_scope' => $row['field_scope'],
                 'created_at' => $row['created_at'],
                 'updated_at' => $row['updated_at'],
             ];
@@ -390,56 +252,4 @@ class PermissionService {
         return $permissions;
     }
 
-    /**
-     * Get user's permissions
-     */
-    public function getUserPermissions(string $userId): array {
-        // Get direct user permissions
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('*')
-           ->from('metavox_permissions')
-           ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
-           ->orderBy('created_at', 'DESC');
-
-        $result = $qb->executeQuery();
-        $permissions = [];
-        
-        while ($row = $result->fetch()) {
-            $permissions[] = [
-                'id' => (int)$row['id'],
-                'source' => 'user',
-                'permission_type' => $row['permission_type'],
-                'groupfolder_id' => $row['groupfolder_id'] ? (int)$row['groupfolder_id'] : null,
-                'field_scope' => $row['field_scope'],
-            ];
-        }
-        $result->closeCursor();
-
-        // Get group permissions (single query for all groups)
-        $userGroups = $this->groupManager->getUserGroupIds(
-            $this->userManager->get($userId)
-        );
-
-        if (!empty($userGroups)) {
-            $qb = $this->db->getQueryBuilder();
-            $qb->select('*')
-               ->from('metavox_permissions')
-               ->where($qb->expr()->in('group_id', $qb->createNamedParameter($userGroups, IQueryBuilder::PARAM_STR_ARRAY)));
-
-            $result = $qb->executeQuery();
-            while ($row = $result->fetch()) {
-                $permissions[] = [
-                    'id' => (int)$row['id'],
-                    'source' => 'group',
-                    'group_id' => $row['group_id'],
-                    'permission_type' => $row['permission_type'],
-                    'groupfolder_id' => $row['groupfolder_id'] ? (int)$row['groupfolder_id'] : null,
-                    'field_scope' => $row['field_scope'],
-                ];
-            }
-            $result->closeCursor();
-        }
-
-        return $permissions;
-    }
 }

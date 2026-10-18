@@ -67,20 +67,6 @@ let _rowObserver = null
 export function getRowObserver() { return _rowObserver }
 export function setRowObserver(v) { _rowObserver = v }
 
-// ── Load queue (mutable Set — export directly) ──────────────────────
-/** @type {Set<number>} File IDs queued for metadata loading */
-export const loadQueue = new Set()
-
-// ── Load timer ───────────────────────────────────────────────────────
-let _loadTimer = null
-export function getLoadTimer() { return _loadTimer }
-export function setLoadTimer(v) { _loadTimer = v }
-
-// ── Flush deadline ───────────────────────────────────────────────────
-let _flushDeadline = 0
-export function getFlushDeadline() { return _flushDeadline }
-export function setFlushDeadline(v) { _flushDeadline = v }
-
 // ── Column widths (mutable Map — export directly) ───────────────────
 /** @type {Map<string, number>} Persisted column widths */
 export const columnWidths = new Map()
@@ -94,6 +80,11 @@ let _activeView = null
 export function getActiveView() { return _activeView }
 export function setActiveView(v) { _activeView = v }
 
+// "Default" picked on purpose, so a subfolder keeps it. No view loaded is something else.
+let _defaultChosen = false
+export function getDefaultChosen() { return _defaultChosen }
+export function setDefaultChosen(v) { _defaultChosen = v }
+
 let _viewTabsEl = null
 export function getViewTabsEl() { return _viewTabsEl }
 export function setViewTabsEl(v) { _viewTabsEl = v }
@@ -102,19 +93,10 @@ let _canManageViews = false
 export function getCanManageViews() { return _canManageViews }
 export function setCanManageViews(v) { _canManageViews = v }
 
-let _viewCleared = false
-export function getViewCleared() { return _viewCleared }
-export function setViewCleared(v) { _viewCleared = v }
-
 // ── Available fields ─────────────────────────────────────────────────
 let _availableFields = []
 export function getAvailableFields() { return _availableFields }
 export function setAvailableFields(v) { _availableFields = v }
-
-// ── Prefetched filter values ─────────────────────────────────────────
-let _prefetchedFilterValues = null
-export function getPrefetchedFilterValues() { return _prefetchedFilterValues }
-export function setPrefetchedFilterValues(v) { _prefetchedFilterValues = v }
 
 // ── Pending undo ─────────────────────────────────────────────────────
 let _pendingUndo = null
@@ -125,11 +107,6 @@ export function setPendingUndo(v) { _pendingUndo = v }
 /** @type {Map<number, boolean>} Cache of file write permissions: fileId -> canEdit */
 export const permissionCache = new Map()
 
-// ── Active editor ────────────────────────────────────────────────────
-let _activeEditor = null
-export function getActiveEditor() { return _activeEditor }
-export function setActiveEditor(v) { _activeEditor = v }
-
 // ── Initial-state consumed flag ──────────────────────────────────────
 let _initialStateConsumed = false
 export function getInitialStateConsumed() { return _initialStateConsumed }
@@ -137,22 +114,13 @@ export function setInitialStateConsumed(v) { _initialStateConsumed = v }
 
 // ── Window-level groupfolder data (convenience accessors) ────────────
 export function getMetavoxGroupfolders() { return window._metavoxGroupfolders }
+
+/** Where the active team folder is in the user's files, e.g. "/Projects"; '' when unknown. */
+export function getActiveFolderPath() {
+	const gf = (getMetavoxGroupfolders() || []).find((g) => Number(g.id) === Number(_activeGroupfolderId))
+	return gf && gf.mount_point ? '/' + String(gf.mount_point).replace(/^\/+/, '') : ''
+}
 export function setMetavoxGroupfolders(v) { window._metavoxGroupfolders = v }
 
 export function getMetavoxAllGfData() { return window._metavoxAllGfData }
 export function setMetavoxAllGfData(v) { window._metavoxAllGfData = v }
-
-// ── File-link resolved names ─────────────────────────────────────────
-// Map: referenced fileId -> current display name, server-resolved so the grid
-// shows live names for "File Link" cells without per-cell API calls. Cells
-// fall back to the cached path baked into the stored value when a name is
-// absent (stale reference, no access, or API fallback path).
-/** @type {Map<number, string>} */
-const _filelinkResolvedNames = new Map()
-export function getFilelinkName(fileId) { return _filelinkResolvedNames.get(Number(fileId)) }
-export function mergeFilelinkNames(map) {
-	if (!map) return
-	for (const [id, name] of Object.entries(map)) {
-		if (name) _filelinkResolvedNames.set(Number(id), name)
-	}
-}

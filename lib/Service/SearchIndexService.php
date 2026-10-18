@@ -3,273 +3,510 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Service;
 
-use OCP\IDBConnection;
+use OCA\MetaVox\Access\VisibleFolder;
+use OCP\DB\QueryBuilder\ICompositeExpression;
 use OCP\DB\QueryBuilder\IQueryBuilder;
-use OCP\ICacheFactory;
+use OCP\Files\IMimeTypeLoader;
+use OCP\IDBConnection;
 use Psr\Log\LoggerInterface;
 
+/**
+ * Searching metadata, newest file first, only where the user sees the files.
+ * A search gives ['files' => up to $count, 'next' => the file id to go on
+ * before, or null when nothing follows]. A file is 'checked' when the query
+ * already left out what its team folder's ACL hides; the others are in a
+ * folder groupfolders can't tell about, and the caller looks each one up.
+ */
 class SearchIndexService {
 
-    /** Files per upsert chunk in the bulk index path. */
-    private const INDEX_UPSERT_CHUNK = 250;
+    /** The start of a value the filter index holds: MySQL's prefix, PostgreSQL's LEFT() (Version20250101000023). */
+    public const VALUE_INDEX_CHARS = 100;
 
-    /** File ids per IN(...) clause when batch-fetching, to stay under param limits. */
-    private const QUERY_IN_CHUNK = 500;
+    /** Free-text matches checked per query, at least. */
+    private const CHECK_CHUNK = 50;
+    /** Parameters per filter statement at most; a part takes a few, more with ACL paths. */
+    private const PARAMS_PER_QUERY = 5000;
 
-    /**
-     * Cap on the number of groupfolder ids put in the admin field-search IN()
-     * list. Bounds the param count on instances with very many folders; an
-     * admin field-search hitting more folders than this than degrades to a
-     * partial (still index-using) result rather than an unbounded scan.
-     */
-    private const ADMIN_FIELD_SCAN_FOLDER_CAP = 1000;
+    /** @var array<string, array{hits: list<array{file_id: int, groupfolder_id: int}>, cut: bool}> free-text matches, for the rounds of one request */
+    private array $hits = [];
 
-    private IDBConnection $db;
-    private ICacheFactory $cacheFactory;
-    private LoggerInterface $logger;
-
-    public function __construct(IDBConnection $db, ICacheFactory $cacheFactory, LoggerInterface $logger) {
-        $this->db = $db;
-        $this->cacheFactory = $cacheFactory;
-        $this->logger = $logger;
+    public function __construct(
+        private readonly IDBConnection $db,
+        private readonly LoggerInterface $logger,
+        private readonly SearchWordsService $searchWords,
+        private readonly GroupfolderRootService $roots,
+        private readonly IMimeTypeLoader $mimeTypes,
+        private readonly FieldService $fields,
+    ) {
     }
 
-    public function searchFilesByMetadata(string $searchTerm, string $userId): array {
-        $cacheKey = "metavox_search_{$userId}_" . md5($searchTerm);
-        $cache = $this->cacheFactory->createDistributed('metavox_search');
-        
-        // Try cache first
-        $cached = $cache->get($cacheKey);
-        if ($cached !== null) {
-            return $cached;
-        }
-
+    /**
+     * Free-text search in these team folders: files whose value of one field
+     * holds every word, with their values.
+     *
+     * 'incomplete': every word was too common to read all its files, so some
+     * may be missing. Only said where the user sees every file: elsewhere it
+     * would tell that hidden files hold the words.
+     *
+     * @param list<VisibleFolder> $folders
+     * @param ?int $before only files with a lower id
+     * @return array{files: list<array<string, mixed>>, next: ?int, incomplete: bool}
+     */
+    public function searchFreeText(string $term, array $folders, int $count, ?int $before = null): array {
         try {
-            $results = $this->performMetadataSearch($searchTerm, $userId);
-            
-            // Cache results for 5 minutes
-            $cache->set($cacheKey, $results, 300);
-            
-            return $results;
-            
+            $byId = $this->byId($folders);
+            $found = $this->hits[$term . '|' . implode(',', array_keys($byId))] ??= $this->searchWords->search($term, array_keys($byId), PHP_INT_MAX, $this->assigned());
+            $hits = $found['hits'];
+            $at = 0;
+            while ($before !== null && $at < \count($hits) && $hits[$at]['file_id'] >= $before) {
+                $at++;
+            }
+            $files = [];
+            while (\count($files) < $count && $at < \count($hits)) {
+                $chunk = \array_slice($hits, $at, max(2 * ($count - \count($files)), self::CHECK_CHUNK));
+                $seen = $this->visible($chunk, $byId);
+                foreach ($chunk as $hit) {
+                    $at++;
+                    if (isset($seen[$hit['file_id']])) {
+                        $files[] = $seen[$hit['file_id']];
+                        if (\count($files) === $count) {
+                            break;
+                        }
+                    }
+                }
+            }
+            return [
+                'files' => $this->withValues($files),
+                'next' => $at > 0 && $at < \count($hits) ? $hits[$at - 1]['file_id'] : null,
+                'incomplete' => $found['cut'] && $this->nothingHidden($byId),
+            ];
         } catch (\Exception $e) {
-            $this->logger->error('MetaVox: search failed', ['exception' => $e, 'searchTerm' => $searchTerm]);
-            return [];
+            $this->logger->error('MetaVox: free-text search failed', ['exception' => $e]);
+            return ['files' => [], 'next' => null, 'incomplete' => false];
         }
     }
 
     /**
-     * Find files where a specific metadata field has an exact value.
+     * Files whose field holds one of these values (';#' between them). What
+     * the user may not see is left out in the query itself, as in Nextcloud's
+     * own search.
      *
-     * Filters against the authoritative metavox_file_gf_meta table (not a JSON
-     * substring on the search index), so "status:open" no longer also matches
-     * "open-but-stale" and a value cannot collide across fields. When
-     * $groupfolderId is given, results are scoped to that groupfolder — the
-     * same field name can carry different values per folder, and this also
-     * prevents leaking matches across folders the caller did not intend.
-     *
-     * Permission is still enforced per result by the provider
-     * (verifyFileAccess); this scoping narrows the candidate set up front.
-     *
-     * @return array<array{id: int, name: string, path: string, metadata: array}>
+     * @param list<VisibleFolder> $folders
+     * @param ?int $before only files with a lower id
+     * @return array{files: list<array<string, mixed>>, next: ?int}
      */
-    /**
-     * @param int[]|null $allowedGroupfolderIds When given, restrict matches to
-     *   these groupfolders (the user's accessible folders) BEFORE the result
-     *   cap, so inaccessible files can't fill the 100 slots and push accessible
-     *   matches out. null = no folder restriction (e.g. admin sees everything);
-     *   verifyFileAccess in the provider remains the final per-file ACL.
-     */
-    public function searchByFieldValue(string $fieldName, string $fieldValue, string $userId, ?int $groupfolderId = null, ?array $allowedGroupfolderIds = null): array {
-        // $userId is accepted for signature stability / future use; access is
-        // scoped via $allowedGroupfolderIds and finalised by the caller.
-        unset($userId);
-        // Explicit empty list = "user has access to no folders" → no results.
-        // (null = no restriction, e.g. admin.) This distinction matters: an
-        // empty IN() must mean nothing-matches, not everything-matches.
-        if ($allowedGroupfolderIds === []) {
-            return [];
+    public function searchByFieldValue(string $fieldName, string $fieldValue, array $folders, int $count, ?int $before = null): array {
+        $byId = $this->byId($folders);
+        $tokens = $this->splitMultiselectTokens($fieldValue);
+        if ($byId === [] || $tokens === []) {
+            return ['files' => [], 'next' => null];
         }
-
-        // Admins arrive with null (no folder restriction). Left as-is the query
-        // has no groupfolder_id predicate and can't use the (groupfolder_id,
-        // field_name, field_value) index → a scan over every row for this field.
-        // Replace null with the (capped) set of folders that actually contain
-        // this field, which is small and engages the index. The cap bounds the
-        // IN() list so it can't explode on a 10k-folder instance.
-        if ($allowedGroupfolderIds === null) {
-            $allowedGroupfolderIds = $this->getGroupfolderIdsForField($fieldName, self::ADMIN_FIELD_SCAN_FOLDER_CAP);
-            if ($allowedGroupfolderIds === []) {
-                return [];
-            }
+        $field = $this->fields->fieldByName($fieldName);
+        // SQLite is for testing (see SqliteCheck): it keeps the plain query.
+        if ($field !== null && $this->searchWords->isComplete()
+            && !\in_array($field['field_type'], FileReferenceService::FILELINK_TYPES, true)
+            && $this->db->getDatabaseProvider() !== IDBConnection::PLATFORM_SQLITE) {
+            return $this->searchValueIndex($field, $tokens, $byId, $count, $before);
         }
+        // Until the index holds every value: the metadata itself, which reads
+        // every match.
         try {
             $qb = $this->db->getQueryBuilder();
-            // f.mtime is in the select list because Postgres requires ORDER BY
-            // expressions to appear in SELECT when DISTINCT is used. (file_id is
-            // already unique per (file, field) row here, so DISTINCT mainly
-            // guards against duplicate index rows.) m.groupfolder_id is returned
-            // so the provider can apply per-field view permissions per folder.
-            $qb->selectDistinct('m.file_id')
-               ->addSelect('f.name', 'f.path', 'f.mtime', 'm.groupfolder_id')
+            $inFolders = [];
+            foreach ($byId as $id => $folder) {
+                $isFolder = $qb->expr()->eq('m.groupfolder_id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT));
+                $where = $this->inFolder($qb, $folder);
+                $inFolders[] = $where === null ? $isFolder : $qb->expr()->andX($isFolder, $where);
+            }
+            // + 0 on purpose, as Nextcloud's own search does with mtime: on the bare
+            // column the database may walk every file by id to find a few matches.
+            $fileId = $qb->func()->add('m.file_id', $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT));
+
+            // One row per file and team folder for a field (the unique index on
+            // file_id, groupfolder_id, field_name), so no DISTINCT. The file's
+            // own value is shown: with several values it holds any of them.
+            $qb->select('f.fileid', 'f.name', 'f.path', 'f.storage', 'f.mimetype', 'm.groupfolder_id', 'm.field_value')
                ->from('metavox_file_gf_meta', 'm')
-               ->innerJoin('m', 'filecache', 'f', 'm.file_id = f.fileid')
+               ->innerJoin('m', 'filecache', 'f', $qb->expr()->eq('m.file_id', 'f.fileid'))
                ->where($qb->expr()->eq('m.field_name', $qb->createNamedParameter($fieldName)))
-               ->setMaxResults(100)
-               ->orderBy('f.mtime', 'DESC');
-
-            // Restrict to the user's accessible groupfolders before the cap.
-            // Guard against an empty list becoming "IN ()" (which matches
-            // nothing unintentionally): only apply when non-empty.
-            if ($allowedGroupfolderIds !== null && $allowedGroupfolderIds !== []) {
-                $qb->andWhere($qb->expr()->in('m.groupfolder_id',
-                    $qb->createNamedParameter($allowedGroupfolderIds, IQueryBuilder::PARAM_INT_ARRAY)));
-            }
-
-            // A file matches each requested token if its stored value either
-            // equals the token exactly (single-value field) OR contains it as a
-            // ';#'-delimited element (multiselect field). Multiple tokens are
-            // AND-ed: the file must satisfy every selected option.
-            $tokens = $this->splitMultiselectTokens($fieldValue);
-            foreach ($tokens as $token) {
-                $qb->andWhere($qb->expr()->orX(
-                    $qb->expr()->eq('m.field_value', $qb->createNamedParameter($token)),
-                    $qb->expr()->like(
-                        $this->delimitedFieldValueExpr($qb),
-                        $qb->createNamedParameter(
-                            '%;#' . $this->db->escapeLikeParameter($token) . ';#%'
-                        )
-                    )
-                ));
-            }
-
-            if ($groupfolderId !== null) {
-                $qb->andWhere($qb->expr()->eq('m.groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)));
+               // Also as one list, so the database reads only these folders from its index.
+               ->andWhere($qb->expr()->in('m.groupfolder_id', $qb->createNamedParameter(array_keys($byId), IQueryBuilder::PARAM_INT_ARRAY)))
+               ->andWhere($this->holdsValue($qb, $fieldName, $tokens))
+               ->andWhere($qb->expr()->orX(...$inFolders))
+               ->orderBy($fileId, 'DESC')
+               // One more than asked: whether anything follows.
+               ->setMaxResults($count + 1);
+            if ($before !== null) {
+                $qb->andWhere($qb->expr()->lt($fileId, $qb->createNamedParameter($before, IQueryBuilder::PARAM_INT)));
             }
 
             $result = $qb->executeQuery();
             $files = [];
+            $rows = 0;
+            $last = null;
             while ($row = $result->fetch()) {
-                $files[] = [
-                    'id' => (int)$row['file_id'],
-                    'name' => $row['name'],
-                    'path' => $row['path'],
-                    'groupfolder_id' => (int)$row['groupfolder_id'],
-                    'metadata' => [$fieldName => $fieldValue],
-                ];
-            }
-            $result->closeCursor();
-
-            return $files;
-
-        } catch (\Exception $e) {
-            $this->logger->error('MetaVox: field search failed', ['exception' => $e, 'fieldName' => $fieldName]);
-            return [];
-        }
-    }
-
-    /**
-     * Groupfolder ids that contain at least one row for $fieldName, capped.
-     * Used to give an admin field-search a bounded, index-friendly IN() list
-     * instead of an unscoped full scan. Cheap: the (groupfolder_id, field_name,
-     * field_value) index serves the DISTINCT on field_name.
-     *
-     * @return int[]
-     */
-    private function getGroupfolderIdsForField(string $fieldName, int $cap): array {
-        try {
-            $qb = $this->db->getQueryBuilder();
-            $qb->selectDistinct('groupfolder_id')
-               ->from('metavox_file_gf_meta')
-               ->where($qb->expr()->eq('field_name', $qb->createNamedParameter($fieldName)))
-               ->setMaxResults($cap);
-            $result = $qb->executeQuery();
-            $ids = [];
-            while ($row = $result->fetch()) {
-                $ids[] = (int)$row['groupfolder_id'];
-            }
-            $result->closeCursor();
-            return $ids;
-        } catch (\Exception $e) {
-            $this->logger->error('MetaVox: folder-ids-for-field lookup failed', ['exception' => $e, 'fieldName' => $fieldName]);
-            return [];
-        }
-    }
-
-    /**
-     * Distinct values that would actually yield search results for one field
-     * inside one groupfolder.
-     *
-     * Powers the "filter by existing value" suggestions in the unified-search
-     * filter picker: the user picks from values that really occur, so filtering
-     * never lands on an empty result set. To guarantee that, this mirrors the
-     * actual search (searchByFieldValue): it INNER JOINs filecache, so values
-     * whose only files have been deleted/uncached (orphaned metadata rows) are
-     * not offered. Multiselect values (';#'-joined) are exploded into their
-     * individual options, so each option appears once. Sorted and capped (top-N)
-     * — this is suggestion UX, not an exhaustive index.
-     *
-     * Per-user file access is still enforced at search time (verifyFileAccess);
-     * the filecache join here removes the bulk of would-be-empty values without
-     * a per-row permission check.
-     *
-     * @return string[]
-     */
-    public function getDistinctFieldValues(string $fieldName, int $groupfolderId, int $limit = 50): array {
-        // These values feed a suggestion picker and tolerate staleness, so cache
-        // for 5 min keyed by (groupfolder, field). Without this the DISTINCT +
-        // filecache JOIN re-scans the whole (groupfolder, field) partition on
-        // every picker open — expensive for low-cardinality fields in large
-        // folders, where the LIMIT never early-stops.
-        $cache = $this->cacheFactory->createDistributed('metavox_search');
-        $cacheKey = "distinct_{$groupfolderId}_" . md5($fieldName) . "_{$limit}";
-        $cached = $cache->get($cacheKey);
-        if (is_array($cached)) {
-            return $cached;
-        }
-
-        try {
-            $qb = $this->db->getQueryBuilder();
-            // INNER JOIN filecache so only values attached to a still-existing
-            // file are returned — matching what searchByFieldValue can actually
-            // find. Without this, orphaned metadata rows surface values that
-            // filter to zero results.
-            $qb->selectDistinct('m.field_value')
-               ->from('metavox_file_gf_meta', 'm')
-               ->innerJoin('m', 'filecache', 'f', 'm.file_id = f.fileid')
-               ->where($qb->expr()->eq('m.field_name', $qb->createNamedParameter($fieldName)))
-               ->andWhere($qb->expr()->eq('m.groupfolder_id', $qb->createNamedParameter($groupfolderId, IQueryBuilder::PARAM_INT)))
-               ->andWhere($qb->expr()->isNotNull('m.field_value'))
-               ->andWhere($qb->expr()->neq('m.field_value', $qb->createNamedParameter('')))
-               // Over-fetch a little before exploding multiselect rows so the
-               // final unique-token set can still reach the requested limit.
-               ->setMaxResults($limit * 4);
-
-            $result = $qb->executeQuery();
-            $values = [];
-            while ($row = $result->fetch()) {
-                foreach ($this->splitMultiselectTokens((string)$row['field_value']) as $token) {
-                    $values[$token] = true; // de-dup across rows and multiselect tokens
-                    if (count($values) >= $limit) {
-                        break 2;
-                    }
+                if (++$rows > $count) {
+                    break;
+                }
+                $last = (int)$row['fileid'];
+                $file = $this->toFile($row, $byId[(int)$row['groupfolder_id']], [$fieldName => (string)$row['field_value']]);
+                if ($file !== null) {
+                    $files[] = $file;
                 }
             }
             $result->closeCursor();
 
-            $list = array_keys($values);
-            sort($list, SORT_NATURAL | SORT_FLAG_CASE);
-            $cache->set($cacheKey, $list, 300);
-            return $list;
-
+            return ['files' => $files, 'next' => $rows > $count ? $last : null];
         } catch (\Exception $e) {
-            $this->logger->error('MetaVox: distinct field values failed', [
-                'exception' => $e,
-                'fieldName' => $fieldName,
-                'groupfolderId' => $groupfolderId,
-            ]);
+            $this->logger->error('MetaVox: field search failed', ['exception' => $e, 'fieldName' => $fieldName]);
+            return ['files' => [], 'next' => null];
+        }
+    }
+
+    /**
+     * The filter through the index: per team folder and value the newest files
+     * that pass the folder's conditions, all in one statement. Each part reads
+     * at most $count + 1 of them, however many files hold the value.
+     *
+     * @param array{id: int, field_name: string, field_type: string} $field
+     * @param string[] $tokens
+     * @param array<int, VisibleFolder> $byId
+     * @return array{files: list<array<string, mixed>>, next: ?int}
+     */
+    private function searchValueIndex(array $field, array $tokens, array $byId, int $count, ?int $before): array {
+        $wanted = [];
+        foreach ($tokens as $token) {
+            foreach (SearchWordsService::valueItems($field['field_type'], $token) as $item) {
+                $wanted[$item] = true;
+            }
+        }
+        $keys = array_map(fn ($item) => SearchWordsService::valueKey((int)$field['id'], (string)$item), array_keys($wanted));
+        $parts = [];
+        foreach ($byId as $folder) {
+            foreach ($keys as $key) {
+                $parts[] = [$folder, $key];
+            }
+        }
+        try {
+            $rows = $this->newestIndexed($parts, $count + 1, $before);
+            usort($rows, fn (array $a, array $b) => (int)$b['fileid'] <=> (int)$a['fileid']);
+            // A file with two of the asked items comes from two parts: once is enough.
+            $unique = [];
+            foreach ($rows as $row) {
+                $unique[(int)$row['fileid']] ??= $row;
+            }
+            $rows = array_values($unique);
+
+            $files = [];
+            foreach (\array_slice($rows, 0, $count) as $row) {
+                $file = $this->toFile($row, $byId[(int)$row['groupfolder_id']], []);
+                if ($file !== null) {
+                    $files[] = $file;
+                }
+            }
+            return [
+                'files' => $this->withFieldValue($files, $field, $wanted),
+                'next' => \count($rows) > $count ? (int)$rows[$count - 1]['fileid'] : null,
+            ];
+        } catch (\Exception $e) {
+            $this->logger->error('MetaVox: field search failed', ['exception' => $e, 'fieldName' => $field['field_name']]);
+            return ['files' => [], 'next' => null];
+        }
+    }
+
+    /**
+     * For each team folder and value key, the newest $limit files of the index
+     * that pass the folder's conditions. The database walks the index backwards
+     * from the newest file and stops at $limit; UNION ALL of derived tables, a
+     * statement per PARAMS_PER_QUERY parameters.
+     *
+     * @param list<array{0: VisibleFolder, 1: string}> $parts
+     * @return list<array<string, mixed>>
+     */
+    private function newestIndexed(array $parts, int $limit, ?int $before): array {
+        $rows = [];
+        $qb = null;
+        $sql = [];
+        foreach ($parts as $i => [$folder, $key]) {
+            if ($qb === null || \count($qb->getParameters()) > self::PARAMS_PER_QUERY) {
+                if ($sql !== []) {
+                    array_push($rows, ...$this->runUnion($qb, $sql));
+                }
+                $qb = $this->db->getQueryBuilder();
+                $words = $qb->getTableName(SearchWordsService::TABLE);
+                $filecache = $qb->getTableName('filecache');
+                $sql = [];
+            }
+            $where = [
+                'w.groupfolder_id = ' . $qb->createNamedParameter($folder->id, IQueryBuilder::PARAM_INT),
+                'w.word_start = ' . $qb->createNamedParameter(SearchWordsService::VALUE_MARK),
+                'w.word = ' . $qb->createNamedParameter($key),
+            ];
+            if ($before !== null) {
+                $where[] = 'w.file_id < ' . $qb->createNamedParameter($before, IQueryBuilder::PARAM_INT);
+            }
+            $inFolder = $this->inFolder($qb, $folder);
+            if ($inFolder !== null) {
+                // Nextcloud leaves out the outer brackets of an OR.
+                $where[] = '(' . $inFolder . ')';
+            }
+            $sql[] = 'SELECT * FROM (SELECT w.file_id AS fileid, w.groupfolder_id, f.name, f.path, f.storage, f.mimetype'
+                . ' FROM ' . $words . ' w INNER JOIN ' . $filecache . ' f ON f.fileid = w.file_id'
+                . ' WHERE ' . implode(' AND ', $where)
+                . ' ORDER BY w.file_id DESC LIMIT ' . $limit . ') p' . $i;
+        }
+        if ($sql !== []) {
+            array_push($rows, ...$this->runUnion($qb, $sql));
+        }
+        return $rows;
+    }
+
+    /**
+     * @param list<string> $sql
+     * @return list<array<string, mixed>>
+     */
+    private function runUnion(IQueryBuilder $qb, array $sql): array {
+        $result = $this->db->executeQuery(implode(' UNION ALL ', $sql), $qb->getParameters(), $qb->getParameterTypes());
+        $rows = $result->fetchAll();
+        $result->closeCursor();
+        return $rows;
+    }
+
+    /**
+     * The file's own value for the subline, from the metadata itself. A file
+     * whose value no longer holds what was asked drops out: the index is
+     * only where to look.
+     *
+     * @param list<array<string, mixed>> $files
+     * @param array{field_name: string, field_type: string} $field
+     * @param array<string, true> $wanted
+     * @return list<array<string, mixed>>
+     */
+    private function withFieldValue(array $files, array $field, array $wanted): array {
+        if ($files === []) {
             return [];
         }
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('file_id', 'groupfolder_id', 'field_value')
+           ->from('metavox_file_gf_meta')
+           ->where($qb->expr()->in('file_id', $qb->createNamedParameter(array_column($files, 'id'), IQueryBuilder::PARAM_INT_ARRAY)))
+           ->andWhere($qb->expr()->eq('field_name', $qb->createNamedParameter($field['field_name'])));
+        $result = $qb->executeQuery();
+        $values = [];
+        while ($row = $result->fetch()) {
+            $values[$row['file_id'] . ':' . $row['groupfolder_id']] = (string)$row['field_value'];
+        }
+        $result->closeCursor();
+
+        $kept = [];
+        foreach ($files as $file) {
+            $value = $values[$file['id'] . ':' . $file['groupfolder_id']] ?? null;
+            if ($value === null || array_intersect_key(array_flip(SearchWordsService::valueItems($field['field_type'], $value)), $wanted) === []) {
+                continue;
+            }
+            $file['metadata'] = [$field['field_name'] => $value];
+            $kept[] = $file;
+        }
+        return $kept;
+    }
+
+    /**
+     * Equal to one of the values, which the index finds; for a field that
+     * holds a list, one of its items.
+     *
+     * @param string[] $tokens
+     */
+    private function holdsValue(IQueryBuilder $qb, string $fieldName, array $tokens): string|ICompositeExpression {
+        $type = $this->fields->fieldType($fieldName);
+        // An unknown field counts as a list: that finds the most.
+        if ($type !== null && !FieldService::holdsList($type)) {
+            $equal = $qb->expr()->in('m.field_value', $qb->createNamedParameter($tokens, IQueryBuilder::PARAM_STR_ARRAY));
+            if ($this->db->getDatabaseProvider() !== IDBConnection::PLATFORM_POSTGRES) {
+                return $equal;
+            }
+            // PostgreSQL's index holds the start of each value: asked like that, it is used.
+            $starts = array_values(array_unique(array_map(static fn (string $token) => mb_substr($token, 0, self::VALUE_INDEX_CHARS), $tokens)));
+            return $qb->expr()->andX(
+                $qb->expr()->in($qb->createFunction('LEFT(m.field_value, ' . self::VALUE_INDEX_CHARS . ')'), $qb->createNamedParameter($starts, IQueryBuilder::PARAM_STR_ARRAY)),
+                $equal,
+            );
+        }
+        $anyToken = [];
+        foreach ($tokens as $token) {
+            $anyToken[] = $qb->expr()->eq('m.field_value', $qb->createNamedParameter($token));
+            $anyToken[] = $qb->expr()->like(
+                $this->delimitedFieldValueExpr($qb),
+                $qb->createNamedParameter('%;#' . $this->db->escapeLikeParameter($token) . ';#%')
+            );
+        }
+        return $qb->expr()->orX(...$anyToken);
+    }
+
+    /**
+     * Where the user sees a team folder's files, on the joined filecache row f:
+     * below its root (not its trash or versions), outside what its ACL forbids.
+     * Null when its root is not recorded (groupfolders before 19.1.10): then
+     * every file is looked up on its own, see toFile().
+     */
+    private function inFolder(IQueryBuilder $qb, VisibleFolder $folder): ?ICompositeExpression {
+        $roots = [];
+        foreach ($this->roots->getRoots($folder->id) as $root) {
+            // storage + 0 on purpose, like mtime + 0: the database then starts
+            // from the field's index, not from every file in the storage.
+            $roots[] = $qb->expr()->andX(
+                $qb->expr()->eq($qb->func()->add('f.storage', $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT)), $qb->createNamedParameter($root['storage'], IQueryBuilder::PARAM_INT)),
+                $qb->expr()->like('f.path', $qb->createNamedParameter($this->db->escapeLikeParameter($root['path']) . '/%')),
+            );
+        }
+        if ($roots === []) {
+            return null;
+        }
+        $inRoots = $qb->expr()->orX(...$roots);
+        $allowed = $folder->scope?->onRow($qb, 'f');
+        return $allowed === null ? $inRoots : $qb->expr()->andX($inRoots, $allowed);
+    }
+
+    /**
+     * Which of these free-text matches the user sees, in one query.
+     *
+     * @param list<array{file_id: int, groupfolder_id: int}> $hits
+     * @param array<int, VisibleFolder> $byId
+     * @return array<int, array<string, mixed>> by file id
+     */
+    private function visible(array $hits, array $byId): array {
+        $idsByFolder = [];
+        $folderOf = [];
+        foreach ($hits as $hit) {
+            $idsByFolder[$hit['groupfolder_id']][] = $hit['file_id'];
+            $folderOf[$hit['file_id']] = $hit['groupfolder_id'];
+        }
+        $qb = $this->db->getQueryBuilder();
+        $inFolders = [];
+        foreach ($idsByFolder as $id => $fileIds) {
+            if (!isset($byId[$id])) {
+                continue;
+            }
+            $isHit = $qb->expr()->in('f.fileid', $qb->createNamedParameter($fileIds, IQueryBuilder::PARAM_INT_ARRAY));
+            $where = $this->inFolder($qb, $byId[$id]);
+            $inFolders[] = $where === null ? $isHit : $qb->expr()->andX($isHit, $where);
+        }
+        if ($inFolders === []) {
+            return [];
+        }
+        $qb->select('f.fileid', 'f.name', 'f.path', 'f.storage', 'f.mimetype')
+           ->from('filecache', 'f')
+           ->where($qb->expr()->orX(...$inFolders));
+        $result = $qb->executeQuery();
+        $seen = [];
+        while ($row = $result->fetch()) {
+            $id = (int)$row['fileid'];
+            if (!isset($folderOf[$id])) {
+                continue;
+            }
+            $file = $this->toFile($row, $byId[$folderOf[$id]], []);
+            if ($file !== null) {
+                $seen[$id] = $file;
+            }
+        }
+        $result->closeCursor();
+        return $seen;
+    }
+
+    /**
+     * A result as the user sees it, its path in their Files. Null when the row
+     * is not in the folder after all. Without a recorded root the caller looks
+     * the file up, and gets the path from there.
+     *
+     * @param array<string, string> $metadata
+     * @return array<string, mixed>|null
+     */
+    private function toFile(array $row, VisibleFolder $folder, array $metadata): ?array {
+        $rootless = $this->roots->getRoots($folder->id) === [];
+        $inside = $rootless ? '' : $this->roots->pathInFolder($folder->id, (int)$row['storage'], (string)$row['path']);
+        if ($inside === null) {
+            return null;
+        }
+        return [
+            'id' => (int)$row['fileid'],
+            'name' => (string)$row['name'],
+            'path' => '/' . $folder->mountPoint . ($inside === '' ? '' : '/' . $inside),
+            'mimetype' => (string)$this->mimeTypes->getMimetypeById((int)$row['mimetype']),
+            'groupfolder_id' => $folder->id,
+            'metadata' => $metadata,
+            'checked' => $folder->scope !== null && !$rootless,
+        ];
+    }
+
+    /**
+     * The values for the subline, without file links: those hold only ids.
+     *
+     * @param list<array<string, mixed>> $files
+     * @return list<array<string, mixed>>
+     */
+    private function withValues(array $files): array {
+        if ($files === []) {
+            return [];
+        }
+        $at = [];
+        foreach ($files as $i => $file) {
+            $at[$file['id']] = $i;
+        }
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('m.file_id', 'm.groupfolder_id', 'm.field_name', 'm.field_value')
+           ->from('metavox_file_gf_meta', 'm')
+           ->innerJoin('m', 'metavox_gf_fields', 'f', $qb->expr()->eq('f.field_name', 'm.field_name'))
+           // Only fields the file's team folder has, as the sidebar shows them.
+           ->innerJoin('m', 'metavox_gf_assigns', 'a', $qb->expr()->andX(
+               $qb->expr()->eq('a.field_id', 'f.id'),
+               $qb->expr()->eq('a.groupfolder_id', 'm.groupfolder_id'),
+           ))
+           ->where($qb->expr()->in('m.file_id', $qb->createNamedParameter(array_keys($at), IQueryBuilder::PARAM_INT_ARRAY)))
+           ->andWhere($qb->expr()->notIn('f.field_type', $qb->createNamedParameter(FileReferenceService::FILELINK_TYPES, IQueryBuilder::PARAM_STR_ARRAY)));
+        $result = $qb->executeQuery();
+        while ($row = $result->fetch()) {
+            $i = $at[(int)$row['file_id']];
+            if ((int)$row['groupfolder_id'] === $files[$i]['groupfolder_id'] && (string)$row['field_value'] !== '') {
+                $files[$i]['metadata'][(string)$row['field_name']] = (string)$row['field_value'];
+            }
+        }
+        $result->closeCursor();
+        return $files;
+    }
+
+    /** @param array<int, VisibleFolder> $byId */
+    private function nothingHidden(array $byId): bool {
+        foreach ($byId as $folder) {
+            if ($folder->scope === null || !$folder->scope->isEverything()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Whether a field counts in a team folder: it is assigned there. From
+     * FieldService's cache, read once per field per search.
+     *
+     * @return callable(int, int): bool
+     */
+    private function assigned(): callable {
+        $folders = [];
+        return function (int $groupfolderId, int $fieldId) use (&$folders): bool {
+            $folders[$fieldId] ??= $this->fields->foldersOfField($fieldId);
+            return isset($folders[$fieldId][$groupfolderId]);
+        };
+    }
+
+    /**
+     * @param list<VisibleFolder> $folders
+     * @return array<int, VisibleFolder>
+     */
+    private function byId(array $folders): array {
+        $byId = [];
+        foreach ($folders as $folder) {
+            $byId[$folder->id] = $folder;
+        }
+        return $byId;
     }
 
     /**
@@ -302,511 +539,5 @@ class SearchIndexService {
             $qb->createNamedParameter(';#'),
             $qb->func()->concat('m.field_value', $qb->createNamedParameter(';#'))
         );
-    }
-
-    private function performMetadataSearch(string $searchTerm, string $userId): array {
-        $qb = $this->db->getQueryBuilder();
-        
-        // Use search index for performance
-        if ($this->hasSearchIndex()) {
-            return $this->searchFromIndex($searchTerm, $userId);
-        }
-        
-        // Fallback to direct metadata search
-        return $this->searchFromMetadata($searchTerm, $userId);
-    }
-
-private function searchFromIndex(string $searchTerm, string $userId): array {
-    $qb = $this->db->getQueryBuilder();
-    
-    // Check if FULLTEXT index exists and database supports it reliably
-    $useFulltext = false;
-    if ($this->db->getDatabaseProvider() === IDBConnection::PLATFORM_MYSQL) {
-        try {
-            // Test if FULLTEXT index works
-            $testQb = $this->db->getQueryBuilder();
-            $testQb->select('1')
-                   ->from('metavox_search_index')
-                   ->where('MATCH(search_content) AGAINST (:test IN BOOLEAN MODE)')
-                   ->setParameter('test', 'test')
-                   ->setMaxResults(1);
-            $testQb->executeQuery()->closeCursor();
-            $useFulltext = true;
-        } catch (\Exception $e) {
-            // FULLTEXT index not available, fall back to LIKE
-            $this->logger->debug('MetaVox: FULLTEXT not available, using LIKE search', ['exception' => $e]);
-        }
-    }
-    
-    // Scope to the searcher's own indexed rows via si.user_id (one row per
-    // mounted user, indexed by metavox_search_user_storage). The search index
-    // has no groupfolder_id, so without this the top-50-by-mtime can be filled
-    // with files the user can't access — verifyFileAccess then drops them,
-    // starving real matches beyond the cap. verifyFileAccess in the provider
-    // still gates every emitted entry; this just narrows to the right view.
-    if ($useFulltext) {
-        // MySQL with working FULLTEXT
-        $qb->select('si.file_id', 'si.field_data', 'f.name', 'f.path')
-           ->from('metavox_search_index', 'si')
-           ->innerJoin('si', 'filecache', 'f', 'si.file_id = f.fileid')
-           ->where('MATCH(si.search_content) AGAINST (:search IN BOOLEAN MODE)')
-           ->andWhere($qb->expr()->eq('si.user_id', $qb->createNamedParameter($userId)))
-           ->setParameter('search', "+{$searchTerm}*")
-           ->setMaxResults(50)
-           ->orderBy('f.mtime', 'DESC');
-    } else {
-        // Fallback LIKE search for all databases
-        $qb->select('si.file_id', 'si.field_data', 'f.name', 'f.path')
-           ->from('metavox_search_index', 'si')
-           ->innerJoin('si', 'filecache', 'f', 'si.file_id = f.fileid')
-           ->where($qb->expr()->like('si.search_content', $qb->createNamedParameter('%' . strtolower($this->db->escapeLikeParameter($searchTerm)) . '%')))
-           ->andWhere($qb->expr()->eq('si.user_id', $qb->createNamedParameter($userId)))
-           ->setMaxResults(50)
-           ->orderBy('f.mtime', 'DESC');
-    }
-
-    $result = $qb->executeQuery();
-    $files = [];
-    
-    while ($row = $result->fetch()) {
-        $files[] = [
-            'id' => (int)$row['file_id'],
-            'name' => $row['name'],
-            'path' => $row['path'],
-            'metadata' => json_decode($row['field_data'] ?: '{}', true)
-        ];
-    }
-    $result->closeCursor();
-
-    return $files;
-}
-
-    private function searchFromMetadata(string $searchTerm, string $userId): array {
-        // Only groupfolder file metadata supported now
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('f.fileid', 'f.name', 'f.path', 'meta.field_name', 'meta.field_value as value')
-           ->from('filecache', 'f')
-           ->innerJoin('f', 'metavox_file_gf_meta', 'meta', 'f.fileid = meta.file_id')
-           ->where($qb->expr()->like('meta.field_value', $qb->createNamedParameter('%' . $this->db->escapeLikeParameter($searchTerm) . '%')))
-           ->andWhere($qb->expr()->in('f.storage', $qb->createParameter('storages')))
-           ->setParameter('storages', $this->getUserStorageIds($userId), IQueryBuilder::PARAM_INT_ARRAY)
-           ->setMaxResults(50)
-           ->orderBy('f.mtime', 'DESC');
-
-        $result = $qb->executeQuery();
-        $files = [];
-
-        while ($row = $result->fetch()) {
-            $fileId = $row['fileid'];
-            if (!isset($files[$fileId])) {
-                $files[$fileId] = [
-                    'id' => $fileId,
-                    'name' => $row['name'],
-                    'path' => $row['path'],
-                    'metadata' => []
-                ];
-            }
-            $files[$fileId]['metadata'][$row['field_name']] = $row['value'];
-        }
-        $result->closeCursor();
-
-        return array_values($files);
-    }
-
-    private function getUserStorageIds(string $userId): array {
-        $qb = $this->db->getQueryBuilder();
-        // selectDistinct() — NOT select('DISTINCT s.numeric_id'), which the
-        // QueryBuilder quotes as one bogus column name and throws (SQLSTATE 42S22).
-        $qb->selectDistinct('s.numeric_id')
-           ->from('storages', 's')
-           ->leftJoin('s', 'mounts', 'm', 's.numeric_id = m.storage_id')
-           ->where($qb->expr()->orX(
-               $qb->expr()->eq('s.id', $qb->createNamedParameter("home::{$userId}")),
-               $qb->expr()->eq('m.user_id', $qb->createNamedParameter($userId))
-           ));
-        
-        $result = $qb->executeQuery();
-        $storageIds = [];
-        while ($row = $result->fetch()) {
-            $storageIds[] = (int)$row['numeric_id'];
-        }
-        $result->closeCursor();
-        
-        return $storageIds ?: [0];
-    }
-
-    private function hasSearchIndex(): bool {
-        try {
-            $qb = $this->db->getQueryBuilder();
-            $qb->select($qb->createFunction('COUNT(*)'))
-               ->from('metavox_search_index')
-               ->setMaxResults(1);
-            $qb->executeQuery();
-            return true;
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
-
-    public function updateFileIndex(int $fileId): void {
-        try {
-            // Get file metadata
-            $metadata = $this->getFileMetadata($fileId);
-
-            if (empty($metadata)) {
-                $this->deleteFileFromIndex($fileId);
-                return;
-            }
-
-            // Get file info
-            $fileInfo = $this->getFileInfo($fileId);
-            if (!$fileInfo) {
-                return;
-            }
-
-            $payload = $this->buildIndexPayload($metadata);
-
-            $this->upsertSearchIndex($fileId, $fileInfo['user_id'], $fileInfo['storage_id'],
-                                   $payload['search_content'], $payload['field_data']);
-
-        } catch (\Exception $e) {
-            $this->logger->error('MetaVox: index update failed', ['exception' => $e, 'fileId' => $fileId]);
-        }
-    }
-
-    /**
-     * Build the search-index payload (search_content + field_data) for a file's
-     * metadata. Single source of truth for index *content*, shared by the
-     * per-file path (updateFileIndex) and the bulk path (bulkUpdateFileIndex)
-     * so the two can never diverge in what they index. Pure — no I/O.
-     *
-     * @param array<array{field_name: string, value: mixed}> $metadata
-     * @return array{search_content: string, field_data: string}
-     */
-    public function buildIndexPayload(array $metadata): array {
-        $searchContent = [];
-        $fieldData = [];
-
-        foreach ($metadata as $field) {
-            // Keep '0' / 'false' etc.: only skip null and empty string. Using a
-            // plain truthiness test here would drop legitimate zero values.
-            if ($field['value'] !== null && (string)$field['value'] !== '') {
-                $searchContent[] = $field['value'];
-                $fieldData[$field['field_name']] = $field['value'];
-            }
-        }
-
-        return [
-            'search_content' => implode(' ', $searchContent),
-            'field_data' => json_encode($fieldData),
-        ];
-    }
-
-    /**
-     * Bulk-update the search index for many files in a single set-based pass.
-     *
-     * Used by the defaults backfill: the per-file updateFileIndex does 3+ round
-     * trips per file (metadata, file info, upsert) which does not scale to
-     * millions of files. This fetches metadata and file info for the whole set
-     * in two queries, builds payloads via the shared buildIndexPayload, and
-     * upserts in chunks with a single cache clear at the end.
-     *
-     * Files with no metadata are skipped here (not deleted) — the backfill only
-     * ever adds rows, so a file reaching this method always has at least the
-     * just-written defaults.
-     *
-     * @param int[] $fileIds
-     */
-    public function bulkUpdateFileIndex(array $fileIds): void {
-        if (empty($fileIds)) {
-            return;
-        }
-
-        try {
-            $metadataByFile = $this->getMetadataForFiles($fileIds);
-            $infoByFile = $this->getFileInfoForFiles($fileIds);
-
-            // Assemble all index rows first, then write them set-based. Each row
-            // is [fileId, userId, storageId, searchContent, fieldData].
-            $rows = [];
-            $touchedUsers = [];
-            foreach ($fileIds as $fileId) {
-                $metadata = $metadataByFile[$fileId] ?? [];
-                $info = $infoByFile[$fileId] ?? null;
-                if (empty($metadata) || $info === null || !$info['user_id']) {
-                    continue;
-                }
-                $payload = $this->buildIndexPayload($metadata);
-                $rows[] = [
-                    (int)$fileId,
-                    (string)$info['user_id'],
-                    (int)$info['storage_id'],
-                    strtolower($payload['search_content']),
-                    $payload['field_data'],
-                ];
-                $touchedUsers[$info['user_id']] = true;
-            }
-
-            // One multi-row upsert per chunk instead of SELECT+write per file.
-            foreach (array_chunk($rows, self::INDEX_UPSERT_CHUNK) as $chunk) {
-                $this->bulkUpsertSearchIndex($chunk);
-            }
-
-            // Single cache clear per affected user instead of per file.
-            $cache = $this->cacheFactory->createDistributed('metavox_search');
-            foreach (array_keys($touchedUsers) as $userId) {
-                $cache->clear("metavox_search_{$userId}_");
-            }
-        } catch (\Exception $e) {
-            $this->logger->error('MetaVox: bulk index update failed', [
-                'exception' => $e,
-                'count' => \count($fileIds),
-            ]);
-        }
-    }
-
-private function getFileMetadata(int $fileId): array {
-    $metadata = [];
-
-    // Only groupfolder file metadata supported now
-    $qb = $this->db->getQueryBuilder();
-    $qb->select('field_name', 'field_value')
-       ->from('metavox_file_gf_meta')
-       ->where($qb->expr()->eq('file_id', $qb->createNamedParameter($fileId)));
-
-    $result = $qb->executeQuery();
-    while ($row = $result->fetch()) {
-        // Skip only null/empty — keep '0' (empty(trim('0')) is true and would
-        // wrongly drop unchecked-checkbox / numeric-zero values).
-        if ($row['field_value'] !== null && (string)$row['field_value'] !== '') {
-            $metadata[] = [
-                'field_name' => $row['field_name'],
-                'value' => $row['field_value']
-            ];
-        }
-    }
-    $result->closeCursor();
-
-    return $metadata;
-}
-
-    private function getFileInfo(int $fileId): ?array {
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('f.storage', 'm.user_id')
-           ->from('filecache', 'f')
-           ->leftJoin('f', 'mounts', 'm', 'f.storage = m.storage_id')
-           ->where($qb->expr()->eq('f.fileid', $qb->createNamedParameter($fileId)));
-
-        $result = $qb->executeQuery();
-        $info = $result->fetch();
-        $result->closeCursor();
-
-        if (!$info) {
-            return null;
-        }
-
-        return [
-            'storage_id' => (int)$info['storage'],
-            'user_id' => $info['user_id'] ?: $this->getUserFromStorage((int)$info['storage'])
-        ];
-    }
-
-    private function getUserFromStorage(int $storageId): ?string {
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('id')
-           ->from('storages')
-           ->where($qb->expr()->eq('numeric_id', $qb->createNamedParameter($storageId)));
-
-        $result = $qb->executeQuery();
-        $storageString = $result->fetchOne();
-        $result->closeCursor();
-
-        if ($storageString && preg_match('/^home::(.+)$/', $storageString, $matches)) {
-            return $matches[1];
-        }
-
-        return null;
-    }
-
-private function upsertSearchIndex(int $fileId, ?string $userId, int $storageId, string $searchContent, string $fieldData): void {
-    if (!$userId) {
-        return;
-    }
-
-    $this->upsertSearchIndexRow($fileId, $userId, $storageId, $searchContent, $fieldData);
-
-    // Clear cache for this user
-    $cache = $this->cacheFactory->createDistributed('metavox_search');
-    $cache->clear("metavox_search_{$userId}_");
-}
-
-    /**
-     * Write a single search-index row (insert or update) without clearing the
-     * cache. Shared by the per-file path (upsertSearchIndex, which clears cache
-     * once after) and the bulk path (bulkUpdateFileIndex, which clears once per
-     * user at the end). Keeps the write logic identical across both.
-     */
-    private function upsertSearchIndexRow(int $fileId, string $userId, int $storageId, string $searchContent, string $fieldData): void {
-        // Store search content in lowercase for case-insensitive search
-        $normalizedSearchContent = strtolower($searchContent);
-
-        $qb = $this->db->getQueryBuilder();
-        $qb->select('id')
-           ->from('metavox_search_index')
-           ->where($qb->expr()->eq('file_id', $qb->createNamedParameter($fileId)))
-           ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
-
-        $result = $qb->executeQuery();
-        $existingId = $result->fetchOne();
-        $result->closeCursor();
-
-        if ($existingId) {
-            $qb = $this->db->getQueryBuilder();
-            $qb->update('metavox_search_index')
-               ->set('search_content', $qb->createNamedParameter($normalizedSearchContent))
-               ->set('field_data', $qb->createNamedParameter($fieldData))
-               ->set('updated_at', $qb->createNamedParameter(date('Y-m-d H:i:s')))
-               ->where($qb->expr()->eq('id', $qb->createNamedParameter($existingId)));
-            $qb->executeStatement();
-        } else {
-            $qb = $this->db->getQueryBuilder();
-            $qb->insert('metavox_search_index')
-               ->values([
-                   'file_id' => $qb->createNamedParameter($fileId),
-                   'user_id' => $qb->createNamedParameter($userId),
-                   'storage_id' => $qb->createNamedParameter($storageId),
-                   'search_content' => $qb->createNamedParameter($normalizedSearchContent),
-                   'field_data' => $qb->createNamedParameter($fieldData),
-                   'updated_at' => $qb->createNamedParameter(date('Y-m-d H:i:s'))
-               ]);
-            $qb->executeStatement();
-        }
-    }
-
-    /**
-     * Set-based upsert of many search-index rows in a single statement.
-     *
-     * Relies on the UNIQUE(file_id, user_id) index (migration 0020) so the
-     * dialect-specific ON CONFLICT / ON DUPLICATE KEY UPDATE is atomic and
-     * concurrency-safe — no SELECT-then-write race. Replaces ~2 round-trips per
-     * file with one statement per chunk.
-     *
-     * @param array<array{0:int,1:string,2:int,3:string,4:string}> $rows
-     *   each row: [fileId, userId, storageId, normalizedSearchContent, fieldData]
-     */
-    private function bulkUpsertSearchIndex(array $rows): void {
-        if (empty($rows)) {
-            return;
-        }
-
-        $isMysql = $this->db->getDatabaseProvider() === IDBConnection::PLATFORM_MYSQL;
-        $now = date('Y-m-d H:i:s');
-        $sql = $this->buildSearchUpsertSql(\count($rows), $isMysql);
-
-        $params = [];
-        foreach ($rows as [$fileId, $userId, $storageId, $searchContent, $fieldData]) {
-            array_push($params, $fileId, $userId, $storageId, $searchContent, $fieldData, $now);
-        }
-
-        $this->db->executeStatement($sql, $params);
-    }
-
-    /**
-     * Build the dialect-specific multi-row upsert for metavox_search_index.
-     * Pure builder so it can be unit-tested for both dialects. On conflict the
-     * row is refreshed (DO UPDATE) — unlike defaults, re-indexing should reflect
-     * the latest metadata.
-     */
-    public function buildSearchUpsertSql(int $rowCount, bool $isMysql): string {
-        $placeholders = implode(', ', array_fill(0, $rowCount, '(?, ?, ?, ?, ?, ?)'));
-        $head = "INSERT INTO *PREFIX*metavox_search_index "
-              . "(file_id, user_id, storage_id, search_content, field_data, updated_at) "
-              . "VALUES $placeholders ";
-
-        if ($isMysql) {
-            return $head . "ON DUPLICATE KEY UPDATE "
-                 . "search_content = VALUES(search_content), "
-                 . "field_data = VALUES(field_data), "
-                 . "updated_at = VALUES(updated_at)";
-        }
-
-        return $head . "ON CONFLICT (file_id, user_id) DO UPDATE SET "
-             . "search_content = EXCLUDED.search_content, "
-             . "field_data = EXCLUDED.field_data, "
-             . "updated_at = EXCLUDED.updated_at";
-    }
-
-    /**
-     * Fetch metadata for many files at once, grouped by file id and shaped
-     * exactly like getFileMetadata (empty values skipped).
-     *
-     * @param int[] $fileIds
-     * @return array<int, array<array{field_name: string, value: string}>>
-     */
-    private function getMetadataForFiles(array $fileIds): array {
-        $byFile = [];
-        foreach (array_chunk($fileIds, self::QUERY_IN_CHUNK) as $chunk) {
-            $qb = $this->db->getQueryBuilder();
-            $qb->select('file_id', 'field_name', 'field_value')
-               ->from('metavox_file_gf_meta')
-               ->where($qb->expr()->in('file_id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));
-
-            $result = $qb->executeQuery();
-            while ($row = $result->fetch()) {
-                // Skip only null/empty — keep '0' (see getFileMetadata).
-                if ($row['field_value'] !== null && (string)$row['field_value'] !== '') {
-                    $byFile[(int)$row['file_id']][] = [
-                        'field_name' => $row['field_name'],
-                        'value' => $row['field_value'],
-                    ];
-                }
-            }
-            $result->closeCursor();
-        }
-        return $byFile;
-    }
-
-    /**
-     * Fetch storage/user info for many files at once, shaped like getFileInfo.
-     *
-     * @param int[] $fileIds
-     * @return array<int, array{storage_id: int, user_id: ?string}>
-     */
-    private function getFileInfoForFiles(array $fileIds): array {
-        $byFile = [];
-        $storageOwnerCache = [];
-        foreach (array_chunk($fileIds, self::QUERY_IN_CHUNK) as $chunk) {
-            $qb = $this->db->getQueryBuilder();
-            $qb->select('f.fileid', 'f.storage', 'm.user_id')
-               ->from('filecache', 'f')
-               ->leftJoin('f', 'mounts', 'm', 'f.storage = m.storage_id')
-               ->where($qb->expr()->in('f.fileid', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));
-
-            $result = $qb->executeQuery();
-            while ($row = $result->fetch()) {
-                $storageId = (int)$row['storage'];
-                $userId = $row['user_id'];
-                if (!$userId) {
-                    // Resolve home:: storage owner once per storage.
-                    if (!array_key_exists($storageId, $storageOwnerCache)) {
-                        $storageOwnerCache[$storageId] = $this->getUserFromStorage($storageId);
-                    }
-                    $userId = $storageOwnerCache[$storageId];
-                }
-                $byFile[(int)$row['fileid']] = [
-                    'storage_id' => $storageId,
-                    'user_id' => $userId,
-                ];
-            }
-            $result->closeCursor();
-        }
-        return $byFile;
-    }
-
-    private function deleteFileFromIndex(int $fileId): void {
-        $qb = $this->db->getQueryBuilder();
-        $qb->delete('metavox_search_index')
-           ->where($qb->expr()->eq('file_id', $qb->createNamedParameter($fileId)));
-        $qb->executeStatement();
     }
 }

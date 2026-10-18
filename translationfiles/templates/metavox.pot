@@ -4,9 +4,9 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: MetaVox 2.2.3\n"
+"Project-Id-Version: MetaVox 3.0.0\n"
 "Report-Msgid-Bugs-To: translations@nextcloud.com\n"
-"POT-Creation-Date: 2026-10-09 17:10+0000\n"
+"POT-Creation-Date: 2026-10-18 08:05+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -19,6 +19,22 @@ msgstr ""
 msgid "— no sorting —"
 msgstr ""
 
+#. TRANSLATORS Screen-reader text after a field label, read instead of the asterisk that marks a required field
+msgid "(required)"
+msgstr ""
+
+#. TRANSLATORS Error message when the server refuses a highlight rule; {column} is the column name, {position} the rule number, {problem} the server's reason, e.g. "Status, rule 2: This value is not valid"
+msgid "{column}, rule {position}: {problem}"
+msgstr ""
+
+#. TRANSLATORS Error message when the server refuses a column; {column} is the column name, {problem} the server's reason, e.g. "Status: This value is not valid"
+msgid "{column}: {problem}"
+msgstr ""
+
+#. TRANSLATORS: One filter in a list, e.g. "Status (2 values)".
+msgid "{field} ({values})"
+msgstr ""
+
 #. TRANSLATORS: Preview of a Flow check without a value, e.g. Status is empty.
 msgid "{field} {operator}"
 msgstr ""
@@ -27,9 +43,34 @@ msgstr ""
 msgid "{field} {operator} \"{value}\""
 msgstr ""
 
+#. TRANSLATORS Error after a value typed in the grid was not saved; {field} is the column name, {reason} why, e.g. "Budget not saved: Enter a number"
+msgid "{field} not saved: {reason}"
+msgstr ""
+
 #. TRANSLATORS: Text of a filter chip, e.g. "Status: Approved".
+#. TRANSLATORS Text of a search filter chip, e.g. "Status: Approved"
 #. TRANSLATORS: Text of a search filter chip, e.g. "Status: Approved".
 msgid "{field}: {value}"
+msgstr ""
+
+#. TRANSLATORS Screen-reader name of a read-only grid cell; {field} is the column name, {value} the cell value, {state} the name of a highlight, e.g. "Due date: 3 March 2026, Overdue."
+msgid "{field}: {value}, {state}."
+msgstr ""
+
+#. TRANSLATORS Screen-reader name of an editable grid cell; {field} is the column name, {value} the cell value, {state} the name of a highlight, e.g. "Due date: 3 March 2026, Overdue. Press Enter to edit."
+msgid "{field}: {value}, {state}. Press Enter to edit."
+msgstr ""
+
+#. TRANSLATORS Screen-reader name of a read-only grid cell; {field} is the column name, {value} the cell value, e.g. "Status: Approved."
+msgid "{field}: {value}."
+msgstr ""
+
+#. TRANSLATORS Screen-reader name of an editable grid cell; {field} is the column name, {value} the cell value, e.g. "Status: Approved. Press Enter to edit."
+msgid "{field}: {value}. Press Enter to edit."
+msgstr ""
+
+#. TRANSLATORS Summary in a Team folder row. {folderFields} is e.g. "2 Team folder fields", {fileFields} e.g. "3 file fields"; keep both placeholders
+msgid "{folderFields} · {fileFields}"
 msgstr ""
 
 #. TRANSLATORS: Duration of a backup or restore, {seconds} is a number, "s" abbreviates seconds.
@@ -40,11 +81,42 @@ msgstr ""
 msgid "+ add value"
 msgstr ""
 
-msgid "A subscription includes: guaranteed Nextcloud compatibility, email support, priority bug fixes, and active development."
+#. TRANSLATORS Error when a backup or restore is started while another one is still running
+msgid "A backup or restore is already running"
 msgstr ""
 
-#. TRANSLATORS Verb: tooltip and accessible name of the check-mark button that accepts the value AI suggests for a field; keep it short
-msgid "Accept"
+msgid "A change shows once a page is loaded again."
+msgstr ""
+
+#. TRANSLATORS Error message when a column of a view has too many highlight rules (rules that colour values)
+msgid "A column can have at most 10 rules"
+msgstr ""
+
+#. TRANSLATORS Highlight rule summary shown for a rule saved by a newer version of the app
+msgid "a condition this version does not know"
+msgstr ""
+
+msgid "A field with this name already exists"
+msgstr ""
+
+#. TRANSLATORS Error message when an administrator gives a file field an invalid internal name; keep file_gf_ and the example file_gf_department exactly as they are
+msgid "A file field name starts with file_gf_, followed by lowercase letters, numbers and underscores, beginning with a letter (for example file_gf_department)."
+msgstr ""
+
+#. TRANSLATORS Shown in the admin overview "Setup checks" when a shared cache server is set up
+msgid "A shared cache is set up, so presence and editing locks work across all web servers."
+msgstr ""
+
+#. TRANSLATORS Error message when an administrator gives a Team folder field an invalid internal name; keep gf_ and the example gf_classification exactly as they are
+msgid "A Team folder field name starts with gf_, followed by lowercase letters, numbers and underscores, beginning with a letter (for example gf_classification)."
+msgstr ""
+
+#. TRANSLATORS Error message shown to the user when the name of a view is too long; a view is a saved combination of columns, filters and sort order
+msgid "A view name can have at most 100 characters"
+msgstr ""
+
+#. TRANSLATORS Accessible name and tooltip of the check-mark button that accepts the AI value; {field} is a field label, e.g. "Accept AI suggestion for Status"
+msgid "Accept AI suggestion for {field}"
 msgstr ""
 
 #. TRANSLATORS Error message shown to the user when they may not do this action
@@ -66,6 +138,18 @@ msgstr ""
 msgid "Active permissions"
 msgstr ""
 
+#. TRANSLATORS Second line under "Too many matches to search them all"
+msgid "Add a word to narrow the search"
+msgstr ""
+
+#. TRANSLATORS Second line under "Too many matches to search them all", where the search can also filter by a metadata field
+msgid "Add a word, or filter by field"
+msgstr ""
+
+#. TRANSLATORS Error when a dropdown or multi-select field is saved without any option to choose from
+msgid "Add at least one option"
+msgstr ""
+
 #. TRANSLATORS Title of the dialog that creates a metadata field
 msgid "Add field"
 msgstr ""
@@ -73,11 +157,6 @@ msgstr ""
 #. TRANSLATORS Button that opens the file picker to link a file to the field
 #. TRANSLATORS Verb: button in the cell editor of a file-link field that opens the file picker; keep it short
 msgid "Add file"
-msgstr ""
-
-#. TRANSLATORS Heading of the section where a new field is created
-#. TRANSLATORS Heading of the section with the form that creates a metadata field
-msgid "Add new metadata field"
 msgstr ""
 
 #. TRANSLATORS Button that adds a choice to a dropdown field
@@ -88,20 +167,36 @@ msgstr ""
 msgid "Add permission"
 msgstr ""
 
+#. TRANSLATORS Menu button that adds a highlight rule; {column} is the column name, e.g. "Add rule for Status"
+msgid "Add rule for {column}"
+msgstr ""
+
 msgid "Add your first metadata field to get started organizing your files."
 msgstr ""
 
 msgid "Add your first metadata field to get started organizing your Team folders."
 msgstr ""
 
+#. TRANSLATORS Highlight rule summary; {date} is a formatted date, e.g. "after 3 March 2026"
+msgid "after {date}"
+msgstr ""
+
+#. TRANSLATORS Option in the condition menu of a highlight rule; the date is picked in a separate field
+msgid "After a date"
+msgstr ""
+
+#. TRANSLATORS Highlight rule summary for a date: the date lies after today; lowercase phrase
+msgid "after today"
+msgstr ""
+
+#. TRANSLATORS Option in the condition menu of a highlight rule for a date field
+msgid "After today"
+msgstr ""
+
 msgid "AI could not generate a new suggestion for this field."
 msgstr ""
 
 msgid "AI could not generate any suggestions for this file."
-msgstr ""
-
-#. TRANSLATORS Error message in the sidebar when AI could not fill in the metadata; AI = artificial intelligence
-msgid "AI generation failed. Please try again."
 msgstr ""
 
 #. TRANSLATORS Heading of the settings section for metadata suggestions made by AI; AI is artificial intelligence
@@ -128,11 +223,19 @@ msgstr ""
 msgid "AI task timed out"
 msgstr ""
 
-#. TRANSLATORS Filter button that shows fields of all types; keep it short
-msgid "All types"
+#. TRANSLATORS Filter option that lists every field; keep it short
+#. TRANSLATORS Filter option that shows Team folder fields and file fields together; keep it short
+msgid "All fields"
+msgstr ""
+
+msgid "All my Team folders"
 msgstr ""
 
 msgid "Allow people to generate metadata suggestions using AI. Requires an AI provider to be configured in Nextcloud."
+msgstr ""
+
+#. TRANSLATORS Error under the options of a dropdown field; keep ;# as it is, it joins the values of a multi-select
+msgid "An option cannot contain ;#"
 msgstr ""
 
 msgid "Anonymous instance identifier (hashed URL)"
@@ -146,6 +249,9 @@ msgid "Anonymous usage statistics disabled."
 msgstr ""
 
 msgid "Any personal or sensitive data"
+msgstr ""
+
+msgid "Applies to links people add or change. Links already saved stay as they are."
 msgstr ""
 
 #. TRANSLATORS Button that fills in the default values on existing files of the Team folder
@@ -166,10 +272,6 @@ msgstr ""
 msgid "Applying defaults is taking longer than expected. It will continue in the background."
 msgstr ""
 
-#. TRANSLATORS Confirmation question; {name} is the view name, e.g. "Open contracts"
-msgid "Are you sure you want to delete the view \"{name}\"?"
-msgstr ""
-
 msgid "Are you sure you want to restore this backup? This will replace all current metadata with the backup data."
 msgstr ""
 
@@ -180,11 +282,60 @@ msgstr ""
 msgid "Ascending"
 msgstr ""
 
+msgid "Ask an administrator to add metadata fields for files here."
+msgstr ""
+
+msgid "Ask an administrator to add metadata fields for folders here."
+msgstr ""
+
+msgid "Ask an administrator to add metadata fields for this Team folder."
+msgstr ""
+
+#. TRANSLATORS Name of a ready-made highlight rule for a person field, in the add-rule menu: the field holds whoever is looking
+msgid "Assigned to the person viewing"
+msgstr ""
+
+#. TRANSLATORS Cell state for a person field when it holds the person who is looking at the files
+msgid "Assigned to you"
+msgstr ""
+
+#. TRANSLATORS Option in the condition menu of a highlight rule for a number field: equal or greater
+msgid "At least"
+msgstr ""
+
+#. TRANSLATORS Highlight rule summary for a number; {value} is a number, e.g. "at least 10,000" (equal or greater)
+msgid "at least {value}"
+msgstr ""
+
+#. TRANSLATORS Option in the condition menu of a highlight rule for a number field: equal or less
+msgid "At most"
+msgstr ""
+
+#. TRANSLATORS Highlight rule summary for a number; {value} is a number, e.g. "at most 10,000" (equal or less)
+msgid "at most {value}"
+msgstr ""
+
 #. TRANSLATORS Entry of the Team folder dropdown: the Team folder is found from where the file is
 msgid "Auto-detect"
 msgstr ""
 
 msgid "Automatic daily backups of all metadata. You can also create manual backups and restore from any backup."
+msgstr ""
+
+#. TRANSLATORS Shown in the admin overview "Setup checks" when the background jobs have not run for over an hour
+msgid "Background jobs last ran more than an hour ago. The search index and default values wait for them."
+msgstr ""
+
+#. TRANSLATORS Shown in the admin overview "Setup checks"; %s is the current background job mode, "AJAX" or "Webcron"; "system cron" is the scheduler of the server
+msgid "Background jobs run via %s. Use the system cron, so the search index and default values keep up."
+msgstr ""
+
+#. TRANSLATORS Shown in the admin overview "Setup checks"; "system cron" is the scheduler of the server
+msgid "Background jobs run via the system cron."
+msgstr ""
+
+#. TRANSLATORS Noun: tab that opens backup and restore; keep it short, the tab row does not wrap
+msgid "Backup"
 msgstr ""
 
 #. TRANSLATORS Heading of the settings section for metadata backups
@@ -203,7 +354,27 @@ msgstr ""
 msgid "Backup from: {date}"
 msgstr ""
 
+#. TRANSLATORS Error when the backup file to download or restore no longer exists
+msgid "Backup not found"
+msgstr ""
+
 msgid "Basic server configuration (database, OS, web server, language, timezone, country)"
+msgstr ""
+
+#. TRANSLATORS Highlight rule summary; {date} is a formatted date, e.g. "before 3 March 2026"
+msgid "before {date}"
+msgstr ""
+
+#. TRANSLATORS Option in the condition menu of a highlight rule; the date is picked in a separate field
+msgid "Before a date"
+msgstr ""
+
+#. TRANSLATORS Highlight rule summary for a date: the date lies before today; lowercase phrase
+msgid "before today"
+msgstr ""
+
+#. TRANSLATORS Option in the condition menu of a highlight rule for a date field
+msgid "Before today"
 msgstr ""
 
 #. TRANSLATORS Tooltip on a grid cell that is locked; {user} is the display name of the person editing it, e.g. "Being edited by Anna de Vries"
@@ -214,27 +385,41 @@ msgstr ""
 msgid "Being edited by someone else"
 msgstr ""
 
+#. TRANSLATORS Label of a list of domains that links in URL fields may not point at
+msgid "Blocked domains"
+msgstr ""
+
+#. TRANSLATORS Name of a highlight colour, shown in the colour picker of a highlight rule and read out for the coloured mark
+msgid "Blue"
+msgstr ""
+
 #. TRANSLATORS Button that closes the restore dialog without restoring
 #. TRANSLATORS Button that closes a dialog without saving
-#. TRANSLATORS Button that closes the edit dialog without saving; keep it short
-#. TRANSLATORS Button that closes the dialog without saving; keep it short
 #. TRANSLATORS Button that closes the add permission form without saving
-#. TRANSLATORS Verb: dialog button that closes the view editor without saving
+#. TRANSLATORS Button that closes the revoke permission dialog without changes
+#. TRANSLATORS Button that closes the dialog without saving; keep it short
+#. TRANSLATORS Button in the confirmation dialog that keeps the metadata; keep it short
+#. TRANSLATORS Button that closes the edit dialog without saving; keep it short
 #. TRANSLATORS Verb: tooltip and accessible name of the cross button that closes the cell editor without saving
+#. TRANSLATORS Verb: button that closes the highlight rule form without keeping changes
+#. TRANSLATORS Verb: dialog button that closes the dialog without saving
+#. TRANSLATORS Verb: dialog button that closes the view editor without saving
 #. TRANSLATORS Verb: button in the confirmation dialog that keeps the view
 #. TRANSLATORS Button that closes the search filter dialog without adding a filter; keep it short
 msgid "Cancel"
 msgstr ""
 
 #. TRANSLATORS Disabled menu action of a field that is used in a Team folder and so cannot be deleted; keep it short
+#. TRANSLATORS Error message shown when an administrator deletes a metadata field that still has values
 msgid "Cannot delete (in use)"
-msgstr ""
-
-msgid "Cannot delete field - it is currently in use"
 msgstr ""
 
 #. TRANSLATORS Accessible name of the pencil button that picks a different account for the field
 msgid "Change account"
+msgstr ""
+
+#. TRANSLATORS Shown in the admin overview "Setup checks"; "Client Push" is the name of a Nextcloud app
+msgid "Changes by others appear right away, through Client Push."
 msgstr ""
 
 #. TRANSLATORS Label before a preview of the Flow check, e.g. Status equals "Approved"
@@ -245,15 +430,76 @@ msgstr ""
 msgid "Checkbox"
 msgstr ""
 
+#. TRANSLATORS Name of a ready-made highlight rule for a checkbox field: ticked. Shown in the add-rule menu and as the cell state
+msgid "Checked"
+msgstr ""
+
+#. TRANSLATORS Error message under a highlight rule of a column in a view, when its value is not right
+msgid "Choose 1 to 50 options of at most 200 characters"
+msgstr ""
+
+#. TRANSLATORS Error when a search is saved without a metadata field to filter on
+msgid "Choose a field."
+msgstr ""
+
+#. TRANSLATORS Accessible name of the hidden file chooser used to import fields; JSON is a file format
+msgid "Choose a JSON file to import"
+msgstr ""
+
+#. TRANSLATORS Error when a search is saved with a Team folder that does not exist
+msgid "Choose a Team folder."
+msgstr ""
+
+#. TRANSLATORS Error when a search is saved without a value to filter on
+msgid "Choose a value."
+msgstr ""
+
+#. TRANSLATORS Error under an account field (a person) that got a name which is no account on this server
+msgid "Choose an existing account"
+msgstr ""
+
+#. TRANSLATORS Error when the manage permission is given to a group that does not exist
+msgid "Choose an existing group"
+msgstr ""
+
+#. TRANSLATORS Error when the manage permission is given for a Team folder that does not exist
+msgid "Choose an existing Team folder"
+msgstr ""
+
+#. TRANSLATORS Placeholder of a dropdown field where one option can be chosen
+#. TRANSLATORS Error below the value field of a highlight rule when no option is chosen
+msgid "Choose an option"
+msgstr ""
+
 #. TRANSLATORS Placeholder of a dropdown field before a value is picked
 msgid "Choose an option …"
 msgstr ""
 
-#. TRANSLATORS Placeholder of a multi-select field before any value is picked
-msgid "Choose options …"
+msgid "Choose at least one option"
 msgstr ""
 
-msgid "Choose which columns to show and in what order."
+#. TRANSLATORS Error when fields are assigned to a Team folder and one of them no longer exists
+msgid "Choose existing fields"
+msgstr ""
+
+#. TRANSLATORS Error when a metadata field is given a type that does not exist, such as "colour"
+msgid "Choose one of the field types"
+msgstr ""
+
+#. TRANSLATORS Error under a dropdown field that got a value which is not in its list of options
+msgid "Choose one of the options of this field"
+msgstr ""
+
+#. TRANSLATORS Placeholder of a dropdown field where several options can be chosen
+msgid "Choose one or more options"
+msgstr ""
+
+#. TRANSLATORS Error under a multi-select field that got a value which is not in its list of options
+msgid "Choose only options of this field"
+msgstr ""
+
+#. TRANSLATORS Placeholder of a multi-select field before any value is picked
+msgid "Choose options …"
 msgstr ""
 
 #. TRANSLATORS Verb: accessible name of the empty option that clears the cell value
@@ -266,10 +512,16 @@ msgstr ""
 msgid "Clear all"
 msgstr ""
 
+#. TRANSLATORS Title of the dialog that asks to confirm removing all metadata from the selected files
+#. TRANSLATORS Button in the confirmation dialog that removes all metadata from the selected files
+msgid "Clear metadata"
+msgstr ""
+
 #. TRANSLATORS Button that empties the search box
 msgid "Clear search"
 msgstr ""
 
+#. TRANSLATORS Button that unticks all selected fields in the list
 #. TRANSLATORS Accessible name of the button that removes the chosen account from the field
 msgid "Clear selection"
 msgstr ""
@@ -282,12 +534,22 @@ msgstr ""
 msgid "Close"
 msgstr ""
 
-#. TRANSLATORS Noun: heading of the column list section in the view editor
+#. TRANSLATORS Noun: heading of the color choice in a highlight rule
+msgid "Color"
+msgstr ""
+
 msgid "Columns"
+msgstr ""
+
+msgid "Compares by day: a time earlier today counts as today."
 msgstr ""
 
 #. TRANSLATORS Error message in the Flow (workflow) rule editor when the value to compare with is empty
 msgid "Comparison value is required"
+msgstr ""
+
+#. TRANSLATORS Noun: label of the dropdown that picks the condition of a highlight rule
+msgid "Condition"
 msgstr ""
 
 msgid "Configure custom metadata fields that will be available for all Team folders. These fields help organize and categorize your Team folders."
@@ -297,10 +559,8 @@ msgid "Configure custom metadata fields that will be available for files within 
 msgstr ""
 
 #. TRANSLATORS Menu item that opens the dialog to choose the metadata fields of a Team folder
+#. TRANSLATORS Title of the dialog to choose the metadata fields of a Team folder
 msgid "Configure fields"
-msgstr ""
-
-msgid "Configure fields for this Team folder"
 msgstr ""
 
 #. TRANSLATORS "Configure fields" names the menu item of a Team folder row; translate it the same way
@@ -316,42 +576,80 @@ msgstr ""
 msgid "Configure which metadata search fields are available for each Team folder and manage Team folder-specific metadata."
 msgstr ""
 
-#. TRANSLATORS Dialog button that imports the fields listed in the preview; keep it short
-#. TRANSLATORS Button that imports the fields listed in the preview; keep it short
-msgid "Confirm import"
-msgstr ""
-
 #. TRANSLATORS: Flow check operator, read as "<field> contains <value>".
 msgid "contains"
+msgstr ""
+
+#. TRANSLATORS Option in the condition menu of a highlight rule: the cell text contains some text
+msgid "Contains"
+msgstr ""
+
+#. TRANSLATORS Highlight rule summary; {value} is the text the cell is searched for, e.g. "contains invoice"
+msgid "contains {value}"
 msgstr ""
 
 #. TRANSLATORS: Flow check operator for a multi-select field, read as "<field> contains all <values>".
 msgid "contains all"
 msgstr ""
 
+#. TRANSLATORS Option in the condition menu of a highlight rule for a multi-select field: the cell has every chosen option
+msgid "Contains all of"
+msgstr ""
+
+#. TRANSLATORS Highlight rule summary; {values} is a comma-separated list of options, e.g. "contains all of Legal, Finance"
+msgid "contains all of {values}"
+msgstr ""
+
+#. TRANSLATORS Option in the condition menu of a highlight rule for a multi-select field: the cell has at least one of the chosen options
+msgid "Contains one of"
+msgstr ""
+
+#. TRANSLATORS Highlight rule summary; {values} is a comma-separated list of options, e.g. "contains one of Legal, Finance"
+msgid "contains one of {values}"
+msgstr ""
+
 msgid "Could not connect to license server"
+msgstr ""
+
+msgid "Could not delete the fields. Nothing was changed."
 msgstr ""
 
 #. TRANSLATORS Error message; {reason} is the server's error text, e.g. "Could not delete the view: Internal server error"
 msgid "Could not delete the view: {reason}"
 msgstr ""
 
+msgid "Could not generate metadata. Try again."
+msgstr ""
+
+msgid "Could not load metadata. Check the connection and try again."
+msgstr ""
+
 msgid "Could not reach the telemetry server. Please try again later."
+msgstr ""
+
+msgid "Could not regenerate the suggestion. Try again."
+msgstr ""
+
+msgid "Could not save metadata. Try again."
+msgstr ""
+
+msgid "Could not save the setting. It is unchanged."
 msgstr ""
 
 #. TRANSLATORS Error message; {reason} is the server's error text, e.g. "Could not save the view: Internal server error"
 msgid "Could not save the view: {reason}"
 msgstr ""
 
+#. TRANSLATORS Radio option: save the filters as a new view instead of updating the current one
+msgid "Create a new view"
+msgstr ""
+
 #. TRANSLATORS Button that starts a manual backup of all metadata
 msgid "Create backup now"
 msgstr ""
 
-#. TRANSLATORS Button that opens the form for a new view; keep it short
-msgid "Create new view"
-msgstr ""
-
-msgid "Create predefined filter, column and sort combinations for this Team folder."
+#. TRANSLATORS Button that creates the new metadata field
+msgid "Create field"
 msgstr ""
 
 #. TRANSLATORS Column header for the date the permission was given; keep it short
@@ -362,11 +660,17 @@ msgstr ""
 msgid "Creating backup …"
 msgstr ""
 
+#. TRANSLATORS Menu item that adds a highlight rule the user sets up, as opposed to a ready-made one
+msgid "Custom rule"
+msgstr ""
+
+#. TRANSLATORS Noun: label of the date field of a highlight rule such as "Before a date"
 #. TRANSLATORS Noun: field type for a date, shown in the field type picker
 msgid "Date"
 msgstr ""
 
 #. TRANSLATORS Name of the built-in view without saved settings, shown on the view picker button; keep it short
+#. TRANSLATORS Name of the built-in view without saved settings, shown as the first item in the view menu; keep it short
 msgid "Default"
 msgstr ""
 
@@ -374,6 +678,7 @@ msgstr ""
 msgid "Default value"
 msgstr ""
 
+#. TRANSLATORS Verb: menu item that deletes a highlight rule
 #. TRANSLATORS Verb: dialog button that deletes the view
 msgid "Delete"
 msgstr ""
@@ -382,12 +687,24 @@ msgstr ""
 msgid "Delete field"
 msgstr ""
 
-#. TRANSLATORS Question in the confirmation box shown before a view is deleted
-msgid "Delete this view?"
+#. TRANSLATORS Title of the dialog that confirms deleting the selected fields
+#. TRANSLATORS Button in the confirmation dialog that deletes the selected fields
+msgid "Delete fields"
 msgstr ""
 
-#. TRANSLATORS Verb: button in the confirmation dialog that deletes the view
+msgid "Delete saved search"
+msgstr ""
+
+#. TRANSLATORS Button that deletes the selected fields
+msgid "Delete selected"
+msgstr ""
+
+#. TRANSLATORS Confirmation question; {name} is the view name, e.g. "Delete the view Open contracts? This cannot be undone."
+msgid "Delete the view {name}? This cannot be undone."
+msgstr ""
+
 #. TRANSLATORS Title of the confirmation dialog for deleting a view
+#. TRANSLATORS Verb: button in the confirmation dialog that deletes the view
 msgid "Delete view"
 msgstr ""
 
@@ -403,8 +720,8 @@ msgstr ""
 msgid "Description:"
 msgstr ""
 
-#. TRANSLATORS Verb: tooltip and accessible name of the cross button that rejects the value AI suggests for a field; keep it short
-msgid "Dismiss"
+#. TRANSLATORS Accessible name and tooltip of the button that rejects the AI value; {field} is a field label, e.g. "Dismiss AI suggestion for Status"
+msgid "Dismiss AI suggestion for {field}"
 msgstr ""
 
 #. TRANSLATORS Label of the input for the name of a field that people see
@@ -418,16 +735,22 @@ msgstr ""
 msgid "does not contain"
 msgstr ""
 
+#. TRANSLATORS Option in the condition menu of a highlight rule: the cell text does not contain some text
+msgid "Does not contain"
+msgstr ""
+
+#. TRANSLATORS Highlight rule summary; {value} is the text the cell is searched for, e.g. "does not contain invoice"
+msgid "does not contain {value}"
+msgstr ""
+
+#. TRANSLATORS Button that closes the highlight rule form and keeps the rule; keep it short
+msgid "Done"
+msgstr ""
+
 #. TRANSLATORS Verb: button that downloads this backup file; keep it short
 msgid "Download"
 msgstr ""
 
-#. TRANSLATORS Description under the export heading; JSON is a file format, keep it as it is
-#. TRANSLATORS Description of the export section; JSON is a file format, keep it as it is
-msgid "Download all metadata fields as a JSON file."
-msgstr ""
-
-#. TRANSLATORS Tooltip on the drag handle of a row in the column list
 msgid "Drag to reorder"
 msgstr ""
 
@@ -437,6 +760,14 @@ msgstr ""
 
 #. TRANSLATORS Heading above the list of choices of a dropdown or multi-select field
 msgid "Dropdown options"
+msgstr ""
+
+#. TRANSLATORS Name of a ready-made highlight rule for a date: due within 7 days. Shown in the add-rule menu and as the cell state
+msgid "Due soon"
+msgstr ""
+
+#. TRANSLATORS Name of a ready-made highlight rule for a date: the date is today. Shown in the add-rule menu and as the cell state
+msgid "Due today"
 msgstr ""
 
 msgid "e.g. Author, Document type, Status"
@@ -449,10 +780,6 @@ msgstr ""
 msgid "e.g. MVOX-XXXX-XXXX-XXXX-XXXX"
 msgstr ""
 
-#. TRANSLATORS Placeholder of a filter value field; example values separated by commas, keep the commas
-msgid "e.g. Value 1, Value 2"
-msgstr ""
-
 #. TRANSLATORS Placeholder of the internal field name input. The example names may be translated but must stay lowercase a-z, 0-9 and _ without spaces
 msgid "e.g., author, document_type, status"
 msgstr ""
@@ -461,13 +788,28 @@ msgstr ""
 msgid "e.g., department, project_type, priority"
 msgstr ""
 
+msgid "Each person sees the files assigned to them."
+msgstr ""
+
+#. TRANSLATORS Verb: screen-reader text of the button that opens a highlight rule for editing
+msgid "Edit"
+msgstr ""
+
+#. TRANSLATORS Verb: menu item in the view menu that opens the editor of the current view
+msgid "Edit …"
+msgstr ""
+
 #. TRANSLATORS Menu action that opens the dialog to edit a field; keep it short
+#. TRANSLATORS Title of the dialog that edits a metadata field
 msgid "Edit field"
 msgstr ""
 
-#. TRANSLATORS Title of the dialog that edits a metadata field; {name} is the name of the field, e.g. "Edit field: Status"
-#. TRANSLATORS Title of the dialog that edits a field; {name} is the field label, e.g. "Edit field: Status"
-msgid "Edit field: {name}"
+#. TRANSLATORS Title of the dialog to edit the metadata of a file, also the accessible name of the pencil button that opens it
+msgid "Edit file metadata"
+msgstr ""
+
+#. TRANSLATORS Title of the dialog to edit the metadata of a folder, also the accessible name of the pencil button that opens it
+msgid "Edit folder metadata"
 msgstr ""
 
 #. TRANSLATORS Menu item that opens the dialog to edit the metadata values of a Team folder
@@ -488,6 +830,9 @@ msgstr ""
 msgid "Edit metadata: Set Team folder-specific metadata values (admin only)"
 msgstr ""
 
+msgid "Edit Team folder metadata"
+msgstr ""
+
 msgid "Edit Team folder metadata values"
 msgstr ""
 
@@ -498,19 +843,98 @@ msgstr ""
 msgid "Edit view"
 msgstr ""
 
+#. TRANSLATORS {folder} is the name of a Team folder, e.g. "Editing metadata for Finance"
+msgid "Editing metadata for {folder}"
+msgstr ""
+
+#. TRANSLATORS Adjective: shown as the value of a field that has no value
+#. TRANSLATORS Adjective: read out by screen readers as the value of a cell that has no value
+msgid "Empty"
+msgstr ""
+
 #. TRANSLATORS Switch label in the admin settings; AI is artificial intelligence
 msgid "Enable AI metadata generation"
+msgstr ""
+
+#. TRANSLATORS Error message under a highlight rule of a column in a view, when its value is not right
+msgid "Enter 1 to 200 characters"
+msgstr ""
+
+#. TRANSLATORS Error under a date and time field; keep YYYY-MM-DDTHH:MM:SS as it is, it is the format the value must have
+msgid "Enter a date and time as YYYY-MM-DDTHH:MM:SS"
+msgstr ""
+
+#. TRANSLATORS Error under a date field; keep YYYY-MM-DD as it is, it is the format the value must have
+msgid "Enter a date as YYYY-MM-DD"
+msgstr ""
+
+#. TRANSLATORS Error under the label box of a metadata field that was left empty
+msgid "Enter a label"
+msgstr ""
+
+msgid "Enter a label people will see"
+msgstr ""
+
+#. TRANSLATORS Error under a file link field that got something that is no link to a file
+msgid "Enter a link to a file"
+msgstr ""
+
+#. TRANSLATORS Error when a request sends a list of IDs (the numbers that identify files or fields) with something in it that is no ID
+msgid "Enter a list of IDs"
+msgstr ""
+
+#. TRANSLATORS Error when a request sends a list of names with something in it that is no name, such as a number or a list
+msgid "Enter a list of names"
 msgstr ""
 
 msgid "Enter a name for the view"
 msgstr ""
 
 #. TRANSLATORS Placeholder of the value box for a number field in the Flow rule
+#. TRANSLATORS Error below the value field of a highlight rule when the input is not a number
+#. TRANSLATORS Error message under a highlight rule of a column in a view, when its value is not right
 msgid "Enter a number"
+msgstr ""
+
+#. TRANSLATORS Error under a number field; the decimal separator is a point, as in 3.5
+msgid "Enter a number, such as 12 or 3.5"
+msgstr ""
+
+#. TRANSLATORS Error message under a highlight rule of a column in a view, when its value is not right
+msgid "Enter a valid date"
+msgstr ""
+
+#. TRANSLATORS Error under a web address field (URL) that got something that is no address
+msgid "Enter a web address"
+msgstr ""
+
+#. TRANSLATORS Error when a request sends something else than a whole number, such as "12abc"
+msgid "Enter a whole number"
+msgstr ""
+
+#. TRANSLATORS Error message under a highlight rule of a column in a view, when its value is not right; the number is a count of days
+msgid "Enter a whole number from 1 to 3650"
+msgstr ""
+
+#. TRANSLATORS Error under a web address field when the administration allows only web and email addresses; keep http://, https:// and mailto: as they are
+msgid "Enter an address that starts with http://, https:// or mailto:"
+msgstr ""
+
+#. TRANSLATORS Error under a list of domains in the administration settings
+msgid "Enter at most 500 domains"
+msgstr ""
+
+#. TRANSLATORS Error under a list of domains in the administration settings; keep example.com and .ru as they are
+msgid "Enter domains such as example.com or .ru, one per line"
 msgstr ""
 
 #. TRANSLATORS Placeholder of the value box for a text field in the Flow rule
 msgid "Enter expected value"
+msgstr ""
+
+#. TRANSLATORS Error when a request sends something else than text, such as a list, for a value that must be text
+#. TRANSLATORS Error under a text field that got a list, a yes/no or unreadable characters instead of text
+msgid "Enter text"
 msgstr ""
 
 #. TRANSLATORS Placeholder of a web address field. {example} is a sample address, e.g. "https://example.com"; URL is a web address
@@ -530,6 +954,10 @@ msgstr ""
 msgid "Error saving metadata: {error}"
 msgstr ""
 
+#. TRANSLATORS Clickable title that expands the full list of sent and not sent data
+msgid "Exactly what is and is not sent"
+msgstr ""
+
 #. TRANSLATORS Heading of the list of metadata fields
 msgid "Existing metadata fields"
 msgstr ""
@@ -538,13 +966,8 @@ msgstr ""
 msgid "Export CSV"
 msgstr ""
 
-#. TRANSLATORS Button that downloads all fields as a JSON file; keep it short
-msgid "Export fields"
-msgstr ""
-
-#. TRANSLATORS Heading above the export button; JSON is a file format, keep it as it is
-#. TRANSLATORS Heading of the export section; JSON is a file format, keep it as it is
-msgid "Export fields to JSON"
+#. TRANSLATORS Menu action that downloads the fields as a JSON file; JSON is a file format
+msgid "Export to JSON"
 msgstr ""
 
 #. TRANSLATORS Label of the export button while the export file is being made; keep it short
@@ -579,9 +1002,6 @@ msgstr ""
 msgid "Failed to load groups"
 msgstr ""
 
-msgid "Failed to load metadata"
-msgstr ""
-
 msgid "Failed to load metadata fields"
 msgstr ""
 
@@ -589,17 +1009,6 @@ msgid "Failed to load permissions"
 msgstr ""
 
 msgid "Failed to load Team folders"
-msgstr ""
-
-#. TRANSLATORS {error} is the technical reason the file could not be read, e.g. "Unexpected token"; JSON is a file format, keep it as it is
-msgid "Failed to parse JSON file: {error}"
-msgstr ""
-
-msgid "Failed to read file"
-msgstr ""
-
-#. TRANSLATORS Error message in the sidebar when AI could not make a new suggestion for a field
-msgid "Failed to regenerate suggestion."
 msgstr ""
 
 msgid "Failed to remove subscription key"
@@ -621,38 +1030,30 @@ msgstr ""
 msgid "Failed to save subscription key"
 msgstr ""
 
-msgid "Failed to save view"
-msgstr ""
-
 msgid "Failed to send report"
 msgstr ""
 
 msgid "Failed to update field"
 msgstr ""
 
-msgid "Failed to update settings"
-msgstr ""
-
-#. TRANSLATORS Noun: column header in the column list of the view editor; keep it short
 #. TRANSLATORS Noun: label of the dropdown that picks the metadata field to filter on
 msgid "Field"
 msgstr ""
 
-#. TRANSLATORS Notification after a field is created; {name} is the name of the field, e.g. "Status"
-#. TRANSLATORS {name} is the label of the new field, e.g. "Status"
-msgid "Field \"{name}\" added successfully"
+#. TRANSLATORS Notification after a field was created. {name} is the label of the new field, e.g. "Status"
+msgid "Field \"{name}\" added"
 msgstr ""
 
 #. TRANSLATORS Confirmation after the field choice of a Team folder was saved
-msgid "Field configuration saved successfully"
+msgid "Field configuration saved"
 msgstr ""
 
 #. TRANSLATORS Noun: progress step, the metadata field definitions are being copied
 msgid "Field definitions"
 msgstr ""
 
-#. TRANSLATORS Notification after a field is deleted
-msgid "Field deleted successfully"
+#. TRANSLATORS Notification after a metadata field was deleted
+msgid "Field deleted"
 msgstr ""
 
 #. TRANSLATORS Label of the input for the name of a field that people see
@@ -663,26 +1064,24 @@ msgstr ""
 msgid "Field name"
 msgstr ""
 
-msgid "Field name may only contain lowercase letters, numbers and underscores, and must start with a letter"
-msgstr ""
-
-msgid "Field name, label, and type are required"
+#. TRANSLATORS Error when a default value is set for a metadata field that no longer exists
+msgid "Field not found"
 msgstr ""
 
 #. TRANSLATORS Label of the picker that sets the type of a field (text, number, date …)
 msgid "Field type"
 msgstr ""
 
-#. TRANSLATORS Label in front of the buttons that filter the fields by type; keep the colon
-msgid "Field type:"
+#. TRANSLATORS Error message under the type of a metadata field that is already used in a Team folder
+msgid "Field type cannot be changed when field is in use"
 msgstr ""
 
-#. TRANSLATORS Notification after the changes to a field are saved
-msgid "Field updated successfully"
+#. TRANSLATORS Notification after the changes to a metadata field were saved
+msgid "Field updated"
 msgstr ""
 
-#. TRANSLATORS Filter button that shows only the fields set on files; keep it short
-msgid "File fields"
+#. TRANSLATORS Error message shown to the user when a file belongs to another Team folder than the one asked for
+msgid "File is not in this Team folder"
 msgstr ""
 
 #. TRANSLATORS Noun: field type that links to one or more files, shown in the field type picker
@@ -696,8 +1095,9 @@ msgstr ""
 msgid "File metadata can be edited by people within the Files app"
 msgstr ""
 
-#. TRANSLATORS Heading of the settings section for metadata fields of files
 #. TRANSLATORS Heading above the fields that can be set on files in the Team folder
+#. TRANSLATORS Heading of the settings section for metadata fields of files
+#. TRANSLATORS Group heading in the field dropdown: fields set per file
 msgid "File metadata fields"
 msgstr ""
 
@@ -708,6 +1108,10 @@ msgstr ""
 msgid "File names or paths"
 msgstr ""
 
+#. TRANSLATORS Error message shown to the user when the file does not exist or cannot be seen
+msgid "File not found"
+msgstr ""
+
 #. TRANSLATORS Noun: column header in the exported CSV file, the full path of each file
 msgid "File path"
 msgstr ""
@@ -716,14 +1120,25 @@ msgstr ""
 msgid "File values"
 msgstr ""
 
-msgid "Files matching all selected options are shown."
+#. TRANSLATORS Tab that opens the metadata fields of files; keep it short, the tab row does not wrap
+msgid "Files"
+msgstr ""
+
+msgid "Files with any of the selected options are shown."
+msgstr ""
+
+#. TRANSLATORS Help under the "Required field" checkbox when a field that is already in use is made required
+msgid "Files without a value are marked in the grid, and get one at their next save."
 msgstr ""
 
 #. TRANSLATORS Title of the dialog that adds a metadata filter to the unified search
 msgid "Filter by metadata"
 msgstr ""
 
-#. TRANSLATORS Adjective: column header of the checkboxes that offer a column in the filter panel; keep it short
+#. TRANSLATORS Accessible name of the "Filterable" checkbox in the column list; {column} is the column name, e.g. "Filter on Status"
+msgid "Filter on {column}"
+msgstr ""
+
 msgid "Filterable"
 msgstr ""
 
@@ -731,12 +1146,27 @@ msgstr ""
 msgid "Filters"
 msgstr ""
 
-#. TRANSLATORS Noun: heading of the section in the view editor where the view gets fixed filter values
-msgid "Filters (preset values)"
+msgid "Finish or cancel this rule to save the view."
+msgstr ""
+
+msgid "Fixed while the field is in use"
 msgstr ""
 
 #. TRANSLATORS Noun: heading of the metadata of the selected folder in the sidebar
 msgid "Folder metadata"
+msgstr ""
+
+#. TRANSLATORS Error under the options of a date field; keep {"includeTime": true} as it is
+msgid "For a date field, send {\"includeTime\": true} or false"
+msgstr ""
+
+#. TRANSLATORS Shown in the admin overview "Setup checks" when the search index is complete
+msgid "Free-text search finds the metadata of all files."
+msgstr ""
+
+#. TRANSLATORS Tab that opens the general settings, such as the links URL fields take and AI; keep it short, the tab row does not wrap
+#. TRANSLATORS Noun: heading of the view editor section with the name of the view
+msgid "General"
 msgstr ""
 
 #. TRANSLATORS Button in the edit dialog that lets AI fill in the metadata of the file; AI = artificial intelligence
@@ -749,6 +1179,10 @@ msgstr ""
 
 #. TRANSLATORS Shown in the sidebar while AI fills in the metadata of the file
 msgid "Generating metadata with AI …"
+msgstr ""
+
+#. TRANSLATORS Error when a saved search has no name or a name that is too long
+msgid "Give the search a name of at most 100 characters."
 msgstr ""
 
 #. TRANSLATORS Button that gives the selected groups the permission; keep it short
@@ -766,12 +1200,40 @@ msgstr ""
 msgid "greater than"
 msgstr ""
 
+#. TRANSLATORS Option in the condition menu of a highlight rule for a number field
+msgid "Greater than"
+msgstr ""
+
+#. TRANSLATORS Highlight rule summary for a number; {value} is a number, e.g. "greater than 10,000"
+msgid "greater than {value}"
+msgstr ""
+
+#. TRANSLATORS Name of a highlight colour, shown in the colour picker of a highlight rule and read out for the coloured mark
+msgid "Green"
+msgstr ""
+
 #. TRANSLATORS Noun: column header for the group a permission is given to; keep it short
 #. TRANSLATORS Noun: small type label under the group name in the permissions table
 msgid "Group"
 msgstr ""
 
+#. TRANSLATORS {email} becomes the Nextcloud sales email address as a link; keep {email} unchanged
+msgid "Handled by Nextcloud. Contact your Nextcloud account manager, or {email}."
+msgstr ""
+
 msgid "Help improve MetaVox by sharing anonymous usage statistics."
+msgstr ""
+
+#. TRANSLATORS {columns} is a comma-separated list of column names, e.g. "Hidden columns keep their rules: Status, Owner"
+msgid "Hidden columns keep their rules: {columns}"
+msgstr ""
+
+#. TRANSLATORS Heading of the section in the view editor where cells get colored highlight rules
+msgid "Highlight cells"
+msgstr ""
+
+#. TRANSLATORS Screen-reader description of a column header; {names} is a comma-separated list of the column's highlight rules, e.g. "Highlights: Overdue, Due soon"
+msgid "Highlights: {names}"
 msgstr ""
 
 #. TRANSLATORS Lead-in above a short list that explains this page; keep the colon
@@ -786,18 +1248,12 @@ msgstr ""
 msgid "Import and export"
 msgstr ""
 
-#. TRANSLATORS Notification after an import; {imported} is the number of fields imported, {errors} the number of fields that failed
-#. TRANSLATORS {imported} is the number of fields imported, {errors} the number of fields that failed
-msgid "Import completed: {imported} imported, {errors} errors"
-msgstr ""
-
 #. TRANSLATORS Button that imports the fields listed in the preview
 msgid "Import fields"
 msgstr ""
 
-#. TRANSLATORS Heading above the import button; JSON is a file format, keep it as it is
-#. TRANSLATORS Heading of the import section; JSON is a file format, keep it as it is
-msgid "Import fields from JSON"
+#. TRANSLATORS Menu action that imports fields from a JSON file; JSON is a file format
+msgid "Import from JSON …"
 msgstr ""
 
 #. TRANSLATORS Title of the dialog that lists the fields of a JSON file before they are imported
@@ -806,6 +1262,9 @@ msgstr ""
 
 #. TRANSLATORS Dialog button label while the fields from the JSON file are being imported
 msgid "Importing …"
+msgstr ""
+
+msgid "In the file list"
 msgstr ""
 
 #. TRANSLATORS Checkbox label for a date field: also store the time of day
@@ -829,6 +1288,7 @@ msgstr ""
 
 #. TRANSLATORS Reason shown after "Backup failed:" or "Restore failed:" when the server hit an unexpected error
 #. TRANSLATORS Fallback error reason when the server gives none; shown as {reason} in an error message, e.g. "Could not save the view: {reason}"
+#. TRANSLATORS Error message shown when the server failed for an unknown reason
 msgid "Internal server error"
 msgstr ""
 
@@ -840,16 +1300,24 @@ msgstr ""
 msgid "Invalid configuration format"
 msgstr ""
 
+#. TRANSLATORS Error message shown to the user when a request has a wrong or missing ID number
+msgid "Invalid ID"
+msgstr ""
+
 #. TRANSLATORS {error} is the technical reason the file could not be read, e.g. "Unexpected token"; JSON is a file format
 msgid "Invalid JSON file: {error}"
 msgstr ""
 
-#. TRANSLATORS Error when an imported file is not a list of fields; JSON is a file format, keep it as it is
-msgid "Invalid JSON format. Expected an array of field definitions."
-msgstr ""
-
 #. TRANSLATORS Error message in the Flow (workflow) rule editor; the operator is how the field is compared, e.g. equals, contains
 msgid "Invalid operator"
+msgstr ""
+
+#. TRANSLATORS Option in the condition menu of a highlight rule: the cell equals a value
+msgid "Is"
+msgstr ""
+
+#. TRANSLATORS Highlight rule summary; {value} is the value the cell is compared with, e.g. "is Approved"
+msgid "is {value}"
 msgstr ""
 
 #. TRANSLATORS: Flow check operator for a date field, read as "<field> is after <date>".
@@ -860,20 +1328,72 @@ msgstr ""
 msgid "is before"
 msgstr ""
 
+#. TRANSLATORS Flow check operator for a checkbox field, read as "<field> is checked"
+#. TRANSLATORS Highlight rule summary for a checkbox field: the box is ticked; lowercase phrase
+msgid "is checked"
+msgstr ""
+
+#. TRANSLATORS Option in the condition menu of a highlight rule for a checkbox field: the box is ticked
+msgid "Is checked"
+msgstr ""
+
 #. TRANSLATORS: Flow check operator without a value, read as "<field> is empty".
+#. TRANSLATORS Highlight rule summary, read as "the cell value …"; lowercase phrase
 msgid "is empty"
+msgstr ""
+
+#. TRANSLATORS Option in the condition menu of a highlight rule: the cell has no value
+msgid "Is empty"
 msgstr ""
 
 #. TRANSLATORS: Flow check operator, read as "<field> is not <value>".
 msgid "is not"
 msgstr ""
 
+#. TRANSLATORS Option in the condition menu of a highlight rule: the cell does not equal a value
+msgid "Is not"
+msgstr ""
+
+#. TRANSLATORS Highlight rule summary; {value} is the value the cell is compared with, e.g. "is not Approved"
+msgid "is not {value}"
+msgstr ""
+
+#. TRANSLATORS Flow check operator for a checkbox field, read as "<field> is not checked"
+#. TRANSLATORS Highlight rule summary for a checkbox field: the box is not ticked; lowercase phrase
+msgid "is not checked"
+msgstr ""
+
+#. TRANSLATORS Option in the condition menu of a highlight rule for a checkbox field: the box is not ticked
+msgid "Is not checked"
+msgstr ""
+
 #. TRANSLATORS: Flow check operator without a value, read as "<field> is not empty".
+#. TRANSLATORS Highlight rule summary, read as "the cell value …"; lowercase phrase
 msgid "is not empty"
+msgstr ""
+
+#. TRANSLATORS Option in the condition menu of a highlight rule: the cell has a value
+msgid "Is not empty"
 msgstr ""
 
 #. TRANSLATORS: Flow check operator for a dropdown field, read as "<field> is one of <values>".
 msgid "is one of"
+msgstr ""
+
+#. TRANSLATORS Option in the condition menu of a highlight rule: the cell is one of several chosen options
+msgid "Is one of"
+msgstr ""
+
+#. TRANSLATORS Highlight rule summary; {values} is a comma-separated list of options, e.g. "is one of Rejected, Expired"
+msgid "is one of {values}"
+msgstr ""
+
+#. TRANSLATORS Highlight rule summary for a person field: the person is whoever is looking at the files
+msgid "is the person viewing"
+msgstr ""
+
+#. TRANSLATORS Option in the condition menu of a highlight rule for a person field: the field holds whoever is looking at the files
+msgid "Is the person viewing"
 msgstr ""
 
 #. TRANSLATORS Error when an imported file is not a list of fields; JSON is a file format, keep it as it is
@@ -899,7 +1419,39 @@ msgstr ""
 msgid "less than"
 msgstr ""
 
+#. TRANSLATORS Option in the condition menu of a highlight rule for a number field
+msgid "Less than"
+msgstr ""
+
+#. TRANSLATORS Highlight rule summary for a number; {value} is a number, e.g. "less than 10,000"
+msgid "less than {value}"
+msgstr ""
+
+msgid "Let people search on metadata from Nextcloud's search bar, and keep a search as a folder in Files."
+msgstr ""
+
+#. TRANSLATORS Error when a default value of a file link field points at something that is not a file in this Team folder
+msgid "Link to a file in this Team folder"
+msgstr ""
+
+#. TRANSLATORS Noun: heading of the list of files that link to this file
+msgid "Linked from"
+msgstr ""
+
+#. TRANSLATORS Heading of the settings section for what links people can save in URL fields
+msgid "Links in URL fields"
+msgstr ""
+
+#. TRANSLATORS Explanation under a switch; keep http://, https://, mailto: and javascript: as they are
+msgid "Links must start with http://, https:// or mailto:. When off, any link is allowed except one that runs code, such as javascript:."
+msgstr ""
+
+#. TRANSLATORS Error under a web address field when the administration blocked the domain of the link, such as all .ru addresses
+msgid "Links to this domain are not allowed"
+msgstr ""
+
 #. TRANSLATORS Button text while more Team folders load; keep it short
+#. TRANSLATORS Read out by screen readers as the value of a cell whose value is still loading
 #. TRANSLATORS Shown next to the field dropdown while the fields load
 #. TRANSLATORS Shown in a dropdown while its entries load
 msgid "Loading …"
@@ -907,10 +1459,6 @@ msgstr ""
 
 #. TRANSLATORS Status text while the list of backups loads
 msgid "Loading backups …"
-msgstr ""
-
-#. TRANSLATORS Status text while the field settings of the Team folder load
-msgid "Loading field configuration …"
 msgstr ""
 
 #. TRANSLATORS Status text while the metadata values of the Team folder load
@@ -938,15 +1486,19 @@ msgstr ""
 msgid "Loading your Team folders …"
 msgstr ""
 
+msgid "Location"
+msgstr ""
+
 #. TRANSLATORS Noun: field type for several lines of text, shown in the field type picker
 msgid "Long text"
 msgstr ""
 
-#. TRANSLATORS "Team Folders" is the name of the Nextcloud app that provides Team folders
-msgid "Make sure the Team Folders app is installed and you have created some Team folders."
+#. TRANSLATORS "Columns" is the heading of the column list section of the same panel; use the same translation
+msgid "Make a column visible under Columns to highlight its cells."
 msgstr ""
 
-msgid "Manage account and group permissions for metadata fields and views"
+#. TRANSLATORS "Team Folders" is the name of the Nextcloud app that provides Team folders
+msgid "Make sure the Team Folders app is installed and you have created some Team folders."
 msgstr ""
 
 #. TRANSLATORS Error message shown to the user; "Manage fields" is the name of a permission that lets someone change the metadata fields
@@ -961,7 +1513,14 @@ msgstr ""
 msgid "Manage Team folders"
 msgstr ""
 
+msgid "Mark a field as filterable in the view editor to filter on it here."
+msgstr ""
+
 msgid "Metadata content or values"
+msgstr ""
+
+#. TRANSLATORS Noun: label next to the number of stored metadata values on this server
+msgid "Metadata entries"
 msgstr ""
 
 #. TRANSLATORS Noun: label of the dropdown that picks the metadata field the Flow rule checks
@@ -976,16 +1535,18 @@ msgstr ""
 msgid "Metadata fields"
 msgstr ""
 
+msgid "Metadata filter in the search bar"
+msgstr ""
+
+msgid "Metadata is only available for files in a Team folder."
+msgstr ""
+
 #. TRANSLATORS Confirmation after the metadata values of a Team folder were saved
-msgid "Metadata saved successfully"
+#. TRANSLATORS Confirmation message after the metadata of a file was saved
+msgid "Metadata saved"
 msgstr ""
 
-#. TRANSLATORS Confirmation message after the metadata of the file was saved in the sidebar
-msgid "Metadata saved successfully!"
-msgstr ""
-
-#. TRANSLATORS Heading of the section with usage counts of metadata on this server
-msgid "Metadata statistics"
+msgid "Metadata searches"
 msgstr ""
 
 #. TRANSLATORS Message with an Undo button after one cell value was changed
@@ -998,27 +1559,73 @@ msgstr ""
 msgid "MetaVox"
 msgstr ""
 
-#. TRANSLATORS Heading of the admin settings page; MetaVox is the app name, do not translate it
-msgid "MetaVox - Custom metadata fields"
-msgstr ""
-
 #. TRANSLATORS Entry in the filter menu of the unified search that opens a field filter; MetaVox is the app name, do not translate it
 msgid "MetaVox · Filter by field …"
 msgstr ""
 
-#. TRANSLATORS MetaVox is the app name and AGPL-3.0 the name of its license; keep both unchanged
-msgid "MetaVox is free and open source (AGPL-3.0). All features work without a subscription. If MetaVox is valuable to your organization, a subscription supports active development and gives you guaranteed Nextcloud compatibility and email support."
+#. TRANSLATORS Name of a check in the admin overview "Setup checks"; MetaVox is the app name, do not translate it
+msgid "MetaVox background jobs"
+msgstr ""
+
+#. TRANSLATORS Name of a check in the administration overview of Nextcloud; MetaVox is the app name, do not translate it
+msgid "MetaVox database"
+msgstr ""
+
+#. TRANSLATORS Warning in the administration overview when Nextcloud runs on SQLite; MySQL, MariaDB, PostgreSQL and SQLite are database names
+msgid "MetaVox is built and tested for MySQL, MariaDB and PostgreSQL. On SQLite it works for trying it out, without the search index. For real use, switch to one of those."
+msgstr ""
+
+#. TRANSLATORS Shown in the administration overview when the database is one MetaVox supports
+msgid "MetaVox is built and tested for this database."
+msgstr ""
+
+msgid "MetaVox is free and open source (AGPL-3.0). All features work without a subscription — nothing is gated. If your organization gets value from it, a subscription funds the maintenance and gives you guaranteed Nextcloud compatibility, email support and priority bug fixes."
+msgstr ""
+
+#. TRANSLATORS Name of a check in the admin overview "Setup checks"; MetaVox is the app name, do not translate it
+msgid "MetaVox live updates"
 msgstr ""
 
 #. TRANSLATORS Name of the check in the Flow (workflow) rule editor; MetaVox is the app name, do not translate it
 msgid "MetaVox metadata"
 msgstr ""
 
+#. TRANSLATORS Name of a check in the admin overview "Setup checks" about showing who has a Team folder open; MetaVox is the app name, do not translate it
+msgid "MetaVox presence"
+msgstr ""
+
+#. TRANSLATORS Name of a check in the admin overview "Setup checks"; MetaVox is the app name, do not translate it
+msgid "MetaVox search index"
+msgstr ""
+
+#. TRANSLATORS Name of a check in the admin overview "Setup checks"; MetaVox is the app name, do not translate it
+msgid "MetaVox shared cache"
+msgstr ""
+
+#. TRANSLATORS Name of a check in the admin overview "Setup checks"; MetaVox is the app name, do not translate it
+msgid "MetaVox Team folders"
+msgstr ""
+
+msgid "MetaVox was updated. Reload the page to continue."
+msgstr ""
+
 msgid "MetaVox, Nextcloud and PHP versions"
+msgstr ""
+
+#. TRANSLATORS Name of a ready-made highlight rule: the cell has no value. Shown in the add-rule menu and as the cell state
+msgid "Missing"
+msgstr ""
+
+#. TRANSLATORS Option in the condition menu of a highlight rule; the number of days is entered in a separate field
+msgid "More than … days ago"
 msgstr ""
 
 #. TRANSLATORS Verb: menu item that moves a highlight rule one place down
 msgid "Move down"
+msgstr ""
+
+#. TRANSLATORS Accessible name of the menu button of a highlight rule; {position} is the rule number, {column} the column name, e.g. "Move or delete rule 2 of Status"
+msgid "Move or delete rule {position} of {column}"
 msgstr ""
 
 #. TRANSLATORS Verb: menu item that moves a highlight rule one place up
@@ -1033,16 +1640,8 @@ msgstr ""
 msgid "Must start with a lowercase letter (a-z)"
 msgstr ""
 
-#. TRANSLATORS Heading of the MetaVox section in the personal settings
-msgid "My Team folders"
-msgstr ""
-
 #. TRANSLATORS Noun: label of the field that holds the name of a view
 msgid "Name"
-msgstr ""
-
-#. TRANSLATORS Error shown when the name field of the view is empty
-msgid "Name is required"
 msgstr ""
 
 msgid "Name shown to people"
@@ -1050,6 +1649,14 @@ msgstr ""
 
 #. TRANSLATORS Shown instead of a date when no usage report has been sent yet
 msgid "Never"
+msgstr ""
+
+#. TRANSLATORS Button that opens the dialog to create a metadata field; keep it short
+msgid "New field"
+msgstr ""
+
+#. TRANSLATORS Accessible name of the form for a new highlight rule; {column} is the column name, e.g. "New rule for Status"
+msgid "New rule for {column}"
 msgstr ""
 
 #. TRANSLATORS Title of the view editor when it creates a new view; also a menu item in the view menu
@@ -1061,14 +1668,18 @@ msgstr ""
 msgid "Nextcloud Enterprise subscription detected on this instance. MetaVox subscriptions are sold through Nextcloud — contact your Nextcloud account manager or {email}."
 msgstr ""
 
-#. TRANSLATORS Value of a checkbox field that is not ticked, shown in cells and lists
 #. TRANSLATORS Option in the cell editor of a checkbox field: not ticked
 #. TRANSLATORS Filter option for a checkbox field: files where the box is not ticked
+#. TRANSLATORS Value of a checkbox field that is not ticked, shown in cells and lists
 msgid "No"
 msgstr ""
 
 #. TRANSLATORS Value choice for a checkbox field: the box is not ticked
 msgid "No (unchecked)"
+msgstr ""
+
+#. TRANSLATORS Heading shown in the sidebar when the user may not see the metadata of the file
+msgid "No access to metadata"
 msgstr ""
 
 msgid "No accessible Team folders"
@@ -1084,9 +1695,6 @@ msgid "No AI text generation provider available"
 msgstr ""
 
 msgid "No backups available yet. Backups are created automatically every 24 hours, or you can create one manually."
-msgstr ""
-
-msgid "No columns configured. Configure columns first."
 msgstr ""
 
 #. TRANSLATORS Shown in place of the field list when there are no fields to choose from
@@ -1121,7 +1729,8 @@ msgstr ""
 msgid "No file IDs provided"
 msgstr ""
 
-msgid "No file metadata fields are configured for items in this Team folder. Contact your administrator to set up metadata fields."
+#. TRANSLATORS Heading shown in the sidebar when a Team folder has no metadata fields for files
+msgid "No file metadata"
 msgstr ""
 
 #. TRANSLATORS Shown in a file link field that does not link to any file yet
@@ -1133,17 +1742,20 @@ msgstr ""
 msgid "No files specified"
 msgstr ""
 
-msgid "No filterable columns available. Mark columns as filterable in the column settings."
-msgstr ""
-
-#. TRANSLATORS Shown in the filter panel when the view has no column to filter on
 msgid "No filterable fields"
 msgstr ""
 
 msgid "No filterable fields in this folder"
 msgstr ""
 
-msgid "No folder metadata fields are configured for items in this Team folder. Contact your administrator to set up metadata fields."
+msgid "No filters in this view"
+msgstr ""
+
+msgid "No filters to save"
+msgstr ""
+
+#. TRANSLATORS Heading shown in the sidebar when a Team folder has no metadata fields for folders
+msgid "No folder metadata"
 msgstr ""
 
 #. TRANSLATORS Shown in the group picker when the search matches no group
@@ -1154,6 +1766,10 @@ msgid "No license key configured"
 msgstr ""
 
 msgid "No matching values in this folder"
+msgstr ""
+
+#. TRANSLATORS Heading shown in the sidebar when a file is not in a Team folder
+msgid "No metadata available"
 msgstr ""
 
 msgid "No metadata fields are configured for this Team folder."
@@ -1175,8 +1791,15 @@ msgstr ""
 msgid "No metadata values to save"
 msgstr ""
 
-#. TRANSLATORS Shown in the filter section when a dropdown field has no options to filter on
 msgid "No options available"
+msgstr ""
+
+#. TRANSLATORS Error message shown to the user when the file is read-only for them
+msgid "No permission to change the metadata of this file"
+msgstr ""
+
+#. TRANSLATORS Error message shown to the user when the Team folder is read-only for them
+msgid "No permission to change this Team folder"
 msgstr ""
 
 #. TRANSLATORS Heading of the empty state when no group has a permission yet
@@ -1187,22 +1810,63 @@ msgstr ""
 msgid "No permissions found matching \"{query}\""
 msgstr ""
 
-msgid "No Team folder metadata fields are configured for this Team folder. Contact your administrator to set up Team folder metadata fields."
+#. TRANSLATORS Shown in the admin overview "Setup checks"; Redis is the name of a cache server, keep it as is
+msgid "No shared cache such as Redis is set up. With more than one web server, presence and editing locks need one."
+msgstr ""
+
+#. TRANSLATORS Heading shown in the sidebar when the Team folder itself has no metadata fields
+msgid "No Team folder metadata"
 msgstr ""
 
 #. TRANSLATORS Heading of the empty state when the server has no Team folders
 msgid "No Team folders found"
 msgstr ""
 
-msgid "No views configured yet."
+#. TRANSLATORS Error when the user may not change any of the files a request names
+msgid "None of these files can be changed"
+msgstr ""
+
+#. TRANSLATORS Error when none of the files a request names exists or can be seen by the user
+msgid "None of these files can be found"
+msgstr ""
+
+msgid "Not added — a file cannot be linked to itself"
+msgstr ""
+
+msgid "Not added — only files inside this Team folder can be linked"
+msgstr ""
+
+msgid "Not added — this file is already linked"
+msgstr ""
+
+#. TRANSLATORS Part of the summary line under a field in the list: no Team folder uses the field yet
+msgid "not assigned"
+msgstr ""
+
+#. TRANSLATORS Name of a ready-made highlight rule for a checkbox field: not ticked. Shown in the add-rule menu and as the cell state
+msgid "Not checked"
+msgstr ""
+
+#. TRANSLATORS Error message shown to the user when a Team folder does not exist or they are not a member of it
+msgid "Not found"
 msgstr ""
 
 #. TRANSLATORS Error message shown to the user when the session has ended and the user must log in again
 msgid "Not logged in"
 msgstr ""
 
+msgid "Nothing found"
+msgstr ""
+
+msgid "Nothing was deleted — the fields are still in use."
+msgstr ""
+
 #. TRANSLATORS Noun: field type for a number, shown in the field type picker
 msgid "Number"
+msgstr ""
+
+#. TRANSLATORS Label of the number field of a highlight rule such as "Within the next … days"
+msgid "Number of days"
 msgstr ""
 
 msgid "Number of metadata fields and their types"
@@ -1211,12 +1875,43 @@ msgstr ""
 msgid "Number of Team folders using MetaVox"
 msgstr ""
 
+#. TRANSLATORS Highlight rule summary; {date} is a formatted date, e.g. "on 3 March 2026"
+msgid "on {date}"
+msgstr ""
+
+#. TRANSLATORS Option in the condition menu of a highlight rule; the date is picked in a separate field
+msgid "On a date"
+msgstr ""
+
+#. TRANSLATORS Help under the list of blocked domains; keep .ru and example.com as they are
+msgid "One per line: .ru blocks every .ru address, example.com that site and its subdomains."
+msgstr ""
+
+#. TRANSLATORS Help under the list of the only allowed domains
+msgid "One per line. Leave empty to allow every domain that is not blocked."
+msgstr ""
+
+#. TRANSLATORS Label of a list of domains: when it is filled in, links in URL fields may point at these domains only
+msgid "Only allow these domains"
+msgstr ""
+
 #. TRANSLATORS Radio button: saving only fills fields that are still empty on the selected files
 msgid "Only fill empty fields"
 msgstr ""
 
+#. TRANSLATORS Error under a web address field when the administration allows links to some domains only
+msgid "Only links to approved domains are allowed"
+msgstr ""
+
 #. TRANSLATORS Help text under the internal field name input; keep "a-z", "0-9" and "_" as they are
 msgid "Only lowercase letters (a-z), numbers (0-9) and underscores (_)"
+msgstr ""
+
+#. TRANSLATORS Switch label in the administration settings: URL fields then take only web and email addresses
+msgid "Only web and email addresses"
+msgstr ""
+
+msgid "Open in Files"
 msgstr ""
 
 #. TRANSLATORS Accessible name of the small button in a cell that opens the link in a new tab
@@ -1239,15 +1934,15 @@ msgstr ""
 msgid "Optional description for this field"
 msgstr ""
 
-#. TRANSLATORS Label before the list of choices of a dropdown field
-#. TRANSLATORS Label before the list of choices of a dropdown field, e.g. "Options: High, Low"
-msgid "Options:"
+#. TRANSLATORS Name of a highlight colour, shown in the colour picker of a highlight rule and read out for the coloured mark
+msgid "Orange"
 msgstr ""
 
 msgid "Organization name or contact email"
 msgstr ""
 
-msgid "Overview of metadata fields and usage in your MetaVox installation."
+#. TRANSLATORS Name of a ready-made highlight rule for a date: the date has passed. Shown in the add-rule menu and as the cell state
+msgid "Overdue"
 msgstr ""
 
 #. TRANSLATORS Radio button: saving replaces values the selected files already have
@@ -1257,30 +1952,33 @@ msgstr ""
 msgid "People in the selected groups will be able to manage metadata fields and views"
 msgstr ""
 
+#. TRANSLATORS Tab that opens the fields and metadata set per Team folder; keep it short, the tab row does not wrap
+msgid "Per folder"
+msgstr ""
+
 #. TRANSLATORS Noun: column header for the kind of permission; keep it short
 msgid "Permission"
 msgstr ""
 
-#. TRANSLATORS Confirmation after a permission was removed from a group
-msgid "Permission revoked successfully"
+#. TRANSLATORS Error when an admin removes a permission that no longer exists
+msgid "Permission not found"
 msgstr ""
 
-#. TRANSLATORS Noun: tab that opens the permission settings; keep it short, the tab row does not wrap
+#. TRANSLATORS Confirmation after a permission was removed from a group
+msgid "Permission revoked"
+msgstr ""
+
 #. TRANSLATORS Noun: heading of the settings section that sets who may manage fields
+#. TRANSLATORS Noun: tab that opens the permission settings; keep it short, the tab row does not wrap
 msgid "Permissions"
 msgstr ""
 
-msgid "Please add at least one option for dropdown fields"
+#. TRANSLATORS Heading of the MetaVox section in the personal settings
+msgid "Personal Team folder settings"
 msgstr ""
 
 #. TRANSLATORS "Configure fields" names the menu item of a Team folder row; translate it the same way
 msgid "Please configure some fields first using the \"Configure fields\" button."
-msgstr ""
-
-msgid "Please enter a field label"
-msgstr ""
-
-msgid "Please enter a field name"
 msgstr ""
 
 msgid "Please enter a subscription key"
@@ -1290,12 +1988,8 @@ msgstr ""
 msgid "Please enter a valid URL"
 msgstr ""
 
-#. TRANSLATORS Error when the import is started without a file; JSON is a file format, keep it as it is
-msgid "Please select a JSON file to import"
-msgstr ""
-
-#. TRANSLATORS Fallback reason shown after "Failed to import fields:" when the server gave none
 #. TRANSLATORS Shown after "Error saving metadata:" when the server gave no reason
+#. TRANSLATORS Fallback reason shown after "Failed to import fields:" when the server gave none
 msgid "Please try again."
 msgstr ""
 
@@ -1303,24 +1997,28 @@ msgstr ""
 msgid "Preparing …"
 msgstr ""
 
-#. TRANSLATORS Button that opens the subscription pricing page in a new tab; keep it short
-msgid "Pricing details"
+#. TRANSLATORS Noun: label in front of a sample of how the highlight rule will look
+msgid "Preview"
 msgstr ""
 
-#. TRANSLATORS Text in front of the contact email address, asking if the reader has questions
-msgid "Questions?"
+#. TRANSLATORS Bold lead-in before the support email address; keep the colon
+msgid "Questions about the app:"
 msgstr ""
 
-#. TRANSLATORS Noun: heading of the sidebar section that lists the files whose metadata links to this file
-msgid "Referenced by"
+#. TRANSLATORS Name of a highlight colour, shown in the colour picker of a highlight rule and read out for the coloured mark
+msgid "Red"
 msgstr ""
 
-#. TRANSLATORS Verb: tooltip and accessible name of the button that asks AI for a new suggestion for a field; keep it short
-msgid "Regenerate"
+#. TRANSLATORS Accessible name and tooltip of the button that asks AI for a new value; {field} is a field label, e.g. "Regenerate AI suggestion for Status"
+msgid "Regenerate AI suggestion for {field}"
 msgstr ""
 
 #. TRANSLATORS Accessible name and tooltip of the button that removes a linked file from the field
 msgid "Remove"
+msgstr ""
+
+#. TRANSLATORS Accessible name of the × button on a filter value; {value} is that value, e.g. "Remove filter value Draft"
+msgid "Remove filter value {value}"
 msgstr ""
 
 #. TRANSLATORS Accessible name of the button that removes one choice from a dropdown field
@@ -1331,8 +2029,8 @@ msgstr ""
 msgid "Remove subscription key"
 msgstr ""
 
-#. TRANSLATORS Notification after the usage report was sent
-msgid "Report sent successfully"
+#. TRANSLATORS Confirmation after the usage report was sent
+msgid "Report sent"
 msgstr ""
 
 #. TRANSLATORS Badge on a field that must be filled in; keep it short
@@ -1341,6 +2039,11 @@ msgstr ""
 
 #. TRANSLATORS Checkbox label: the field must be filled in
 msgid "Required field"
+msgstr ""
+
+#. TRANSLATORS Tooltip on a grid cell of a required field that has no value yet
+#. TRANSLATORS Read out by screen readers as the value of a cell of a required field that has no value yet
+msgid "Required, no value yet"
 msgstr ""
 
 #. TRANSLATORS Verb: button that restores the metadata from this backup; keep it short
@@ -1369,11 +2072,29 @@ msgid "Retry"
 msgstr ""
 
 #. TRANSLATORS Verb: button that removes this permission from the group; keep it short
+#. TRANSLATORS Verb: confirm button of the revoke permission dialog; keep it short
 msgid "Revoke"
 msgstr ""
 
-#. TRANSLATORS Button that saves the metadata in the edit dialog; keep it short
+#. TRANSLATORS Title of the dialog that asks to confirm revoking a permission
+msgid "Revoke permission"
+msgstr ""
+
+#. TRANSLATORS Accessible name of the form for an existing highlight rule; {position} is its number, {column} the column name, e.g. "Rule 2 of Status"
+msgid "Rule {position} of {column}"
+msgstr ""
+
+#. TRANSLATORS Screen-reader announcement after a highlight rule was deleted
+msgid "Rule deleted"
+msgstr ""
+
+#. TRANSLATORS Screen-reader announcement after a highlight rule was moved; {position} is its new number, e.g. "Rule moved to position 2"
+msgid "Rule moved to position {position}"
+msgstr ""
+
+#. TRANSLATORS Button that saves the changes in a dialog
 #. TRANSLATORS Button that saves the metadata in the dialog; keep it short
+#. TRANSLATORS Button that saves the metadata in the edit dialog; keep it short
 #. TRANSLATORS Verb: tooltip and accessible name of the check-mark button that saves the cell value
 #. TRANSLATORS Verb: dialog button that saves the view
 msgid "Save"
@@ -1383,36 +2104,62 @@ msgstr ""
 msgid "Save & activate"
 msgstr ""
 
-#. TRANSLATORS Button in the edit dialog that saves the changes to the field
-#. TRANSLATORS Button that saves the changes to the field; keep it short
-msgid "Save changes"
+msgid "Save a filter as a folder in Files"
+msgstr ""
+
+msgid "Save as folder"
+msgstr ""
+
+#. TRANSLATORS Title of the dialog that saves the current filters as a view
+msgid "Save as view"
 msgstr ""
 
 #. TRANSLATORS Button that saves which fields a Team folder uses
 msgid "Save configuration"
 msgstr ""
 
-#. TRANSLATORS Button that saves the view; keep it short
-msgid "Save view"
+#. TRANSLATORS Menu item in the view menu that saves the current filters as a view; the dots mean a dialog opens
+msgid "Save filters as view …"
+msgstr ""
+
+#. TRANSLATORS Error when a saved search was already removed
+msgid "Saved search not found"
 msgstr ""
 
 #. TRANSLATORS Dialog button label while the changes are being saved
-#. TRANSLATORS Label of the save button while the metadata is being saved; keep it short
 #. TRANSLATORS Button text while the permission is being saved; keep it short
 #. TRANSLATORS Button text while the subscription key is being saved; keep it short
+#. TRANSLATORS Label of the save button while the metadata is being saved; keep it short
 #. TRANSLATORS Label of the save button while the view is being saved; keep it short
 msgid "Saving …"
+msgstr ""
+
+#. TRANSLATORS Error when someone saves a search as a folder while the administration has turned that off
+msgid "Saving searches as folders is turned off"
+msgstr ""
+
+#. TRANSLATORS Tab that opens the search settings; keep it short, the tab row does not wrap
+msgid "Search"
+msgstr ""
+
+#. TRANSLATORS Accessible name of the account search box when the field has no label of its own
+msgid "Search accounts"
 msgstr ""
 
 msgid "Search and select groups …"
 msgstr ""
 
 #. TRANSLATORS Label of the search box that filters the field list
+#. TRANSLATORS Placeholder of the search box that filters the fields in the dialog
 msgid "Search fields"
 msgstr ""
 
 #. TRANSLATORS Placeholder of the search box that filters the field list
 msgid "Search fields …"
+msgstr ""
+
+#. TRANSLATORS Accessible label of the search field above the permissions table
+msgid "Search permissions"
 msgstr ""
 
 #. TRANSLATORS Placeholder of the search field above the permissions table
@@ -1421,6 +2168,20 @@ msgstr ""
 
 #. TRANSLATORS Label of the search field above the list of Team folders
 msgid "Search Team folders"
+msgstr ""
+
+msgid "Search values"
+msgstr ""
+
+msgid "Searches every Team folder you are a member of."
+msgstr ""
+
+#. TRANSLATORS Heading of the settings section for searching on metadata
+msgid "Searching metadata"
+msgstr ""
+
+#. TRANSLATORS Accessible name of the checkbox that selects a field in the list. {field} is the field label, e.g. "Status"
+msgid "Select {field}"
 msgstr ""
 
 #. TRANSLATORS Placeholder of the field dropdown in the search filter dialog
@@ -1444,13 +2205,20 @@ msgstr ""
 msgid "Select a value"
 msgstr ""
 
+#. TRANSLATORS Button that ticks every field in the list that can be deleted
+msgid "Select all deletable"
+msgstr ""
+
 #. TRANSLATORS Label above the group picker in the add permission form
 msgid "Select groups"
 msgstr ""
 
-#. TRANSLATORS Button that opens the file chooser to pick a JSON file; JSON is a file format
-#. TRANSLATORS Button that opens the file picker to choose the JSON file to import; keep it short
-msgid "Select JSON file"
+#. TRANSLATORS Error from the API when a request to sort or filter files sends neither; keep sort_field and filters as they are
+msgid "Send a sort_field, filters or both"
+msgstr ""
+
+#. TRANSLATORS Error when a request does not send field names with their values, e.g. {"status": "Open"}
+msgid "Send each field name with its value"
 msgstr ""
 
 #. TRANSLATORS Button that sends the anonymous usage report right away; keep it short
@@ -1461,31 +2229,68 @@ msgstr ""
 msgid "Sending …"
 msgstr ""
 
-#. TRANSLATORS Accessible name of the star button that makes this view the default view
-#. TRANSLATORS Label of the checkbox that makes this view the default view
-msgid "Set as default view"
+msgid "Set by the administrator, the same for every file here."
 msgstr ""
 
-msgid "Set preset filter values (comma-separated) per field."
+msgid "Setting saved."
+msgstr ""
+
+#. TRANSLATORS Accessible name of the hidden-label row of tabs that switches between the settings sections
+msgid "Settings section"
 msgstr ""
 
 #. TRANSLATORS Label of the switch that turns sending anonymous usage statistics on or off
 msgid "Share anonymous usage statistics"
 msgstr ""
 
-#. TRANSLATORS Noun: heading of the sort section in the view editor
-msgid "Sort"
+#. TRANSLATORS Tooltip on a cell whose long value is cut off in the grid
+msgid "Shortened. The full value loads when you edit the cell."
+msgstr ""
+
+#. TRANSLATORS Label of the filter that chooses which fields are listed: all, Team folder fields or file fields
+msgid "Show"
+msgstr ""
+
+#. TRANSLATORS Accessible name of the "Visible" checkbox in the column list; {column} is the column name, e.g. "Show Status"
+msgid "Show {column}"
+msgstr ""
+
+msgid "Showing the newest {count} files. Make the search narrower to see the rest."
+msgstr ""
+
+msgid "Shown to people beside the field"
+msgstr ""
+
+#. TRANSLATORS Helper text below the optional text of a highlight rule; the text appears as a tooltip on the highlight mark in the cell
+msgid "Shown when you point at the icon in the cell, for example what needs to happen: “Approve first”."
+msgstr ""
+
+#. TRANSLATORS Helper text below the optional text of a highlight rule; {name} is the tooltip shown when the field stays empty, e.g. "Overdue"
+msgid "Shown when you point at the icon in the cell, for example what needs to happen: “Approve first”. Empty: “{name}”."
+msgstr ""
+
+msgid "Some text"
+msgstr ""
+
+msgid "Someone else"
+msgstr ""
+
+#. TRANSLATORS Error when someone opens a grid cell that another person is editing right now
+msgid "Someone else is editing this value"
+msgstr ""
+
+msgid "Something else"
 msgstr ""
 
 #. TRANSLATORS Noun: heading of the sort section in the view editor
 msgid "Sorting"
 msgstr ""
 
-msgid "Spaces are not allowed — use underscores instead"
+#. TRANSLATORS Error message; MetaVox is the app name, do not translate it
+msgid "Sorting and filtering on MetaVox columns is paused: not all values could be loaded."
 msgstr ""
 
-#. TRANSLATORS Tooltip on the "Default" tab, which shows the files without any saved view; Nextcloud is a product name
-msgid "Standard Nextcloud file view"
+msgid "Spaces are not allowed — use underscores instead"
 msgstr ""
 
 #. TRANSLATORS Checkbox in the view editor: this view opens by default when the folder is opened
@@ -1496,10 +2301,6 @@ msgstr ""
 msgid "Standard view — loads automatically when opening this folder"
 msgstr ""
 
-#. TRANSLATORS Noun: tab that opens the usage statistics; keep it short, the tab row does not wrap
-msgid "Statistics"
-msgstr ""
-
 #. TRANSLATORS Confirmation after the subscription key was saved and found valid
 msgid "Subscription activated!"
 msgstr ""
@@ -1508,6 +2309,7 @@ msgid "Subscription active — thank you for supporting MetaVox!"
 msgstr ""
 
 #. TRANSLATORS Heading of the section where the subscription key is entered
+#. TRANSLATORS Label of the input field for the subscription key
 msgid "Subscription key"
 msgstr ""
 
@@ -1522,12 +2324,20 @@ msgstr ""
 msgid "Subscription key saved but validation failed: {reason}"
 msgstr ""
 
+#. TRANSLATORS Bold lead-in before the sentence on where to buy a subscription; keep the colon
+msgid "Subscriptions and pricing:"
+msgstr ""
+
 #. TRANSLATORS Noun: tab that opens subscription and support; keep it short, the tab row does not wrap
 msgid "Support"
 msgstr ""
 
 #. TRANSLATORS Heading of the settings section about subscriptions and support; MetaVox is the app name, do not translate it
 msgid "Support MetaVox"
+msgstr ""
+
+#. TRANSLATORS Accessible name of the view picker button in the file list toolbar, which opens the list of views
+msgid "Switch view"
 msgstr ""
 
 #. TRANSLATORS Noun: label of the dropdown that picks the Team folder to search in
@@ -1542,20 +2352,13 @@ msgstr ""
 msgid "Team folder {id}"
 msgstr ""
 
-#. TRANSLATORS Filter button that shows only the fields set on the Team folder itself; keep it short
-msgid "Team folder fields"
-msgstr ""
-
-#. TRANSLATORS Noun: heading of the collapsible section in the sidebar that shows the read-only metadata of the Team folder
-msgid "Team folder information"
-msgstr ""
-
 #. TRANSLATORS Noun: heading of the collapsible section with the metadata of the whole Team folder
 msgid "Team folder metadata"
 msgstr ""
 
-#. TRANSLATORS Heading of the settings section for metadata fields of Team folders
 #. TRANSLATORS Heading above the fields that describe the Team folder itself
+#. TRANSLATORS Heading of the settings section for metadata fields of Team folders
+#. TRANSLATORS Group heading in the field dropdown: fields set once for the whole Team folder
 msgid "Team folder metadata fields"
 msgstr ""
 
@@ -1564,7 +2367,12 @@ msgid "Team folder values"
 msgstr ""
 
 #. TRANSLATORS Heading of the list of all Team folders on the server
+#. TRANSLATORS Tab that opens the metadata fields of Team folders; keep it short, the tab row does not wrap
 msgid "Team folders"
+msgstr ""
+
+#. TRANSLATORS Shown in the admin overview "Setup checks"; "Team Folders" is the name of a Nextcloud app, %s its version number, e.g. "Team Folders 20.1.0 is on."
+msgid "Team Folders %s is on."
 msgstr ""
 
 #. TRANSLATORS Label next to the number of Team folders that have metadata fields
@@ -1575,14 +2383,64 @@ msgstr ""
 msgid "Text"
 msgstr ""
 
+#. TRANSLATORS Label of the optional short text shown as a tooltip on the highlight mark in the cell
+msgid "Text by the icon (optional)"
+msgstr ""
+
 msgid "Thank you for helping improve MetaVox!"
 msgstr ""
 
 msgid "Thank you! Anonymous usage statistics enabled."
 msgstr ""
 
+#. TRANSLATORS Shown in the admin overview "Setup checks"; "Client Push" is the name of a Nextcloud app and notify_push its technical id, keep both as is
+msgid "The Client Push app (notify_push) is not set up. Changes by others then appear after a refresh."
+msgstr ""
+
+msgid "The current filters are saved as a new view."
+msgstr ""
+
+msgid "The current view stays as it is."
+msgstr ""
+
+msgid "The filters replace those of this view. Everyone with access sees the change."
+msgstr ""
+
+msgid "The full value could not be loaded. Try again."
+msgstr ""
+
+msgid "The full values could not be loaded. Nothing was filled."
+msgstr ""
+
+#. TRANSLATORS Error message in the Flow (workflow) rule editor when someone other than an administrator saves the check
+msgid "The metadata check is only available to administrators"
+msgstr ""
+
+#. TRANSLATORS Screen-reader announcement; {column} is the column name, e.g. "The open rule for Status was closed without changes."
+msgid "The open rule for {column} was closed without changes."
+msgstr ""
+
+#. TRANSLATORS Error message when the highlight rules of a view are too large to save; KB = kilobytes
+msgid "The rules of this view take up more than 32 KB"
+msgstr ""
+
+msgid "The search could not be saved."
+msgstr ""
+
+#. TRANSLATORS Shown in the admin overview "Setup checks"; %1$s is the number of files done, %2$s the total number of files, e.g. "1200 of 5000 files"
+msgid "The search index is being built: %1$s of %2$s files. Until then, free-text search finds only the files already done."
+msgstr ""
+
+#. TRANSLATORS Shown in the admin overview "Setup checks"; "Team Folders" is the name of a Nextcloud app
+msgid "The Team Folders app is off. MetaVox adds metadata to Team folders and does nothing without it."
+msgstr ""
+
 #. TRANSLATORS {error} is the error text returned by the usage statistics server, often in English
 msgid "The telemetry server returned an error: {error}"
+msgstr ""
+
+#. TRANSLATORS Shown in the admin overview "Setup checks"; "User status" is the name of a Nextcloud app
+msgid "The User status app is off. Who has a Team folder open then shows for up to 12 hours."
 msgstr ""
 
 msgid "These fields apply to the Team folder itself"
@@ -1591,21 +2449,72 @@ msgstr ""
 msgid "These fields can be set on individual files"
 msgstr ""
 
-msgid "This file is already linked"
+#. TRANSLATORS Error under a required metadata field that was left empty
+msgid "This field is required"
 msgstr ""
 
-msgid "This file is not in a Team folder. Metadata is only available for Team folder files."
+#. TRANSLATORS Error when metadata is copied from a file whose Team folder has no metadata fields
+msgid "This file has no metadata to copy"
 msgstr ""
 
-msgid "This metadata applies to the entire Team folder and can only be edited by administrators in the administration settings."
+#. TRANSLATORS Error when a backup is asked for by a file name that no MetaVox backup can have
+msgid "This is no MetaVox backup file name"
 msgstr ""
 
-#. TRANSLATORS Label next to the number of accounts on this server
-msgid "Total accounts"
+#. TRANSLATORS Error under a web address field that got a link which would run code, such as javascript:
+msgid "This kind of link is not allowed"
 msgstr ""
 
-#. TRANSLATORS Label next to the total number of metadata values on this server
-msgid "Total metadata entries"
+msgid "This metadata applies to the whole Team folder. Only administrators can change it."
+msgstr ""
+
+#. TRANSLATORS Note below a highlight rule that no longer fits the field, for example after the field type changed
+msgid "This rule does not work with this field and highlights nothing."
+msgstr ""
+
+msgid "This rule uses an option the field no longer has."
+msgstr ""
+
+msgid "This saved search does not exist."
+msgstr ""
+
+#. TRANSLATORS Error when a default value is set for a field that this Team folder does not use for its files
+msgid "This Team folder does not use this field for its files"
+msgstr ""
+
+#. TRANSLATORS Error under a metadata field whose text contains an invisible character (NUL) that cannot be stored
+msgid "This text contains a character that cannot be saved"
+msgstr ""
+
+#. TRANSLATORS Error when a text sent to the server is longer than it may be
+msgid "This text is too long"
+msgstr ""
+
+msgid "This value can only be changed by an administrator."
+msgstr ""
+
+#. TRANSLATORS Error message under a highlight rule of a column in a view, when its value is not right
+msgid "This value is not valid"
+msgstr ""
+
+#. TRANSLATORS Shown when the view cannot be saved yet; {column} is the column name, e.g. "To save, finish or cancel the open rule for Due date."
+msgid "To save, finish or cancel the open rule for {column}."
+msgstr ""
+
+#. TRANSLATORS Highlight rule summary for a date: the date is today; lowercase phrase
+msgid "today"
+msgstr ""
+
+#. TRANSLATORS Option in the condition menu of a highlight rule for a date field: the date is today
+msgid "Today"
+msgstr ""
+
+#. TRANSLATORS Error when a request sends more IDs (the numbers that identify files) than it may at once
+msgid "Too many IDs in one request"
+msgstr ""
+
+#. TRANSLATORS Last entry of the search results when a word is in too many files to search them all
+msgid "Too many matches to search them all"
 msgstr ""
 
 msgid "Total metadata entries count"
@@ -1614,12 +2523,27 @@ msgstr ""
 msgid "Total number of accounts and active accounts"
 msgstr ""
 
+msgid "Type a word in the search box to see the results of the filter."
+msgstr ""
+
 #. TRANSLATORS Shown in the account search list until at least 2 characters are typed
 msgid "Type at least 2 characters …"
 msgstr ""
 
+msgid "Type the whole value, exactly as it is written. To find part of a value, type it in the search box instead."
+msgstr ""
+
 #. TRANSLATORS Placeholder of the account search box in the cell editor of a person field
 msgid "Type to search accounts …"
+msgstr ""
+
+#. TRANSLATORS Shown in place of the name of a linked file that was deleted or cannot be accessed
+#. TRANSLATORS Shown instead of a file name when a linked file was deleted or the user cannot see it
+#. TRANSLATORS Shown in a cell instead of a linked file's name when the file was deleted or you have no access to it
+msgid "Unavailable file"
+msgstr ""
+
+msgid "Undo"
 msgstr ""
 
 #. TRANSLATORS Shown instead of a date when a backup has no creation date
@@ -1630,17 +2554,12 @@ msgstr ""
 msgid "Unknown error"
 msgstr ""
 
-#. TRANSLATORS Placeholder of a text box for a field whose type the app does not know; {type} is the technical name of that field type
-msgid "Unknown field type: {type}"
-msgstr ""
-
 #. TRANSLATORS Shown in place of the name of a field that has no label or name
 msgid "Unnamed field"
 msgstr ""
 
-#. TRANSLATORS Description under the import heading; JSON is a file format, keep it as it is
-#. TRANSLATORS Description of the import section; JSON is a file format, keep it as it is
-msgid "Upload a JSON file to import metadata fields."
+#. TRANSLATORS Radio option: save the filters into the current view; {name} is the view name, e.g. "Update “Open contracts”"
+msgid "Update “{name}”"
 msgstr ""
 
 msgid "Uppercase letters are not allowed — use lowercase only"
@@ -1650,12 +2569,43 @@ msgstr ""
 msgid "URL"
 msgstr ""
 
+#. TRANSLATORS Error under a checkbox field that got something else than ticked (1) or not ticked (0)
+msgid "Use 1 for ticked or 0 for not ticked"
+msgstr ""
+
+#. TRANSLATORS Error message when the label of a highlight rule of a view column is too long
+msgid "Use at most 40 characters"
+msgstr ""
+
+#. TRANSLATORS Error when a request sends something else than yes or no; keep true and false as they are
+msgid "Use true or false"
+msgstr ""
+
+msgid "Users can find files by a field and its value from Nextcloud's search bar. Light: one search reads an index."
+msgstr ""
+
+msgid "Users can keep a filter as a folder under \"Metadata searches\" in Files (Nextcloud 33 and newer). Opening one shows up to 500 files and asks more of the server than a search. Works only with the filter on."
+msgstr ""
+
+#. TRANSLATORS Error message shown when the entered values are not valid
+msgid "Validation failed"
+msgstr ""
+
+#. TRANSLATORS Noun: label of the field that holds the value a highlight rule compares the cell with
 #. TRANSLATORS Noun: label of the input for the field value to filter on
 msgid "Value"
 msgstr ""
 
 #. TRANSLATORS Label of the input for the value the field is compared with in the Flow rule
 msgid "Value to check"
+msgstr ""
+
+#. TRANSLATORS Noun: label of the dropdown that holds the options a highlight rule compares the cell with
+msgid "Values"
+msgstr ""
+
+#. TRANSLATORS Confirmation message after the current filters were saved as a new view
+msgid "View created"
 msgstr ""
 
 #. TRANSLATORS Title of the view editor when it only shows a view; also a menu item in the view menu
@@ -1675,21 +2625,15 @@ msgstr ""
 msgid "View not found"
 msgstr ""
 
-#. TRANSLATORS Noun: heading of the section that lists the saved views of this Team folder
-msgid "Views"
+#. TRANSLATORS Confirmation message after the current filters were saved into an existing view
+msgid "View updated"
 msgstr ""
 
-#. TRANSLATORS Adjective: column header of the checkboxes that show a column in the file list; keep it short
 msgid "Visible"
 msgstr ""
 
 #. TRANSLATORS Link that opens the Support tab; translate "Support" as in that tab
 msgid "Visit Support"
-msgstr ""
-
-#. TRANSLATORS Label before the warning that the field is in use; keep it short
-#. TRANSLATORS Label in bold before the warning text in the edit dialog
-msgid "Warning:"
 msgstr ""
 
 msgid "We collect: field counts, Team folder counts, entry counts, version info (MetaVox, Nextcloud, PHP), and basic server configuration. No personal data or file contents are ever shared."
@@ -1707,6 +2651,9 @@ msgstr ""
 msgid "What you can do:"
 msgstr ""
 
+msgid "When a cell matches more than one rule, the top one counts."
+msgstr ""
+
 #. TRANSLATORS "Generate with AI" is the name of a button in the Files sidebar; use the same translation as that button
 msgid "When enabled, people see a \"Generate with AI\" button in the metadata sidebar. The AI reads file content and suggests values for metadata fields."
 msgstr ""
@@ -1721,9 +2668,24 @@ msgstr ""
 msgid "Whether your Nextcloud has an Extended Support / Enterprise subscription (a single yes/no, sourced from Nextcloud's public API)"
 msgstr ""
 
-#. TRANSLATORS Value of a checkbox field that is ticked, shown in cells and lists
+msgid "Which links people can save in URL fields."
+msgstr ""
+
+#. TRANSLATORS Shown in the admin overview "Setup checks"; "User status" is the name of a Nextcloud app
+msgid "Who has a Team folder open follows the open browsers, through the User status app."
+msgstr ""
+
+#. TRANSLATORS Option in the condition menu of a highlight rule; the number of days is entered in a separate field
+msgid "Within the next … days"
+msgstr ""
+
+#. TRANSLATORS Helper text below the number field of a highlight rule; write the example number 10000 without a thousands separator
+msgid "Without thousands separators, for example 10000"
+msgstr ""
+
 #. TRANSLATORS Option in the cell editor of a checkbox field: ticked
 #. TRANSLATORS Filter option for a checkbox field: files where the box is ticked
+#. TRANSLATORS Value of a checkbox field that is ticked, shown in cells and lists
 msgid "Yes"
 msgstr ""
 
@@ -1731,8 +2693,15 @@ msgstr ""
 msgid "Yes (checked)"
 msgstr ""
 
+msgid "You are not a member of a Team folder."
+msgstr ""
+
 #. TRANSLATORS Warning when a picked file lies outside the current folder; "Team folder" is the Nextcloud feature name, use its official translation
 msgid "You can only link files inside this Team folder"
+msgstr ""
+
+#. TRANSLATORS Error in the search filter dialog when someone tries to save a 51st search as a folder
+msgid "You can save at most 50 searches."
 msgstr ""
 
 msgid "You do not have access to any Team folders yet. Contact your administrator if you need access."
@@ -1752,6 +2721,12 @@ msgstr ""
 msgid "Your MetaVox subscription key needs attention."
 msgstr ""
 
+msgid "Your saved metadata searches and the files they find."
+msgstr ""
+
+msgid "Your saved metadata searches show here, each with the files it finds. Save one with the metadata filter in the search bar."
+msgstr ""
+
 #. TRANSLATORS Heading of the list of Team folders this account can open
 msgid "Your Team folders"
 msgstr ""
@@ -1762,15 +2737,21 @@ msgid_plural "{count} cells updated"
 msgstr[0] ""
 msgstr[1] ""
 
-#. TRANSLATORS: A filter chip that lists two values, e.g. "Draft, Final and 3 others".
-msgid "{values} and %n other"
-msgid_plural "{values} and %n others"
+#. TRANSLATORS Accessible name and tooltip of the disabled checkbox of a field that cannot be deleted. {field} is the field label, e.g. "Status"; %n is the number of Team folders that use it
+msgid "{field} is used in %n Team folder and cannot be deleted"
+msgid_plural "{field} is used in %n Team folders and cannot be deleted"
 msgstr[0] ""
 msgstr[1] ""
 
-#. TRANSLATORS %n is the number of columns shown in this view
-msgid "%n column"
-msgid_plural "%n columns"
+#. TRANSLATORS Notification after deleting several fields. {removed} is the number of fields deleted, {skipped} the number not deleted because they are still in use; the plural form follows {skipped}
+msgid "{removed} deleted, {skipped} skipped because it is still in use"
+msgid_plural "{removed} deleted, {skipped} skipped because they are still in use"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS: A filter chip that lists two values, e.g. "Draft, Final and 3 others".
+msgid "{values} and %n other"
+msgid_plural "{values} and %n others"
 msgstr[0] ""
 msgstr[1] ""
 
@@ -1780,11 +2761,9 @@ msgid_plural "%n entries"
 msgstr[0] ""
 msgstr[1] ""
 
-#. TRANSLATORS %n is the number of metadata fields; shown beside the list heading
-#. TRANSLATORS %n is the number of metadata fields set up for Team folders
-#. TRANSLATORS Badge in a Team folder row; %n is the number of metadata fields assigned to the folder
-msgid "%n field configured"
-msgid_plural "%n fields configured"
+#. TRANSLATORS %n is the number of fields in the list; shown beside the list heading
+msgid "%n field"
+msgid_plural "%n fields"
 msgstr[0] ""
 msgstr[1] ""
 
@@ -1794,9 +2773,29 @@ msgid_plural "%n field definitions"
 msgstr[0] ""
 msgstr[1] ""
 
+#. TRANSLATORS %n is the number of fields that were deleted
+msgid "%n field deleted"
+msgid_plural "%n fields deleted"
+msgstr[0] ""
+msgstr[1] ""
+
 #. TRANSLATORS %n is the number of fields that match the search; shown beside the list heading
 msgid "%n field found"
 msgid_plural "%n fields found"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS Shown beside the list heading while fields are selected; %n is the number of selected fields
+msgid "%n field selected"
+msgid_plural "%n fields selected"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS Filter option; %n is the number of fields that can be set on files in the Team folder; keep it short
+#. TRANSLATORS Filter option; %n is the number of fields that hold metadata for files
+#. TRANSLATORS %n is the number of fields that can be set on files in the Team folder
+msgid "%n file field"
+msgid_plural "%n file fields"
 msgstr[0] ""
 msgstr[1] ""
 
@@ -1806,9 +2805,9 @@ msgid_plural "%n file values"
 msgstr[0] ""
 msgstr[1] ""
 
-#. TRANSLATORS %n is the number of preset filters in this view
-msgid "%n filter"
-msgid_plural "%n filters"
+#. TRANSLATORS Accessible name of the dot next to a field in the filter panel; %n is the number of values selected for that field
+msgid "%n filter active"
+msgid_plural "%n filters active"
 msgstr[0] ""
 msgstr[1] ""
 
@@ -1818,15 +2817,65 @@ msgid_plural "%n folders"
 msgstr[0] ""
 msgstr[1] ""
 
+#. TRANSLATORS %n is the number of Team folders that match the search; shown beside the list heading
+msgid "%n folder found"
+msgid_plural "%n folders found"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS %n is the number of permissions in the table, shown next to its heading
+msgid "%n permission"
+msgid_plural "%n permissions"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS %n is the number of permissions that match the search
+msgid "%n permission found"
+msgid_plural "%n permissions found"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS Badge next to a column name; %n is the number of highlight rules of that column; keep it short
+msgid "%n rule"
+msgid_plural "%n rules"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS Filter option; %n is the number of fields that describe the Team folder itself; keep it short
+#. TRANSLATORS Filter option; %n is the number of fields that hold metadata for the Team folder itself
+#. TRANSLATORS %n is the number of fields that describe the Team folder itself
+msgid "%n Team folder field"
+msgid_plural "%n Team folder fields"
+msgstr[0] ""
+msgstr[1] ""
+
 #. TRANSLATORS %n is the number of metadata values of Team folders in the backup
 msgid "%n Team folder value"
 msgid_plural "%n Team folder values"
 msgstr[0] ""
 msgstr[1] ""
 
+#. TRANSLATORS %n is the number of chosen values of one filter, e.g. "2 values"; used in "Status (2 values)"
+msgid "%n value"
+msgid_plural "%n values"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS Confirmation question; {count} is the number of selected files, {fields} the names of the required fields that keep their value, e.g. "Status, Owner"
+msgid "Clear all metadata from this file? Required fields keep their value: {fields}. This cannot be undone."
+msgid_plural "Clear all metadata from {count} files? Required fields keep their value: {fields}. This cannot be undone."
+msgstr[0] ""
+msgstr[1] ""
+
 #. TRANSLATORS Confirmation question; {count} is the number of selected files
 msgid "Clear all metadata from this file? This cannot be undone."
 msgid_plural "Clear all metadata from {count} files? This cannot be undone."
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS %n is the number of selected fields that will be deleted
+msgid "Delete %n selected field? Its values are removed everywhere and this cannot be undone."
+msgid_plural "Delete %n selected fields? Their values are removed everywhere and this cannot be undone."
 msgstr[0] ""
 msgstr[1] ""
 
@@ -1842,22 +2891,15 @@ msgid_plural "Exported %n fields"
 msgstr[0] ""
 msgstr[1] ""
 
-#. TRANSLATORS %n is the number of fields that match the search, {query} the text typed in the search box
-#. TRANSLATORS %n is the number of fields that match the search, {query} is the text typed in the search box
-msgid "Found %n field matching \"{query}\""
-msgid_plural "Found %n fields matching \"{query}\""
-msgstr[0] ""
-msgstr[1] ""
-
 #. TRANSLATORS %n is the number of fields found in the JSON file that will be imported
 msgid "Found %n field to import"
 msgid_plural "Found %n fields to import"
 msgstr[0] ""
 msgstr[1] ""
 
-#. TRANSLATORS Shown above the search results; %n is the number of Team folders found, {query} the text typed in the search field
-msgid "Found %n Team folder matching \"{query}\""
-msgid_plural "Found %n Team folders matching \"{query}\""
+#. TRANSLATORS Notification after an import with failures. {imported} is the number of fields imported, {errors} the number that failed; the plural form follows {errors}
+msgid "Import completed: {imported} imported, {errors} error"
+msgid_plural "Import completed: {imported} imported, {errors} errors"
 msgstr[0] ""
 msgstr[1] ""
 
@@ -1867,9 +2909,21 @@ msgid_plural "Imported %n fields"
 msgstr[0] ""
 msgstr[1] ""
 
+#. TRANSLATORS Part of the summary line under a field in the list, after the type and internal name; %n is the number of Team folders that use the field
+msgid "in %n Team folder"
+msgid_plural "in %n Team folders"
+msgstr[0] ""
+msgstr[1] ""
+
 #. TRANSLATORS Confirmation message; {count} is the number of files the metadata was removed from
 msgid "Metadata cleared for {count} file"
 msgid_plural "Metadata cleared for {count} files"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS Confirmation message; {count} is the number of files the metadata was removed from, {fields} the required fields that kept their value
+msgid "Metadata cleared for {count} file. Kept: {fields}"
+msgid_plural "Metadata cleared for {count} files. Kept: {fields}"
 msgstr[0] ""
 msgstr[1] ""
 
@@ -1891,9 +2945,21 @@ msgid_plural "MetaVox is running for {count} accounts here and keeps working in 
 msgstr[0] ""
 msgstr[1] ""
 
+#. TRANSLATORS Highlight rule summary for a date; %n is the number of days before today, e.g. "more than 30 days ago"
+msgid "more than a day ago"
+msgid_plural "more than %n days ago"
+msgstr[0] ""
+msgstr[1] ""
+
 #. TRANSLATORS %n is the number of groups that were given the permission
 msgid "Permission granted to %n group"
 msgid_plural "Permission granted to %n groups"
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS %n is the number of filters, {list} a comma-separated list of them, e.g. "Saves 2 filters: Status (2 values), Owner (1 value)"
+msgid "Saves %n filter: {list}"
+msgid_plural "Saves %n filters: {list}"
 msgstr[0] ""
 msgstr[1] ""
 
@@ -1909,14 +2975,26 @@ msgid_plural "Showing {displayed} of {total} folders"
 msgstr[0] ""
 msgstr[1] ""
 
+#. TRANSLATORS Below a filter's values while searching them; {shown} is how many are listed (100), %n how many match
+msgid "Showing {shown} of %n match. Type more to narrow it down."
+msgid_plural "Showing {shown} of %n matches. Type more to narrow them down."
+msgstr[0] ""
+msgstr[1] ""
+
+#. TRANSLATORS Below a filter's values; {shown} is how many are listed (100), %n how many this folder has
+msgid "Showing {shown} of %n value. Search to find the rest."
+msgid_plural "Showing {shown} of %n values. Search to find the rest."
+msgstr[0] ""
+msgstr[1] ""
+
 #. TRANSLATORS Warning in the edit dialog; %n is the number of Team folders that use the field
 msgid "This field is used in %n Team folder. Some changes may be restricted."
 msgid_plural "This field is used in %n Team folders. Some changes may be restricted."
 msgstr[0] ""
 msgstr[1] ""
 
-#. TRANSLATORS %n is the number of Team folders that use this field
-msgid "Used in %n Team folder"
-msgid_plural "Used in %n Team folders"
+#. TRANSLATORS Highlight rule summary for a date; %n is the number of days from today, e.g. "within the next 7 days"
+msgid "within the next day"
+msgid_plural "within the next %n days"
 msgstr[0] ""
 msgstr[1] ""

@@ -46,11 +46,15 @@ Technology: Vue 3, Nextcloud Vue components library
 
 | Component | Responsibility |
 |-----------|---------------|
-| `FieldService` | Core metadata operations (CRUD), column config, distributed cache |
+| `FieldService` | Core metadata operations (CRUD), distributed cache |
 | `ViewService` | View CRUD with distributed cache |
 | `ApiFieldService` | Batch operations for API |
 | `ApiFieldController` | OCS API request handling |
 | `ViewController` | Views API (list, create, update, delete) |
+| `MetadataPropertyPlugin` | WebDAV plugin: serves the `nc:metavox` property in folder listings |
+| `AccessMiddleware` | Checks each route's `#[RequireAccess]` rule before the controller runs; a route without one is refused |
+| `PushService`, `PresenceService` | Push events to the users who have a team folder open |
+| `SearchWordsService` | Word index for free-text search |
 | `MetadataCheck` | Flow integration (ICheck implementation) |
 
 ### Database Schema
@@ -66,14 +70,19 @@ MetaVox uses Nextcloud's database abstraction layer with the following tables:
 - File ID, Groupfolder ID, field name, field value
 - Indexed for fast bulk lookup and filter queries
 
-**`metavox_gf_column_config`** - Column display configuration per groupfolder
-- Which fields appear as columns in the file list
-- Column order and filterable flag per field
+**`metavox_gf_assigns`** - Which fields each groupfolder uses
+
+**`metavox_gf_metadata`** - Metadata values of the groupfolder itself
 
 **`metavox_gf_views`** - Saved views per groupfolder
 - Name, default flag
-- Column visibility and order (JSON)
+- Column visibility and order (JSON); this is also where column configuration lives
 - Preset filters (JSON) and sort configuration
+
+**`metavox_search_words`** - Word index for free-text search
+- One row per word, field, file and groupfolder, looked up by the word's first three letters
+
+**`metavox_permissions`** - Users and groups with the manage permission per groupfolder
 
 ## Integration Points
 
@@ -88,7 +97,26 @@ MetaVox requires the Group Folders app and integrates at these points:
 
 - Sidebar integration via Files app hooks
 - File action for bulk editing
-- Metadata display in file views
+- Metadata display in file views: the values come with the Files app's own WebDAV folder listing (see [Performance Considerations](#performance-considerations))
+
+### Unified Search
+
+Free-text search looks words up in a word index per team folder
+(`metavox_search_words`), so every member finds files by their metadata. A
+search uses up to five words, starts from the rarest and reads at most 2,000
+rows per word, so its cost does not grow with the size of the team folder. When
+every word is that common, the results come from the rarest word's 2,000 newest
+files. A background job fills the index for existing values, working at most
+20 seconds per cron run. Date, number, checkbox and File Link fields are not in
+the word index; find those with a field filter or a `field:value` query.
+
+### Setup Checks
+
+MetaVox adds checks to **Administration settings > Overview**: "MetaVox team
+folders" (Team folders app enabled), "MetaVox background jobs" (system cron, and
+whether it ran in the last hour), "MetaVox search index" (progress of the word
+index), "MetaVox live updates" (notify_push), "MetaVox presence" (User status
+app) and "MetaVox shared cache" (distributed cache other than APCu).
 
 ### Workflow Engine (Flow)
 
@@ -113,6 +141,15 @@ User opens file → Files app sidebar loads
                 → FieldService queries database
                 → Returns field definitions + values
                 → Vue renders metadata form
+```
+
+```
+User opens a team folder → Files app sends its PROPFIND (Depth 1)
+                         → MetadataPropertyPlugin checks access per file
+                           and reads all values in one query per 1,000 files
+                         → nc:metavox property per file in the listing
+                         → Grid columns fill from the listing
+                         → Files the listing did not cover: API fallback
 ```
 
 ### Editing Metadata
@@ -148,8 +185,9 @@ See [Privacy & Security](privacy.md) for details.
 
 - Metadata queries are indexed by `file_id`, `groupfolder_id`, and `(groupfolder_id, field_name, field_value)` for fast filter lookups
 - Batch operations use database transactions
-- Frontend loads metadata in debounced batches (max 200 files per request) as files appear in the list
-- Stable data (field definitions, column config, views, filter values) is cached in distributed cache (Redis/APCu) with automatic invalidation on write
+- Grid values come with the Files app's WebDAV listing (`PROPFIND`, property `nc:metavox`): no separate request per folder. Each value is cut at 512 characters there; a cut-off value is marked, and the full value loads when the cell is edited
+- What the listing does not deliver is loaded through the API as a fallback, in debounced batches of at most 200 files per request
+- Stable data (field definitions, views, filter values) is cached in distributed cache (Redis/APCu) with automatic invalidation on write
 - HTTP `Cache-Control: private` headers on read-only API endpoints reduce redundant requests
 - Current filtering is client-side; server-side filtering is the planned next step for folders with >5,000 files
 
@@ -158,9 +196,9 @@ See [Privacy & Security](privacy.md) for details.
 | Layer | Technology |
 |-------|------------|
 | Frontend | Vue 3, Nextcloud Vue, Webpack |
-| Backend | PHP 8.x, Nextcloud App API |
-| Database | MySQL/MariaDB/PostgreSQL (via Nextcloud) |
-| API | OCS REST API |
+| Backend | PHP 8.1+, Nextcloud 31–35 App API |
+| Database | MySQL/MariaDB/PostgreSQL (via Nextcloud); SQLite for testing only |
+| API | OCS REST API, WebDAV property `nc:metavox` |
 
 ## See Also
 

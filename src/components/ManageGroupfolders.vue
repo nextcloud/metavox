@@ -8,32 +8,24 @@
     </div>
 
     <div v-else>
-      <!-- Page Header -->
-      <div class="page-header">
-        <!-- TRANSLATORS Heading of the settings section that sets fields and metadata per Team folder -->
-        <h2>{{ t('metavox', 'Manage Team folders') }}</h2>
-        <p class="page-description">
-          {{ t('metavox', 'Configure which metadata search fields are available for each Team folder and manage Team folder-specific metadata.') }}
-        </p>
-      </div>
-
-      <!-- Info Box -->
-      <div class="settings-section">
-        <div class="info-box">
-          <!-- TRANSLATORS Lead-in above a short list that explains this page; keep the colon -->
-          <h4>💡 {{ t('metavox', 'How it works:') }}</h4>
-          <ul>
-            <!-- TRANSLATORS "Configure fields" names the menu item of a Team folder row; translate it the same way -->
-            <li>{{ t('metavox', 'Configure fields: Choose which fields are available for each Team folder') }}</li>
-            <!-- TRANSLATORS "Edit metadata" names the menu item of a Team folder row; translate it the same way -->
-            <li>{{ t('metavox', 'Edit metadata: Set Team folder-specific metadata values (admin only)') }}</li>
-            <li>{{ t('metavox', 'File metadata can be edited by people within the Files app') }}</li>
-          </ul>
-        </div>
-      </div>
+      <!-- A standing explanation of the screen, which is what NcNoteCard is
+           for (§3). The hand-built box this replaced set its background and
+           its border to the same colour, so the border drew nothing, and gave
+           its <h4> 21px/600 — heavier than the section heading above it. -->
+      <NcNoteCard type="info" class="mv-how-it-works">
+        <!-- TRANSLATORS Lead-in above a short list that explains this page; keep the colon -->
+        <p class="mv-how-it-works__lead">{{ t('metavox', 'How it works:') }}</p>
+        <ul class="mv-how-it-works__list">
+          <!-- TRANSLATORS "Configure fields" names the menu item of a Team folder row; translate it the same way -->
+          <li>{{ t('metavox', 'Configure fields: Choose which fields are available for each Team folder') }}</li>
+          <!-- TRANSLATORS "Edit metadata" names the menu item of a Team folder row; translate it the same way -->
+          <li>{{ t('metavox', 'Edit metadata: Set Team folder-specific metadata values (admin only)') }}</li>
+          <li>{{ t('metavox', 'File metadata can be edited by people within the Files app') }}</li>
+        </ul>
+      </NcNoteCard>
 
       <!-- Search Section -->
-      <div class="settings-section">
+      <div class="mv-block">
         <div class="search-container">
           <!-- TRANSLATORS Label of the search field above the list of Team folders -->
           <NcTextField :label="t('metavox', 'Search Team folders')"
@@ -41,14 +33,18 @@
             @update:model-value="searchQuery = $event"
             :show-trailing-button="!!searchQuery"
             @trailing-button-click="searchQuery = ''">
-            <MagnifyIcon slot="icon" :size="20" />
+            <template #icon>
+            	<MagnifyIcon :size="20" />
+            </template>
           </NcTextField>
         </div>
         
-        <div v-if="searchQuery" class="search-results-info">
-          <!-- TRANSLATORS Shown above the search results; %n is the number of Team folders found, {query} the text typed in the search field -->
-          <p>{{ n('metavox', 'Found %n Team folder matching "{query}"', 'Found %n Team folders matching "{query}"', filteredGroupfolders.length, { query: searchQuery }) }}</p>
-        </div>
+        <!-- The "Found N team folders matching …" banner is gone: the count
+             beside the heading now says the same thing, and the banner said
+             it in a grey block of its own directly above a contradicting
+             number. A search result is not a notice — no other list in this
+             page announces its own filtering. -->
+
       </div>
 
       <!-- Empty State -->
@@ -61,239 +57,72 @@
       </div>
 
       <!-- Groupfolders List -->
-      <div v-else class="settings-section">
+      <div v-else class="mv-block">
         <div class="section-header">
-          <!-- TRANSLATORS Heading of the list of all Team folders on the server -->
-          <h3>{{ t('metavox', 'Team folders') }}</h3>
-          <!-- TRANSLATORS %n is the number of Team folders in the list; shown beside the list heading -->
-          <span class="field-count">{{ n('metavox', '%n folder', '%n folders', groupfolders.length) }}</span>
-        </div>
-
-        <div class="groupfolders-list">
-          <div 
-            v-for="groupfolder in filteredGroupfolders" 
-            :key="groupfolder.id"
-            class="groupfolder-item">
-            
-            <!-- Groupfolder Header -->
-            <div class="groupfolder-main">
-              <div class="groupfolder-icon">
-                <FolderIcon :size="24" />
-              </div>
-              
-              <div class="groupfolder-content">
-                <h4 class="groupfolder-name">{{ groupfolder.mount_point }}</h4>
-                <p class="groupfolder-info">
-                  <span v-if="getAssignedFieldsCount(groupfolder.id) > 0" class="field-count-badge">
-                    <!-- TRANSLATORS Badge in a Team folder row; %n is the number of metadata fields assigned to the folder -->
-                    {{ n('metavox', '%n field configured', '%n fields configured', getAssignedFieldsCount(groupfolder.id)) }}
-                  </span>
-                  <span v-else class="no-fields-badge">
-                    <!-- TRANSLATORS Shown in a Team folder row when no metadata fields are assigned to it -->
-                    {{ t('metavox', 'No fields configured') }}
-                  </span>
-                </p>
-              </div>
-              
-              <div class="groupfolder-actions">
-                <NcButton 
-                  @click="toggleFieldsConfiguration(groupfolder.id)"
-                  type="secondary">
-                  <template #icon>
-                    <CogIcon :size="20" />
-                  </template>
-                  <!-- TRANSLATORS Menu item that opens the dialog to choose the metadata fields of a Team folder -->
-                  {{ t('metavox', 'Configure fields') }}
-                </NcButton>
-                <NcButton 
-                  @click="editGroupfolderMetadata(groupfolder)"
-                  type="primary"
-                  :disabled="getAssignedGroupfolderFieldsCount(groupfolder.id) === 0">
-                  <template #icon>
-                    <EditIcon :size="20" />
-                  </template>
-                  <!-- TRANSLATORS Menu item that opens the dialog to edit the metadata values of a Team folder -->
-                  {{ t('metavox', 'Edit metadata') }}
-                </NcButton>
-              </div>
-            </div>
-
-            <!-- Fields Configuration Panel -->
-            <div v-if="expandedFields[groupfolder.id]" class="expanded-panel">
-              <div v-if="loadingFields[groupfolder.id]" class="loading-section">
-                <div class="icon-loading-small"></div>
-                <!-- TRANSLATORS Status text while the field settings of the Team folder load -->
-                <span>{{ t('metavox', 'Loading field configuration …') }}</span>
-              </div>
-              
-              <div v-else class="fields-config-content">
-                <h4>{{ t('metavox', 'Configure fields for this Team folder') }}</h4>
-                
-                <div v-if="allFields.length === 0" class="no-fields-available">
-                  <p>{{ t('metavox', 'No fields available. Create some fields first in the field management tabs.') }}</p>
-                </div>
-                
-                <div v-else class="fields-config-form">
-                  <!-- Search for Fields -->
-                  <div class="field-search-section">
-                    <!-- TRANSLATORS Label of the search box that filters the field list -->
-                    <NcTextField :label="t('metavox', 'Search fields')"
-                      :model-value="fieldSearchQuery[groupfolder.id]"
-                      @update:model-value="fieldSearchQuery[groupfolder.id] = $event"
-                      :show-trailing-button="!!fieldSearchQuery[groupfolder.id]"
-                      @trailing-button-click="fieldSearchQuery[groupfolder.id] = ''">
-                      <MagnifyIcon slot="icon" :size="16" />
-                    </NcTextField>
-                    
-                    <!-- Field Type Filter ONLY -->
-                    <div class="field-type-filter">
-                      <!-- TRANSLATORS Label in front of the buttons that filter the fields by type; keep the colon -->
-                      <label>{{ t('metavox', 'Field type:') }}</label>
-                      <div class="filter-button-group">
-                        <button 
-                          type="button"
-                          @click="fieldTypeFilter[groupfolder.id] = 'all'"
-                          :class="['filter-btn', { active: (fieldTypeFilter[groupfolder.id] || 'all') === 'all' }]">
-                          <!-- TRANSLATORS Filter button that shows fields of all types; keep it short -->
-                          {{ t('metavox', 'All types') }}
-                        </button>
-                        <button 
-                          type="button"
-                          @click="fieldTypeFilter[groupfolder.id] = 'groupfolder'"
-                          :class="['filter-btn', { active: fieldTypeFilter[groupfolder.id] === 'groupfolder' }]">
-                          <!-- TRANSLATORS Filter button that shows only the fields set on the Team folder itself; keep it short -->
-                          {{ t('metavox', 'Team folder fields') }} ({{ groupfolderMetadataFields.length }})
-                        </button>
-                        <button 
-                          type="button"
-                          @click="fieldTypeFilter[groupfolder.id] = 'file'"
-                          :class="['filter-btn', { active: fieldTypeFilter[groupfolder.id] === 'file' }]">
-                          <!-- TRANSLATORS Filter button that shows only the fields set on files; keep it short -->
-                          {{ t('metavox', 'File fields') }} ({{ fileMetadataFields.length }})
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Groupfolder Metadata Fields Section -->
-                  <div v-if="getFilteredGroupfolderFields(groupfolder.id).length > 0" class="field-section">
-                    <!-- TRANSLATORS Heading above the fields that describe the Team folder itself -->
-                    <h5>{{ t('metavox', 'Team folder metadata fields') }}</h5>
-                    <p class="section-description">{{ t('metavox', 'These fields apply to the Team folder itself') }}</p>
-                    <div class="checkbox-group">
-                      <NcCheckboxRadioSwitch
-                        v-for="field in getFilteredGroupfolderFields(groupfolder.id)"
-                        :key="`gf-${field.id}-${groupfolder.id}`"
-                        :model-value="isFieldAssigned(groupfolder.id, field.id)"
-                        @update:model-value="updateFieldAssignment(groupfolder.id, field.id, $event)"
-                        type="checkbox">
-                        {{ field.field_label }}
-                        <span class="field-type-label">({{ fieldTypeLabel(field.field_type) }})</span>
-                      </NcCheckboxRadioSwitch>
-                    </div>
-                  </div>
-
-                  <!-- File Metadata Fields Section -->
-                  <div v-if="getFilteredFileFields(groupfolder.id).length > 0" class="field-section">
-                    <!-- TRANSLATORS Heading above the fields that can be set on files in the Team folder -->
-                    <h5>{{ t('metavox', 'File metadata fields') }}</h5>
-                    <p class="section-description">{{ t('metavox', 'These fields can be set on individual files') }}</p>
-                    <div class="checkbox-group">
-                      <div
-                        v-for="field in getFilteredFileFields(groupfolder.id)"
-                        :key="`file-${field.id}-${groupfolder.id}`"
-                        class="file-field-row">
-                        <NcCheckboxRadioSwitch
-                          :model-value="isFieldAssigned(groupfolder.id, field.id)"
-                          @update:model-value="updateFieldAssignment(groupfolder.id, field.id, $event)"
-                          type="checkbox">
-                          {{ field.field_label }}
-                          <span class="field-type-label">({{ fieldTypeLabel(field.field_type) }})</span>
-                        </NcCheckboxRadioSwitch>
-
-                        <!-- Default value input (only when the field is assigned) -->
-                        <DefaultValueInput
-                          v-if="isFieldAssigned(groupfolder.id, field.id)"
-                          :field="field"
-                          :input-id="`default-${groupfolder.id}-${field.id}`"
-                          :model-value="getDefaultValue(groupfolder.id, field)"
-                          @update:model-value="setDefaultValue(groupfolder.id, field, $event)" />
-                      </div>
-                    </div>
-
-                    <!-- Apply defaults now -->
-                    <div class="apply-defaults-section">
-                      <p class="section-description">{{ t('metavox', 'Apply the configured default values to existing files in this Team folder that do not yet have a value for these fields.') }}</p>
-                      <div class="apply-defaults-actions">
-                        <NcButton
-                          type="secondary"
-                          :disabled="defaultsStatus[groupfolder.id] === 'running'"
-                          @click="triggerDefaults(groupfolder.id)">
-                          <template #icon>
-                            <div v-if="defaultsStatus[groupfolder.id] === 'running'" class="icon-loading-small"></div>
-                            <PlayIcon v-else :size="20" />
-                          </template>
-                          <!-- TRANSLATORS Button that fills in the default values on existing files of the Team folder -->
-                          {{ t('metavox', 'Apply defaults now') }}
-                        </NcButton>
-                        <span class="apply-defaults-status">
-                          {{ defaultsStatusText(groupfolder.id) }}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- No fields found message -->
-                  <div v-if="getFilteredGroupfolderFields(groupfolder.id).length === 0 && getFilteredFileFields(groupfolder.id).length === 0" class="no-search-results">
-                    <p v-if="fieldSearchQuery[groupfolder.id]">
-                      <!-- TRANSLATORS {query} is the text typed in the search box -->
-                      {{ t('metavox', 'No fields found matching "{query}"', { query: fieldSearchQuery[groupfolder.id] }) }}
-                    </p>
-                    <p v-else-if="fieldTypeFilter[groupfolder.id] && fieldTypeFilter[groupfolder.id] !== 'all'">
-                      {{ t('metavox', 'No fields match the selected filter') }}
-                    </p>
-                    <p v-else>
-                      <!-- TRANSLATORS Shown in place of the field list when there are no fields to choose from -->
-                      {{ t('metavox', 'No fields available') }}
-                    </p>
-                  </div>
-
-                  <div class="form-actions">
-                    <NcButton
-                      type="primary"
-                      native-type="button"
-                      :disabled="savingFields[groupfolder.id]"
-                      @click="saveFieldsConfiguration(groupfolder.id)">
-                      <template #icon>
-                        <div v-if="savingFields[groupfolder.id]" class="icon-loading-small"></div>
-                        <ContentSaveIcon v-else :size="20" />
-                      </template>
-                      {{ saveFieldsLabel(groupfolder.id) }}
-                    </NcButton>
-                    <NcButton
-                      @click="closeFieldsConfig(groupfolder.id)"
-                      type="secondary">
-                      <!-- TRANSLATORS Button that closes a dialog without saving -->
-                      {{ t('metavox', 'Cancel') }}
-                    </NcButton>
-                  </div>
-                </div>
-
-              </div>
-            </div>
+          <!-- Grouped with the heading so the count sits in the same place
+               here as in the other two panes. See MetadataFieldsEditor. -->
+          <div class="section-header__title">
+            <!-- TRANSLATORS Heading of the list of all Team folders on the server -->
+            <h3>{{ t('metavox', 'Team folders') }}</h3>
+            <span class="field-count">{{ folderCount }}</span>
           </div>
         </div>
+
+        <!-- The same NcListItem row the metadata fields list uses, so the
+             two lists in this settings page read alike. Hand-built, this row
+             was 20px padding around a 24px icon — roughly double the pitch
+             of the fields list for the same name-plus-one-line of content
+             (§3: a row of data is NcListItem, not a card). -->
+        <ul class="groupfolders-list">
+          <NcListItem
+            v-for="groupfolder in filteredGroupfolders"
+            :key="groupfolder.id"
+            :name="groupfolder.mount_point"
+            :force-display-actions="true"
+            @click="openGroupfolder(groupfolder, $event)">
+            <template #icon>
+              <FolderIcon :size="20" />
+            </template>
+
+            <template #subname>
+              {{ fieldsSummary(groupfolder.id) }}
+            </template>
+
+            <!-- Two labelled buttons per row is a toolbar on every line; a
+                 menu keeps the row a row. §6 collapses beyond three, and at
+                 eight rows the pair was 16 buttons competing with the
+                 folder names. -->
+            <template #actions>
+              <NcActionButton @click="toggleFieldsConfiguration(groupfolder.id)">
+                <template #icon>
+                  <CogIcon :size="20" />
+                </template>
+                <!-- TRANSLATORS Menu item that opens the dialog to choose the metadata fields of a Team folder -->
+                {{ t('metavox', 'Configure fields') }}
+              </NcActionButton>
+              <NcActionButton
+                :disabled="getAssignedGroupfolderFieldsCount(groupfolder.id) === 0"
+                @click="editGroupfolderMetadata(groupfolder)">
+                <template #icon>
+                  <EditIcon :size="20" />
+                </template>
+                <!-- TRANSLATORS Menu item that opens the dialog to edit the metadata values of a Team folder -->
+                {{ t('metavox', 'Edit metadata') }}
+              </NcActionButton>
+            </template>
+          </NcListItem>
+        </ul>
 
         <!-- Load More Button -->
         <div v-if="hasMoreFolders" class="load-more-container">
           <NcButton
             @click="loadMoreFolders"
-            type="secondary"
+            variant="secondary"
             :disabled="loadingMore">
             <template #icon>
               <div v-if="loadingMore" class="icon-loading-small"></div>
             </template>
-            {{ loadMoreLabel() }}
+            {{ loadMoreLabel }}
           </NcButton>
         </div>
 
@@ -303,19 +132,62 @@
           <p>{{ n('metavox', 'Showing {displayed} of {total} folder', 'Showing {displayed} of {total} folders', allGroupfolders.length, {
             displayed: groupfolders.length,
             total: allGroupfolders.length
-          }) }}</p>
+          }, PLAIN_TEXT) }}</p>
         </div>
       </div>
     </div>
 
+
+    <!-- Configuring a folder's fields is a form, so it is a dialog and not an
+         inline panel (§3). As a panel it pushed the rest of the list down,
+         gave its own Save row no fixed place, and on a phone the fields sat
+         below the fold with the row they belonged to scrolled off the top.
+         Same shape as the view editor in the Files app: NcDialog, size
+         "normal", the footer as a :buttons list. -->
+    <!-- TRANSLATORS Title of the dialog to choose the metadata fields of a Team folder -->
+    <NcDialog v-if="configFolderId !== null" :name="t('metavox', 'Configure fields')"
+      :no-close="savingFields[configFolderId]"
+      :close-on-click-outside="!savingFields[configFolderId]"
+      :buttons="configDialogButtons"
+      size="normal"
+      @closing="closeFieldsConfig(configFolderId)">
+
+      <p class="mv-config__folder">{{ configFolderName }}</p>
+
+      <NcLoadingIcon v-if="loadingFields[configFolderId]" :size="32" class="mv-config__loading" />
+
+      <FieldConfigurationPanel v-else
+        :folder-id="configFolderId"
+        :folder-fields="groupfolderMetadataFields"
+        :file-fields="fileMetadataFields"
+        :assigned-ids="tempAssignedFields[configFolderId] || []"
+        :defaults="fileFieldDefaults[configFolderId] || {}"
+        :default-files="fileFieldDefaultFiles[configFolderId] || {}"
+        :empty-text="t('metavox', 'No fields available. Create some fields first in the field management tabs.')"
+        can-apply-defaults
+        :applying-defaults="defaultsStatus[configFolderId] === 'running'"
+        @update:assigned-ids="tempAssignedFields[configFolderId] = $event"
+        @update:default="(field, value) => setDefaultValue(configFolderId, field, value)"
+        @apply-defaults="triggerDefaults(configFolderId)" />
+
+    </NcDialog>
+
     <!-- Metadata Edit Modal -->
-    <NcModal 
-      v-if="showMetadataModal" 
-      @close="closeMetadataModal" 
-      :size="'large'"
-      :title="modalTitle">
+    <!-- NcModal has no `title` prop — the name it was given rendered nowhere, so
+         this dialog opened with an empty header and no accessible name. It is
+         also a form, which §3 says is NcDialog's job: the dialog places the
+         buttons, puts the primary one last and returns focus to the trigger.
+         size="normal" because a column of labelled fields does not need 900px. -->
+    <NcDialog
+      v-if="showMetadataModal"
+      :name="t('metavox', 'Edit Team folder metadata')"
+      :no-close="savingMetadata"
+      :close-on-click-outside="!savingMetadata"
+      :buttons="metadataDialogButtons"
+      size="normal"
+      @closing="closeMetadataModal">
       <div class="modal-content">
-        <p class="modal-description">{{ t('metavox', 'Edit the metadata values for this Team folder') }}</p>
+        <p class="modal-description">{{ folderNameForDialog }}</p>
         
         <div class="metadata-form-container">
           <div v-if="loadingMetadata" class="loading-container">
@@ -330,169 +202,43 @@
             <p>{{ t('metavox', 'Please configure some fields first using the "Configure fields" button.') }}</p>
           </div>
           
-          <form v-else @submit.prevent="saveGroupfolderMetadata" class="metadata-form">
-            <div 
-              v-for="field in currentMetadataFields" 
-              :key="field.id" 
-              class="field-item">
-              
-              <label :for="'field-' + field.id" class="field-label">
-                {{ field.field_label }}
-                <span v-if="field.is_required" class="required">*</span>
-              </label>
-              
-              <!-- Text input -->
-              <NcTextField
-                v-if="field.field_type === 'text'"
-                :id="'field-' + field.id"
-                :model-value="getFieldValue(field)"
-                @update:model-value="updateMetadataValue(field, $event)"
-                :label="field.field_label"
-                :placeholder="field.field_label"
-                :required="field.is_required"
-                class="field-input" />
-              
-              <!-- Textarea input -->
-              <textarea
-                v-else-if="field.field_type === 'textarea'"
-                :id="'field-' + field.id"
-                :value="getFieldValue(field)"
-                @input="updateMetadataValue(field, $event.target.value)"
-                :placeholder="field.field_label"
-                :required="field.is_required"
-                class="field-input textarea-input"
-                rows="4"></textarea>
-              
-              <!-- Select input -->
-              <!-- TRANSLATORS Placeholder of a dropdown field before a value is picked -->
-              <NcSelect :placeholder="t('metavox', 'Choose an option …')"
-                v-else-if="field.field_type === 'select'"
-                :id="'field-' + field.id"
-                :key="`select-${field.field_name}-${selectKey}`"
-                :model-value="selectValues[field.field_name]"
-                :options="getFieldOptions(field)"
-                class="field-input select-field"
-                :clearable="!field.is_required"
-                :reduce="option => option.value"
-                label="label"
-                @update:model-value="handleSelectChange(field.field_name, $event)" />
-
-              <!-- MultiSelect input -->
-              <!-- TRANSLATORS Placeholder of a multi-select field before any value is picked -->
-              <NcSelect :placeholder="t('metavox', 'Choose options …')"
-                v-else-if="field.field_type === 'multiselect'"
-                :id="'field-' + field.id"
-                :key="`multiselect-${field.field_name}-${selectKey}`"
-                :model-value="multiSelectValues[field.field_name]"
-                :options="getFieldOptions(field)"
-                :multiple="true"
-                class="field-input select-field"
-                :clearable="!field.is_required"
-                :reduce="option => option.value"
-                label="label"
-                @update:model-value="handleMultiSelectChange(field.field_name, $event)" />
-              
-              <!-- Date input (optionally datetime-local) -->
-              <input
-                v-else-if="field.field_type === 'date'"
-                :id="'field-' + field.id"
-                :type="dateFieldIncludesTime(field) ? 'datetime-local' : 'date'"
-                :step="dateFieldIncludesTime(field) ? 1 : undefined"
-                :value="getFieldValue(field)"
-                @input="updateMetadataValue(field, dateFieldIncludesTime(field) ? padDatetimeLocal($event.target.value) : $event.target.value)"
-                :required="field.is_required"
-                class="field-input date-input" />
-              
-              <!-- Number input -->
-              <input
-                v-else-if="field.field_type === 'number'"
-                :id="'field-' + field.id"
-                type="number"
-                :value="getFieldValue(field)"
-                @input="updateMetadataValue(field, $event.target.value)"
-                :required="field.is_required"
-                class="field-input number-input" />
-              
-              <!-- Checkbox input -->
-              <NcCheckboxRadioSwitch
-                v-else-if="field.field_type === 'checkbox'"
-                :id="'field-' + field.id"
-                :model-value="isCheckboxChecked(field)"
-                @update:model-value="updateCheckboxValue(field, $event)"
-                type="checkbox">
-                {{ field.field_label }}
-              </NcCheckboxRadioSwitch>
-
-              <!-- Default text input for unknown types -->
-              <NcTextField
-                v-else
-                :id="'field-' + field.id"
-                :model-value="getFieldValue(field)"
-                @update:model-value="updateMetadataValue(field, $event)"
-                :placeholder="field.field_label"
-                :required="field.is_required"
-                class="field-input" />
-                
-              <div v-if="field.field_description" class="field-description">
-                {{ field.field_description }}
-              </div>
-            </div>
-            
-            <!-- Modal Actions within form -->
-            <div class="modal-actions">
-              <NcButton @click="closeMetadataModal" type="tertiary">
-                <!-- TRANSLATORS Button that closes the edit dialog without saving; keep it short -->
-                {{ t('metavox', 'Cancel') }}
-              </NcButton>
-              <NcButton 
-                type="primary"
-                native-type="submit"
-                :disabled="savingMetadata || currentMetadataFields.length === 0 || loadingMetadata">
-                <template #icon>
-                  <div v-if="savingMetadata" class="icon-loading-small"></div>
-                  <ContentSaveIcon v-else :size="20" />
-                </template>
-                {{ saveMetadataLabel() }}
-              </NcButton>
-            </div>
-          </form>
+          <!-- Extracted: this form was 117 lines duplicated with
+               MetaVoxPersonal, differing on four. See MetadataValueForm. -->
+          <MetadataValueForm
+            v-else
+            :fields="currentMetadataFields"
+            :model-value="currentMetadataValues"
+            :errors="metadataErrors"
+            @update:model-value="setMetadataValues" />
         </div>
       </div>
-    </NcModal>
+    </NcDialog>
   </div>
 </template>
 
 <script>
-import { translate, translatePlural } from '@nextcloud/l10n'
-import { fieldTypeLabel } from '../utils/fieldTypes.js'
 import axios from '@nextcloud/axios'
+import { showError, showSuccess } from '@nextcloud/dialogs'
+import { translate, translatePlural } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
 import { dateFieldIncludesTime, padDatetimeLocal } from '../utils/dateField.js'
 import { errorText } from '../utils/errorText.js'
 import { PLAIN_TEXT } from '../utils/fieldValue.js'
 
-// Simple notification helpers using OC.Notification
-const showSuccess = (message) => {
-  if (typeof OC !== 'undefined' && OC.Notification) {
-    OC.Notification.showTemporary(message)
-  }
-}
-
-const showError = (message) => {
-  if (typeof OC !== 'undefined' && OC.Notification) {
-    OC.Notification.showTemporary(message)
-  }
-}
 
 // Nextcloud Vue components
-import { 
-  NcButton,
-  NcTextField,
-  NcSelect,
-  NcCheckboxRadioSwitch,
-  NcModal
-} from '@nextcloud/vue'
-
+import NcActionButton from '@nextcloud/vue/components/NcActionButton'
+import NcListItem from '@nextcloud/vue/components/NcListItem'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcTextArea from '@nextcloud/vue/components/NcTextArea'
+import NcTextField from '@nextcloud/vue/components/NcTextField'
+import NcSelect from '@nextcloud/vue/components/NcSelect'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
+import NcDialog from '@nextcloud/vue/components/NcDialog'
+import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
+import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
+import NcRadioGroup from '@nextcloud/vue/components/NcRadioGroup'
+import NcRadioGroupButton from '@nextcloud/vue/components/NcRadioGroupButton'
 // Icons
 import FolderIcon from 'vue-material-design-icons/Folder.vue'
 import EditIcon from 'vue-material-design-icons/Pencil.vue'
@@ -500,27 +246,42 @@ import CogIcon from 'vue-material-design-icons/Cog.vue'
 import ContentSaveIcon from 'vue-material-design-icons/ContentSave.vue'
 import MagnifyIcon from 'vue-material-design-icons/Magnify.vue'
 import PlayIcon from 'vue-material-design-icons/Play.vue'
-import DefaultValueInput from './fields/DefaultValueInput.vue'
+import FieldConfigurationPanel from './FieldConfigurationPanel.vue'
+import MetadataValueForm from './MetadataValueForm.vue'
 import defaultValuesMixin from './mixins/defaultValuesMixin.js'
+import folderListMixin from './mixins/folderListMixin.js'
 
 export default {
   name: 'ManageGroupfolders',
 
-  mixins: [defaultValuesMixin],
+  // Templates read the t() options from the component.
+  setup() {
+    return { PLAIN_TEXT }
+  },
+
+  mixins: [defaultValuesMixin, folderListMixin],
 
   components: {
+    NcActionButton,
+    NcListItem,
     NcButton,
+    NcTextArea,
     NcTextField,
     NcSelect,
     NcCheckboxRadioSwitch,
-    NcModal,
+    NcDialog,
+    NcLoadingIcon,
+    NcNoteCard,
+    NcRadioGroup,
+    NcRadioGroupButton,
     FolderIcon,
     EditIcon,
     CogIcon,
     ContentSaveIcon,
     MagnifyIcon,
     PlayIcon,
-    DefaultValueInput,
+    FieldConfigurationPanel,
+    MetadataValueForm,
   },
   
   data() {
@@ -535,7 +296,7 @@ export default {
       searchQuery: '',
 
       // Expanded states
-      expandedFields: {},
+      configFolderId: null,
 
       // Loading states
       loadingFields: {},
@@ -548,22 +309,15 @@ export default {
       tempAssignedFields: {},
 
       // Field search and filter
-      fieldSearchQuery: {},
-      fieldTypeFilter: {},
 
       // Metadata modal state
       showMetadataModal: false,
       currentGroupfolderId: null,
       currentMetadataFields: [],
       currentMetadataValues: {},
-      selectValues: {},
-      multiSelectValues: {},
       savingMetadata: false,
-      modalTitle: '',
-      selectKey: 0,
+      currentMountPoint: '',
 
-      // Cache for field options
-      fieldOptionsCache: new Map(),
 
       // Default-value state (fileFieldDefaults / defaultsStatus /
       // defaultsPollTimers) comes from defaultValuesMixin.
@@ -571,34 +325,40 @@ export default {
   },
   
   computed: {
-    filteredGroupfolders() {
-      let folders = this.searchQuery ? this.allGroupfolders : this.groupfolders
+    /**
+     * The three filters, with their counts. The count belongs in the label
+     * rather than beside it: an NcRadioGroupButton takes one string, and a
+     * number rendered outside it would not be part of the control's
+     * accessible name.
+     */
 
-      if (this.searchQuery) {
-        const query = this.searchQuery.toLowerCase().trim()
-        folders = this.allGroupfolders.filter(gf =>
-          gf.mount_point && gf.mount_point.toLowerCase().includes(query)
-        )
+
+    /**
+     * The folder this dialog is editing. The dialog's own title says what the
+     * dialog is; the thing it acts on belongs in the body (§3).
+     */
+    folderNameForDialog() {
+      // TRANSLATORS {folder} is the name of a Team folder, e.g. "Editing metadata for Finance"
+      return this.t('metavox', 'Editing metadata for {folder}', { folder: this.currentMountPoint }, undefined, PLAIN_TEXT)
+    },
+
+
+
+
+    loadMoreLabel() {
+      if (this.loadingMore) {
+        // TRANSLATORS Button text while more Team folders load; keep it short
+        return this.t('metavox', 'Loading …')
       }
-
-      return folders
+      // TRANSLATORS Button that shows more Team folders; %n is how many are not shown yet
+      return this.n('metavox', 'Show %n more folder', 'Show %n more folders', this.allGroupfolders.length - this.displayedCount)
     },
 
     hasMoreFolders() {
       return this.displayedCount < this.allGroupfolders.length && !this.searchQuery
     },
 
-    groupfolderMetadataFields() {
-      return this.allFields.filter(field =>
-        field.applies_to_groupfolder === 1 || field.applies_to_groupfolder === '1'
-      )
-    },
 
-    fileMetadataFields() {
-      return this.allFields.filter(field =>
-        field.applies_to_groupfolder === 0 || field.applies_to_groupfolder === '0' || !field.applies_to_groupfolder
-      )
-    },
 
     foldersWithFields() {
       // Count team folders that have fields assigned
@@ -618,6 +378,15 @@ export default {
   // Poll-timer cleanup is handled by defaultValuesMixin.beforeUnmount().
 
   methods: {
+    /**
+     * folderListMixin host contract: the folders this screen may show
+     * (admin: paged, so a search reads the full list rather than the page).
+     */
+    folderSource() {
+      // Searching reaches past the current page, so it reads the full list.
+      return this.searchQuery ? this.allGroupfolders : this.groupfolders
+    },
+
     dateFieldIncludesTime,
     padDatetimeLocal,
     async loadGroupfoldersWithFieldCounts() {
@@ -642,14 +411,11 @@ export default {
     async initializeFolders(folders) {
       // Initialize state objects
       folders.forEach(gf => {
-        if (!this.expandedFields[gf.id]) {
-          this.expandedFields[gf.id] = false
+        if (this.metadataValues[gf.id] === undefined) {
           this.metadataValues[gf.id] = {}
           this.metadataFields[gf.id] = []
           this.assignedFields[gf.id] = []
           this.tempAssignedFields[gf.id] = []
-          this.fieldSearchQuery[gf.id] = ''
-          this.fieldTypeFilter[gf.id] = 'all'
           this.fileFieldDefaults[gf.id] = {}
           this.defaultsStatus[gf.id] = 'idle'
         }
@@ -766,19 +532,19 @@ export default {
       }
     },
     
+
     async editGroupfolderMetadata(groupfolder) {
+      // No dialog on top of a dialog (§3): both open from the same row
+      // menu, so each closes the other.
+      this.configFolderId = null
+      this.$nextTick(() => this.closeRowMenu())
       this.showMetadataModal = true
       this.currentGroupfolderId = groupfolder.id
-      // TRANSLATORS Dialog title; {folder} is the name of a Team folder, e.g. "Edit metadata for Finance"
-      this.modalTitle = this.t('metavox', 'Edit metadata for {folder}', { folder: groupfolder.mount_point }, undefined, PLAIN_TEXT)
+      this.currentMountPoint = groupfolder.mount_point
       this.loadingMetadata = true
       
-      // Pre-initialize reactive objects to ensure Vue tracking
-      this.selectValues = {}
-      this.multiSelectValues = {}
       this.currentMetadataValues = {}
       this.currentMetadataFields = []
-      this.selectKey = 0 // Reset select key
       
       try {
         // Load metadata and fields
@@ -787,103 +553,22 @@ export default {
         // Set current fields and values for the modal
         this.currentMetadataFields = [...fields]
         this.currentMetadataValues = {...values}
-        
-        // Initialize select and multiselect values with proper Vue reactivity
-        fields.forEach(field => {
-          if (field.field_type === 'select') {
-            // Use $set to ensure reactivity
-            this.selectValues[field.field_name] = values[field.field_name] || null
-          } else if (field.field_type === 'multiselect') {
-            const value = values[field.field_name]
-            if (value) {
-              this.multiSelectValues[field.field_name] = value.split(';#').filter(v => v.trim())
-            } else {
-              this.multiSelectValues[field.field_name] = []
-            }
-          }
-        })
-        
-        // Force re-render of select components
-        this.$nextTick(() => {
-          this.selectKey++
-        })
       } catch (error) {
         console.error('Error loading metadata:', error)
         // TRANSLATORS Error notice when the metadata values of a Team folder could not be loaded
         showError(this.t('metavox', 'Error loading metadata'))
         this.currentMetadataFields = []
         this.currentMetadataValues = {}
-        this.selectValues = {}
-        this.multiSelectValues = {}
       } finally {
         this.loadingMetadata = false
       }
     },
-    
-    closeMetadataModal() {
-      this.showMetadataModal = false
-      this.currentGroupfolderId = null
-      this.currentMetadataFields = []
-      this.currentMetadataValues = {}
-      this.selectValues = {}
-      this.multiSelectValues = {}
-      this.savingMetadata = false
-      this.selectKey = 0
-    },
-    
-    getFieldValue(field) {
-      const value = this.currentMetadataValues[field.field_name]
-      return value !== undefined ? value : ''
-    },
-    
-    getSelectValue(fieldName) {
-      return this.selectValues[fieldName] || null
-    },
-    
-    getMultiSelectValue(fieldName) {
-      return this.multiSelectValues[fieldName] || []
-    },
-    
-    handleSelectChange(fieldName, value) {
-      this.selectValues[fieldName] = value
-      // Also update the main metadata values
-      this.currentMetadataValues[fieldName] = value || ''
-    },
-    
-    handleMultiSelectChange(fieldName, values) {
-      this.multiSelectValues[fieldName] = values || []
-      // Also update the main metadata values
-      const joinedValue = Array.isArray(values) ? values.join(';#') : ''
-      this.currentMetadataValues[fieldName] = joinedValue
-    },
-    
-    updateMetadataValue(field, value) {
-      this.currentMetadataValues[field.field_name] = value
-    },
-    
-    updateCheckboxValue(field, checked) {
-      this.updateMetadataValue(field, checked ? '1' : '0')
-    },
-    
-    isCheckboxChecked(field) {
-      const value = this.getFieldValue(field)
-      return value === '1' || value === 'true' || value === true || value === 1
-    },
-    
+
     async saveGroupfolderMetadata() {
       if (!this.currentGroupfolderId) return false
 
-      // Explicitly sync all select values
-      this.currentMetadataFields.forEach(field => {
-        if (field.field_type === 'select') {
-          const value = this.selectValues[field.field_name]
-          this.currentMetadataValues[field.field_name] = value || ''
-        } else if (field.field_type === 'multiselect') {
-          const values = this.multiSelectValues[field.field_name]
-          const joinedValue = Array.isArray(values) ? values.join(';#') : ''
-          this.currentMetadataValues[field.field_name] = joinedValue
-        }
-      })
+      // Required is required: not saved until each has its value.
+      if (!this.checkRequiredMetadata()) return false
 
       this.savingMetadata = true
 
@@ -897,10 +582,11 @@ export default {
           this.metadataValues[this.currentGroupfolderId] = {...this.currentMetadataValues}
           
           // TRANSLATORS Confirmation after the metadata values of a Team folder were saved
-          showSuccess(this.t('metavox', 'Metadata saved successfully'))
+          showSuccess(this.t('metavox', 'Metadata saved'))
+          // Closing forgets which folder this was.
+          const groupfolderId = this.currentGroupfolderId
           this.closeMetadataModal()
-          
-          await this.loadGroupfolderMetadata(this.currentGroupfolderId)
+          await this.loadGroupfolderMetadata(groupfolderId)
         } else {
           throw new Error('Save failed')
         }
@@ -908,13 +594,13 @@ export default {
         return true
         
       } catch (error) {
-        console.error('Error saving metadata:', error)
+        if (this.showMetadataRefusal(error)) return false
         // The server's reason is in `error` (ExceptionMiddleware), not `message`.
         // TRANSLATORS {error} is the reason the server gave, or "Please try again." when it gave none
         showError(this.t('metavox', 'Error saving metadata: {error}', {
           // TRANSLATORS Shown after "Error saving metadata:" when the server gave no reason
           error: errorText(error, this.t('metavox', 'Please try again.')),
-        }, undefined, PLAIN_TEXT))
+        }))
         return false
       } finally {
         this.savingMetadata = false
@@ -938,14 +624,13 @@ export default {
         await this.saveFolderDefaults(groupfolderId)
 
         // TRANSLATORS Confirmation after the field choice of a Team folder was saved
-        showSuccess(this.t('metavox', 'Field configuration saved successfully'))
+        showSuccess(this.t('metavox', 'Field configuration saved'))
         // Keep the panel open when saving as part of "Apply defaults now".
         if (!keepOpen) {
-          this.expandedFields[groupfolderId] = false
+          this.configFolderId = null
         }
       } catch (error) {
-        console.error('Failed to save field configuration:', error)
-        showError(this.t('metavox', 'Failed to save field configuration'))
+        showError(errorText(error, this.t('metavox', 'Failed to save field configuration')))
         // Reset temp fields to actual assigned fields on error
         this.tempAssignedFields[groupfolderId] = [...this.assignedFields[groupfolderId]]
         throw error // let triggerDefaults know the save failed
@@ -954,193 +639,26 @@ export default {
       }
     },
     
-    async toggleFieldsConfiguration(groupfolderId) {
-      // Close other panels
-      Object.keys(this.expandedFields).forEach(id => {
-        if (id !== groupfolderId) {
-          this.expandedFields[id] = false
-        }
-      })
-      
-      const isExpanded = !this.expandedFields[groupfolderId]
-      this.expandedFields[groupfolderId] = isExpanded
-      
-      if (isExpanded) {
-        // Reset temp fields to current assigned fields when opening
-        this.tempAssignedFields[groupfolderId] = [...this.assignedFields[groupfolderId]]
-        this.loadingFields[groupfolderId] = false
-      }
-    },
+
     
-    closeFieldsConfig(groupfolderId) {
-      // Reset temp fields to actual assigned fields when canceling
-      this.tempAssignedFields[groupfolderId] = [...this.assignedFields[groupfolderId]]
-      this.expandedFields[groupfolderId] = false
-      // Stop polling the defaults status for this folder
-      this.stopDefaultsPolling(groupfolderId)
-    },
     
     getGroupfolderFields(groupfolderId) {
       return this.metadataFields[groupfolderId] || []
     },
     
-    getAssignedFieldsCount(groupfolderId) {
-      return (this.assignedFields[groupfolderId] || []).length
-    },
     
-    getAssignedGroupfolderFieldsCount(groupfolderId) {
-      const assignedIds = this.assignedFields[groupfolderId] || []
-      return this.groupfolderMetadataFields.filter(field =>
-        assignedIds.includes(field.id)
-      ).length
-    },
     
-    isFieldAssigned(groupfolderId, fieldId) {
-      return (this.tempAssignedFields[groupfolderId] || []).includes(fieldId)
-    },
-    
-    updateFieldAssignment(groupfolderId, fieldId, checked) {
-      const fields = [...(this.tempAssignedFields[groupfolderId] || [])]
-
-      if (checked) {
-        if (!fields.includes(fieldId)) {
-          fields.push(fieldId)
-        }
-      } else {
-        const index = fields.indexOf(fieldId)
-        if (index > -1) {
-          fields.splice(index, 1)
-        }
-      }
-
-      this.tempAssignedFields[groupfolderId] = fields
-    },
-    
-    getFieldOptions(field) {
-      if (!field.field_options) {
-        return []
-      }
-
-      // Check cache using field.id + field.field_options as key
-      const cacheKey = `${field.id}_${field.field_options}`
-      if (this.fieldOptionsCache.has(cacheKey)) {
-        return this.fieldOptionsCache.get(cacheKey)
-      }
-
-      let options = []
-      if (typeof field.field_options === 'string') {
-        // Handle newline-separated options
-        options = field.field_options.split('\n').filter(o => o.trim())
-      } else if (Array.isArray(field.field_options)) {
-        options = field.field_options.filter(o => o && o.trim())
-      }
-
-      // Convert to format expected by NcSelect
-      const formattedOptions = options.map(option => ({
-        label: option.trim(),
-        value: option.trim()
-      }))
-
-      // Cache the result
-      this.fieldOptionsCache.set(cacheKey, formattedOptions)
-
-      return formattedOptions
-    },
-
     // --- defaultValuesMixin host contract ---
-    getAssignedFieldIds(groupfolderId) {
-      return this.tempAssignedFields[groupfolderId] || []
-    },
-    getFileFields() {
-      return this.fileMetadataFields
-    },
     persistFieldConfig(groupfolderId) {
       // Save the field assignment + defaults but keep the panel open (the mixin
       // calls this before applying defaults).
       return this.saveFieldsConfiguration(groupfolderId, { keepOpen: true })
     },
 
-    filterFieldsForConfiguration(fields, groupfolderId) {
-      let filtered = [...fields]
-      
-      // Apply search filter
-      const searchQuery = (this.fieldSearchQuery[groupfolderId] || '').toString().toLowerCase().trim()
-      if (searchQuery) {
-        filtered = filtered.filter(field => {
-          const searchText = `${field.field_label || ''} ${field.field_name || ''} ${field.field_type || ''}`.toLowerCase()
-          return searchText.includes(searchQuery)
-        })
-      }
-      
-      return filtered
-    },
-    
-    getFilteredGroupfolderFields(groupfolderId) {
-      const typeFilter = this.fieldTypeFilter[groupfolderId] || 'all'
-      
-      if (typeFilter === 'file') {
-        return [] // Return empty if filtering for file fields only
-      }
-      
-      if (typeFilter === 'groupfolder' || typeFilter === 'all') {
-        return this.filterFieldsForConfiguration(this.groupfolderMetadataFields, groupfolderId)
-      }
-      
-      return []
-    },
-    
-    getFilteredFileFields(groupfolderId) {
-      const typeFilter = this.fieldTypeFilter[groupfolderId] || 'all'
-      
-      if (typeFilter === 'groupfolder') {
-        return [] // Return empty if filtering for groupfolder fields only
-      }
-      
-      if (typeFilter === 'file' || typeFilter === 'all') {
-        return this.filterFieldsForConfiguration(this.fileMetadataFields, groupfolderId)
-      }
-      
-      return []
-    },
-
-    defaultsStatusText(groupfolderId) {
-      if (this.defaultsStatus[groupfolderId] === 'running') {
-        // TRANSLATORS Status beside the "Apply defaults now" button while default values are being written to files
-        return this.t('metavox', 'Applying defaults …')
-      }
-      // TRANSLATORS Status beside the "Apply defaults now" button when nothing is running
-      return this.t('metavox', 'Idle')
-    },
-
-    saveFieldsLabel(groupfolderId) {
-      if (this.savingFields[groupfolderId]) {
-        // TRANSLATORS Dialog button label while the changes are being saved
-        return this.t('metavox', 'Saving …')
-      }
-      // TRANSLATORS Button that saves which fields a Team folder uses
-      return this.t('metavox', 'Save configuration')
-    },
-
-    loadMoreLabel() {
-      if (this.loadingMore) {
-        // TRANSLATORS Button text while more Team folders load; keep it short
-        return this.t('metavox', 'Loading …')
-      }
-      // TRANSLATORS Button that shows more Team folders; %n is how many are not shown yet
-      return this.n('metavox', 'Show %n more folder', 'Show %n more folders', this.allGroupfolders.length - this.displayedCount)
-    },
-
-    saveMetadataLabel() {
-      if (this.savingMetadata) {
-        // TRANSLATORS Label of the save button while the metadata is being saved; keep it short
-        return this.t('metavox', 'Saving …')
-      }
-      // TRANSLATORS Button that saves the metadata in the edit dialog; keep it short
-      return this.t('metavox', 'Save')
-    },
-
-    // Translation helper
-    fieldTypeLabel,
+    // The platform's own. The helper this replaced read OC.L10N directly and
+    // had no plural form at all, which is why no count on this screen went
+    // through n(). Its {key} replacer also only replaced the first occurrence
+    // and did not escape, so a value containing $& corrupted the string.
     t: translate,
     n: translatePlural,
   }
@@ -1149,121 +667,127 @@ export default {
 
 <style scoped>
 /* Base layout */
-.manage-groupfolders {
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
+/* No measure and no inset here: NcSettingsSection owns both (§6, "The measure
+   belongs on the form"), and a second one on the child pushed this section's
+   content 20px further in than the sections that had none — measured as three
+   different left edges, 28 / 40 / 48, down one page. */
+
+.mv-block {
+  /* A block inside an NcSettingsSection, not a card on top of one: the
+     section already supplies the surface, the measure and the rule that
+     separates it from the next. The card look this carried — a radius and a
+     hardcoded rgba box-shadow that no theme can reach — drew a second frame
+     inside the first, and the shadow was invisible in dark mode anyway. */
+  margin-bottom: 24px;
 }
 
-.page-header {
-  margin-bottom: 30px;
+/* Matches MetadataFieldsEditor's header exactly, so the two lists in this
+   page open the same way. The border-bottom is gone: §6 reserves a rule for
+   a section boundary, and a heading over its own list is not one — the
+   fields list never had it. 20/15px were also off the 4px grid. */
+/* The folder a dialog is acting on: the title says what the dialog is, the
+   body says what it acts on (§3). Both were unstyled — a bare <p> at body
+   size reading as content rather than context. */
+.mv-config__folder {
+  margin: 0 0 16px;
+  color: var(--color-text-maxcontrast);
 }
 
-.page-header h2 {
-  margin: 0 0 8px 0;
-  font-size: 24px;
-  font-weight: bold;
-  color: var(--color-main-text);
-}
-
-.page-description {
-  color: var(--color-text-lighter);
-  margin: 0;
-  line-height: 1.5;
-}
-
-.settings-section {
-  background: var(--color-main-background);
-  border-radius: var(--border-radius-large);
-  padding: 24px;
-  margin-bottom: 30px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+.mv-config__loading {
+  margin: 24px auto;
 }
 
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid var(--color-border);
+  /* A heading and its count do not fit on one line on a phone, and this row
+     cannot scroll, so it wraps. */
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+}
+
+/* Heading and count as one unit, so space-between pushes the pair left and
+   any actions right. baseline, not center: the count is smaller than the h3.
+   Third copy of this rule in the page — see the note on .field-count. */
+.section-header__title {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
 }
 
 .section-header h3 {
+  /* min-width: 0 lets a long heading wrap instead of forcing the flex row
+     wider than its container. */
+  min-width: 0;
+  overflow-wrap: anywhere;
   margin: 0;
-  font-weight: 600;
-  color: var(--color-text);
+  /* §6 names 20px for an h3, and Nextcloud has no variable for it. Left to
+     inherit, this rendered at 24px against the section title's 27px — barely
+     a step, so the list heading competed with the page heading. */
+  font-size: 20px;
+  font-weight: var(--font-weight-heading, 600);
+  color: var(--color-main-text);
 }
 
 .field-count {
-  background: var(--color-background-dark);
-  color: var(--color-text-light);
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 0.9em;
+  /* A count beside a heading is supporting text, not a badge: a filled pill
+     says "something needs attention here", and this is just how many there
+     are. §6 — supporting text is --font-size-small in --color-text-maxcontrast.
+     Two of the three copies of this rule also used 0.9em and a hardcoded
+     radius, neither of which is a token. */
+  color: var(--color-text-maxcontrast);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-default, 400);
 }
 
-.info-box {
-  background: var(--color-background-dark);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius);
-  padding: 20px;
+/* NcNoteCard supplies the surface, the accent rail and the icon. All that is
+   left is the list inside it. */
+/* NcNoteCard pins `color: var(--color-main-text) !important` against
+   `background: var(--color-info)`, so the two only stay legible while a
+   theme moves them together. A third-party theming app on test.voxcloud.nl
+   forces `--color-info: #00598a` and `--color-main-text: #222222`, both
+   !important: dark text on a dark blue card, measured 2.12:1 against a
+   4.5:1 floor.
+
+   --color-info-text is the token that belongs with --color-info — it is
+   what NcNoteCard already uses for the accent rail and the icon — so
+   pairing the body text with it keeps the card legible whatever a theme
+   does to the pair. On an untouched Nextcloud this changes nothing
+   visible: 13.48:1 becomes 12.63:1, both far past the floor.
+
+   The double class beats the library's !important without adding our own:
+   0,2,0 against its 0,1,0. */
+.mv-how-it-works.mv-how-it-works {
+  color: var(--color-info-text);
 }
 
-.info-box.warning {
-  background: #fff3e0;
-  border-left: 4px solid #ff9800;
-  border-color: #ffcc80;
+.mv-how-it-works__lead {
+  margin: 0 0 8px;
+  font-weight: var(--font-weight-element);
 }
 
-.info-box.warning-light {
-  background: #fffbf0;
-  border-left: 4px solid #ffc107;
-  border-color: #ffe082;
-}
-
-.info-box h4 {
-  margin: 0 0 15px 0;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.info-box p {
+.mv-how-it-works__list {
   margin: 0;
-  color: var(--color-text);
-  line-height: 1.5;
+  padding-inline-start: 16px;
 }
 
-.info-box ul {
-  margin: 0;
-  padding-left: 20px;
-  color: var(--color-text-lighter);
-}
-
-.info-box li {
-  margin-bottom: 8px;
+.mv-how-it-works__list li {
+  margin-block: 4px;
 }
 
 .search-container {
   margin-bottom: 20px;
 }
 
-.search-results-info {
-  background: var(--color-background-dark);
-  padding: 10px 15px;
-  border-radius: var(--border-radius);
-  margin-bottom: 20px;
-}
-
-.search-results-info p {
-  margin: 0;
-  color: var(--color-text-lighter);
-}
-
 .empty-content {
   text-align: center;
-  padding: 60px 20px;
-  color: var(--color-text-lighter);
+  padding: 48px 20px;
+  color: var(--color-text-maxcontrast);
 }
 
 .empty-icon {
@@ -1276,75 +800,12 @@ export default {
   font-weight: 600;
 }
 
+/* NcListItem owns the row: its height, hover, radius and action menu. All
+   that is left is the list's own reset, since it is a <ul> now. */
 .groupfolders-list {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.groupfolder-item {
-  background: var(--color-main-background);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius);
-  overflow: hidden;
-}
-
-.groupfolder-main {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  padding: 20px;
-  transition: background-color 0.2s ease;
-}
-
-.groupfolder-item:hover .groupfolder-main {
-  background: var(--color-background-hover);
-}
-
-.groupfolder-icon {
-  flex-shrink: 0;
-  color: var(--color-primary);
-}
-
-.groupfolder-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.groupfolder-name {
-  margin: 0 0 5px 0;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.groupfolder-info {
+  list-style: none;
+  padding: 0;
   margin: 0;
-  font-size: 0.9em;
-  color: var(--color-text-lighter);
-}
-
-.field-count-badge {
-  background: var(--color-success);
-  color: white;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 0.85em;
-}
-
-.no-fields-badge {
-  color: var(--color-text-lighter);
-}
-
-.groupfolder-actions {
-  display: flex;
-  gap: 10px;
-  flex-shrink: 0;
-}
-
-.expanded-panel {
-  padding: 20px;
-  background: var(--color-background-dark);
-  border-top: 1px solid var(--color-border);
 }
 
 .loading-section {
@@ -1353,19 +814,19 @@ export default {
   justify-content: center;
   gap: 10px;
   padding: 40px;
-  color: var(--color-text-lighter);
+  color: var(--color-text-maxcontrast);
 }
 
 .no-fields-message {
   text-align: center;
   padding: 30px;
-  background: var(--color-warning-light);
+  background: var(--color-warning);
   border-radius: var(--border-radius);
 }
 
 .no-fields-message p {
   margin: 0 0 10px 0;
-  color: var(--color-text-lighter);
+  color: var(--color-text-maxcontrast);
 }
 
 /* Modal styling */
@@ -1373,118 +834,80 @@ export default {
   padding: 20px;
 }
 
+/* `0.9em` computed to 13.5px — a third size in one dialog, and not on the
+   scale at all. */
 .modal-description {
   margin: 0 0 24px 0;
-  color: var(--color-text-lighter);
-  font-size: 0.9em;
+  color: var(--color-text-maxcontrast);
 }
 
 .metadata-form-container {
   min-height: 200px;
 }
 
+/* 24px is NcAppSettingsSection's distance between groups; with the boxes
+   gone this is what separates one labelled field from the next (§6). */
 .metadata-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
 }
 
+/* Each field was a grey box with its own padding: the same sunken-well
+   treatment removed from the dropdown options, wrapped around every row of
+   an ordinary form. Fields in a form are grouped by whitespace, not by a
+   container (§6), and the box also inset every control 16px from the
+   dialog's own edge. The 8px gap is the NcFormGroup distance. */
 .field-item {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 16px;
-  background: var(--color-background-hover);
-  border-radius: var(--border-radius);
 }
 
+/* 14px was not a token — the scale is 13 (--font-size-small) or 15
+   (--default-font-size), and NcTextField's own label is the small one, so
+   these sit in the same rhythm as the controls below them (§6). */
 .field-label {
   font-weight: 500;
-  color: var(--color-text);
-  font-size: 14px;
+  color: var(--color-main-text);
+  font-size: var(--font-size-small);
   display: block;
   margin-bottom: 4px;
 }
 
 .required {
   color: var(--color-error);
-  margin-left: 4px;
+  margin-inline-start: 4px;
 }
 
+/* No min-height: NcSelect and the field components own theirs, and the
+   platform's is 34px (§6, "Every control in the form measures the same
+   height"). */
 .field-input {
   width: 100%;
   max-width: 480px;
-  min-height: 44px;
 }
 
-/* Default-value input width matched to the field type. Inputs stay responsive
-   (width:100%) but are capped so a year/date isn't absurdly wide. */
-.dv--number .field-input,
-.dv--number .number-input {
-  max-width: 120px;
-}
+/* The .dv--* width caps and the .default-value-input / .default-value-label
+   rules that stood here were scoped to this component while the elements are
+   rendered by DefaultValueInput.vue. Vue rewrites a scoped selector with the
+   DECLARING component's data-v id, so none of them ever matched (§6). The
+   child carries its own copy, which is why nobody noticed — and the two had
+   diverged: this copy added a 28px hanging indent and a 3px rail that do not
+   render. If the indent is wanted, it belongs in the child. */
 
-.dv--date .field-input,
-.dv--date .date-input {
-  max-width: 220px;
-}
-
-.dv--select .field-input,
-.dv--multiselect .field-input,
-.dv--user .field-input {
-  max-width: 320px;
-}
-
-.dv--text .field-input,
-.dv--url .field-input,
-.dv--filelink .field-input {
-  max-width: 480px;
-}
-
-.dv--textarea .field-input,
-.dv--textarea .textarea-input {
-  max-width: 100%;
-}
-
-/* Checkbox default: just the switch, no wide box. */
-.dv--checkbox .field-input {
-  max-width: none;
-  min-height: 0;
-}
 
 /* Native input styling for consistency */
-.textarea-input,
-.date-input,
-.number-input {
-  width: 100%;
-  padding: 8px 12px;
-  border: 2px solid var(--color-border);
-  border-radius: var(--border-radius);
-  background: var(--color-main-background);
-  color: var(--color-text);
-  font-size: 14px;
-  font-family: var(--font-face);
-  transition: border-color 0.2s ease;
-  resize: vertical;
-}
+/* The three inputs these styled are NcTextArea and NcTextField now, so
+   these rules would land on the component wrapper rather than the
+   input, and fight its own border, height and focus ring. They also
+   hardcoded 14px and used --color-primary, a header colour, as a
+   border. The components carry all of it (§4). */
 
-.textarea-input:focus,
-.date-input:focus,
-.number-input:focus {
-  border-color: var(--color-primary);
-  outline: none;
-  box-shadow: 0 0 0 2px var(--color-primary-light);
-}
-
-.textarea-input:hover,
-.date-input:hover,
-.number-input:hover {
-  border-color: var(--color-border-dark);
-}
-
+/* Body size, like NcTextField's own helper text, which sets no size and
+   inherits 15px. Small *and* maxcontrast is the pairing §5 warns about. */
 .field-description {
-  font-size: 12px;
-  color: var(--color-text-lighter);
+  color: var(--color-text-maxcontrast);
   margin-top: 4px;
   line-height: 1.4;
 }
@@ -1499,15 +922,10 @@ export default {
   border-top: 1px solid var(--color-border);
 }
 
-.fields-config-content h4 {
-  margin: 0 0 20px 0;
-  font-weight: 600;
-}
-
 .no-fields-available {
   text-align: center;
   padding: 40px;
-  color: var(--color-text-lighter);
+  color: var(--color-text-maxcontrast);
   background: var(--color-background-hover);
   border-radius: var(--border-radius);
 }
@@ -1519,50 +937,18 @@ export default {
   border-radius: var(--border-radius);
 }
 
+/* The pill row that filters the list. NcRadioGroup owns every rule the old
+   hand-built version restated — height, radius, the active tint, the focus
+   ring, and the :focus-vs-:focus-visible correction core needs — so ~60 lines
+   of overrides went with it (§16). */
 .field-type-filter {
-  margin-top: 15px;
-}
-
-.field-type-filter label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  color: var(--color-text);
-  font-size: 13px;
-}
-
-.filter-button-group {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.filter-btn {
-  padding: 6px 12px;
-  background: var(--color-main-background);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius);
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-  color: var(--color-text-lighter);
-}
-
-.filter-btn:hover {
-  background: var(--color-background-dark);
-  border-color: var(--color-border-dark);
-}
-
-.filter-btn.active {
-  background: var(--color-primary);
-  color: var(--color-primary-text);
-  border-color: var(--color-primary);
+  margin-top: 16px;
 }
 
 .no-search-results {
   text-align: center;
   padding: 20px;
-  color: var(--color-text-lighter);
+  color: var(--color-text-maxcontrast);
   background: var(--color-background-hover);
   border-radius: var(--border-radius);
   margin: 20px 0;
@@ -1575,13 +961,13 @@ export default {
 .field-section h5 {
   margin: 0 0 8px 0;
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--color-main-text);
 }
 
+/* 0.9em is not on the scale, and 15px is not on the 4px grid. */
 .section-description {
-  margin: 0 0 15px 0;
-  color: var(--color-text-lighter);
-  font-size: 0.9em;
+  margin: 0 0 16px 0;
+  color: var(--color-text-maxcontrast);
 }
 
 .checkbox-group {
@@ -1596,22 +982,6 @@ export default {
   gap: 8px;
 }
 
-.default-value-input {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin: 4px 0 8px 28px;
-  padding: 10px 12px;
-  background: var(--color-background-hover);
-  border-radius: var(--border-radius);
-  border-left: 3px solid var(--color-primary-element-light, var(--color-primary-light));
-}
-
-.default-value-label {
-  font-weight: 500;
-  color: var(--color-text-lighter);
-  font-size: 12px;
-}
 
 .apply-defaults-section {
   margin-top: 20px;
@@ -1627,14 +997,13 @@ export default {
 }
 
 .apply-defaults-status {
-  color: var(--color-text-lighter);
-  font-size: 0.9em;
+  color: var(--color-text-maxcontrast);
 }
 
 .field-type-label {
-  color: var(--color-text-lighter);
-  font-size: 0.9em;
-  margin-left: 5px;
+  color: var(--color-text-maxcontrast);
+  /* logical, and on the 4px grid */
+  margin-inline-start: 4px;
 }
 
 .form-actions {
@@ -1651,8 +1020,8 @@ export default {
   align-items: center;
   justify-content: center;
   gap: 15px;
-  padding: 60px 20px;
-  color: var(--color-text-lighter);
+  padding: 48px 20px;
+  color: var(--color-text-maxcontrast);
 }
 
 .icon-loading {
@@ -1677,67 +1046,23 @@ export default {
   to { transform: rotate(360deg); }
 }
 
-/* Fix for NcSelect visibility in modal */
-.select-field {
-  z-index: 10001 !important;
-}
+/* The block that stood here overrode @nextcloud/vue's internals with 22
+   !important declarations: vs__dropdown-toggle borders, the dropdown's
+   background, the selected chips, a 44px min-height and a z-index war
+   (.modal-wrapper at 9999, below the 10001/10002 it was fighting). §5 and §6
+   both say not to patch library internals — it is how an app breaks on the
+   next release — and it was unnecessary: NcSelect defaults appendToBody, so
+   the menu already escapes the dialog. Three of the colours it used
+   (--color-primary-light, --color-primary-text, --color-primary) are the
+   deprecated pair or do not exist at all, so those declarations set nothing.
 
-.select-field :deep(.vs__dropdown-toggle) {
-  background: var(--color-main-background) !important;
-  border: 2px solid var(--color-border) !important;
-  min-height: 44px;
-}
-
-.select-field :deep(.vs__dropdown-toggle:hover) {
-  border-color: var(--color-border-dark) !important;
-}
-
-.select-field :deep(.vs--open .vs__dropdown-toggle) {
-  border-color: var(--color-primary) !important;
-  box-shadow: 0 0 0 2px var(--color-primary-light) !important;
-}
-
-.select-field :deep(.vs__dropdown-menu) {
-  z-index: 10002 !important;
-  background: var(--color-main-background) !important;
-  border: 1px solid var(--color-border) !important;
-}
-
-.select-field :deep(.vs__selected) {
-  background: var(--color-primary-light) !important;
-  color: var(--color-primary-text) !important;
-  border-radius: var(--border-radius-pill) !important;
-  padding: 2px 8px !important;
-  margin: 2px !important;
-}
-
-.select-field :deep(.vs__clear) {
-  fill: var(--color-text-lighter) !important;
-}
-
-.select-field :deep(.vs__open-indicator) {
-  fill: var(--color-text-lighter) !important;
-}
-
-/* Ensure modal has proper z-index */
-:deep(.modal-wrapper) {
-  z-index: 9999 !important;
-}
-
-:deep(.modal-container) {
-  max-width: 800px;
-  width: 90%;
-}
-
-/* Ensure dropdowns appear above modal */
-:deep(.modal-wrapper .vs__dropdown-menu) {
-  z-index: 10002 !important;
-}
-
-/* Fix for select text visibility */
-.select-field :deep(.vs__dropdown-toggle),
-.select-field :deep(.vs__dropdown-toggle *) {
-  color: var(--color-text) !important;
+   The one rule worth keeping is the row height, and it belongs with the other
+   controls rather than on the select alone. */
+.metadata-form :deep(.input-field__main-wrapper),
+.metadata-form :deep(.vs__dropdown-toggle),
+.metadata-form :deep(textarea),
+.metadata-form :deep(input) {
+  min-height: var(--default-clickable-area);
 }
 
 /* Load More Button */
@@ -1750,12 +1075,20 @@ export default {
 
 .total-count-info {
   text-align: center;
-  color: var(--color-text-lighter);
-  padding: 10px 0;
-  font-size: 14px;
+  color: var(--color-text-maxcontrast);
+  padding: 8px 0;
 }
 
 .total-count-info p {
   margin: 0;
+}
+
+/* Phone. The rules that rescued the hand-built folder row are gone with it —
+   NcListItem handles narrow widths itself, and its actions are a menu rather
+   than a row of labelled buttons that needed breaking onto separate lines. */
+@media (max-width: 512px) {
+	.field-section {
+		padding: 16px;
+	}
 }
 </style>

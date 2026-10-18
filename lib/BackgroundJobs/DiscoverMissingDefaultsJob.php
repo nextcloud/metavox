@@ -4,59 +4,56 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\BackgroundJobs;
 
-use OCA\MetaVox\AppInfo\Application;
+use OCA\MetaVox\Service\DefaultsDiscovery;
 use OCA\MetaVox\Service\DefaultsService;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\IJobList;
 use OCP\BackgroundJob\TimedJob;
-use OCP\IAppConfig;
 use Psr\Log\LoggerInterface;
 
 /**
- * Source of truth for the default-value system. Runs every 5 minutes, finds
- * files in default-bearing groupfolders that are missing one or more defaults,
- * and queues ApplyDefaultsJob batches to fill them.
+ * Source of truth for the default-value system. Every 5 minutes it finds files
+ * in default-bearing team folders that miss one or more defaults, and queues
+ * ApplyDefaultsJob batches to fill them. The upload listener is a fast path on
+ * top; this job makes sure everything gets there.
  *
- * The listener fast-path is an optimisation layered on top; this job guarantees
- * convergence regardless of whether the listener fired, skipped (bulk upload),
- * or failed.
- *
- * Scale strategy:
- *  - Keyset pagination (a per-folder cursor stored in app config) instead of
- *    OFFSET, so cost per page stays constant across millions of rows.
- *  - DISCOVERY_LIMIT caps files examined per run so a single cron tick is
- *    bounded even for a 1M-file folder; the cursor advances so the next tick
- *    continues where this one stopped.
- *  - Backpressure: if the ApplyDefaultsJob queue is already deep, skip this
- *    tick so discovery can never enqueue faster than workers drain.
- *  - When a folder's scan returns nothing new, its cursor resets to 0 so newly
- *    uploaded files are cheaply re-discovered from the top next time.
+ * Bounded work, also with a million files or on PostgreSQL:
+ *  - Per team folder a high-water mark: new files get higher ids, so a tick
+ *    only looks above it, and a team folder that is done costs next to nothing.
+ *  - Files below the mark (moved in, or after a change of defaults) are found by
+ *    a sweep: daily, or started by a change. It walks file id ranges, so each
+ *    query reads at most RANGE rows of the file cache.
+ *  - At most MAX_PENDING_JOBS in the queue, counted while queueing, and a time
+ *    budget per tick; team folders take turns at going first.
  */
 class DiscoverMissingDefaultsJob extends TimedJob {
 
     /** 5 minute cadence — max latency from upload to default applied. */
     public const DISCOVERY_INTERVAL = 300;
 
-    /** Max files examined per groupfolder per run. */
-    public const DISCOVERY_LIMIT = 10000;
-
     /** Files per queued ApplyDefaultsJob — within the job argument size limit. */
     public const JOB_BATCH_SIZE = 250;
 
-    /**
-     * Skip a tick if this many ApplyDefaultsJobs are already queued. Prevents
-     * the job_list table from growing faster than it is drained on a huge
-     * backfill.
-     */
+    /** At most this many ApplyDefaultsJobs queued, so discovery never runs ahead of the workers. */
     public const MAX_PENDING_JOBS = 200;
 
-    private const CURSOR_CONFIG_PREFIX = 'defaults_cursor_gf_';
+    /** File ids per query. */
+    public const RANGE = 10000;
+
+    /** Seconds between sweeps through all files of a team folder. */
+    public const SWEEP_INTERVAL = 86400;
+
+    /** Seconds of work per tick: from the system cron, and inside a page request (AJAX cron). */
+    public const BUDGET = 10;
+    public const BUDGET_IN_REQUEST = 2;
+
+    private int $until = 0;
 
     public function __construct(
         ITimeFactory $time,
         private readonly DefaultsService $defaultsService,
+        private readonly DefaultsDiscovery $discovery,
         private readonly IJobList $jobList,
-        private readonly IAppConfig $appConfig,
         private readonly LoggerInterface $logger,
     ) {
         parent::__construct($time);
@@ -65,9 +62,11 @@ class DiscoverMissingDefaultsJob extends TimedJob {
     }
 
     protected function run(mixed $argument): void {
-        // Backpressure: do not pile more work on an already-deep queue.
-        if ($this->pendingApplyJobs() >= self::MAX_PENDING_JOBS) {
-            $this->logger->debug('MetaVox: discovery skipped — ApplyDefaultsJob queue is deep');
+        $this->discovery->forgetOldCursors();
+
+        $room = self::MAX_PENDING_JOBS - $this->pendingApplyJobs();
+        if ($room <= 0) {
+            $this->logger->debug('MetaVox: discovery skipped — ApplyDefaultsJob queue is full');
             return;
         }
 
@@ -76,9 +75,15 @@ class DiscoverMissingDefaultsJob extends TimedJob {
             return;
         }
 
-        foreach ($groupfolderIds as $groupfolderId) {
+        $now = $this->time->getTime();
+        $this->until = $now + (PHP_SAPI === 'cli' ? self::BUDGET : self::BUDGET_IN_REQUEST);
+        $maxFileId = $this->defaultsService->maxFileId();
+        foreach ($this->inTurn($groupfolderIds, $now) as $groupfolderId) {
+            if ($room <= 0 || $this->time->getTime() >= $this->until) {
+                break;
+            }
             try {
-                $this->discoverFolder($groupfolderId);
+                $room = $this->discoverFolder($groupfolderId, $maxFileId, $room, $now);
             } catch (\Exception $e) {
                 $this->logger->error('MetaVox: discovery failed for groupfolder', [
                     'groupfolderId' => $groupfolderId,
@@ -89,57 +94,63 @@ class DiscoverMissingDefaultsJob extends TimedJob {
     }
 
     /**
-     * Scan one groupfolder from its stored cursor, queueing batches until the
-     * per-run limit is hit or no more missing files are found.
+     * The team folders, each tick starting one further, so none always waits
+     * behind the others when the queue or the time runs out.
+     *
+     * @param int[] $groupfolderIds
+     * @return int[]
      */
-    private function discoverFolder(int $groupfolderId): void {
-        $defaults = $this->defaultsService->getFolderDefaults($groupfolderId);
-        if (empty($defaults)) {
-            return;
+    private function inTurn(array $groupfolderIds, int $now): array {
+        sort($groupfolderIds);
+        $offset = intdiv($now, self::DISCOVERY_INTERVAL) % \count($groupfolderIds);
+        return [...\array_slice($groupfolderIds, $offset), ...\array_slice($groupfolderIds, 0, $offset)];
+    }
+
+    /** @return int the room left in the queue */
+    private function discoverFolder(int $groupfolderId, int $maxFileId, int $room, int $now): int {
+        $fieldNames = array_keys($this->defaultsService->getFolderDefaults($groupfolderId));
+        if ($fieldNames === []) {
+            return $room;
         }
-        $fieldNames = array_keys($defaults);
 
-        $cursor = $this->getCursor($groupfolderId);
-        $examined = 0;
-        $queued = 0;
+        $state = $this->discovery->state($groupfolderId, $now);
+        if ($state['sweep'] === null && $now - $state['swept'] >= self::SWEEP_INTERVAL) {
+            $state['sweep'] = 0;
+        }
 
-        while ($examined < self::DISCOVERY_LIMIT) {
-            $remaining = self::DISCOVERY_LIMIT - $examined;
-            $pageSize = min(self::JOB_BATCH_SIZE, $remaining);
-
-            $fileIds = $this->defaultsService->findFilesMissingDefaults(
-                $groupfolderId,
-                $fieldNames,
-                $pageSize,
-                $cursor
-            );
-
-            if (empty($fileIds)) {
-                // Folder fully scanned for now — reset so new uploads are picked
-                // up from the top on the next run.
-                $this->resetCursor($groupfolderId);
-                return;
+        // New files first, then the sweep through the older ones.
+        $state['high'] = $this->scan($groupfolderId, $fieldNames, $state['high'], $maxFileId, $room);
+        if ($state['sweep'] !== null && $room > 0) {
+            $state['sweep'] = $this->scan($groupfolderId, $fieldNames, $state['sweep'], $state['high'], $room);
+            if ($state['sweep'] >= $state['high']) {
+                $state['sweep'] = null;
+                $state['swept'] = $now;
             }
-
-            $this->jobList->add(ApplyDefaultsJob::class, [
-                'groupfolderId' => $groupfolderId,
-                'fileIds' => $fileIds,
-            ]);
-            $queued++;
-
-            // Advance the keyset cursor past the highest file id in this batch.
-            $cursor = max($fileIds);
-            $examined += \count($fileIds);
-
-            // Persist the cursor every batch so a mid-run crash resumes cleanly.
-            $this->setCursor($groupfolderId, $cursor);
         }
+        $this->discovery->save($groupfolderId, $state);
+        return $room;
+    }
 
-        $this->logger->debug('MetaVox: discovery paused at run limit', [
-            'groupfolderId' => $groupfolderId,
-            'queuedBatches' => $queued,
-            'cursor' => $cursor,
-        ]);
+    /**
+     * Queue the files missing defaults with ids in (from, to], range by range,
+     * while there is room and time.
+     *
+     * @param string[] $fieldNames
+     * @return int how far it got
+     */
+    private function scan(int $groupfolderId, array $fieldNames, int $from, int $to, int &$room): int {
+        $position = $from;
+        while ($position < $to && $room > 0 && $this->time->getTime() < $this->until) {
+            $upTo = min($position + self::RANGE, $to);
+            $fileIds = $this->defaultsService->findFilesMissingDefaults($groupfolderId, $fieldNames, self::JOB_BATCH_SIZE, $position, $upTo);
+            if ($fileIds !== []) {
+                $this->jobList->add(ApplyDefaultsJob::class, ['groupfolderId' => $groupfolderId, 'fileIds' => $fileIds]);
+                $room--;
+            }
+            // A full batch: more may follow in this range.
+            $position = \count($fileIds) === self::JOB_BATCH_SIZE ? max($fileIds) : $upTo;
+        }
+        return $position;
     }
 
     /**
@@ -147,9 +158,6 @@ class DiscoverMissingDefaultsJob extends TimedJob {
      *
      * NC's IJobList::countByClass() takes NO argument and returns a list of
      * [class, count] pairs for ALL job classes — not a count for one class.
-     * We must scan it for our class. (Passing a class arg / treating the result
-     * as an int silently makes the backpressure check always true, which
-     * disables discovery entirely.)
      */
     private function pendingApplyJobs(): int {
         foreach ($this->jobList->countByClass() as $entry) {
@@ -158,29 +166,5 @@ class DiscoverMissingDefaultsJob extends TimedJob {
             }
         }
         return 0;
-    }
-
-    private function getCursor(int $groupfolderId): int {
-        return (int)$this->appConfig->getValueString(
-            Application::APP_ID,
-            self::CURSOR_CONFIG_PREFIX . $groupfolderId,
-            '0'
-        );
-    }
-
-    private function setCursor(int $groupfolderId, int $cursor): void {
-        $this->appConfig->setValueString(
-            Application::APP_ID,
-            self::CURSOR_CONFIG_PREFIX . $groupfolderId,
-            (string)$cursor
-        );
-    }
-
-    private function resetCursor(int $groupfolderId): void {
-        $this->appConfig->setValueString(
-            Application::APP_ID,
-            self::CURSOR_CONFIG_PREFIX . $groupfolderId,
-            '0'
-        );
     }
 }

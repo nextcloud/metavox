@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Listener;
 
+use OCA\MetaVox\Service\DefaultsDiscovery;
 use OCA\MetaVox\Service\DefaultsRequestCounter;
 use OCA\MetaVox\Service\DefaultsService;
 use OCA\MetaVox\Service\GroupfolderResolver;
-use OCA\MetaVox\Service\SearchIndexService;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventListener;
 use OCP\Files\Events\Node\NodeCreatedEvent;
+use OCP\Files\Events\Node\NodeRenamedEvent;
 use OCP\Files\FileInfo;
 use OCP\Files\Node;
 use Psr\Log\LoggerInterface;
@@ -18,7 +19,9 @@ use Psr\Log\LoggerInterface;
 /**
  * Fast-path tier of the default-value system: applies defaults to a newly
  * created file synchronously, so for normal uploads search is up to date
- * immediately rather than waiting up to one discovery cycle.
+ * immediately rather than waiting up to one discovery cycle. A file moved into
+ * a team folder gets them the same way; a moved folder starts a sweep, since
+ * its files keep their old ids, below discovery's high-water mark.
  *
  * This is purely an optimisation over DiscoverMissingDefaultsJob, which remains
  * the source of truth. Three safeguards keep it from ever harming the request:
@@ -30,23 +33,27 @@ use Psr\Log\LoggerInterface;
  *  - Idempotent writes: bulkInsertDefaults uses DO NOTHING, so overlapping with
  *    discovery never duplicates or overwrites values.
  *
- * Like the jobs, it never emits push events. The search index is updated via
- * the bulk path (single file here) to share one code path with the backfill.
+ * Like the jobs, it never emits push events; bulkInsertDefaults keeps the
+ * search words up to date.
  *
- * @template-implements IEventListener<NodeCreatedEvent>
+ * @template-implements IEventListener<NodeCreatedEvent|NodeRenamedEvent>
  */
 class ApplyDefaultsListener implements IEventListener {
 
     public function __construct(
         private readonly DefaultsService $defaultsService,
-        private readonly SearchIndexService $searchIndexService,
         private readonly GroupfolderResolver $groupfolderResolver,
         private readonly DefaultsRequestCounter $counter,
+        private readonly DefaultsDiscovery $discovery,
         private readonly LoggerInterface $logger,
     ) {
     }
 
     public function handle(Event $event): void {
+        if ($event instanceof NodeRenamedEvent) {
+            $this->moved($event);
+            return;
+        }
         if (!($event instanceof NodeCreatedEvent)) {
             return;
         }
@@ -72,6 +79,26 @@ class ApplyDefaultsListener implements IEventListener {
         }
     }
 
+    private function moved(NodeRenamedEvent $event): void {
+        try {
+            $target = $event->getTarget();
+            $groupfolderId = $this->groupfolderResolver->getGroupfolderId($target);
+            // Within its own team folder a file keeps what it has.
+            if ($groupfolderId === null || $groupfolderId === $this->groupfolderResolver->getGroupfolderId($event->getSource())) {
+                return;
+            }
+            if ($target->getType() !== FileInfo::TYPE_FILE) {
+                $this->discovery->startSweep($groupfolderId, time());
+            } elseif ($this->counter->tryConsume()) {
+                $this->applyDefaults($target);
+            } else {
+                $this->discovery->startSweep($groupfolderId, time());
+            }
+        } catch (\Exception $e) {
+            $this->logger->warning('MetaVox: ApplyDefaultsListener error', ['exception' => $e]);
+        }
+    }
+
     private function applyDefaults(Node $node): void {
         $groupfolderId = $this->groupfolderResolver->getGroupfolderId($node);
         if ($groupfolderId === null) {
@@ -83,14 +110,7 @@ class ApplyDefaultsListener implements IEventListener {
             return;
         }
 
-        $fileId = $node->getId();
-        $written = $this->defaultsService->bulkInsertDefaults($groupfolderId, [$fileId], $defaults);
-
-        if ($written > 0) {
-            // Share the bulk index path with the backfill so content is built
-            // identically. No push: a freshly uploaded file has no live viewers
-            // waiting on its defaults.
-            $this->searchIndexService->bulkUpdateFileIndex([$fileId]);
-        }
+        // No push: a freshly uploaded file has no live viewers waiting on its defaults.
+        $this->defaultsService->bulkInsertDefaults($groupfolderId, [$node->getId()], $defaults);
     }
 }

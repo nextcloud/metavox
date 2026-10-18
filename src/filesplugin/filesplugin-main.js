@@ -7,14 +7,44 @@
 // eslint-disable-next-line camelcase
 __webpack_public_path__ = document.querySelector('script[src*="metavox/js/filesplugin"]')?.src?.replace(/filesplugin\.js.*$/, '') || '/apps/metavox/js/'
 
-import { createApp, h } from 'vue'
+import { createApp, h, shallowReactive } from 'vue'
 import { translate, translatePlural } from '@nextcloud/l10n'
-import { registerBulkMetadataAction } from './BulkMetadataAction.js'
+import { registerMetaVoxDavProperty } from './columns/DavMetadata.js'
+import { startListingSync } from './columns/ListingSync.js'
 import { startColumnWatcher } from './columns/MetaVoxColumns.js'
-import FilesSidebarTab from './FilesSidebarTab.vue'
+import { holdLink } from './columns/UrlState.js'
+import { loadPart, watchLoading } from '../utils/updatedPage.js'
+import { METAVOX_ICON_SVG } from '../utils/metavoxIcon.js'
 
-// MetaVox icon SVG
-const metavoxIconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -3 32 30"><polygon fill="currentColor" points="6.4,0.9 2,10.1 11,10.1"/><polygon fill="currentColor" points="17.5,0.9 13,10.1 22,10.1"/><rect x="2" y="10.1" width="20" height="13.1" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="4.9" y1="15" x2="18.8" y2="15" stroke="currentColor" stroke-width="1"/><line x1="4.9" y1="17.4" x2="18.8" y2="17.4" stroke="currentColor" stroke-width="1"/><line x1="4.9" y1="19.8" x2="13" y2="19.8" stroke="currentColor" stroke-width="1"/></svg>'
+// The tab's form with its field editors (about 175 KB) loads the first time
+// a MetaVox tab opens, not with every Files page.
+let sidebarTab = null
+let sidebarTabLoad = null
+function loadSidebarTab() {
+	sidebarTabLoad ??= loadPart(() => import(/* webpackChunkName: "metavox-sidebar" */ './FilesSidebarTab.vue'))
+		.then((module) => {
+			sidebarTab = module.default
+			return sidebarTab
+		})
+		.catch((error) => {
+			// loadPart said to reload; a next opening may try again.
+			sidebarTabLoad = null
+			throw error
+		})
+	return sidebarTabLoad
+}
+
+// The page's own view and filters, before the Files app touches the URL.
+holdLink()
+// Right away, before the Files app sends its first PROPFIND: ask for
+// nc:metavox and follow every listing.
+registerMetaVoxDavProperty()
+startListingSync()
+
+// Bulk edit opens through this script (BulkMetadataAction): its Vue and
+// components are here already. The import stays here, so its chunk is built
+// on what this script holds.
+window._metavoxLoadBulk = () => import(/* webpackChunkName: "metavox-bulk-edit" */ './BulkMetadataModalApp.js')
 
 // ========================================
 // MetaVox Metadata Sidebar Tab
@@ -49,7 +79,7 @@ async function registerNewSidebarTab() {
 		scope.filesSidebarTabs.set('metavox', {
 			id: 'metavox',
 			displayName: 'MetaVox',
-			iconSvgInline: metavoxIconSvg,
+			iconSvgInline: METAVOX_ICON_SVG,
 			order: 100,
 			tagName: 'metavox-sidebar-tab',
 
@@ -65,12 +95,15 @@ async function registerNewSidebarTab() {
 					constructor() {
 						super()
 						this._app = null
-						this._props = {
+						// Reactive, so another file or tab reaches the open form instead
+						// of building it again (which loaded twice per open). Shallow:
+						// Nextcloud's Node must not become a Vue proxy.
+						this._props = shallowReactive({
 							node: null,
 							folder: null,
 							view: null,
 							active: false,
-						}
+						})
 					}
 
 					connectedCallback() {
@@ -89,16 +122,10 @@ async function registerNewSidebarTab() {
 						if (name === 'active') {
 							this._props.active = newValue === 'true' || newValue === ''
 						}
-						if (this._app) {
-							this._remount()
-						}
 					}
 
 					set node(value) {
 						this._props.node = value
-						if (this._app) {
-							this._remount()
-						}
 					}
 
 					get node() {
@@ -123,9 +150,6 @@ async function registerNewSidebarTab() {
 
 					set active(value) {
 						this._props.active = value
-						if (this._app) {
-							this._remount()
-						}
 					}
 
 					get active() {
@@ -134,9 +158,14 @@ async function registerNewSidebarTab() {
 
 					_mount() {
 						if (this._app) return
+						// The first time, once the form has loaded: if the tab is still there.
+						if (!sidebarTab) {
+							loadSidebarTab().then(() => this.isConnected && this._mount()).catch(() => {})
+							return
+						}
 
 						this._app = createApp({
-							render: () => h(FilesSidebarTab, {
+							render: () => h(sidebarTab, {
 								node: this._props.node,
 								folder: this._props.folder,
 								view: this._props.view,
@@ -149,7 +178,7 @@ async function registerNewSidebarTab() {
 
 						const mountPoint = document.createElement('div')
 						this.appendChild(mountPoint)
-						this._app.mount(mountPoint)
+						watchLoading(this._app).mount(mountPoint)
 					}
 
 					_unmount() {
@@ -158,11 +187,6 @@ async function registerNewSidebarTab() {
 							this._app = null
 						}
 						this.innerHTML = ''
-					}
-
-					_remount() {
-						this._unmount()
-						this._mount()
 					}
 				}
 
@@ -197,27 +221,31 @@ async function registerLegacySidebarTab() {
 		window.OCA.Files.Sidebar.registerTab(new window.OCA.Files.Sidebar.Tab({
 			id: 'metavox-metadata',
 			name: 'MetaVox',
-			iconSvg: metavoxIconSvg,
+			iconSvg: METAVOX_ICON_SVG,
 			order: 100,
 
 			async mount(el, fileInfo, context) {
 				if (this.vueApp) {
 					this.vueApp.unmount()
+					this.vueApp = null
 				}
+				this.currentFileInfo = fileInfo
+				const tab = await loadSidebarTab().catch(() => null)
+				// Another mount may have come first while the form loaded.
+				if (!tab || this.vueApp) return
 
 				const mountEl = document.createElement('div')
 				el.innerHTML = ''
 				el.appendChild(mountEl)
 
-				this.currentFileInfo = fileInfo
 				this.vueApp = createApp({
-					render: () => h(FilesSidebarTab, {
+					render: () => h(tab, {
 						fileInfo: this.currentFileInfo,
 					}),
 				})
 				this.vueApp.config.globalProperties.t = translate
 				this.vueApp.config.globalProperties.n = translatePlural
-				this.vueApp.mount(mountEl)
+				watchLoading(this.vueApp).mount(mountEl)
 			},
 
 			update(fileInfo) {
@@ -230,13 +258,14 @@ async function registerLegacySidebarTab() {
 						el.innerHTML = ''
 						el.appendChild(mountEl)
 						this.vueApp = createApp({
-							render: () => h(FilesSidebarTab, {
+							// Loaded: the app exists only after mount loaded it.
+							render: () => h(sidebarTab, {
 								fileInfo: this.currentFileInfo,
 							}),
 						})
 						this.vueApp.config.globalProperties.t = translate
 						this.vueApp.config.globalProperties.n = translatePlural
-						this.vueApp.mount(mountEl)
+						watchLoading(this.vueApp).mount(mountEl)
 					}
 				}
 			},
@@ -329,9 +358,6 @@ function waitForFilesApp() {
 
 // Start waiting for Files app
 waitForFilesApp()
-
-// Register the bulk metadata action
-registerBulkMetadataAction()
 
 // ========================================
 // MetaVox File List Columns

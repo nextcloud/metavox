@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Controller;
 
+use OCA\MetaVox\Access\Access;
+use OCA\MetaVox\Access\RequireAccess;
+use OCA\MetaVox\Exception\RequestException;
 use OCA\MetaVox\Service\PresenceService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
@@ -12,6 +15,8 @@ use OCP\IRequest;
 use OCP\IUserSession;
 
 class PresenceController extends Controller {
+
+    use ReadsParams;
 
     private PresenceService $presenceService;
     private IUserSession $userSession;
@@ -31,14 +36,15 @@ class PresenceController extends Controller {
      * Remove presence when user leaves (tab close via sendBeacon).
      */
     #[NoAdminRequired]
+    #[RequireAccess(Access::LoggedIn, reason: 'removes only the caller\'s own presence')]
     public function leave(): JSONResponse {
         $user = $this->userSession->getUser();
         if (!$user) {
-            return new JSONResponse(['error' => 'Not authenticated'], 401);
+            throw RequestException::notLoggedIn();
         }
-        $gfId = $this->request->getParam('gf_id');
-        if ($gfId) {
-            $this->presenceService->remove((int)$gfId, $user->getUID());
+        $gfId = $this->intParam('gf_id', min: 1);
+        if ($gfId !== null) {
+            $this->presenceService->remove($gfId, $user->getUID());
         }
         return new JSONResponse(['success' => true]);
     }

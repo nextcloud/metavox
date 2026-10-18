@@ -4,58 +4,26 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Settings;
 
-use OCA\MetaVox\Service\PermissionService;
+use OCA\MetaVox\Service\TeamFolderAccessService;
 use OCP\IL10N;
 use OCP\IURLGenerator;
 use OCP\IUserSession;
-use OCP\IGroupManager;
 use OCP\Settings\IIconSection;
 
 class PersonalSection implements IIconSection {
 
-    private IL10N $l;
-    private IURLGenerator $urlGenerator;
-    private PermissionService $permissionService;
-    private IUserSession $userSession;
-    private IGroupManager $groupManager;
-
     public function __construct(
-        IL10N $l, 
-        IURLGenerator $urlGenerator,
-        PermissionService $permissionService,
-        IUserSession $userSession,
-        IGroupManager $groupManager
+        private readonly IL10N $l,
+        private readonly IURLGenerator $urlGenerator,
+        private readonly TeamFolderAccessService $teamFolders,
+        private readonly IUserSession $userSession,
     ) {
-        $this->l = $l;
-        $this->urlGenerator = $urlGenerator;
-        $this->permissionService = $permissionService;
-        $this->userSession = $userSession;
-        $this->groupManager = $groupManager;
     }
 
-    /**
-     * Check if this section should be visible
-     * Only show if user has permission or is admin
-     */
+    /** The same rule as the page: admins and managers of at least one team folder. */
     private function shouldShow(): bool {
         $user = $this->userSession->getUser();
-        
-        if (!$user) {
-            return false;
-        }
-
-        $userId = $user->getUID();
-
-        // Admins always see it
-        if ($this->groupManager->isAdmin($userId)) {
-            return true;
-        }
-
-        // Check if user has manage_fields permission
-        return $this->permissionService->hasPermission(
-            $userId,
-            PermissionService::PERM_MANAGE_FIELDS
-        );
+        return $user !== null && $this->teamFolders->managesAnyFolder($user->getUID());
     }
 
     public function getID(): string {
@@ -77,6 +45,7 @@ class PersonalSection implements IIconSection {
     }
 
     public function getIcon(): string {
-        return $this->urlGenerator->imagePath('metavox', 'app.svg');
+        // The dark glyph, as core's sections use: the settings list inverts it in a dark theme.
+        return $this->urlGenerator->imagePath('metavox', 'app-dark.svg');
     }
 }

@@ -12,27 +12,55 @@
  * search bar keeps working regardless (the provider parses it from the term).
  */
 
-import { translate as t } from '@nextcloud/l10n'
 import { imagePath } from '@nextcloud/router'
-import { openFilterPicker } from './FilterPicker.js'
-import { PLAIN_TEXT } from '../utils/fieldValue.js'
+import { FILTER_ID, applyFilter } from './searchQuery.js'
+import { loadPart } from '../utils/updatedPage.js'
+import { t } from '../utils/pageL10n.js'
 
-// Must equal MetadataSearchProvider::getId() so NC can match the filter to the
-// provider in handlePluginFilter() (it looks up filteredProviders by id, then
-// only sets extraParams when the id is also a registered backend provider).
-const FILTER_ID = 'metavox_metadata'
+// FILTER_ID must equal MetadataSearchProvider::getId() so NC can match the
+// filter to the provider in handlePluginFilter() (it looks up filteredProviders
+// by id, then only sets extraParams when the id is also a registered backend provider).
 const APP_ID = 'metavox'
 
 // NC renders the filter icon as <img src={icon}>, so it must be a URL, not a
-// CSS class. Use the dedicated single-color filter mark (metadata-filter.svg):
-// the MetaVox mark with its document lines tapering like a funnel, drawn as
-// evenodd cutouts (no contrast-dependent strokes) so it stays legible at ~16px
-// in every theme and reads as "filter" — distinct from the plain app mark.
-const FILTER_ICON = imagePath('metavox', 'metadata-filter.svg')
+// CSS class. Core inverts these images when the background is bright
+// (--background-invert-if-bright), so the source is the white mark: app.svg.
+const FILTER_ICON = imagePath('metavox', 'app.svg')
+
+// The link of the provider's "too many matches" line
+// (MetadataSearchProvider::NARROW_LINK): a hash, so no page loads.
+export const NARROW_LINK = '#metavox-filter-by-field'
 
 // Guard so the filter is registered at most once, even if this bundle is
 // evaluated more than once in a session (SPA navigation, double include).
 let registered = false
+
+/**
+ * Open the picker; its choice becomes the filter chip. The picker (Vue and
+ * its components) loads on the first click: this script runs on every page.
+ */
+function pickFilter() {
+	// The picker resolves with the selection, or null when dismissed. It
+	// enforces a non-empty value, so we never emit an empty filter (which NC
+	// rejects with a 400).
+	loadPart(() => import(/* webpackChunkName: "metavox-filter-picker" */ './FilterPicker.js'))
+		.then(({ openFilterPicker }) => openFilterPicker())
+		.then((selection) => {
+			if (selection) {
+				applyFilter(selection)
+			}
+		})
+		.catch(() => { /* dismissed — no-op */ })
+}
+
+/** The hint was opened, by click or Enter: drop the hash again, show the picker. */
+export function onNarrowLink() {
+	if (window.location.hash !== NARROW_LINK) {
+		return
+	}
+	window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search)
+	pickFilter()
+}
 
 /**
  * Register the filter action, guarding against missing API and double register.
@@ -61,117 +89,13 @@ function registerMetaVoxFilter() {
 			// TRANSLATORS Entry in the filter menu of the unified search that opens a field filter; MetaVox is the app name, do not translate it
 			label: t('metavox', 'MetaVox · Filter by field …'),
 			icon: FILTER_ICON,
-			callback: () => {
-				// Open the picker; it resolves with the selection (or null when
-				// dismissed). The picker enforces a non-empty value, so we never
-				// emit an empty filter (which NC rejects with a 400).
-				openFilterPicker()
-					.then((selection) => {
-						if (selection) {
-							applyFilter(selection)
-						}
-					})
-					.catch(() => { /* dismissed — no-op */ })
-			},
+			callback: pickFilter,
 		})
 		registered = true
 		return true
 	} catch (e) {
 		// Unknown signature on this NC version — degrade silently.
 		return false
-	}
-}
-
-/**
- * Apply a chosen filter via the native add-filter event.
- *
- * handlePluginFilter() reads these keys and turns filterParams into the
- * provider's extraParams, which NC spreads into the search request — where
- * MetadataSearchProvider::getFilter() reads them.
- *
- * Important: NC's find() early-returns when the search box is shorter than
- * minSearchLength (default 1), so handlePluginFilter's debouncedFind() fires no
- * request on an empty box. We therefore seed the search input with the chosen
- * value BEFORE emitting add-filter, so the re-search actually runs. The backend
- * ignores this term whenever metavox_field is present ($filterExpr ?? term), so
- * the seed value never pollutes our own results.
- *
- * @param {{field: string, value: string, label: string, groupfolderId: ?number}} selection
- */
-function applyFilter({ field, value, label, groupfolderId }) {
-	const expr = `${field}:${value}`
-
-	// Seed the search box so find() passes its length guard, then let
-	// handlePluginFilter's debouncedFind issue the request with our extraParams.
-	// Use the first token as the seed so it stays short and meaningful.
-	setSearchQuery(String(value).split(';#')[0])
-
-	emit('nextcloud:unified-search:add-filter', {
-		id: FILTER_ID,
-		// Readable chip text: "Field label: value(s)" supplied by the picker.
-		// TRANSLATORS: Text of a search filter chip, e.g. "Status: Approved".
-		filterUpdateText: label || t('metavox', '{field}: {value}', { field, value }, undefined, PLAIN_TEXT),
-		filterParams: {
-			metavox_field: expr,
-			...(groupfolderId != null ? { metavox_groupfolder: String(groupfolderId) } : {}),
-		},
-	})
-}
-
-/**
- * Seed NC's unified-search input so its searchQuery is non-empty. NC binds the
- * box via NcInputField; we set the underlying <input> value and dispatch a
- * native 'input' event so Vue's v-model picks it up.
- *
- * Why this exists: NC's find() early-returns when searchQuery is shorter than
- * minSearchLength, so a plugin filter applied on an empty box fires no request.
- * Seeding the box is the only lever an app has (the modal owns searchQuery and
- * exposes no setter).
- *
- * KNOWN FRAGILITY (verify on NC version bumps): this targets NC's INTERNAL,
- * undocumented search-input markup by selector. The class differs between the
- * global modal and the in-app bar, hence the candidate list below. If a future
- * NC (e.g. the NC34/35 search redesign, server#60241) renames these, seeding
- * silently fails and the chip stops returning results — re-check the selectors
- * then. Typing "field:value" inline in the search bar keeps working regardless,
- * since the provider parses it from the term.
- * @param {string} value
- * @return {boolean} true if an input was found and updated
- */
-function setSearchQuery(value) {
-	const selectors = [
-		'.unified-search__input input',
-		'.unified-search__input-wrapper input',
-		'.local-unified-search__input input',
-		'#unified-search input[type="text"]',
-		'input[role="searchbox"]',
-	]
-	for (const sel of selectors) {
-		const el = document.querySelector(sel)
-		if (el) {
-			const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set
-			if (setter) {
-				setter.call(el, value)
-			} else {
-				el.value = value
-			}
-			el.dispatchEvent(new Event('input', { bubbles: true }))
-			return true
-		}
-	}
-	return false
-}
-
-/**
- * Emit via the @nextcloud event bus if present.
- * @param {string} name
- * @param {object} detail
- */
-function emit(name, detail) {
-	if (window._nc_event_bus && typeof window._nc_event_bus.emit === 'function') {
-		try {
-			window._nc_event_bus.emit(name, detail)
-		} catch (e) { /* best-effort */ }
 	}
 }
 
@@ -188,6 +112,8 @@ function init() {
 		}
 	}, 100)
 }
+
+window.addEventListener('hashchange', onNarrowLink)
 
 if (document.readyState === 'loading') {
 	window.addEventListener('DOMContentLoaded', init)

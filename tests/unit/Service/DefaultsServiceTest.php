@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Tests\Service;
 
+use OCA\MetaVox\Service\DefaultsDiscovery;
+use OCA\MetaVox\Service\MetadataVersions;
 use OCA\MetaVox\Service\DefaultsService;
+use OCA\MetaVox\Service\GroupfolderRootService;
+use OCA\MetaVox\Service\SearchWordsService;
 use OCP\IDBConnection;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -22,6 +26,10 @@ class DefaultsServiceTest extends TestCase {
         $this->service = new DefaultsService(
             $this->createMock(IDBConnection::class),
             $this->createMock(LoggerInterface::class),
+            $this->createMock(GroupfolderRootService::class),
+            $this->createMock(SearchWordsService::class),
+            $this->createMock(MetadataVersions::class),
+            $this->createMock(DefaultsDiscovery::class),
         );
     }
 

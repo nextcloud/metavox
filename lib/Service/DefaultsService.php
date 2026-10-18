@@ -35,6 +35,10 @@ class DefaultsService {
     public function __construct(
         private readonly IDBConnection $db,
         private readonly LoggerInterface $logger,
+        private readonly GroupfolderRootService $groupfolderRoots,
+        private readonly SearchWordsService $searchWords,
+        private readonly MetadataVersions $versions,
+        private readonly DefaultsDiscovery $discovery,
     ) {
     }
 
@@ -122,6 +126,8 @@ class DefaultsService {
         $update->executeStatement();
 
         unset($this->folderDefaultsCache[$groupfolderId]);
+        // Older files may now miss this default too.
+        $this->discovery->startSweep($groupfolderId, time());
         return true;
     }
 
@@ -178,31 +184,47 @@ class DefaultsService {
      * how user intent is protected from the backfill.
      *
      * @param string[] $defaultFieldNames the field names that have defaults
+     * @param int|null $upToFileId only up to this file id: the query then reads a bounded range
      * @return int[] file ids, ascending, up to $limit
      */
-    public function findFilesMissingDefaults(int $groupfolderId, array $defaultFieldNames, int $limit, int $afterFileId): array {
-        if (empty($defaultFieldNames)) {
+    public function findFilesMissingDefaults(int $groupfolderId, array $defaultFieldNames, int $limit, int $afterFileId, ?int $upToFileId = null): array {
+        $qb = $this->missingDefaultsQuery($groupfolderId, $defaultFieldNames, $limit, $afterFileId, $upToFileId);
+        if ($qb === null) {
             return [];
         }
+        $result = $qb->executeQuery();
+        $ids = [];
+        while ($row = $result->fetch()) {
+            $ids[] = (int)$row['fileid'];
+        }
+        $result->closeCursor();
 
-        // A groupfolder's files live on a dedicated storage whose id is
-        // "local::<datadir>/__groupfolders/<gfId>/". Within that storage the
-        // files sit under the "files/" path prefix. IMPORTANT: the
-        // "__groupfolders/<id>/" segment is part of the STORAGE id, NOT the
-        // filecache.path (which is just "files/..."), so we must join
-        // oc_storages and match the storage id — filtering on filecache.path
-        // alone finds nothing.
-        $storageIds = $this->getGroupfolderStorageIds($groupfolderId);
-        if (empty($storageIds)) {
-            return [];
+        return $ids;
+    }
+
+    /** The query of findFilesMissingDefaults; null when there is nothing to look for. Public for the query plan check. */
+    public function missingDefaultsQuery(int $groupfolderId, array $defaultFieldNames, int $limit, int $afterFileId, ?int $upToFileId = null): ?IQueryBuilder {
+        if (empty($defaultFieldNames)) {
+            return null;
+        }
+
+        // Where the folder's files live depends on its layout (separate storage
+        // or a jail in the root storage); GroupfolderRootService resolves both.
+        $qb = $this->db->getQueryBuilder();
+        $inFolder = $this->groupfolderRoots->buildInRootsCondition(
+            $qb,
+            $this->groupfolderRoots->getRoots($groupfolderId),
+            'fc.storage',
+            'fc.path',
+        );
+        if ($inFolder === null) {
+            return null;
         }
 
         // Directory mimetype id is looked up once and used as a plain NOT-equal
         // filter, avoiding correlated subqueries whose support varies across the
         // NC-supported DB engines. Defaults apply to files only, never folders.
         $dirMimeId = $this->getDirectoryMimetypeId();
-
-        $qb = $this->db->getQueryBuilder();
 
         // A file is "missing defaults" when it lacks a metadata row for AT LEAST
         // ONE of the default fields — not just when it has none. A correlated
@@ -219,8 +241,7 @@ class DefaultsService {
         $qb->selectDistinct('fc.fileid')
            ->from('filecache', 'fc')
            ->where($qb->expr()->gt('fc.fileid', $qb->createNamedParameter($afterFileId, IQueryBuilder::PARAM_INT)))
-           ->andWhere($qb->expr()->in('fc.storage', $qb->createNamedParameter($storageIds, IQueryBuilder::PARAM_INT_ARRAY)))
-           ->andWhere($qb->expr()->like('fc.path', $qb->createNamedParameter('files/%')))
+           ->andWhere($inFolder)
            ->andWhere($qb->createFunction($missingSql))
            ->orderBy('fc.fileid', 'ASC')
            ->setMaxResults($limit);
@@ -228,67 +249,22 @@ class DefaultsService {
         if ($dirMimeId !== null) {
             $qb->andWhere($qb->expr()->neq('fc.mimetype', $qb->createNamedParameter($dirMimeId, IQueryBuilder::PARAM_INT)));
         }
-
-        $result = $qb->executeQuery();
-        $ids = [];
-        while ($row = $result->fetch()) {
-            $ids[] = (int)$row['fileid'];
+        if ($upToFileId !== null) {
+            $qb->andWhere($qb->expr()->lte('fc.fileid', $qb->createNamedParameter($upToFileId, IQueryBuilder::PARAM_INT)));
         }
-        $result->closeCursor();
 
-        return $ids;
+        return $qb;
     }
 
-    /**
-     * Cheap "is the backfill done?" check for the status endpoint.
-     *
-     * Rather than counting every missing file across a potentially huge folder
-     * on each poll, this asks for a single missing file. Empty result == the
-     * folder is fully defaulted (for now). Uses the same keyset path so it is
-     * O(index seek), not O(folder size).
-     */
-    public function hasMissingDefaults(int $groupfolderId): bool {
-        $defaults = $this->getFolderDefaults($groupfolderId);
-        if (empty($defaults)) {
-            return false;
-        }
-        $found = $this->findFilesMissingDefaults($groupfolderId, array_keys($defaults), 1, 0);
-        return !empty($found);
-    }
-
-    /**
-     * Resolve the storage numeric_id(s) backing a groupfolder.
-     *
-     * A groupfolder's storage id ends in "/__groupfolders/<gfId>/", e.g.
-     * "local::/var/www/html/data/__groupfolders/1/". The data dir prefix varies
-     * per install, so we match on the suffix rather than hardcoding it. Cached
-     * per request.
-     *
-     * @return int[]
-     */
-    private function getGroupfolderStorageIds(int $groupfolderId): array {
-        if (isset($this->storageIdsCache[$groupfolderId])) {
-            return $this->storageIdsCache[$groupfolderId];
-        }
-
+    /** The highest file id there is; new files get a higher one. */
+    public function maxFileId(): int {
         $qb = $this->db->getQueryBuilder();
-        $qb->select('numeric_id')
-           ->from('storages')
-           ->where($qb->expr()->like('id', $qb->createNamedParameter('%/__groupfolders/' . $groupfolderId . '/')));
-
+        $qb->select($qb->func()->max('fileid'))->from('filecache');
         $result = $qb->executeQuery();
-        $ids = [];
-        while ($row = $result->fetch()) {
-            $ids[] = (int)$row['numeric_id'];
-        }
+        $max = (int)$result->fetchOne();
         $result->closeCursor();
-
-        $this->storageIdsCache[$groupfolderId] = $ids;
-        return $ids;
+        return $max;
     }
-
-    /** @var array<int, int[]> request-scoped cache of gfId => storage numeric ids */
-    private array $storageIdsCache = [];
 
     /**
      * Correlated subquery: how many of the default fields this file ALREADY has
@@ -375,6 +351,24 @@ class DefaultsService {
                     'groupfolderId' => $groupfolderId,
                     'exception' => $e,
                 ]);
+            }
+        }
+
+        if ($total > 0) {
+            $this->versions->bump($groupfolderId);
+        }
+        // Only rows that were missing got the default; take the words from what is stored.
+        try {
+            $this->searchWords->reindexFiles($fileIds, array_keys($defaults));
+        } catch (\Exception $e) {
+            $this->logger->error('MetaVox: search words for defaults failed', [
+                'groupfolderId' => $groupfolderId,
+                'exception' => $e,
+            ]);
+            // The filter trusts the index: build it again, it reads the metadata meanwhile.
+            try {
+                $this->searchWords->rebuildAll();
+            } catch (\Exception) {
             }
         }
 

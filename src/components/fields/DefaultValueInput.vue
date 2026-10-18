@@ -32,34 +32,45 @@
       label="label"
       @update:model-value="emitMultiSelect($event)" />
 
+    <!-- The three below were raw <textarea> and <input> while every other
+         branch used the component library, so they carried none of its
+         focus ring, border or height and sat a few pixels off the rest of
+         the row. NcTextArea and NcTextField take the same native types. -->
+
     <!-- Textarea -->
-    <textarea
+    <!-- TRANSLATORS Noun: label of the input that sets the default value of a field for new files in a Team folder -->
+    <NcTextArea :label="t('metavox', 'Default value')"
       v-else-if="field.field_type === 'textarea'"
       :id="inputId"
-      :value="modelValue"
+      :model-value="modelValue"
       :placeholder="field.field_label"
+      hide-label
+      :rows="2"
       class="field-input textarea-input"
-      rows="2"
-      @input="emitValue($event.target.value)"></textarea>
+      @update:model-value="emitValue($event)" />
 
     <!-- Date (optionally datetime-local) -->
-    <input
+    <!-- TRANSLATORS Noun: label of the input that sets the default value of a field for new files in a Team folder -->
+    <NcTextField :label="t('metavox', 'Default value')"
       v-else-if="field.field_type === 'date'"
       :id="inputId"
+      :model-value="modelValue"
+      hide-label
       :type="includesTime ? 'datetime-local' : 'date'"
       :step="includesTime ? 1 : undefined"
-      :value="modelValue"
       class="field-input date-input"
-      @input="emitValue(includesTime ? padDatetimeLocal($event.target.value) : $event.target.value)" />
+      @update:model-value="emitValue(includesTime ? padDatetimeLocal($event) : $event)" />
 
     <!-- Number -->
-    <input
+    <!-- TRANSLATORS Noun: label of the input that sets the default value of a field for new files in a Team folder -->
+    <NcTextField :label="t('metavox', 'Default value')"
       v-else-if="field.field_type === 'number'"
       :id="inputId"
+      :model-value="modelValue"
+      hide-label
       type="number"
-      :value="modelValue"
       class="field-input number-input"
-      @input="emitValue($event.target.value)" />
+      @update:model-value="emitValue($event)" />
 
     <!-- Checkbox -->
     <NcCheckboxRadioSwitch
@@ -96,6 +107,7 @@
       :model-value="modelValue"
       :field="field"
       :input-id="inputId"
+      :resolved="resolved"
       class="field-input"
       @input="emitValue($event)" />
 
@@ -112,9 +124,13 @@
 </template>
 
 <script>
-import { NcTextField, NcSelect, NcCheckboxRadioSwitch } from '@nextcloud/vue'
+import NcTextArea from '@nextcloud/vue/components/NcTextArea'
+import NcTextField from '@nextcloud/vue/components/NcTextField'
+import NcSelect from '@nextcloud/vue/components/NcSelect'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import { translate as t } from '@nextcloud/l10n'
 import { dateFieldIncludesTime, padDatetimeLocal } from '../../utils/dateField.js'
+import { optionItems } from '../../utils/fieldOptions.js'
 import UrlFieldInput from './UrlFieldInput.vue'
 import UserGroupFieldInput from './UserGroupFieldInput.vue'
 import FileLinkFieldInput from './FileLinkFieldInput.vue'
@@ -129,6 +145,7 @@ import FileLinkFieldInput from './FileLinkFieldInput.vue'
 export default {
   name: 'DefaultValueInput',
   components: {
+    NcTextArea,
     NcTextField,
     NcSelect,
     NcCheckboxRadioSwitch,
@@ -149,18 +166,16 @@ export default {
       type: String,
       default: '',
     },
+    // File links: the linked files as you see them, from the server.
+    resolved: {
+      type: Array,
+      default: () => [],
+    },
   },
   emits: ['update:modelValue'],
   computed: {
     options() {
-      const raw = this.field.field_options
-      let list = []
-      if (typeof raw === 'string') {
-        list = raw.split('\n').filter(o => o.trim())
-      } else if (Array.isArray(raw)) {
-        list = raw.filter(o => o && String(o).trim())
-      }
-      return list.map(o => ({ label: String(o).trim(), value: String(o).trim() }))
+      return optionItems(this.field.field_options)
     },
     multiSelectValue() {
       if (!this.modelValue) return []
@@ -197,39 +212,24 @@ export default {
 
 .default-value-label {
   display: block;
-  font-size: 12px;
+  font-size: var(--font-size-small);
   color: var(--color-text-maxcontrast);
   margin-bottom: 4px;
 }
 
+/* No min-height: the components own their height and it is the platform's
+   34px. A hardcoded 44px made these three controls taller than every other
+   control in the same row (§6, "Every control in the form measures the same
+   height"). */
 .field-input {
   width: 100%;
   max-width: 480px;
-  min-height: 44px;
 }
 
-.textarea-input,
-.date-input,
-.number-input {
-  width: 100%;
-  padding: 8px 12px;
-  border: 2px solid var(--color-border);
-  border-radius: var(--border-radius);
-  background: var(--color-main-background);
-  color: var(--color-text);
-  font-size: 14px;
-  font-family: var(--font-face);
-  transition: border-color 0.2s ease;
-  resize: vertical;
-}
-
-.textarea-input:focus,
-.date-input:focus,
-.number-input:focus {
-  border-color: var(--color-primary);
-  outline: none;
-  box-shadow: 0 0 0 2px var(--color-primary-light);
-}
+/* These three are NcTextArea/NcTextField now. The old rules styled a raw
+   input and would land on the component wrapper, and the :focus rule set
+   `outline: none` — which on a component that draws its own ring removes
+   the ring and replaces it with nothing (§8). */
 
 /* Width matched to the field type so a year/date isn't absurdly wide. */
 .dv--number .field-input,

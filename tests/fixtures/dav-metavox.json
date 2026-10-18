@@ -1,0 +1,80 @@
+{
+ "_comment": "Values as the Files app must get them back from nc:metavox. tests/unit/Dav/MetadataPropertyXmlTest.php writes them the way the server does into dav-metavox.xml; tests/dav-parsers reads that file with every webdav/fast-xml-parser NC 31-35 shipped. Empty values are left out; values over 512 characters come back cut off and listed in t.",
+ "files": [
+  {
+   "href": "/remote.php/dav/files/alice/HR/",
+   "noValues": true
+  },
+  {
+   "href": "/remote.php/dav/files/alice/HR/cdata.txt",
+   "groupfolder": 12,
+   "canWrite": true,
+   "values": {
+    "end": "a]]>b",
+    "ends": "]]]]>>]]>",
+    "open": "<![CDATA[x]]>",
+    "comment": "<!-- x -->"
+   }
+  },
+  {
+   "href": "/remote.php/dav/files/alice/HR/markup.txt",
+   "groupfolder": 12,
+   "canWrite": true,
+   "values": {
+    "entities": "&amp; &lt; &quot; &#x26; &#38; &nbsp;",
+    "script": "<script>alert(1)</script>",
+    "quotes": "\"double\" 'single' `back`",
+    "backslash": "C:\\Temp\\new \\u003E \\\"",
+    "url": "https://example.org/a?b=c&d=e#f",
+    "json": "{\"a\":[1,\"]]>\"]}"
+   }
+  },
+  {
+   "href": "/remote.php/dav/files/alice/HR/text.txt",
+   "groupfolder": 12,
+   "canWrite": false,
+   "values": {
+    "whitespace": "  leading, tab\tnewline\ncarriage\r trailing  ",
+    "control": "\u0001\u000b\u001f\u007f",
+    "unicode": "\u00dcberpr\u00fcfung \u2713 \u6570\u636e \u05e2\u05d1\u05e8\u05d9\u05ea",
+    "emoji": "\ud83d\ude00\ud83d\udc69\u200d\ud83d\udcbb",
+    "separators": "a\u2028b\u2029c",
+    "invisible": "a\u200bb\ufeffc",
+    "nonchar": "\ufffe\uffff",
+    "space": " "
+   }
+  },
+  {
+   "href": "/remote.php/dav/files/alice/HR/numbers.txt",
+   "groupfolder": 12,
+   "canWrite": true,
+   "values": {
+    "0": "field named zero",
+    "zero": "0",
+    "padded": "007",
+    "exponent": "1e5",
+    "hex": "0x1A",
+    "negativeZero": "-0",
+    "bool": "true",
+    "null": "null",
+    "empty": "",
+    "missing": null
+   }
+  },
+  {
+   "href": "/remote.php/dav/files/alice/HR/long.txt",
+   "groupfolder": 12,
+   "canWrite": true,
+   "values": {
+    "list": "Item 000;#Item 001;#Item 002;#Item 003;#Item 004;#Item 005;#Item 006;#Item 007;#Item 008;#Item 009;#Item 010;#Item 011;#Item 012;#Item 013;#Item 014;#Item 015;#Item 016;#Item 017;#Item 018;#Item 019;#Item 020;#Item 021;#Item 022;#Item 023;#Item 024;#Item 025;#Item 026;#Item 027;#Item 028;#Item 029;#Item 030;#Item 031;#Item 032;#Item 033;#Item 034;#Item 035;#Item 036;#Item 037;#Item 038;#Item 039;#Item 040;#Item 041;#Item 042;#Item 043;#Item 044;#Item 045;#Item 046;#Item 047;#Item 048;#Item 049;#Item 050;#Item 051;#Item 052;#Item 053;#Item 054;#Item 055;#Item 056;#Item 057;#Item 058;#Item 059;#Item 060;#Item 061;#Item 062;#Item 063;#Item 064;#Item 065;#Item 066;#Item 067;#Item 068;#Item 069;#Item 070;#Item 071;#Item 072;#Item 073;#Item 074;#Item 075;#Item 076;#Item 077;#Item 078;#Item 079",
+    "short": "Rood;#Groen;#Blauw"
+   }
+  },
+  {
+   "href": "/remote.php/dav/files/alice/HR/r\u00e9sum\u00e9 [1].pdf",
+   "groupfolder": 7,
+   "canWrite": false,
+   "values": {}
+  }
+ ]
+}
