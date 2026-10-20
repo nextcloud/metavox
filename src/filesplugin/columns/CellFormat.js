@@ -8,6 +8,7 @@
 
 import { todayKey } from '../../utils/dateField.js'
 import { cellState, compileRules, stateName } from '../../utils/valueRules.js'
+import { viewerItems } from '../../utils/accountNames.js'
 import { MARKER_CLASS } from './ColumnStyles.js'
 import { ICON_PATHS, RULES_ICON_PATH } from './ToneIcons.js'
 import { hasNoTeamFolder, isTruncated } from './MetadataStore.js'
@@ -111,9 +112,11 @@ export function applyCellFormat(td, value, config) {
 		clearCellFormat(td)
 		return
 	}
+	const me = currentUserId()
 	const ctx = {
 		today: todayKey(),
-		me: currentUserId(),
+		me,
+		mine: viewerItems(me),
 		truncated: isTruncated(fileId, config.field_name),
 	}
 	paintedDay = ctx.today

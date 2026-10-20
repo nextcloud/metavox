@@ -39,6 +39,7 @@ import {
 	getMetavoxAllGfData,
 } from './MetaVoxState.js'
 import { onFilelinkNames } from './FilelinkNames.js'
+import { onAccountNames, setViewerItems } from '../../utils/accountNames.js'
 import { leaveOnClose, showingTeamFolder } from './Presence.js'
 
 import { formatValue, getColWidth } from './ColumnUtils.js'
@@ -162,6 +163,10 @@ function wireDependencies() {
 
 	// Current names of linked files arrive after the cells are drawn
 	onFilelinkNames(() => updateAllRowCells())
+	// Names mostly come with the values; one that comes later redraws the People columns.
+	onAccountNames(() => {
+		if (getActiveColumnConfigs().some((config) => config.field_type === 'user')) updateAllRowCells()
+	})
 
 	// InlineEditor needs updateAllRowCells, getActiveColumnConfigs, setCellValue
 	setInlineEditorUpdateAllRowCells(updateAllRowCells)
@@ -374,6 +379,7 @@ function scheduleInjection() {
 				if (data) {
 					setMetavoxGroupfolders(data.groupfolders || [])
 					setMetavoxAllGfData(data.all_gf_data || {})
+					setViewerItems(data.viewer_items)
 				}
 			} catch (e) { /* not available */ }
 		}

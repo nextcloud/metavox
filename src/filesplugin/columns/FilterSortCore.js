@@ -35,13 +35,17 @@ export function matchesFilters(meta, filters) {
 
 const NUMERIC = new Set(['number', 'integer', 'float'])
 
-/** What a value sorts on, worked out once: a date was parsed again at every comparison. */
-function sortKey(value, fieldType) {
+/**
+ * What a value sorts on, worked out once: a date was parsed again at every
+ * comparison. textOf: what a value reads as, when it stores something else
+ * (people by name).
+ */
+function sortKey(value, fieldType, textOf = String) {
 	if (value === undefined || value === null || value === '') return { empty: true }
 	let num = NaN
 	if (NUMERIC.has(fieldType)) num = parseFloat(value)
 	else if (fieldType === 'date') num = new Date(value).getTime()
-	return { empty: false, value, num, text: String(value) }
+	return { empty: false, value, num, text: textOf(value) }
 }
 
 /** Missing or '' values go last in both directions. */
@@ -65,7 +69,7 @@ export function compareValues(a, b, fieldType, direction = 'asc') {
 /**
  * @param {object[]} nodes Files app nodes
  * @param {ReturnType<compileFilters>} filters
- * @param {?{fieldName: string, fieldType: string, direction: string}} sort
+ * @param {?{fieldName: string, fieldType: string, direction: string, textOf?: function(string): string}} sort
  * @param {function(number): ?object} metaOf file id => metadata
  * @return {object[]} the matching nodes, sorted (ties keep their order)
  */
@@ -73,7 +77,7 @@ export function applyFilterSort(nodes, filters, sort, metaOf) {
 	let result = filters.length ? nodes.filter((node) => !node.fileid || matchesFilters(metaOf(node.fileid), filters)) : nodes
 	if (sort) {
 		// Each file's key once, not twice per comparison.
-		const keyed = result.map((node) => ({ node, key: sortKey(metaOf(node.fileid)?.[sort.fieldName], sort.fieldType) }))
+		const keyed = result.map((node) => ({ node, key: sortKey(metaOf(node.fileid)?.[sort.fieldName], sort.fieldType, sort.textOf) }))
 		keyed.sort((a, b) => compareKeys(a.key, b.key, sort.fieldType, sort.direction))
 		result = keyed.map((entry) => entry.node)
 	}
@@ -81,8 +85,8 @@ export function applyFilterSort(nodes, filters, sort, metaOf) {
 }
 
 const OPTION_TYPES = new Set(['select', 'multiselect', 'multi_select', 'dropdown'])
-// A file link with several files is a list too: one option per file.
-const LIST_TYPES = new Set(['multiselect', 'multi_select', 'filelink'])
+// A file link with several files and People with several are lists too: one option per item.
+const LIST_TYPES = new Set(['multiselect', 'multi_select', 'filelink', 'user'])
 
 /**
  * Filter options per field: the defined options of a select field, yes/no for a

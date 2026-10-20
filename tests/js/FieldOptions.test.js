@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { includesTime, optionItems, optionLabel, optionValues } from '../../src/utils/fieldOptions.js'
+import { accountOptions, includesTime, optionItems, optionLabel, optionValues } from '../../src/utils/fieldOptions.js'
 
 // The same cases as tests/unit/Validation/FieldOptionsTest.php: browser and server read options alike.
 const fixture = JSON.parse(readFileSync('tests/fixtures/field-options.json', 'utf8'))
@@ -15,6 +15,12 @@ describe('options in every shape read as one list', () => {
 describe('whether a date field holds a time', () => {
 	it.each(fixture.includeTime.map((c) => [c.name, c]))('%s', (name, c) => {
 		expect(includesTime(c.options)).toBe(c.includeTime)
+	})
+})
+
+describe('what a People field takes', () => {
+	it.each(fixture.accounts.map((c) => [c.name, c]))('%s', (name, c) => {
+		expect(accountOptions(c.options)).toEqual(c.accounts)
 	})
 })
 

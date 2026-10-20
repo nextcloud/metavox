@@ -3,11 +3,12 @@
  *
  * Several field types store something other than what they display: a
  * checkbox holds "0"/"1", a multiselect joins its values with ";#", a date
- * holds an ISO string, a File link holds "<id>:<path>" tokens. Four places
- * used to each carry their own copy of that knowledge — the sidebar, the
- * edit form, the grid's filter chips and its filter dropdown — and they had
- * already drifted: only one of them knew a checkbox could arrive as the
- * boolean `false`, and only two honoured a date field's includeTime option.
+ * holds an ISO string, a File link holds "<id>:<path>" tokens, a People
+ * field holds account, group and team ids. Four places used to each carry their own copy of
+ * that knowledge — the sidebar, the edit form, the grid's filter chips and
+ * its filter dropdown — and they had already drifted: only one of them knew
+ * a checkbox could arrive as the boolean `false`, and only two honoured a
+ * date field's includeTime option.
  *
  * Anything that turns a stored value into text for a person belongs here.
  */
@@ -15,6 +16,7 @@
 import { getCanonicalLocale, translate as t } from '@nextcloud/l10n'
 import { dateFieldIncludesTime, parseLocalDateValue } from './dateField.js'
 import { optionLabel } from './fieldOptions.js'
+import { accountItems, accountLabel } from './accountNames.js'
 
 /** Values a checkbox may arrive as, from the API, a form, or a filter. */
 const TRUTHY = new Set(['1', 'true', true, 1])
@@ -77,6 +79,10 @@ export function formatFieldValue(value, fieldType, field = null) {
 	case 'multiselect':
 	case 'multi_select':
 		return splitMulti(value).map((item) => optionLabel(field?.field_options, item)).join(', ')
+
+	// People by name: the server sends the names with the values (accountNames.js).
+	case 'user':
+		return accountItems(value).map(accountLabel).join(', ')
 
 	default:
 		return String(value)

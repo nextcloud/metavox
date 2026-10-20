@@ -30,6 +30,10 @@ use Psr\Log\LoggerInterface;
  * Where a team folder's files live in filecache comes from
  * {@see GroupfolderRootService}.
  *
+ * {@see withNames} also gives a People field the names of whom it holds
+ * ({@see AccountService}): it is the one step every answer that shows values
+ * goes through.
+ *
  * The backlink query builder (buildBacklinkSql) is separated from execution,
  * and the value parsing/matching helpers are pure static functions, so the
  * correctness-critical logic can be unit-tested without a database.
@@ -54,6 +58,7 @@ class FileReferenceService {
         private readonly LoggerInterface $logger,
         private readonly GroupfolderRootService $groupfolderRoots,
         private readonly IUserSession $userSession,
+        private readonly AccountService $accounts,
         // FileAccessService needs FieldService, which needs this: fetched when a link is checked.
         private readonly ContainerInterface $container,
     ) {
@@ -244,13 +249,17 @@ class FileReferenceService {
     }
 
     /**
-     * Add `resolved` to every file-link field: the linked files as this user
-     * sees them now, or a placeholder for one that is gone or hidden to them.
+     * Add what a value names, as this user should read it: `resolved` on every
+     * file-link field, the linked files as this user sees them now or a
+     * placeholder for one that is gone or hidden to them, and `accounts` on
+     * every People field.
      *
      * @param array<int, array<string, mixed>> $metadata rows with field_type and value
      * @return array<int, array<string, mixed>>
      */
     public function withNames(array $metadata, string $userId): array {
+        $metadata = $this->accounts->withNames($metadata, $userId);
+
         $fileIds = [];
         foreach ($metadata as $field) {
             if (!in_array($field['field_type'] ?? '', self::FILELINK_TYPES, true)) {

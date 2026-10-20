@@ -5,10 +5,11 @@
  */
 
 import { translate as t } from '@nextcloud/l10n'
-import { generateUrl } from '@nextcloud/router'
 import { MARKER_CLASS, HEADER_MARKER, RESIZE_HANDLE } from './ColumnStyles.js'
 import { getActiveColumnConfigs, metadataCache } from './MetaVoxState.js'
 import { filelinkHref, filelinkLabel, requestFilelinkName } from './FilelinkNames.js'
+import { accountIcon, accountNameElement } from './AccountCells.js'
+import { accountsOf } from '../../utils/accountNames.js'
 import { parseValue } from '../../components/fields/filelinkUtils.js'
 import { formatValue, getColWidth } from './ColumnUtils.js'
 import { getFilterInstance } from './MetadataFilter.js'
@@ -351,23 +352,19 @@ function renderCellContent(td, value, config) {
 
 	switch (config.field_type) {
 	case 'user': {
+		// The first by name, then how many more; the tooltip names them all.
+		const people = accountsOf(value)
 		const wrapper = document.createElement('span')
 		wrapper.className = 'metavox-cell-user'
-
-		const avatar = document.createElement('img')
-		avatar.className = 'metavox-cell-avatar'
-		avatar.src = generateUrl('/avatar/{userId}/20', { userId: value })
-		avatar.width = 20
-		avatar.height = 20
-		avatar.onerror = () => { avatar.style.display = 'none' }
-		wrapper.appendChild(avatar)
-
-		const name = document.createElement('span')
-		name.textContent = value
-		wrapper.appendChild(name)
-
+		wrapper.append(accountIcon(people[0], 20), accountNameElement(people[0]))
+		if (people.length > 1) {
+			const more = document.createElement('span')
+			more.className = 'metavox-cell-user-more'
+			more.textContent = '+' + (people.length - 1)
+			wrapper.appendChild(more)
+		}
 		td.replaceChildren(wrapper)
-		td.title = value
+		td.title = people.map((person) => person.label).join(', ')
 		break
 	}
 	case 'url': {

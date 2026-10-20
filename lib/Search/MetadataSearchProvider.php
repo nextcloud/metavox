@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\MetaVox\Search;
 
 use OCA\MetaVox\Access\VisibleFolder;
+use OCA\MetaVox\Service\AccountService;
 use OCA\MetaVox\Service\FieldService;
 use OCA\MetaVox\Service\FileAccessService;
 use OCA\MetaVox\Service\SearchIndexService;
@@ -61,6 +62,7 @@ class MetadataSearchProvider implements IProvider, IFilteringProvider {
         private readonly IPreview $preview,
         private readonly LoggerInterface $logger,
         private readonly SearchSettings $settings,
+        private readonly AccountService $accounts,
     ) {
     }
 
@@ -349,7 +351,7 @@ class MetadataSearchProvider implements IProvider, IFilteringProvider {
             return new SearchResultEntry(
                 $thumbnailUrl,
                 $title,
-                $this->formatMetadataSubline($file['metadata'], $fieldLabels, $needle),
+                $this->formatMetadataSubline($this->readableValues($file['metadata'], $userId), $fieldLabels, $needle),
                 $this->urlGenerator->linkToRouteAbsolute('files.view.index', [
                     'dir' => $dir,
                     'scrollto' => $name,
@@ -388,6 +390,27 @@ class MetadataSearchProvider implements IProvider, IFilteringProvider {
         }
 
         return $this->fieldLabelsCache;
+    }
+
+    /**
+     * People by name, as this user may read them; the other values as stored.
+     *
+     * @param array<string, ?string> $metadata
+     * @return array<string, ?string>
+     */
+    private function readableValues(array $metadata, string $userId): array {
+        $accountFields = array_intersect_key($this->fields->accountFieldNames(), $metadata);
+        if ($accountFields === []) {
+            return $metadata;
+        }
+        $names = $this->accounts->namesInValues($metadata, $accountFields, $userId);
+        foreach (array_keys($accountFields) as $fieldName) {
+            $metadata[$fieldName] = implode(', ', array_map(fn (string $item): string => $names[$item]
+                // TRANSLATORS Shown instead of a team's name when the team was deleted or the user cannot see it
+                ?? (AccountService::kind($item) === 'team' ? $this->l10n->t('Unavailable team') : AccountService::id($item)),
+                AccountService::items($metadata[$fieldName])));
+        }
+        return $metadata;
     }
 
     /**

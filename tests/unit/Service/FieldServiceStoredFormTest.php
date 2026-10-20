@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\MetaVox\Tests\Service;
 
 use OCA\MetaVox\Validation\LinkSettings;
+use OCA\MetaVox\Service\AccountService;
 use OCA\MetaVox\Validation\FieldValue;
 use OCA\MetaVox\Service\ApiValidationException;
 use OCA\MetaVox\Service\MetadataVersions;
@@ -93,7 +94,7 @@ class FieldServiceStoredFormTest extends TestCase {
 
         return new FieldService($db, $this->createMock(IGroupManager::class), $this->createMock(IUserManager::class),
             $this->createMock(SearchWordsService::class), $this->createMock(ViewService::class), $this->createMock(PushService::class),
-            $cacheFactory, $this->createMock(LoggerInterface::class), $fileReferences, $this->createMock(MetadataVersions::class), new FieldValue($this->createMock(IUserManager::class), $this->createMock(LinkSettings::class)));
+            $cacheFactory, $this->createMock(LoggerInterface::class), $fileReferences, $this->createMock(MetadataVersions::class), new FieldValue($this->createMock(AccountService::class), $this->createMock(LinkSettings::class)));
     }
 
     public function testAFileLinkOnAFileIsStoredNormalized(): void {

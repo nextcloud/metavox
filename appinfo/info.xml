@@ -36,7 +36,7 @@ MetaVox brings structured metadata to Nextcloud team folders. Define the fields 
 
 Supports **Nextcloud 31 to 35** on **MySQL, MariaDB or PostgreSQL**, in English, Dutch, French, German and Swedish. SQLite is for trying MetaVox out.
 </description>
-    <version>3.0.0</version>
+    <version>3.1.0</version>
     <licence>AGPL-3.0-or-later</licence>
     <author mail="info@voxcloud.nl">Sam Ditmeijer</author>
     <author mail="info@voxcloud.nl">Rik Dekker</author>

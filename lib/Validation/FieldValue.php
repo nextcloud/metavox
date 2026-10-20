@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace OCA\MetaVox\Validation;
 
 use OCA\MetaVox\L10n\Translatable;
-use OCP\IUserManager;
+use OCA\MetaVox\Service\AccountService;
 
 /**
  * What a field takes, per field type, and the one form it is stored in. Every
@@ -15,11 +15,8 @@ use OCP\IUserManager;
  */
 class FieldValue {
 
-    /** @var array<string, bool> accounts already looked up in this request */
-    private array $accounts = [];
-
     public function __construct(
-        private readonly IUserManager $users,
+        private readonly AccountService $accounts,
         private readonly LinkSettings $links,
     ) {
     }
@@ -42,7 +39,7 @@ class FieldValue {
             'multiselect', 'multi_select' => self::choices($value, $options),
             'checkbox', 'boolean' => self::tick($value),
             'url' => $this->url($value),
-            'user' => $this->account($value),
+            'user' => self::accounts($value),
             'filelink' => self::fileLinks($value),
             default => self::text($value),
         };
@@ -268,16 +265,40 @@ class FieldValue {
         return false;
     }
 
-    private function account(mixed $value): string {
-        $value = is_string($value) ? trim($value) : null;
-        if ($value === '') {
-            return '';
+    /**
+     * A People value as it is saved: who was chosen, each once, as text or a
+     * list. Whether each one may be chosen is checked on saving (chosen()).
+     */
+    private static function accounts(mixed $value): string {
+        $parts = match (true) {
+            is_string($value) => explode(';#', $value),
+            is_array($value) && array_is_list($value) => $value,
+            default => [null],
+        };
+        $items = [];
+        foreach ($parts as $part) {
+            $part = is_string($part) ? trim($part) : null;
+            if ($part === '') {
+                continue;
+            }
+            if ($part === null || !AccountService::isItem($part)) {
+                // TRANSLATORS Error under an account field (a person) that got a name which is no account on this server
+                throw new InvalidValue(Translatable::t('Choose an existing account'));
+            }
+            $items[$part] = true;
         }
-        if ($value === null || !($this->accounts[$value] ??= $this->users->userExists($value))) {
-            // TRANSLATORS Error under an account field (a person) that got a name which is no account on this server
-            throw new InvalidValue(Translatable::t('Choose an existing account'));
-        }
-        return $value;
+        return implode(';#', array_map('strval', array_keys($items)));
+    }
+
+    /**
+     * A People value as the one saving may set it: what is new must exist and
+     * be theirs to choose; what the value held already stays.
+     *
+     * @param string $value as stored()
+     * @throws InvalidValue
+     */
+    public function chosen(array $field, string $value, string $current): string {
+        return $this->accounts->chosen($field, $value, $current);
     }
 
     /** File links are put in their stored form by FileReferenceService; here only text or a list of it. */

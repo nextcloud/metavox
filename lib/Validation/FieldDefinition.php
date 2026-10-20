@@ -139,8 +139,9 @@ final class FieldDefinition {
 
     /**
      * The options as stored: a list of values for a choice field (with labels
-     * only when one differs from its value), {includeTime} for a date, none
-     * for the rest. Left out on a change, the stored ones stay.
+     * only when one differs from its value), {includeTime} for a date,
+     * {multiple, kinds} for a People field, none for the rest. Left out on a
+     * change, the stored ones stay.
      *
      * @throws InvalidValue
      */
@@ -173,7 +174,49 @@ final class FieldDefinition {
         if ($type === 'date') {
             return json_encode(['includeTime' => self::includeTime($options)]);
         }
+        if ($type === 'user') {
+            return json_encode(self::accounts($options));
+        }
         return '[]';
+    }
+
+    /**
+     * {multiple, kinds} of a People field. Nothing sent is what a field took
+     * before these options: one account.
+     *
+     * @return array{multiple: bool, kinds: list<string>}
+     * @throws InvalidValue
+     */
+    private static function accounts(mixed $options): array {
+        if (is_string($options)) {
+            $options = $options === '' ? [] : json_decode($options, true);
+        }
+        if ($options === null || $options === []) {
+            return FieldOptions::accounts(null);
+        }
+        if (!is_array($options) || array_is_list($options) || array_diff(array_keys($options), ['multiple', 'kinds']) !== []) {
+            throw self::notAccountOptions();
+        }
+        $multiple = $options['multiple'] ?? false;
+        $multiple = match (is_string($multiple) ? strtolower(trim($multiple)) : $multiple) {
+            true, 1, '1', 'true' => true,
+            false, 0, '0', 'false', '', null => false,
+            default => throw self::notAccountOptions(),
+        };
+        $kinds = $options['kinds'] ?? ['user'];
+        if (!is_array($kinds) || !array_is_list($kinds) || array_filter($kinds, 'is_string') !== $kinds || array_diff($kinds, FieldOptions::KINDS) !== []) {
+            throw self::notAccountOptions();
+        }
+        if ($kinds === []) {
+            // TRANSLATORS Error under the options of a field of the type "People and groups" when none of accounts, groups and teams is ticked
+            throw new InvalidValue(Translatable::t('Choose at least one of accounts, groups and teams'));
+        }
+        return ['multiple' => $multiple, 'kinds' => array_values(array_intersect(FieldOptions::KINDS, $kinds))];
+    }
+
+    private static function notAccountOptions(): InvalidValue {
+        // TRANSLATORS Error under the options of a field of the type "People and groups" (user) sent through the API; keep the JSON as it is
+        return new InvalidValue(Translatable::t('For a user field, send {"multiple": true or false, "kinds": ["user", "group", "team"]}'));
     }
 
     /** @throws InvalidValue */

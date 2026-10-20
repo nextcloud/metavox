@@ -27,8 +27,8 @@ export function fieldTypeOptions() {
 		{ id: 'checkbox', label: t('metavox', 'Checkbox') },
 		// TRANSLATORS Noun: field type for a web address (URL), shown in the field type picker
 		{ id: 'url', label: t('metavox', 'URL') },
-		// TRANSLATORS Noun: field type that holds a Nextcloud account (a person), shown in the field type picker
-		{ id: 'user', label: t('metavox', 'Account') },
+		// TRANSLATORS Noun: field type that holds Nextcloud accounts, groups or teams, shown in the field type picker
+		{ id: 'user', label: t('metavox', 'People and groups') },
 		// TRANSLATORS Noun: field type that links to one or more files, shown in the field type picker
 		{ id: 'filelink', label: t('metavox', 'File link') },
 	]

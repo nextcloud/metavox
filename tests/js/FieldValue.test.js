@@ -6,6 +6,7 @@ vi.mock('@nextcloud/l10n', () => ({
 }))
 
 const { formatFieldValue, isChecked, isUnchecked, splitMulti } = await import('../../src/utils/fieldValue.js')
+const { rememberAccountNames } = await import('../../src/utils/accountNames.js')
 
 describe('a stored value as the user knows it', () => {
 	it('reads a checkbox the same in every form it arrives in', () => {
@@ -31,6 +32,17 @@ describe('a stored value as the user knows it', () => {
 			if (zone === undefined) delete process.env.TZ
 			else process.env.TZ = zone
 		}
+	})
+
+	it('shows people by name, the id when the name is missing', () => {
+		rememberAccountNames([{ id: 'admin', name: 'Administrator' }, { id: 'group:staff', name: 'Staff' }, { id: 'gone', name: null }])
+
+		expect(formatFieldValue('admin', 'user')).toBe('Administrator')
+		expect(formatFieldValue('admin;#group:staff', 'user')).toBe('Administrator, Staff')
+		// Gone, or a name the server did not send: an account or group by its id,
+		// a team as unavailable.
+		expect(formatFieldValue('gone;#group:other', 'user')).toBe('gone, other')
+		expect(formatFieldValue('team:Ab12', 'user')).toBe('Unavailable team')
 	})
 
 	it('has nothing to show for no value', () => {

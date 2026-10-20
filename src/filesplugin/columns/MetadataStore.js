@@ -8,6 +8,7 @@
  */
 
 import { decodeNode } from './DavMetadata.js'
+import { rememberAccountNames } from '../../utils/accountNames.js'
 import { metadataCache, permissionCache } from './MetaVoxState.js'
 
 export const PROTECT_MS = 60000
@@ -140,6 +141,7 @@ export function seedFromNode(node, listingGroupfolderId) {
 	}
 	// The server's verdict (admins included); never the node's own permissions.
 	permissionCache.set(id, decoded.canWrite)
+	rememberAccountNames(decoded.names)
 	if (metadataCache.has(id) && isProtected(id)) {
 		return 'protected'
 	}
@@ -195,7 +197,7 @@ export function invalidateAll() {
 /**
  * Store an API answer.
  *
- * @param {object} data fileId -> {field: value, _permissions}
+ * @param {object} data fileId -> {field: value, _permissions, _names}
  * @param {number[]} okIds ids from requests that succeeded
  * @param {number} startedAt now() when the request started
  * @param {number} epochAtStart currentEpoch() when the request started
@@ -205,8 +207,9 @@ export function fillFromApi(data, okIds, startedAt, epochAtStart) {
 		return
 	}
 	for (const id of okIds) {
-		const { _permissions, ...fields } = data[id] ?? {}
+		const { _permissions, _names, ...fields } = data[id] ?? {}
 		permissionCache.set(id, ((_permissions ?? 0) & 2) !== 0)
+		rememberAccountNames(_names)
 
 		if ((mutatedAt.get(id) ?? -Infinity) > startedAt) {
 			// Changed during the request: only complete the fields still cut

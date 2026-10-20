@@ -9,6 +9,7 @@ use OCA\MetaVox\Access\RequireAccess;
 use OCA\MetaVox\BackgroundJobs\DiscoverMissingDefaultsJob;
 use OCA\MetaVox\Exception\RequestException;
 use OCA\MetaVox\L10n\Translatable;
+use OCA\MetaVox\Service\AccountService;
 use OCA\MetaVox\Service\DefaultsDiscovery;
 use OCA\MetaVox\Service\DefaultsService;
 use OCA\MetaVox\Service\FieldService;
@@ -62,20 +63,24 @@ class DefaultsController extends BaseController {
 
         $defaults = $this->defaultsService->getFolderDefaultsByFieldId($groupfolderId);
 
-        // File-link defaults hold ids only; the names come as the manager sees the files.
+        // File-link and People defaults hold ids only; the names come as the manager sees them.
         $types = array_column($this->fieldService->getAllFields(), 'field_type', 'id');
         $rows = [];
         foreach ($defaults as $fieldId => $value) {
             $rows[$fieldId] = ['field_type' => $types[$fieldId] ?? '', 'value' => $value];
         }
         $resolved = [];
+        $accounts = [];
         foreach ($this->fileReferenceService->withNames($rows, $user->getUID()) as $fieldId => $row) {
             if (isset($row['resolved'])) {
                 $resolved[$fieldId] = $row['resolved'];
             }
+            if (isset($row['accounts'])) {
+                $accounts[$fieldId] = $row['accounts'];
+            }
         }
 
-        return new JSONResponse(['defaults' => $defaults, 'resolved' => (object)$resolved]);
+        return new JSONResponse(['defaults' => $defaults, 'resolved' => (object)$resolved, 'accounts' => (object)$accounts]);
     }
 
     /**
@@ -99,6 +104,8 @@ class DefaultsController extends BaseController {
             $value = $this->fieldValues->stored($field, $this->request->getParam('value'));
             if ($value !== '' && in_array($field['field_type'], FileReferenceService::FILELINK_TYPES, true)) {
                 $value = $this->defaultFileLinks($value, $groupfolderId, $fieldId);
+            } elseif ($value !== '' && AccountService::isAccountField($field)) {
+                $value = $this->fieldValues->chosen($field, $value, $this->defaultsService->getFolderDefaultsByFieldId($groupfolderId)[$fieldId] ?? '');
             }
         } catch (InvalidValue $e) {
             throw new ApiValidationException(['value' => $e->getMessage()]);

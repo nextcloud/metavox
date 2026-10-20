@@ -6,6 +6,7 @@ namespace OCA\MetaVox\Tests\Service;
 
 use OCA\MetaVox\Service\FileAccess;
 use OCA\MetaVox\Service\FileAccessService;
+use OCA\MetaVox\Service\AccountService;
 use OCA\MetaVox\Service\FileReferenceService;
 use OCA\MetaVox\Service\GroupfolderRootService;
 use OCP\Files\IRootFolder;
@@ -32,7 +33,7 @@ class FileLinkAccessTest extends TestCase {
         $container->method('get')->with(FileAccessService::class)->willReturn($access);
         $service = new FileReferenceService($this->createMock(IDBConnection::class), $this->createMock(IRootFolder::class),
             $this->createMock(LoggerInterface::class), $this->createMock(GroupfolderRootService::class),
-            $this->createMock(IUserSession::class), $container);
+            $this->createMock(IUserSession::class), $this->createMock(AccountService::class), $container);
 
         $this->assertSame([1], $service->linkableFiles('alice', [1, 2, 3], 22));
     }

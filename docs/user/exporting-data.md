@@ -38,7 +38,7 @@ File path,File name,Status,Department,Review date
 - **Empty fields** appear as empty values in the CSV — they are not omitted
 - **File Link fields** show the names of the linked files, separated by commas. A file that no longer exists or that you can't access shows as `Unavailable file`.
 - **Multi-select fields** keep their stored form, with the values separated by `;#` (for example `Legal;#Finance`)
-- **Account fields** show the user ID; **Checkbox fields** show `1` (checked) or `0` (unchecked)
+- **People and groups fields** show the stored ids: an account ID, `group:<id>`, `team:<id>`, several joined with `;#`; **Checkbox fields** show `1` (checked) or `0` (unchecked)
 - **Opening in Excel**: Double-click the downloaded `.csv` file. If special characters don't display correctly, use Excel's Data → From Text/CSV import with UTF-8 encoding
 - **Large exports**: The export works well for typical selections. For very large datasets (1000+ files), consider using the [API](../architecture/api-reference.md) for batch operations
 

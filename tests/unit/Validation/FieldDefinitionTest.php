@@ -76,6 +76,23 @@ class FieldDefinitionTest extends TestCase {
         $this->assertSame('[]', FieldDefinition::stored(['field_type' => 'text'] + self::NEW)['field_options'], 'a text field has none');
     }
 
+    public function testWhatAPeopleFieldTakes(): void {
+        $people = ['field_name' => 'file_gf_owner', 'field_label' => 'Owner', 'field_type' => 'user'];
+        $this->assertSame('{"multiple":false,"kinds":["user"]}', FieldDefinition::stored($people)['field_options'], 'one account when nothing is sent');
+        $this->assertSame('{"multiple":true,"kinds":["user","group","team"]}',
+            FieldDefinition::stored(['field_options' => ['multiple' => 'true', 'kinds' => ['team', 'user', 'group']]] + $people)['field_options']);
+        $this->assertSame('{"multiple":false,"kinds":["group"]}', FieldDefinition::stored(['field_options' => '{"kinds":["group"]}'] + $people)['field_options']);
+        $this->assertSame(['field_options' => 'Choose at least one of accounts, groups and teams'], self::refusal(['field_options' => ['kinds' => []]] + $people));
+        foreach ([['kinds' => ['robot']], ['multiple' => 'maybe'], ['kinds' => 'user'], ['size' => 3], ['A'], ['kinds' => [['user']]], ['kinds' => ['a' => 'user']]] as $wrong) {
+            $this->assertArrayHasKey('field_options', self::refusal(['field_options' => $wrong] + $people), json_encode($wrong));
+        }
+
+        // Left out on a change, what it takes stays; from another type, one account.
+        $stored = ['field_type' => 'user', 'field_options' => '{"multiple":true,"kinds":["user","group"]}'] + $people;
+        $this->assertSame($stored['field_options'], FieldDefinition::stored(['field_label' => 'Owners'], $stored)['field_options']);
+        $this->assertSame('{"multiple":false,"kinds":["user"]}', FieldDefinition::stored(['field_type' => 'user'], ['field_type' => 'text', 'field_options' => '[]'] + $people)['field_options']);
+    }
+
     public function testLabelNameAndTheRest(): void {
         $this->assertSame(['field_label' => 'Enter a label'], self::refusal(['field_label' => '  '] + self::NEW));
         $this->assertSame(['field_label' => 'This text is too long'], self::refusal(['field_label' => str_repeat('x', 256)] + self::NEW));

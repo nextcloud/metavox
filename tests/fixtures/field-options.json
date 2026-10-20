@@ -29,5 +29,18 @@
   {"name": "the options of a dropdown", "options": ["Draft", "Final"], "includeTime": false},
   {"name": "nothing", "options": null, "includeTime": false},
   {"name": "empty list", "options": "[]", "includeTime": false}
+ ],
+ "accounts": [
+  {"name": "a field from before these options", "options": null, "accounts": {"multiple": false, "kinds": ["user"]}},
+  {"name": "stored as an empty list", "options": "[]", "accounts": {"multiple": false, "kinds": ["user"]}},
+  {"name": "all kinds, several", "options": {"multiple": true, "kinds": ["user", "group", "team"]}, "accounts": {"multiple": true, "kinds": ["user", "group", "team"]}},
+  {"name": "as JSON text", "options": "{\"multiple\":true,\"kinds\":[\"group\"]}", "accounts": {"multiple": true, "kinds": ["group"]}},
+  {"name": "kinds in their own order", "options": {"kinds": ["team", "user"]}, "accounts": {"multiple": false, "kinds": ["user", "team"]}},
+  {"name": "a kind MetaVox does not know is left out", "options": {"kinds": ["user", "robot", 3]}, "accounts": {"multiple": false, "kinds": ["user"]}},
+  {"name": "no kind left is an account", "options": {"kinds": ["robot"]}, "accounts": {"multiple": false, "kinds": ["user"]}},
+  {"name": "several as text 0", "options": {"multiple": "0"}, "accounts": {"multiple": false, "kinds": ["user"]}},
+  {"name": "several as a number", "options": {"multiple": 1}, "accounts": {"multiple": true, "kinds": ["user"]}},
+  {"name": "the options of a dropdown", "options": ["Draft", "Final"], "accounts": {"multiple": false, "kinds": ["user"]}},
+  {"name": "text that is no JSON", "options": "Draft", "accounts": {"multiple": false, "kinds": ["user"]}}
  ]
 }

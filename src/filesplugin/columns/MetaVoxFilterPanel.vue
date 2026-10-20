@@ -69,6 +69,7 @@ import FilterVariantIcon from 'vue-material-design-icons/FilterVariant.vue'
 // dropdown and another way in the chip it produces.
 import { folderCutOffValues, folderFilterValues, optionLabel } from './FilterOptions.js'
 import { onFilelinkNames } from './FilelinkNames.js'
+import { onAccountNames } from '../../utils/accountNames.js'
 import { LISTED_OPTIONS, SEARCH_FROM, listedOptions, searchKey } from './FilterSortCore.js'
 import { PLAIN_TEXT } from '../../utils/fieldValue.js'
 import { loadPart } from '../../utils/updatedPage.js'
@@ -112,15 +113,16 @@ function buildOptions() {
 			label: optionLabel(val, config.field_type, config) + (loaded.cutOff[config.field_name]?.has(val) ? '\u2026' : ''),
 		}))
 		for (const option of options) option.key = searchKey(option.label)
-		// Linked files by name, not by id.
-		if (config.field_type === 'filelink') options.sort((a, b) => a.label.localeCompare(b.label))
+		// Linked files and people by name, not by id.
+		if (config.field_type === 'filelink' || config.field_type === 'user') options.sort((a, b) => a.label.localeCompare(b.label))
 		map[config.field_name] = options
 	}
 	optionsMap.value = map
 }
 
-// Names of linked files come in after the options: label them again.
+// Names of linked files and people can come in after the options: label them again.
 onBeforeUnmount(onFilelinkNames(() => buildOptions()))
+onBeforeUnmount(onAccountNames(() => buildOptions()))
 
 function syncActiveState() {
 	if (!props.filter) return

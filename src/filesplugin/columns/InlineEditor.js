@@ -13,10 +13,12 @@ import { MARKER_CLASS } from './ColumnStyles.js'
 import { saveSingleField, saveBulkFields } from './MetaVoxAPI.js'
 import { requireFull } from './MetadataLoader.js'
 import { formatValue } from './ColumnUtils.js'
-import { optionItems } from '../../utils/fieldOptions.js'
+import { accountOptions, optionItems } from '../../utils/fieldOptions.js'
 import { isRequired } from '../../utils/requiredFields.js'
 import { permissionCache, metadataCache, getActiveGroupfolderId, getActiveFolderPath } from './MetaVoxState.js'
 import { filelinkHref, filelinkLabel } from './FilelinkNames.js'
+import { accountIcon, accountNameElement } from './AccountCells.js'
+import { accountItems, accountsOf, rememberAccountNames } from '../../utils/accountNames.js'
 import { parseValue, joinTokens, isWithin } from '../../components/fields/filelinkUtils.js'
 import { PLAIN_TEXT, splitMulti } from '../../utils/fieldValue.js'
 import { translate as t } from '@nextcloud/l10n'
@@ -421,23 +423,54 @@ export async function openInlineEditor(td, config) {
 		}
 
 		case 'user': {
-			// User picker with server-side search-as-you-type
+			// People: Nextcloud's sharee search as you type, of the kinds the
+			// field takes. One choice saves on a click; several are ticked and
+			// saved with the check mark.
+			const takes = accountOptions(config.field_options)
+			const several = takes.multiple || accountItems(currentValue).length > 1
+			const chosen = new Set(accountItems(currentValue))
 			const container = document.createElement('div')
 			container.className = 'metavox-inline-editor metavox-inline-select metavox-user-picker'
 
 			const searchInput = document.createElement('input')
 			searchInput.type = 'text'
 			searchInput.className = 'metavox-user-search'
-			// TRANSLATORS Placeholder of the account search box in the cell editor of a person field
-			searchInput.placeholder = t('metavox', 'Type to search accounts …')
+			searchInput.placeholder = takes.kinds.length === 1 && takes.kinds[0] === 'user'
+				// TRANSLATORS Placeholder of the account search box in the cell editor of a person field
+				? t('metavox', 'Type to search accounts …')
+				// TRANSLATORS Placeholder of the search box of a People field that also takes groups or teams
+				: t('metavox', 'Type to search people and groups …')
 			container.appendChild(searchInput)
 
 			const listEl = document.createElement('div')
 			listEl.className = 'metavox-user-list'
 			container.appendChild(listEl)
 
-			// Clear option, always visible; a required field keeps a value.
-			if (!isRequired(config)) {
+			const option = (person) => {
+				const item = document.createElement(several ? 'label' : 'div')
+				item.className = several ? 'metavox-ms-option metavox-user-option' : 'metavox-select-option metavox-user-option'
+				if (several) {
+					const cb = document.createElement('input')
+					cb.type = 'checkbox'
+					cb.checked = chosen.has(person.id)
+					cb.addEventListener('change', () => {
+						if (cb.checked) chosen.add(person.id)
+						else chosen.delete(person.id)
+					})
+					item.appendChild(cb)
+				} else {
+					if (chosen.has(person.id)) item.classList.add('metavox-select-option--selected')
+					item.addEventListener('click', () => {
+						saveSingleField(fileId, fieldName, person.id, { unlock: true })
+						closeInlineEditor(false)
+					})
+				}
+				item.append(accountIcon(person, 24), accountNameElement(person))
+				return item
+			}
+
+			// Clear option, for one choice; a required field keeps a value.
+			if (!several && !isRequired(config)) {
 				const clearOpt = document.createElement('div')
 				clearOpt.className = 'metavox-select-option metavox-user-option'
 				clearOpt.textContent = '—'
@@ -451,75 +484,37 @@ export async function openInlineEditor(td, config) {
 				listEl.appendChild(clearOpt)
 			}
 
-			// Show current value if set
-			if (currentValue) {
-				const currentItem = document.createElement('div')
-				currentItem.className = 'metavox-select-option metavox-user-option metavox-select-option--selected'
-				const currentAvatar = document.createElement('img')
-				currentAvatar.className = 'metavox-user-avatar'
-				currentAvatar.src = generateUrl('/avatar/{userId}/24', { userId: currentValue })
-				currentAvatar.width = 24
-				currentAvatar.height = 24
-				currentAvatar.onerror = () => { currentAvatar.style.display = 'none' }
-				currentItem.appendChild(currentAvatar)
-				currentItem.appendChild(document.createTextNode(currentValue))
-				listEl.appendChild(currentItem)
-			}
-
-			// What stays above the search results: the clear option and the current value.
+			// Who it holds now, above the search results.
+			const current = accountsOf(currentValue)
+			current.forEach((person) => listEl.appendChild(option(person)))
 			const kept = listEl.children.length
 			let searchTimer = null
 
 			const doSearch = (query) => {
-				if (query.length < 2) {
-					// Clear results, keep clear option + current
-					while (listEl.children.length > kept) {
-						listEl.removeChild(listEl.lastChild)
-					}
-					return
+				while (listEl.children.length > kept) {
+					listEl.removeChild(listEl.lastChild)
 				}
+				if (query.length < 2) return
 
-				axios.get(generateUrl('/apps/metavox/api/users'), { params: { search: query } }).then(resp => {
-					// Remove old results (keep clear option + current value)
+				axios.get(generateUrl('/apps/metavox/api/accounts'), { params: { search: query, kinds: takes.kinds.join(',') } }).then(resp => {
+					if (searchInput.value.trim() !== query) return
 					while (listEl.children.length > kept) {
 						listEl.removeChild(listEl.lastChild)
 					}
-
-					const users = Array.isArray(resp.data) ? resp.data : []
-
-					if (users.length === 0) {
+					const found = Array.isArray(resp.data) ? resp.data : []
+					rememberAccountNames(found)
+					const shown = new Set(current.map((person) => person.id))
+					const people = found.filter((person) => !shown.has(person.id))
+					if (people.length === 0 && found.length === 0) {
 						const empty = document.createElement('div')
 						empty.className = 'metavox-select-option metavox-user-empty'
-						// TRANSLATORS Shown in the account list of a person field when the search has no results
-						empty.textContent = t('metavox', 'No accounts found')
+						// TRANSLATORS Shown in the search list of a People field when nothing matches the search
+						empty.textContent = t('metavox', 'No one found')
 						listEl.appendChild(empty)
 						return
 					}
-
-					for (const u of users) {
-						// Skip if already shown as current value
-						if (u.id === currentValue) continue
-
-						const item = document.createElement('div')
-						item.className = 'metavox-select-option metavox-user-option'
-
-						const avatar = document.createElement('img')
-						avatar.className = 'metavox-user-avatar'
-						avatar.src = generateUrl('/avatar/{userId}/24', { userId: u.id })
-						avatar.width = 24
-						avatar.height = 24
-						avatar.onerror = () => { avatar.style.display = 'none' }
-						item.appendChild(avatar)
-
-						const nameSpan = document.createElement('span')
-						nameSpan.textContent = u.displayname || u.id
-						item.appendChild(nameSpan)
-
-						item.addEventListener('click', () => {
-							saveSingleField(fileId, fieldName, u.id, { unlock: true })
-							closeInlineEditor(false)
-						})
-						listEl.appendChild(item)
+					for (const person of people) {
+						listEl.appendChild(option({ id: person.id, kind: person.kind, label: person.name || person.id, known: true }))
 					}
 				}).catch(() => {})
 			}
@@ -529,6 +524,29 @@ export async function openInlineEditor(td, config) {
 				searchTimer = setTimeout(() => doSearch(searchInput.value.trim()), 300)
 			})
 
+			if (several) {
+				const btnRow = document.createElement('div')
+				btnRow.className = 'metavox-ms-actions'
+				const saveBtn = document.createElement('button')
+				saveBtn.textContent = '\u2713'
+				// TRANSLATORS Verb: tooltip and accessible name of the check-mark button that saves the cell value
+				saveBtn.title = t('metavox', 'Save')
+				saveBtn.setAttribute('aria-label', saveBtn.title)
+				saveBtn.className = 'metavox-ms-save'
+				saveBtn.addEventListener('click', () => {
+					saveSingleField(fileId, fieldName, [...chosen].join(';#'), { unlock: true })
+					closeInlineEditor(false)
+				})
+				const cancelBtn = document.createElement('button')
+				cancelBtn.textContent = '\u2715'
+				// TRANSLATORS Verb: tooltip and accessible name of the cross button that closes the cell editor without saving
+				cancelBtn.title = t('metavox', 'Cancel')
+				cancelBtn.setAttribute('aria-label', cancelBtn.title)
+				cancelBtn.className = 'metavox-ms-cancel'
+				cancelBtn.addEventListener('click', () => closeInlineEditor(true))
+				btnRow.append(saveBtn, cancelBtn)
+				container.appendChild(btnRow)
+			}
 
 			editor = container
 			break

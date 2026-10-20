@@ -334,6 +334,11 @@
         </p>
       </div>
 
+      <!-- What a People field can hold -->
+      <div v-if="formData.type === 'user'" class="form-row">
+        <PeopleFieldOptions v-model="formData.people" />
+      </div>
+
       <!-- Options for select/multiselect fields -->
       <div v-if="showOptionsField" class="form-row">
         <!-- TRANSLATORS Heading above the list of choices of a dropdown or multi-select field -->
@@ -465,6 +470,11 @@
             </p>
           </div>
 
+          <!-- What a People field can hold -->
+          <div v-if="(editingField.field_type || editingField.type) === 'user'" class="form-row">
+            <PeopleFieldOptions v-model="editData.people" :was-multiple="accountOptions(editingField.field_options || editingField.options).multiple" />
+          </div>
+
           <!-- Edit Options for select/multiselect fields -->
           <div v-if="(editingField.field_type || editingField.type) === 'select' || (editingField.field_type || editingField.type) === 'multiselect'" class="form-row">
             <!-- TRANSLATORS Heading above the list of choices of a dropdown or multi-select field -->
@@ -565,12 +575,13 @@ import { showConfirmation, showError, showSuccess } from '@nextcloud/dialogs'
 import { translate, translatePlural } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
 import { errorText, isFieldError } from '../utils/errorText.js'
-import { includesTime, optionItems } from '../utils/fieldOptions.js'
+import { accountOptions, includesTime, optionItems } from '../utils/fieldOptions.js'
 import { PLAIN_TEXT } from '../utils/fieldValue.js'
 import { fieldTypeLabel, fieldTypeOptions } from '../utils/fieldTypes.js'
 import { canBeRequired } from '../utils/requiredFields.js'
 
 import NcButton from '@nextcloud/vue/components/NcButton'
+import PeopleFieldOptions from './fields/PeopleFieldOptions.vue'
 import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
@@ -616,6 +627,7 @@ export default {
   
   components: {
     NcButton,
+    PeopleFieldOptions,
     NcTextArea,
     NcTextField,
     NcSelect,
@@ -701,6 +713,7 @@ export default {
         description: '',
         required: false,
         includeTime: false,
+        people: accountOptions(null),
         options: []
       },
 
@@ -714,6 +727,7 @@ export default {
         description: '',
         required: false,
         includeTime: false,
+        people: accountOptions(null),
         options: []
       }
     }
@@ -1030,6 +1044,7 @@ export default {
   
   methods: {
     canBeRequired,
+    accountOptions,
 
     /** The Required badge: the flag, unless the type can never be required. */
     showsRequired(field) {
@@ -1189,6 +1204,8 @@ export default {
         is_required: this.formData.required && canBeRequired(this.formData.type) ? 1 : 0,
         field_options: this.formData.type === 'date'
           ? { includeTime: !!this.formData.includeTime }
+          : this.formData.type === 'user'
+          ? this.formData.people
           : this.formData.options
               .filter(o => String(o.value || '').trim().length > 0)
               .map(o => String(o.value).trim())
@@ -1273,6 +1290,7 @@ export default {
         description: field.field_description || field.description || '',
         required: !!(field.is_required || field.required),
         includeTime: includesTime(rawOpts),
+        people: accountOptions(rawOpts),
         options: this.parseFieldOptions(rawOpts)
       }
     },
@@ -1294,6 +1312,8 @@ export default {
         // keeps it, as this form shows only the values.
         field_options: fieldType === 'date'
           ? { includeTime: !!this.editData.includeTime }
+          : fieldType === 'user'
+          ? this.editData.people
           : (this.editData.options
               ? this.editData.options
                   .filter(o => String(o.value || '').trim().length > 0)
@@ -1347,6 +1367,7 @@ export default {
         description: '',
         required: false,
         includeTime: false,
+        people: accountOptions(null),
         options: []
       }
     },
@@ -1388,6 +1409,7 @@ export default {
         description: '',
         required: false,
         includeTime: false,
+        people: accountOptions(null),
         options: []
       }
       this.selectedFieldType = this.selectOptions.find(opt => opt.id === 'text')

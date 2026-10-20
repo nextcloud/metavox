@@ -7,6 +7,7 @@ namespace OCA\MetaVox\Tests\Search;
 use OCA\MetaVox\Access\ReadableScope;
 use OCA\MetaVox\Access\VisibleFolder;
 use OCA\MetaVox\Search\MetadataSearchProvider;
+use OCA\MetaVox\Service\AccountService;
 use OCA\MetaVox\Service\FieldService;
 use OCA\MetaVox\Service\FileAccess;
 use OCA\MetaVox\Service\FileAccessService;
@@ -365,6 +366,6 @@ class MetadataSearchResultsTest extends TestCase {
         $settings->method('filterOn')->willReturnCallback(fn () => $this->filterOn);
         return new MetadataSearchProvider($l ?? $this->createMock(IL10N::class), $urls ?? $this->createMock(IURLGenerator::class), $this->index, $this->access,
             $folders ?? $this->createMock(UserFieldService::class), $root ?? $this->createMock(IRootFolder::class), $fields ?? $this->createMock(FieldService::class),
-            $preview ?? $this->createMock(IPreview::class), $this->createMock(LoggerInterface::class), $settings);
+            $preview ?? $this->createMock(IPreview::class), $this->createMock(LoggerInterface::class), $settings, $this->createMock(AccountService::class));
     }
 }

@@ -38,6 +38,7 @@ describe('nc:metavox through the Files app parser', () => {
 			canWrite: true,
 			values: { version: '2024.10', count: '007', markup: '&<"x">', name: 'é€' },
 			truncated: [],
+			names: {},
 		})
 	})
 
@@ -59,7 +60,7 @@ describe('nc:metavox through the Files app parser', () => {
 
 		files.forEach((file, i) => {
 			const node = decodeNode(nodes[i])
-			if (file.noValues) return expect(node).toEqual({ gf: null, canWrite: false, values: {}, truncated: [] })
+			if (file.noValues) return expect(node).toEqual({ gf: null, canWrite: false, values: {}, truncated: [], names: {} })
 			const kept = Object.entries(file.values).filter(([, value]) => value !== null && value !== '')
 			expect(node.gf).toBe(file.groupfolder)
 			expect(node.canWrite).toBe(file.canWrite)
@@ -81,6 +82,6 @@ describe('nc:metavox through the Files app parser', () => {
 	it('reads the folder entry of a team folder root', async () => {
 		const [node] = await listNodes([response('/remote.php/dav/files/alice/HR/', '<nc:metavox>{"v":1,"g":12}</nc:metavox>')])
 
-		expect(decodeNode(node)).toEqual({ gf: 12, canWrite: false, values: {}, truncated: [] })
+		expect(decodeNode(node)).toEqual({ gf: 12, canWrite: false, values: {}, truncated: [], names: {} })
 	})
 })

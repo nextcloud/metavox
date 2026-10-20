@@ -35,4 +35,13 @@ class FieldOptionsTest extends TestCase {
     public function testIncludeTime(mixed $stored, bool $expected): void {
         $this->assertSame($expected, FieldOptions::includeTime($stored));
     }
+
+    public static function people(): array {
+        return self::fixture('accounts');
+    }
+
+    #[DataProvider('people')]
+    public function testWhatAPeopleFieldTakes(mixed $stored, array $expected): void {
+        $this->assertSame($expected, FieldOptions::accounts($stored));
+    }
 }

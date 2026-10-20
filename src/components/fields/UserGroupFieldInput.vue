@@ -1,26 +1,20 @@
 <template>
   <div class="user-field-wrapper">
-    <!-- Show user bubble when value is selected -->
-    <div v-if="modelValue && selectedUser && !isEditing" class="selected-user-display">
-      <NcUserBubble
-        :user="selectedUser.id"
-        :display-name="selectedUser.displayname"
-        :size="28"
-        :show-user-status="true">
-        {{ selectedUser.displayname }}
-      </NcUserBubble>
-      <!-- TRANSLATORS Accessible name of the pencil button that picks a different account for the field -->
-      <NcButton :aria-label="t('metavox', 'Change account')"
-        v-if="!disabled"
+    <!-- One chosen: shown as Nextcloud shows a person, with change and clear. -->
+    <div v-if="!isMultiple && chosen.length > 0 && !isEditing" class="selected-user-display">
+      <AccountBubble :account="chosen[0]" :size="28" />
+      <!-- TRANSLATORS Accessible name of the pencil button that picks a different account, group or team for the field -->
+      <NcButton v-if="!disabled"
+        :aria-label="t('metavox', 'Change')"
         variant="tertiary"
-        @click="startEditing">
+        @click="isEditing = true">
         <template #icon>
           <PencilIcon :size="16" />
         </template>
       </NcButton>
       <!-- TRANSLATORS Accessible name of the button that removes the chosen account from the field -->
-      <NcButton :aria-label="t('metavox', 'Clear selection')"
-        v-if="!disabled"
+      <NcButton v-if="!disabled"
+        :aria-label="t('metavox', 'Clear selection')"
         variant="tertiary"
         @click="clearSelection">
         <template #icon>
@@ -29,32 +23,34 @@
       </NcButton>
     </div>
 
-    <!-- Show select when no value or editing -->
-    <!-- TRANSLATORS Accessible name of the account search box when the field has no label of its own -->
-    <NcSelect :aria-label-combobox="fieldLabel || t('metavox', 'Search accounts')"
-      v-else
-      v-model="internalValue"
+    <!-- TRANSLATORS Accessible name of the search box of a People field when the field has no label of its own -->
+    <NcSelect v-else
+      :model-value="isMultiple ? chosenIds : (chosenIds[0] ?? null)"
+      :aria-label-combobox="fieldLabel || t('metavox', 'Search people')"
       :input-id="inputId"
       label-outside
-      :options="users"
+      :options="options"
       :disabled="disabled"
       :loading="loading"
       :filterable="false"
-      :placeholder="placeholder || t('metavox', 'Type to search accounts …')"
-      :multiple="multiple"
+      :placeholder="placeholder || searchPlaceholder"
+      :multiple="isMultiple"
+      :close-on-select="!isMultiple"
       :reduce="option => option.id"
-      label="displayname"
+      label="label"
       @search="onSearch"
       @update:model-value="onSelect">
-      <template #option="{ option }">
-        <div v-if="option" class="user-option">
-          <NcAvatar
-            :user="option.userId || option.id"
-            :display-name="option.displayname"
+      <template #option="option">
+        <div class="user-option">
+          <NcAvatar v-if="option.kind === 'user'"
+            :user="option.id"
+            :display-name="option.label"
             :size="24" />
-          <div class="option-info">
-            <span class="option-name">{{ option.displayname }}</span>
-          </div>
+          <span v-else class="user-option__icon">
+            <AccountMultipleIcon v-if="option.kind === 'group'" :size="18" />
+            <AccountGroupIcon v-else :size="18" />
+          </span>
+          <span class="option-name">{{ option.label }}</span>
         </div>
       </template>
       <template #no-options="{ search }">
@@ -68,28 +64,40 @@
 import { translate } from '@nextcloud/l10n'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 import NcAvatar from '@nextcloud/vue/components/NcAvatar'
-import NcUserBubble from '@nextcloud/vue/components/NcUserBubble'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 import PencilIcon from 'vue-material-design-icons/Pencil.vue'
 import CloseIcon from 'vue-material-design-icons/Close.vue'
+import AccountGroupIcon from 'vue-material-design-icons/AccountGroup.vue'
+import AccountMultipleIcon from 'vue-material-design-icons/AccountMultiple.vue'
+import AccountBubble from './AccountBubble.vue'
+import { accountItems, accountsOf, onAccountNames, rememberAccountNames } from '../../utils/accountNames.js'
+import { accountOptions } from '../../utils/fieldOptions.js'
 
+/**
+ * The picker of a People field: accounts, groups and teams, one or several,
+ * as the field takes them. The search is Nextcloud's sharee search, so it
+ * finds whom you could share with. The value is their ids, joined with ;#.
+ */
 export default {
   name: 'UserGroupFieldInput',
   components: {
     NcSelect,
     NcAvatar,
-    NcUserBubble,
     NcButton,
     PencilIcon,
-    CloseIcon
+    CloseIcon,
+    AccountGroupIcon,
+    AccountMultipleIcon,
+    AccountBubble
   },
   props: {
     modelValue: {
       type: [String, Array],
       default: ''
     },
+    // With field_options, and the names the server sent with its value (accounts).
     field: {
       type: Object,
       default: () => ({})
@@ -116,6 +124,7 @@ export default {
       type: String,
       default: ''
     },
+    // Several, also when the field takes one (a search filter).
     multiple: {
       type: Boolean,
       default: false
@@ -125,43 +134,60 @@ export default {
   data() {
     return {
       loading: false,
-      users: [],
-      internalValue: this.multiple ? [] : null,
+      results: [],
       isEditing: false,
       searchTimer: null,
-      currentUserLoaded: false
+      // Bumped when names come in, so the labels are read again.
+      namesSeen: 0
     }
   },
   computed: {
-    selectedUser() {
-      if (!this.modelValue || this.multiple) return null
-      return this.users.find(u => u.id === this.modelValue) || {
-        id: this.modelValue,
-        displayname: this.modelValue
+    takes() {
+      return accountOptions(this.field?.field_options)
+    },
+    isMultiple() {
+      // A value with several from before the field took one shows them all, to take some out.
+      return this.multiple || this.takes.multiple || this.chosenIds.length > 1
+    },
+    chosenIds() {
+      return Array.isArray(this.modelValue) ? this.modelValue.map(String) : accountItems(this.modelValue)
+    },
+    chosen() {
+      void this.namesSeen
+      return accountsOf(this.chosenIds.join(';#'))
+    },
+    // The chosen ones first: the select shows a choice by its option.
+    options() {
+      const ids = new Set(this.chosenIds)
+      return [
+        ...this.chosen.map((person) => ({ id: person.id, kind: person.kind, label: person.label })),
+        ...this.results.filter((option) => !ids.has(option.id)),
+      ]
+    },
+    searchPlaceholder() {
+      const kinds = this.takes.kinds
+      if (kinds.length === 1 && kinds[0] === 'user') {
+        // TRANSLATORS Placeholder of the search box of a People field that takes accounts only
+        return this.t('metavox', 'Type to search accounts …')
       }
+      // TRANSLATORS Placeholder of the search box of a People field that also takes groups or teams
+      return this.t('metavox', 'Type to search people and groups …')
     }
   },
   watch: {
-    modelValue: {
+    'field.accounts': {
       immediate: true,
-      handler(newVal) {
-        if (this.multiple) {
-          if (!newVal) {
-            this.internalValue = []
-          } else if (typeof newVal === 'string') {
-            this.internalValue = newVal.split(';#').filter(v => v)
-          } else {
-            this.internalValue = newVal
-          }
-        } else {
-          this.internalValue = newVal || null
-        }
-        // Load current user's display name if not yet loaded
-        if (newVal && !this.multiple && !this.currentUserLoaded) {
-          this.loadCurrentUser(newVal)
-        }
+      handler(accounts) {
+        if (Array.isArray(accounts)) rememberAccountNames(accounts)
       }
     }
+  },
+  mounted() {
+    this.stopNames = onAccountNames(() => { this.namesSeen++ })
+  },
+  beforeUnmount() {
+    this.stopNames?.()
+    clearTimeout(this.searchTimer)
   },
   methods: {
     t: translate,
@@ -170,77 +196,43 @@ export default {
         // TRANSLATORS Shown in the account search list until at least 2 characters are typed
         return this.t('metavox', 'Type at least 2 characters …')
       }
-      // TRANSLATORS Shown in the account search list when no account matches the search
-      return this.t('metavox', 'No accounts found')
+      // TRANSLATORS Shown in the search list of a People field when nothing matches the search
+      return this.t('metavox', 'No one found')
     },
-    async loadCurrentUser(userId) {
-      try {
-        const response = await axios.get(generateUrl('/apps/metavox/api/users'), {
-          params: { search: userId }
-        })
-        if (Array.isArray(response.data)) {
-          const found = response.data.find(u => u.id === userId)
-          if (found) {
-            const user = { id: found.id, userId: found.id, displayname: found.displayname || found.id }
-            // Add to users list if not already present
-            if (!this.users.find(u => u.id === userId)) {
-              this.users.push(user)
-            }
-            this.currentUserLoaded = true
-          }
-        }
-      } catch (e) {
-        // Fallback: show user ID
-      }
-    },
-    onSearch(query, loading) {
+    onSearch(query) {
       clearTimeout(this.searchTimer)
-
       if (!query || query.length < 2) {
-        this.users = this.modelValue && !this.multiple
-          ? this.users.filter(u => u.id === this.modelValue)
-          : []
+        this.results = []
         return
       }
-
       this.searchTimer = setTimeout(async () => {
-        loading(true)
+        this.loading = true
         try {
-          const response = await axios.get(generateUrl('/apps/metavox/api/users'), {
-            params: { search: query }
+          const response = await axios.get(generateUrl('/apps/metavox/api/accounts'), {
+            params: { search: query, kinds: this.takes.kinds.join(',') }
           })
-          if (Array.isArray(response.data)) {
-            this.users = response.data.map(user => ({
-              id: user.id,
-              userId: user.id,
-              displayname: user.displayname || user.id
-            }))
-          }
+          const found = Array.isArray(response.data) ? response.data : []
+          rememberAccountNames(found)
+          this.results = found.map((person) => ({ id: person.id, kind: person.kind, label: person.name || person.id }))
         } catch (error) {
-          this.users = []
+          this.results = []
         } finally {
-          loading(false)
+          this.loading = false
         }
       }, 300)
     },
     onSelect(value) {
-      if (this.multiple) {
-        const joinedValue = Array.isArray(value) ? value.join(';#') : ''
-        this.$emit('update:modelValue', joinedValue)
-        this.$emit('input', joinedValue)
-      } else {
-        this.$emit('update:modelValue', value || '')
-        this.$emit('input', value || '')
+      const ids = Array.isArray(value) ? value : (value ? [value] : [])
+      const joined = ids.join(';#')
+      this.$emit('update:modelValue', joined)
+      this.$emit('input', joined)
+      if (!this.isMultiple) {
         this.isEditing = false
       }
-    },
-    startEditing() {
-      this.isEditing = true
     },
     clearSelection() {
       this.$emit('update:modelValue', '')
       this.$emit('input', '')
-      this.internalValue = null
       this.isEditing = false
     }
   }
@@ -273,9 +265,16 @@ export default {
   padding: 4px 0;
 }
 
-.option-info {
-  display: flex;
-  flex-direction: column;
+.user-option__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-background-darker);
+  color: var(--color-text-maxcontrast);
 }
 
 .option-name {

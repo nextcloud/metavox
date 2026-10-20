@@ -74,7 +74,7 @@ Een regel wijzigen doe je door erop te klikken. De volgorde wijzigen of een rege
 | Ontbreekt | Alle behalve Checkbox | Is leeg | Oranje |
 | Aangevinkt | Checkbox | Is aangevinkt | Groen |
 | Niet aangevinkt | Checkbox | Is niet aangevinkt | Oranje |
-| Toegewezen aan wie kijkt | Gebruiker | Is de persoon die kijkt | Blauw |
+| Toegewezen aan wie kijkt | Personen en groepen | Is de persoon die kijkt, of een van diens groepen of teams | Blauw |
 
 - Elke kant-en-klare regel kun je één keer per kolom toevoegen. Daarna wijzig je voorwaarde, kleur en naam zoals bij elke andere regel.
 - Kant-en-klare regels krijgen vanzelf een logische plek: **Te laat**, **Vervalt vandaag**, **Binnenkort**, **Ontbreekt**. Een eigen regel komt onderaan; schuif hem omhoog als hij eerder moet tellen.
@@ -90,7 +90,7 @@ Een regel wijzigen doe je door erop te klikken. De volgorde wijzigen of een rege
 | Select (Dropdown) | Is, Is niet, Is een van, Is leeg, Is niet leeg |
 | Multi-select | Bevat een van, Bevat alle van, Is leeg, Is niet leeg |
 | Checkbox | Is aangevinkt, Is niet aangevinkt |
-| Gebruiker | Is de persoon die kijkt, Is leeg, Is niet leeg |
+| Personen en groepen | Is de persoon die kijkt, Is leeg, Is niet leeg |
 | Bestand-link | Is leeg, Is niet leeg |
 
 ### Hoe voorwaarden vergelijken

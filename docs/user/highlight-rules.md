@@ -74,7 +74,7 @@ To change a rule, click it. To change the order or remove a rule, use the **⋯*
 | Missing | All except Checkbox | Is empty | Orange |
 | Checked | Checkbox | Is checked | Green |
 | Not checked | Checkbox | Is not checked | Orange |
-| Assigned to the person viewing | Account | Is the person viewing | Blue |
+| Assigned to the person viewing | People and groups | Is the person viewing, or one of their groups or teams | Blue |
 
 - Each ready-made rule can be added once per column. Afterwards you can change its condition, color and name like any other rule.
 - Ready-made rules are placed in a sensible order for you: **Overdue**, **Due today**, **Due soon**, **Missing**. A custom rule goes to the bottom of the list; move it up if it should count first.
@@ -90,7 +90,7 @@ To change a rule, click it. To change the order or remove a rule, use the **⋯*
 | Select (Dropdown) | Is, Is not, Is one of, Is empty, Is not empty |
 | Multi-select | Contains one of, Contains all of, Is empty, Is not empty |
 | Checkbox | Is checked, Is not checked |
-| Account | Is the person viewing, Is empty, Is not empty |
+| People and groups | Is the person viewing, Is empty, Is not empty |
 | File Link | Is empty, Is not empty |
 
 ### How conditions compare

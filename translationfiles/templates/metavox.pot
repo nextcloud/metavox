@@ -4,9 +4,9 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: MetaVox 3.0.0\n"
+"Project-Id-Version: MetaVox 3.1.0\n"
 "Report-Msgid-Bugs-To: translations@nextcloud.com\n"
-"POT-Creation-Date: 2026-10-18 08:05+0000\n"
+"POT-Creation-Date: 2026-10-20 15:40+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -123,11 +123,11 @@ msgstr ""
 msgid "Access denied"
 msgstr ""
 
-#. TRANSLATORS Noun: field type that holds a Nextcloud account (a person), shown in the field type picker
-msgid "Account"
+msgid "Account names or email addresses"
 msgstr ""
 
-msgid "Account names or email addresses"
+#. TRANSLATORS Checkbox under "Can hold" for a field of the type "People and groups"
+msgid "Accounts"
 msgstr ""
 
 #. TRANSLATORS Noun: column header above the revoke buttons; keep it short
@@ -229,6 +229,10 @@ msgid "All fields"
 msgstr ""
 
 msgid "All my Team folders"
+msgstr ""
+
+#. TRANSLATORS Checkbox label for a field of the type "People and groups": more than one account, group or team can be chosen
+msgid "Allow more than one"
 msgstr ""
 
 msgid "Allow people to generate metadata suggestions using AI. Requires an AI provider to be configured in Nextcloud."
@@ -393,6 +397,10 @@ msgstr ""
 msgid "Blue"
 msgstr ""
 
+#. TRANSLATORS Heading above the checkboxes that say what a field of the type "People and groups" can hold
+msgid "Can hold"
+msgstr ""
+
 #. TRANSLATORS Button that closes the restore dialog without restoring
 #. TRANSLATORS Button that closes a dialog without saving
 #. TRANSLATORS Button that closes the add permission form without saving
@@ -414,8 +422,7 @@ msgstr ""
 msgid "Cannot delete (in use)"
 msgstr ""
 
-#. TRANSLATORS Accessible name of the pencil button that picks a different account for the field
-msgid "Change account"
+msgid "Change"
 msgstr ""
 
 #. TRANSLATORS Shown in the admin overview "Setup checks"; "Client Push" is the name of a Nextcloud app
@@ -458,8 +465,13 @@ msgstr ""
 msgid "Choose an existing account"
 msgstr ""
 
+#. TRANSLATORS Error under a People field when the chosen group does not exist
 #. TRANSLATORS Error when the manage permission is given to a group that does not exist
 msgid "Choose an existing group"
+msgstr ""
+
+#. TRANSLATORS Error under a People field when the chosen team does not exist or the user cannot see it
+msgid "Choose an existing team"
 msgstr ""
 
 #. TRANSLATORS Error when the manage permission is given for a Team folder that does not exist
@@ -473,6 +485,10 @@ msgstr ""
 
 #. TRANSLATORS Placeholder of a dropdown field before a value is picked
 msgid "Choose an option …"
+msgstr ""
+
+#. TRANSLATORS Error under the options of a field of the type "People and groups" when none of accounts, groups and teams is ticked
+msgid "Choose at least one of accounts, groups and teams"
 msgstr ""
 
 msgid "Choose at least one option"
@@ -490,8 +506,16 @@ msgstr ""
 msgid "Choose one of the options of this field"
 msgstr ""
 
+#. TRANSLATORS Error under a People field when the administration allows sharing only within your own groups
+msgid "Choose one of your own groups"
+msgstr ""
+
 #. TRANSLATORS Placeholder of a dropdown field where several options can be chosen
 msgid "Choose one or more options"
+msgstr ""
+
+#. TRANSLATORS Error under a People field that takes one account, group or team, when several were chosen
+msgid "Choose only one"
 msgstr ""
 
 #. TRANSLATORS Error under a multi-select field that got a value which is not in its list of options
@@ -500,6 +524,10 @@ msgstr ""
 
 #. TRANSLATORS Placeholder of a multi-select field before any value is picked
 msgid "Choose options …"
+msgstr ""
+
+#. TRANSLATORS Error under a People field when the administration allows sharing only with people in your own groups
+msgid "Choose someone in one of your groups"
 msgstr ""
 
 #. TRANSLATORS Verb: accessible name of the empty option that clears the cell value
@@ -522,7 +550,6 @@ msgid "Clear search"
 msgstr ""
 
 #. TRANSLATORS Button that unticks all selected fields in the list
-#. TRANSLATORS Accessible name of the button that removes the chosen account from the field
 msgid "Clear selection"
 msgstr ""
 
@@ -1124,6 +1151,10 @@ msgstr ""
 msgid "Files"
 msgstr ""
 
+#. TRANSLATORS Help when "Allow more than one" is turned off for a field that is in use
+msgid "Files that hold more than one keep them until someone edits the value."
+msgstr ""
+
 msgid "Files with any of the selected options are shown."
 msgstr ""
 
@@ -1158,6 +1189,10 @@ msgstr ""
 
 #. TRANSLATORS Error under the options of a date field; keep {"includeTime": true} as it is
 msgid "For a date field, send {\"includeTime\": true} or false"
+msgstr ""
+
+#. TRANSLATORS Error under the options of a field of the type "People and groups" (user) sent through the API; keep the JSON as it is
+msgid "For a user field, send {\"multiple\": true or false, \"kinds\": [\"user\", \"group\", \"team\"]}"
 msgstr ""
 
 #. TRANSLATORS Shown in the admin overview "Setup checks" when the search index is complete
@@ -1215,6 +1250,14 @@ msgstr ""
 #. TRANSLATORS Noun: column header for the group a permission is given to; keep it short
 #. TRANSLATORS Noun: small type label under the group name in the permissions table
 msgid "Group"
+msgstr ""
+
+#. TRANSLATORS Checkbox under "Can hold" for a field of the type "People and groups"
+msgid "Groups"
+msgstr ""
+
+#. TRANSLATORS Error under a People field when the administration turned off sharing with groups
+msgid "Groups cannot be chosen on this server"
 msgstr ""
 
 #. TRANSLATORS {email} becomes the Nextcloud sales email address as a link; keep {email} unchanged
@@ -1685,11 +1728,6 @@ msgstr ""
 msgid "No accessible Team folders"
 msgstr ""
 
-#. TRANSLATORS Shown in the account search list when no account matches the search
-#. TRANSLATORS Shown in the account list of a person field when the search has no results
-msgid "No accounts found"
-msgstr ""
-
 #. TRANSLATORS Error message shown to the user when no AI text generation is set up on the server; AI = artificial intelligence
 msgid "No AI text generation provider available"
 msgstr ""
@@ -1789,6 +1827,10 @@ msgid "No metadata to export"
 msgstr ""
 
 msgid "No metadata values to save"
+msgstr ""
+
+#. TRANSLATORS Shown in the search list of a People field when nothing matches the search
+msgid "No one found"
 msgstr ""
 
 msgid "No options available"
@@ -1947,6 +1989,10 @@ msgstr ""
 
 #. TRANSLATORS Radio button: saving replaces values the selected files already have
 msgid "Overwrite existing values"
+msgstr ""
+
+#. TRANSLATORS Noun: field type that holds Nextcloud accounts, groups or teams, shown in the field type picker
+msgid "People and groups"
 msgstr ""
 
 msgid "People in the selected groups will be able to manage metadata fields and views"
@@ -2142,10 +2188,6 @@ msgstr ""
 msgid "Search"
 msgstr ""
 
-#. TRANSLATORS Accessible name of the account search box when the field has no label of its own
-msgid "Search accounts"
-msgstr ""
-
 msgid "Search and select groups …"
 msgstr ""
 
@@ -2156,6 +2198,9 @@ msgstr ""
 
 #. TRANSLATORS Placeholder of the search box that filters the field list
 msgid "Search fields …"
+msgstr ""
+
+msgid "Search people"
 msgstr ""
 
 #. TRANSLATORS Accessible label of the search field above the permissions table
@@ -2379,6 +2424,10 @@ msgstr ""
 msgid "Team folders with metadata"
 msgstr ""
 
+#. TRANSLATORS Checkbox under "Can hold" for a field of the type "People and groups"; Teams is the Nextcloud app, use its official translation
+msgid "Teams"
+msgstr ""
+
 #. TRANSLATORS Noun: field type for a single line of text, shown in the field type picker
 msgid "Text"
 msgstr ""
@@ -2451,6 +2500,18 @@ msgstr ""
 
 #. TRANSLATORS Error under a required metadata field that was left empty
 msgid "This field is required"
+msgstr ""
+
+#. TRANSLATORS Error under a People field when an account was chosen, but the field takes only groups or teams
+msgid "This field takes no accounts"
+msgstr ""
+
+#. TRANSLATORS Error under a People field when a group was chosen, but the field takes no groups
+msgid "This field takes no groups"
+msgstr ""
+
+#. TRANSLATORS Error under a People field when a team was chosen, but the field takes no teams
+msgid "This field takes no teams"
 msgstr ""
 
 #. TRANSLATORS Error when metadata is copied from a file whose Team folder has no metadata fields
@@ -2533,14 +2594,23 @@ msgstr ""
 msgid "Type the whole value, exactly as it is written. To find part of a value, type it in the search box instead."
 msgstr ""
 
+#. TRANSLATORS Placeholder of the search box of a People field that takes accounts only
 #. TRANSLATORS Placeholder of the account search box in the cell editor of a person field
 msgid "Type to search accounts …"
+msgstr ""
+
+#. TRANSLATORS Placeholder of the search box of a People field that also takes groups or teams
+msgid "Type to search people and groups …"
 msgstr ""
 
 #. TRANSLATORS Shown in place of the name of a linked file that was deleted or cannot be accessed
 #. TRANSLATORS Shown instead of a file name when a linked file was deleted or the user cannot see it
 #. TRANSLATORS Shown in a cell instead of a linked file's name when the file was deleted or you have no access to it
 msgid "Unavailable file"
+msgstr ""
+
+#. TRANSLATORS Shown instead of a team's name when the team was deleted or the user cannot see it
+msgid "Unavailable team"
 msgstr ""
 
 msgid "Undo"

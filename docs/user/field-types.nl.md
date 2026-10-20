@@ -124,19 +124,22 @@ Een URL-veld met validatie en een klikbare externe-link-knop.
 
 ---
 
-### Gebruiker
+### Personen en groepen
 
-Selecteer een Nextcloud-account uit een doorzoekbare dropdown. Toont avatars.
+Selecteer Nextcloud-accounts, groepen of teams uit een doorzoekbare dropdown. Toont avatars, en een icoon voor een groep of team.
 
-**Use cases**: document-eigenaar, reviewer, verantwoordelijk persoon, auteur
+**Use cases**: document-eigenaar, reviewer, verantwoordelijke persoon of team, betrokkenen
 
 **Features**:
 
-- Doorzoekbare gebruikerslijst
-- Toont gebruikers-avatar en weergavenaam
-- Integreert met de Nextcloud-gebruikersdatabase
+- Doorzoekbare lijst, zoals bij delen: je vindt wie je ook een bestand zou kunnen sturen
+- Toont de weergavenaam, nooit het account-id
+- **Kan bevatten**: accounts, groepen en teams; een beheerder vinkt aan welke. Teams vragen de app Teams
+- **Meer dan één toestaan**: meer dan één in hetzelfde veld. Later uitgezet, houdt een bestand met meer dan één die tot iemand de waarde bewerkt
+- *Toegewezen aan jou* telt ook je groepen en teams
+- Een team dat je niet kunt zien, staat er als *Team niet beschikbaar*
 
-![Gebruiker-veld](../../screenshots/Fields-User.png)
+![Personen-en-groepen-veld](../../screenshots/Fields-User.png)
 
 ---
 

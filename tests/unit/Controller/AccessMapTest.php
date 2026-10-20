@@ -48,7 +48,7 @@ class AccessMapTest extends TestCase {
         'metadata_search#index' => 'logged_in',
         'metadata_search#create' => 'logged_in',
         'metadata_search#destroy' => 'logged_in',
-        'field#getUsers' => 'logged_in',
+        'field#getAccounts' => 'logged_in',
         'permission#getGroups' => 'nc_admin',
         'permission#getAllPermissions' => 'nc_admin',
         'permission#grantUserPermission' => 'nc_admin',

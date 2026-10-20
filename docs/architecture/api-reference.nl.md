@@ -79,7 +79,7 @@ De volledige API is georganiseerd in deze groepen — zie de [EN-volledige refer
 - Velden toewijzen aan een groupfolder
 - Toegewezen velden ophalen voor een groupfolder
 - Meerdere velden tegelijk verwijderen (browser-route `bulk-delete`; velden die nog zijn toegewezen worden overgeslagen)
-- Bij aanmaken en bijwerken controleert de server elk deel en noemt alles wat niet klopt in één `400` met `fields`: een label (verplicht, hoogstens 255 tekens), een bestaand veldtype (`dropdown`, `multi_select`, `boolean` en `usergroup` worden opgeslagen als `select`, `multiselect`, `checkbox` en `user`), minstens één keuze voor een keuzelijst en geen `;#` erin, `{"includeTime": true}` of `false` voor een datum, `true`/`false` voor de vlaggen
+- Bij aanmaken en bijwerken controleert de server elk deel en noemt alles wat niet klopt in één `400` met `fields`: een label (verplicht, hoogstens 255 tekens), een bestaand veldtype (`dropdown`, `multi_select`, `boolean` en `usergroup` worden opgeslagen als `select`, `multiselect`, `checkbox` en `user`), minstens één keuze voor een keuzelijst en geen `;#` erin, `{"includeTime": true}` of `false` voor een datum, `{"multiple": true, "kinds": ["user", "group", "team"]}` voor een veld met personen (`user`; weggelaten is één account, zoals voorheen), `true`/`false` voor de vlaggen
 - Bijwerken stuurt alleen wat verandert; wat wegblijft houdt zijn waarde. Een veld met waarden houdt zijn naam en type
 - Velden toewijzen: `field_ids` is verplicht (`[]` haalt alle velden weg); een id van een veld dat niet bestaat geeft `400`
 
@@ -100,6 +100,7 @@ De volledige API is georganiseerd in deze groepen — zie de [EN-volledige refer
 - Waarden van vóór deze controle blijven staan; wie ze ongewijzigd terugstuurt, wordt daarop niet geweigerd
 - Een veld dat de teammap niet gebruikt, wordt overgeslagen; de batch noemt het in `unused_fields`
 - Een bestandslink wijst naar een bestand in dezelfde teammap dat je mag openen (ACL telt mee; beheerders alles). Een link daarbuiten of naar een bestand dat je niet mag openen valt zonder melding weg; een link die al in de waarde stond, blijft staan
+- Personen (`user`): account-ids, `group:<id>` en `team:<id>`, gescheiden door `;#` of als JSON-lijst; groepen en teams alleen als het veld ze neemt, meer dan één alleen met `multiple`. Wat nieuw is in een waarde moet bestaan en iets zijn waarmee je mag delen volgens de deelinstellingen van Nextcloud (alleen eigen groepen, delen met groepen, teams die je kunt zien). Wat er al in stond, blijft staan
 - URL-velden: standaard elke link behalve een die code uitvoert (`javascript:`). De beheerder kan in het tabblad *Algemeen* alleen web- en e-mailadressen toestaan, domeinen blokkeren (`.ru`) of alleen bepaalde domeinen toestaan
 - Zie de Engelse referentie, *Values per field type*, voor de tabel per veldtype en de meldingen
 
@@ -151,7 +152,7 @@ De volledige API is georganiseerd in deze groepen — zie de [EN-volledige refer
 
 ### WebDAV-eigenschap `nc:metavox`
 
-- Een `PROPFIND` met `Depth: 1` op een map in een teammap geeft per bestand een JSON-document: versie (`v`), teammap (`g`), bewerkrecht (`e`), waarden (`f`) en afgekapte velden (`t`). Waarden langer dan 512 tekens worden afgekapt
+- Een `PROPFIND` met `Depth: 1` op een map in een teammap geeft per bestand een JSON-document: versie (`v`), teammap (`g`), bewerkrecht (`e`), waarden (`f`), afgekapte velden (`t`) en de namen van de accounts, groepen en teams in de waarden (`n`), zoals jij ze mag zien. Waarden langer dan 512 tekens worden afgekapt
 
 ### Backup & herstel
 

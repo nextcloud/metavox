@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\MetaVox\Tests\Service;
 
 use OCA\MetaVox\Validation\LinkSettings;
+use OCA\MetaVox\Service\AccountService;
 use OCA\MetaVox\Validation\FieldValue;
 use OCA\MetaVox\Service\ApiValidationException;
 use OCA\MetaVox\Service\FieldService;
@@ -68,7 +69,7 @@ class FieldServiceFolderFieldsTest extends TestCase {
             $factory,
             $this->createMock(LoggerInterface::class),
             $this->createMock(FileReferenceService::class),
-            $this->createMock(MetadataVersions::class), new FieldValue($this->createMock(IUserManager::class), $this->createMock(LinkSettings::class)),
+            $this->createMock(MetadataVersions::class), new FieldValue($this->createMock(AccountService::class), $this->createMock(LinkSettings::class)),
         );
     }
 

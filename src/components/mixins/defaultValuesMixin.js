@@ -3,6 +3,7 @@ import { generateUrl } from '@nextcloud/router'
 import { showError } from '@nextcloud/dialogs'
 import { translate as t, translatePlural as n } from '@nextcloud/l10n'
 import { PLAIN_TEXT } from '../../utils/fieldValue.js'
+import { rememberAccountNames } from '../../utils/accountNames.js'
 
 /**
  * Shared per-folder DEFAULT-VALUE behaviour for the admin (ManageGroupfolders)
@@ -84,6 +85,8 @@ export default {
         )
         this.fileFieldDefaults[groupfolderId] = (resp.data && resp.data.defaults) || {}
         this.fileFieldDefaultFiles[groupfolderId] = (resp.data && resp.data.resolved) || {}
+        // People defaults hold ids: their names, for the pickers.
+        rememberAccountNames(Object.values(resp.data?.accounts || {}).flat())
       } catch (error) {
         this.fileFieldDefaults[groupfolderId] = {}
         this.fileFieldDefaultFiles[groupfolderId] = {}

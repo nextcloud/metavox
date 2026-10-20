@@ -415,3 +415,69 @@ describe('the sidebar tab on NC33+', () => {
 		expect(api.loadFileMetadata.mock.calls.map(([id]) => id)).toEqual([10, 11, 12])
 	})
 })
+
+describe('a People field', () => {
+	const owner = (value, name) => ({ ...field('owner', 'user', value), accounts: [{ id: value, kind: 'user', name }] })
+	// Nextcloud components are stubs here: the props are their attributes.
+	const bubbles = () => wrapper.findAll('.field-display__value [user]').map((b) => [b.attributes('user'), b.attributes('display-name')])
+
+	async function mountWith(fields, teamFolderFields = []) {
+		api.loadFileMetadata.mockResolvedValue({ groupfolderId: 2, editable: true, teamFolderFields, fields })
+		wrapper = mount(FilesSidebarTab, { props: { fileInfo: file(10) }, attachTo: document.body })
+		await flushPromises()
+	}
+
+	it('reads as the person, not the account id (github#109)', async () => {
+		await mountWith([owner('admin', 'Administrator')], [{ ...owner('rik', 'Rik Dekker'), id: 99, field_name: 'lead', applies_to_groupfolder: 1 }])
+
+		expect(bubbles()).toEqual([['rik', 'Rik Dekker'], ['admin', 'Administrator']])
+	})
+
+	it('reads as the person on the team folder itself too', async () => {
+		const root = { ...file(10), type: 'dir', attributes: { 'is-mount-root': true } }
+		api.loadFileMetadata.mockResolvedValue({ groupfolderId: 2, editable: true, fields: [], teamFolderFields: [{ ...owner('demo001', 'Emma van der Berg'), applies_to_groupfolder: 1 }] })
+		wrapper = mount(FilesSidebarTab, { props: { fileInfo: root }, attachTo: document.body })
+		await flushPromises()
+
+		expect(bubbles()).toEqual([['demo001', 'Emma van der Berg']])
+	})
+
+	it('shows the id of an account that no longer exists', async () => {
+		await mountWith([owner('gone', null)])
+
+		expect(bubbles()).toEqual([['gone', 'gone']])
+	})
+
+	it('shows everyone it holds: people, a group, a team', async () => {
+		await mountWith([{
+			...field('owner', 'user', 'anna;#group:staff;#team:Ab12;#team:Hidden'),
+			accounts: [
+				{ id: 'anna', kind: 'user', name: 'Anna de Vries' },
+				{ id: 'group:staff', kind: 'group', name: 'Staff' },
+				{ id: 'team:Ab12', kind: 'team', name: 'Project X' },
+				// A team you cannot see has no name.
+				{ id: 'team:Hidden', kind: 'team', name: null },
+			],
+		}])
+
+		expect(bubbles()).toEqual([['anna', 'Anna de Vries']])
+		expect(wrapper.findAll('.account-bubble__name').map((b) => b.text())).toEqual(['Staff', 'Project X', 'Unavailable team'])
+	})
+
+	it('shows the name of the new account once saved, never the old one with it', async () => {
+		await mountWith([owner('admin', 'Administrator')])
+		api.saveFileFields.mockResolvedValue()
+		let answer
+		api.loadFileMetadata.mockReturnValue(new Promise((resolve) => { answer = resolve }))
+
+		wrapper.vm.openEditDialog()
+		wrapper.vm.handleMetadataUpdate('owner', 'newcomer')
+		await wrapper.vm.saveFromDialog()
+		await flushPromises()
+		expect(bubbles()).toEqual([['newcomer', 'newcomer']])
+
+		answer({ groupfolderId: 2, editable: true, teamFolderFields: [], fields: [owner('newcomer', 'Nieuwe Collega')] })
+		await flushPromises()
+		expect(bubbles()).toEqual([['newcomer', 'Nieuwe Collega']])
+	})
+})

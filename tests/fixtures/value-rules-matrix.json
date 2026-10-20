@@ -3933,6 +3933,247 @@
    "check": "sameAsFile"
   },
   {
+   "name": "user-is-named-in-list",
+   "type": "user",
+   "value": "bob;#alice",
+   "rule": {
+    "op": "is",
+    "value": "alice",
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "A People field with several: 'is' someone means they are one of them."
+  },
+  {
+   "name": "user-is-named-not-in-list",
+   "type": "user",
+   "value": "bob;#carol",
+   "rule": {
+    "op": "is",
+    "value": "alice",
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "A People field with several: 'is' someone who is not one of them is false."
+  },
+  {
+   "name": "user-is-named-in-list-case",
+   "type": "user",
+   "value": "Bob;#ALICE",
+   "rule": {
+    "op": "is",
+    "value": "alice",
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "Each item compares like a single uid: not case-sensitive."
+  },
+  {
+   "name": "user-is-named-part-of-item",
+   "type": "user",
+   "value": "bob;#alice2",
+   "rule": {
+    "op": "is",
+    "value": "alice",
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "A whole item, not a part of one."
+  },
+  {
+   "name": "user-!is-named-in-list",
+   "type": "user",
+   "value": "bob;#alice",
+   "rule": {
+    "op": "!is",
+    "value": "alice",
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "'!is' someone who is one of them is false."
+  },
+  {
+   "name": "user-!is-named-not-in-list",
+   "type": "user",
+   "value": "bob;#carol",
+   "rule": {
+    "op": "!is",
+    "value": "alice",
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "'!is' someone who is none of them is true."
+  },
+  {
+   "name": "user-is-named-group",
+   "type": "user",
+   "value": "alice;#group:staff",
+   "rule": {
+    "op": "is",
+    "value": "group:staff",
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "A group is an item like an account: group:<id>."
+  },
+  {
+   "name": "user-is-me-in-list",
+   "type": "user",
+   "value": "bob;#alice",
+   "rule": {
+    "op": "is",
+    "value": {
+     "me": true
+    },
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": true,
+   "why": "The person viewing is one of them."
+  },
+  {
+   "name": "user-is-me-through-group",
+   "type": "user",
+   "value": "group:staff",
+   "rule": {
+    "op": "is",
+    "value": {
+     "me": true
+    },
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false,
+    "mine": [
+     "alice",
+     "group:staff",
+     "team:Ab12"
+    ]
+   },
+   "expected": true,
+   "why": "The person viewing is in a group the field holds (ctx.mine)."
+  },
+  {
+   "name": "user-is-me-through-team",
+   "type": "user",
+   "value": "bob;#team:Ab12",
+   "rule": {
+    "op": "is",
+    "value": {
+     "me": true
+    },
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false,
+    "mine": [
+     "alice",
+     "group:staff",
+     "team:Ab12"
+    ]
+   },
+   "expected": true,
+   "why": "The person viewing is in a team the field holds (ctx.mine)."
+  },
+  {
+   "name": "user-is-me-not-my-group",
+   "type": "user",
+   "value": "group:board",
+   "rule": {
+    "op": "is",
+    "value": {
+     "me": true
+    },
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false,
+    "mine": [
+     "alice",
+     "group:staff",
+     "team:Ab12"
+    ]
+   },
+   "expected": false,
+   "why": "A group the person viewing is not in."
+  },
+  {
+   "name": "user-is-me-group-without-mine",
+   "type": "user",
+   "value": "group:staff",
+   "rule": {
+    "op": "is",
+    "value": {
+     "me": true
+    },
+    "tone": "warning"
+   },
+   "ctx": {
+    "today": "2026-10-06",
+    "me": "alice",
+    "truncated": false,
+    "isFolder": false
+   },
+   "expected": false,
+   "why": "Without the viewer's groups (ctx.mine), only their account counts."
+  },
+  {
    "name": "multi-oneOf-single-item-in-list",
    "type": "multiselect",
    "value": "Afgewezen",

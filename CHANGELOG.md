@@ -6,6 +6,27 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [3.1.0] - 2026-10-20
+
+**Coming from 2.x?** Read the [3.0.0 upgrade notes](https://github.com/nextcloud/metavox/blob/main/CHANGELOG.md#300---2026-10-18) first: 3.0 is stricter in a few places.
+
+### Upgrade notes
+For scripts and integrations; nothing changes for a field until an administrator changes it.
+- **A People field can hold several items.** Its value is then a list separated by `;#`, like a multi-select, and a group or team carries a prefix: `alice;#group:sales;#team:{id}`. A field keeps taking one account until an administrator allows more, and existing values stay as they are.
+- **Browser route renamed.** The picker's `GET /api/users` is now `GET /api/accounts`, with `search` and `kinds` (`user`, `group`, `team`); each result has an `id`, a `kind` and a `name`. The OCS API (`/ocs/v2.php/apps/metavox/api/v1/…`) is unchanged.
+
+### New: people, groups and teams
+- **Several people and groups in one field.** Choose as many accounts, groups and teams as you need, such as everyone involved in a document. An administrator turns this on per field ([#110](https://github.com/nextcloud/metavox/issues/110)).
+- **Groups and teams, not just accounts.** The Account field is now called People and groups. An administrator ticks what each field can hold; existing fields keep taking one account.
+- **By name, everywhere.** The grid, sidebar, filters and search results show names, never ids, with an avatar, or an icon for a group or team.
+- **Assigned to you, also through your groups and teams.** The highlight rule counts the groups and teams you are in.
+- **In English for now.** The new texts of the People field are not translated yet.
+
+### Fixed
+- **An Account field shows the person again.** The Files sidebar showed the account id (`admin`) instead of the display name: for a file's metadata since 3.0, for the team folder's metadata also before. It now shows the person with their avatar, and the edit dialog shows the name right away ([#109](https://github.com/nextcloud/metavox/issues/109)).
+
+---
+
 ## [3.0.0] - 2026-10-18
 
 **MetaVox 3.0 is here.** Notably faster at any size, a permission system that follows Nextcloud's own, and a new design with a new icon. Plus saved searches right in Files, highlighted cells and values you can trust.

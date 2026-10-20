@@ -34,6 +34,8 @@ export function formatValue(value, fieldType, field = null) {
 	case 'multiselect':
 	case 'multi_select':
 		return splitMulti(value).map((item) => optionLabel(field?.field_options, item)).join(', ')
+	case 'user':
+		return formatFieldValue(value, fieldType, field)
 	default:
 		return String(value)
 	}

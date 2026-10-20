@@ -12,6 +12,7 @@ namespace OCA\MetaVox\Dav;
  *   e  1 when the user may edit the metadata
  *   f  field name => value (non-empty values only, always strings)
  *   t  fields whose value in f was cut off at MAX_CHARS
+ *   n  item => name, for the accounts, groups and teams in People values
  */
 final class MetadataPropertyPayload {
 
@@ -29,8 +30,9 @@ final class MetadataPropertyPayload {
 
     /**
      * @param array<string, ?string> $values as read, at most MAX_CHARS + 1 characters each
+     * @param array<string, string> $names item => name, as the user may read them
      */
-    public static function encode(int $groupfolderId, bool $canWrite, array $values): string {
+    public static function encode(int $groupfolderId, bool $canWrite, array $values, array $names = []): string {
         $doc = ['v' => self::FORMAT, 'g' => $groupfolderId];
         if ($canWrite) {
             $doc['e'] = 1;
@@ -55,6 +57,9 @@ final class MetadataPropertyPayload {
         }
         if ($truncated !== []) {
             $doc['t'] = $truncated;
+        }
+        if ($names !== []) {
+            $doc['n'] = (object)$names;
         }
 
         return json_encode($doc, self::FLAGS);

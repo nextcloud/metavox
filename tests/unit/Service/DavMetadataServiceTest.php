@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace OCA\MetaVox\Tests\Service;
 
 use OCA\MetaVox\Dav\MetadataPropertyPayload;
+use OCA\MetaVox\Service\AccountService;
 use OCA\MetaVox\Service\DavMetadataService;
+use OCA\MetaVox\Service\FieldService;
 use OCA\MetaVox\Service\FileAccess;
 use OCA\MetaVox\Service\GroupfolderResolver;
 use OCA\MetaVox\Service\FileAccessService;
@@ -39,7 +41,8 @@ class DavMetadataServiceTest extends TestCase {
     }
 
     private function service(): DavMetadataService {
-        return new DavMetadataService($this->access, $this->resolver, $this->reader, $this->presence);
+        return new DavMetadataService($this->access, $this->resolver, $this->reader, $this->presence,
+            $this->createMock(FieldService::class), $this->createMock(AccountService::class));
     }
 
     private function node(int $id, string $path, string $mountPoint = '/alice/files/HR/'): Node {

@@ -156,7 +156,7 @@ See the [Date / DateTime fields](#date--datetime-fields) section below for the v
 | `field_label` | text, at most 255 characters | `Enter a label`, `This text is too long` |
 | `field_type` | `text`, `textarea`, `number`, `date`, `select`, `multiselect`, `checkbox`, `url`, `user`, `filelink`; also `dropdown`, `multi_select`, `boolean` and `usergroup`, stored as `select`, `multiselect`, `checkbox` and `user`. Left out is `text`. | `Choose one of the field types` |
 | `field_description` | text, at most 2000 characters | `This text is too long` |
-| `field_options` | `select`, `multiselect`: at least one option, as a list of texts, a list of `{"value", "label"}`, or text with one option per line; empty and double options are left out. `date`: `{"includeTime": true}` or `false`. Other types have none; what is sent is ignored. | `Add at least one option`, `An option cannot contain ;#`, `For a date field, send {"includeTime": true} or false` |
+| `field_options` | `select`, `multiselect`: at least one option, as a list of texts, a list of `{"value", "label"}`, or text with one option per line; empty and double options are left out. `date`: `{"includeTime": true}` or `false`. `user`: `{"multiple": true, "kinds": ["user", "group", "team"]}`, both optional; left out is one account, as before. Other types have none; what is sent is ignored. | `Add at least one option`, `An option cannot contain ;#`, `For a date field, send {"includeTime": true} or false`, `For a user field, send {"multiple": true or false, "kinds": ["user", "group", "team"]}`, `Choose at least one of accounts, groups and teams` |
 | `is_required`, `applies_to_groupfolder` | `true`/`false`, `1`/`0`, as JSON or text | `Use true or false` |
 | `sort_order` | a whole number from 0 | `Enter a whole number` |
 
@@ -380,7 +380,7 @@ Every route that writes a value checks it against its field first: the Files gri
 | `multiselect` | options joined with `;#`, or a JSON list | `"Draft;#Final"`, without doubles or empty parts | one value that is not an option |
 | `checkbox` | `1`/`0`, `true`/`false`, as text, number or JSON | `"1"` or `"0"` | `"yes"`, `"maybe"`, `2` |
 | `url` | any link but one that runs code; see [Links](#links-in-url-fields) | as sent | `javascript:`, `data:`, `vbscript:` |
-| `user` | the id of an existing account | as sent | an id that is no account |
+| `user` | account ids, `group:<id>` and `team:<id>`, joined with `;#` or as a JSON list; see below | `"anna;#group:staff"`, without doubles or empty parts | see below |
 | `filelink` | `"<fileId>:"` links joined with `;#`, or a JSON list | links to files in the team folder that you may open; see below | something that is no link |
 
 `""` and `null` clear a value.
@@ -390,6 +390,8 @@ Every route that writes a value checks it against its field first: the Files gri
 **Values from before these checks** stay as they are. A request that sends one back unchanged is not refused for it.
 
 **Fields the team folder does not use** are left out, like unknown field names. The batch names them per file in `unused_fields`.
+
+**People** (`user`) hold accounts, and groups and teams where the field's `kinds` take them; several where `multiple` is on. What is new in a value must exist and be yours to share with, as Nextcloud's sharing settings say: with only sharing within your own groups, an account in one of your groups and a group you are in; groups only when sharing with groups is on; a team you can see. Refused with `Choose an existing account`, `Choose an existing group`, `Choose an existing team`, `Choose someone in one of your groups`, `Choose one of your own groups`, `Groups cannot be chosen on this server`, `This field takes no groups` (or `teams`, `accounts`) and `Choose only one`. What a value held already stays, also when it could not be chosen now: a field that takes one keeps several from before until someone takes them out.
 
 **File links** point at files in the same team folder that you may open, ACL included; admins may link any file in it. A link to a file outside the team folder, or to one you may not open, is left out without a message, so the answer tells nothing about files you cannot see. A link that is already in the value stays when you save it again, also when you cannot open that file: someone who can put it there.
 
@@ -953,8 +955,9 @@ curl -X PROPFIND "https://your-nextcloud.com/remote.php/dav/files/jdoe/Shared%20
 | `v` | Format version, always `1`. Ignore a value with another version. |
 | `g` | The team folder id. |
 | `e` | `1` when you may change the file's metadata; left out otherwise. |
-| `f` | Field name → stored value, as text. Only non-empty values; left out when there are none. Multi-value fields keep their `;#` separators; user and File Link fields hold their stored form, not display names. |
+| `f` | Field name → stored value, as text. Only non-empty values; left out when there are none. Multi-value fields keep their `;#` separators; user and File Link fields hold their stored form, not display names; the names of people are in `n`. |
 | `t` | Fields whose value in `f` was cut off; left out when none was. |
+| `n` | The names of the accounts, groups and teams in the file's People (`user`) values, by id, as you may see them: a team you cannot see has none. Left out when there are none. |
 
 - **Cut-off:** a value longer than 512 characters is cut at 512, and back to the last whole `;#` item when it has one. The value in `f` is always the start of the full value. Read the full value from [Get metadata for a single file](#get-metadata-for-a-single-file).
 - **Folder root:** the listed team folder root has only `v` and `g`. A nested mount, such as another team folder, has only `v`.
@@ -1456,19 +1459,20 @@ Non-admin endpoints for the personal settings page and the search filter. These 
 
 ## Utility Endpoints (Browser Routes)
 
-### Search users
+### Search people
 
-**Endpoint**: `GET /apps/metavox/api/users?search={query}`
+**Endpoint**: `GET /apps/metavox/api/accounts?search={query}&kinds=user,group,team`
 
 **Requires**: logged in
 
-Returns up to 25 matching Nextcloud users. Used by the `user` field type for autocomplete. Nextcloud's sharing settings decide whom you can find (user enumeration, own groups only); the caller is always included when the search matches.
+Returns up to 25 matching accounts, groups and teams, of the kinds asked for (`user` when left out). Used by the `user` field type's picker. Nextcloud's sharee search finds them, so its settings decide whom you can find (user enumeration, own groups only, group sharing, the teams you can see); the caller is always included when the search matches. `id` is what the field stores.
 
 **Response**:
 ```json
 [
-  {"id": "jdoe", "displayname": "Jane Doe"},
-  {"id": "asmith", "displayname": "Alice Smith"}
+  {"id": "jdoe", "kind": "user", "name": "Jane Doe"},
+  {"id": "group:staff", "kind": "group", "name": "Staff"},
+  {"id": "team:Ab12Cd34", "kind": "team", "name": "Project X"}
 ]
 ```
 

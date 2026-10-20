@@ -331,6 +331,11 @@ class MetadataCheck implements ICheck, IFileCheck {
         if ($operator === 'empty' || $operator === '!empty') {
             return ($items === []) === ($operator === 'empty');
         }
+        // A People field with several: "is" someone means they are in it.
+        if ($operator === 'is' || $operator === '!is') {
+            $in = \in_array(self::lower(trim($expected)), array_map([self::class, 'lower'], $items), true);
+            return $operator === 'is' ? $in : !$in;
+        }
         if ($items === []) {
             return false;
         }

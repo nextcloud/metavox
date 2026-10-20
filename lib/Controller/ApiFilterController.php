@@ -83,10 +83,10 @@ class ApiFilterController extends BaseOCSController {
         }
 
         $fields = $this->fieldService->getAssignedFieldsWithDataForGroupfolder($groupfolderId);
+        // A list matches on any of its items: a multi-select, people, file links.
         $multiselectFields = [];
         foreach ($fields as $field) {
-            $type = $field['field_type'] ?? '';
-            if (in_array($type, ['multiselect', 'multi_select'])) {
+            if (FieldService::holdsList((string)($field['field_type'] ?? ''))) {
                 $multiselectFields[] = $field['field_name'];
             }
         }

@@ -87,15 +87,16 @@ class MetadataCheckTest extends TestCase {
     }
 
     /**
-     * The cases of the grid's highlight rules for choice fields, that Flow has too:
-     * a rule reads the same in both. Not the ones about today, me, a cut-off value or a folder.
+     * The cases of the grid's highlight rules for choice and People fields, that
+     * Flow has too: a rule reads the same in both. Not the ones about today, me,
+     * a cut-off value or a folder.
      */
     public static function choiceVectors(): array {
         $vectors = json_decode(file_get_contents(__DIR__ . '/../../fixtures/value-rules-matrix.json'), true)['vectors'];
         $cases = [];
         foreach ($vectors as $v) {
             $ctx = $v['ctx'] ?? [];
-            if (!\in_array($v['type'], ['select', 'dropdown', 'multiselect', 'multi_select', 'filelink'], true)
+            if (!\in_array($v['type'], ['select', 'dropdown', 'multiselect', 'multi_select', 'filelink', 'user'], true)
                 || !empty($ctx['truncated']) || !empty($ctx['isFolder']) || \is_array($v['rule']['value'] ?? null) && !array_is_list($v['rule']['value'])
                 || !\is_bool($v['expected'])) {
                 continue;

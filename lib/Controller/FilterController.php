@@ -6,6 +6,7 @@ namespace OCA\MetaVox\Controller;
 
 use OCA\MetaVox\Access\Access;
 use OCA\MetaVox\Access\RequireAccess;
+use OCA\MetaVox\Service\AccountService;
 use OCA\MetaVox\Service\FieldService;
 use OCA\MetaVox\Service\FilterService;
 use OCP\AppFramework\Http;
@@ -17,16 +18,19 @@ use OCP\IUserSession;
 class FilterController extends BaseController {
 
     private FilterService $filterService;
+    private AccountService $accounts;
 
     public function __construct(
         string $appName,
         IRequest $request,
         FieldService $fieldService,
         FilterService $filterService,
-        IUserSession $userSession
+        IUserSession $userSession,
+        AccountService $accounts,
     ) {
         parent::__construct($appName, $request, $userSession, $fieldService);
         $this->filterService = $filterService;
+        $this->accounts = $accounts;
     }
 
     /**
@@ -45,6 +49,18 @@ class FilterController extends BaseController {
 
         // Same per-file access and permissions as the OCS API.
         $metadata = $this->filterService->getDirectoryMetadataForUser($user->getUID(), $groupfolderId, $fileIds, $fieldNames);
+
+        // The grid shows people by name, as the PROPFIND brings them.
+        $accountFields = $this->fieldService->accountFieldNames();
+        if ($accountFields !== []) {
+            foreach ($metadata as &$values) {
+                $names = $this->accounts->namesInValues($values, $accountFields, $user->getUID());
+                if ($names !== []) {
+                    $values['_names'] = $names;
+                }
+            }
+            unset($values);
+        }
         return new JSONResponse($metadata, Http::STATUS_OK);
     }
 }

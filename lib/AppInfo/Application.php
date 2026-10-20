@@ -17,6 +17,7 @@ use OCA\MetaVox\Listener\SabrePluginAddListener;
 use OCA\MetaVox\Middleware\AccessMiddleware;
 use OCA\MetaVox\Middleware\ExceptionMiddleware;
 use OCA\MetaVox\Search\MetadataSearchProvider;
+use OCA\MetaVox\Service\AccountService;
 use OCA\MetaVox\Service\DavMetadataService;
 use OCA\MetaVox\Service\SavedSearchResults;
 use OCA\MetaVox\Service\SavedSearchService;
@@ -196,6 +197,11 @@ class Application extends App implements IBootstrap {
                 'groupfolders' => $groupfolders,
                 'groupfolder_id' => $groupfolderId,
             ];
+
+            // "Assigned to you" counts your groups and teams too, where a field takes them.
+            if (AccountService::takesGroupsOrTeams(\OCP\Server::get(FieldService::class)->getAllFields())) {
+                $initData['viewer_items'] = \OCP\Server::get(AccountService::class)->viewerItems($user);
+            }
 
             if ($groupfolderId !== null) {
                 $fieldService = \OCP\Server::get(FieldService::class);

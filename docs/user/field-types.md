@@ -120,17 +120,20 @@ A URL input field with validation and a clickable external link button.
 
 ---
 
-### Account
-Select a Nextcloud account from a searchable dropdown. Shows avatars.
+### People and groups
+Select Nextcloud accounts, groups or teams from a searchable dropdown. Shows avatars, and an icon for a group or team.
 
-**Use cases:** Document owner, reviewer, responsible person, author
+**Use cases:** Document owner, reviewer, responsible person or team, who is involved
 
 **Features:**
-- Searchable user list
-- Displays user avatar and display name
-- Integrates with Nextcloud user database
+- Searchable list, as when you share a file: you find whom you could share with
+- Shows the display name, never the account id
+- **Can hold:** accounts, groups and teams; an administrator ticks which. Teams need the Teams app
+- **Allow more than one:** more than one in the same field. Turned off later, a file that holds more than one keeps them until someone edits the value
+- *Assigned to you* also counts your groups and teams
+- A team you cannot see shows as *Unavailable team*
 
-![Account field](../../screenshots/Fields-User.png)
+![People and groups field](../../screenshots/Fields-User.png)
 
 ---
 
@@ -179,8 +182,8 @@ are back-filled in the background — so a folder's documents start out consiste
 classified without manual data entry.
 
 Defaults are configured **per Team folder**, with a type-correct input for every
-field type (text, number, date/time, dropdown, multi-select, checkbox, URL, account,
-file link):
+field type (text, number, date/time, dropdown, multi-select, checkbox, URL, people
+and groups, file link):
 
 ![Setting default values per field on a Team folder](../../screenshots/manage-teamfolders-defaultvalue.png)
 

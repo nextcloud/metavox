@@ -18,6 +18,8 @@ class DavMetadataService {
         private readonly GroupfolderResolver $resolver,
         private readonly MetadataValueReader $reader,
         private readonly PresenceService $presence,
+        private readonly FieldService $fields,
+        private readonly AccountService $accounts,
     ) {
     }
 
@@ -51,12 +53,16 @@ class DavMetadataService {
             // Anything else is left to the web route and its full check.
         }
 
+        // People fields hold ids; the grid shows names.
+        $accountFields = $this->fields->accountFieldNames();
+
         // Encode per query-sized chunk, so the raw values of a big folder are
         // never all in memory at once.
         foreach (array_chunk($canWrite, MetadataValueReader::CHUNK, true) as $chunk) {
             $values = $this->reader->readValues($groupfolderId, array_keys($chunk), MetadataPropertyPayload::MAX_CHARS + 1);
             foreach ($chunk as $id => $write) {
-                $properties[$id] = MetadataPropertyPayload::encode($groupfolderId, $write, $values[$id] ?? []);
+                $names = $accountFields === [] ? [] : $this->accounts->namesInValues($values[$id] ?? [], $accountFields, $userId);
+                $properties[$id] = MetadataPropertyPayload::encode($groupfolderId, $write, $values[$id] ?? [], $names);
             }
         }
         unset($values);

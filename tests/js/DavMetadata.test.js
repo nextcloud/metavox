@@ -56,7 +56,14 @@ describe('decodeNode', () => {
 	it('reads team folder, edit right, values and cut-off fields', () => {
 		const decoded = decodeNode(node('{"v":1,"g":12,"e":1,"f":{"status":"Draft","note":"Long…"},"t":["note"]}'))
 
-		expect(decoded).toEqual({ gf: 12, canWrite: true, values: { status: 'Draft', note: 'Long…' }, truncated: ['note'] })
+		expect(decoded).toEqual({ gf: 12, canWrite: true, values: { status: 'Draft', note: 'Long…' }, truncated: ['note'], names: {} })
+	})
+
+	it('reads the names of the people in the values', () => {
+		const decoded = decodeNode(node('{"v":1,"g":12,"f":{"owner":"anna;#group:staff"},"n":{"anna":"Anna de Vries","group:staff":"Staff"}}'))
+
+		expect(decoded.names).toEqual({ anna: 'Anna de Vries', 'group:staff': 'Staff' })
+		expect(decodeNode(node('{"v":1,"g":12,"n":["anna"]}')).names).toEqual({})
 	})
 
 	it('is read-only without e', () => {
@@ -64,8 +71,8 @@ describe('decodeNode', () => {
 	})
 
 	it('reads a folder or mount root without values', () => {
-		expect(decodeNode(node('{"v":1,"g":12}'))).toEqual({ gf: 12, canWrite: false, values: {}, truncated: [] })
-		expect(decodeNode(node('{"v":1}'))).toEqual({ gf: null, canWrite: false, values: {}, truncated: [] })
+		expect(decodeNode(node('{"v":1,"g":12}'))).toEqual({ gf: 12, canWrite: false, values: {}, truncated: [], names: {} })
+		expect(decodeNode(node('{"v":1}'))).toEqual({ gf: null, canWrite: false, values: {}, truncated: [], names: {} })
 	})
 
 	it('keeps values as strings, including a field named 0 and the value 0', () => {

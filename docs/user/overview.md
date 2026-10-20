@@ -61,7 +61,7 @@ Different fields accept different types of input:
 | Multi-select | Multiple categories |
 | Checkbox | Yes/No flags |
 | URL | Links to external resources |
-| Account | Select a Nextcloud account |
+| People and groups | Select Nextcloud accounts, groups or teams |
 | File Link | Links to files or folders in the same Team folder |
 
 See [Field Types](field-types.md) for detailed information.

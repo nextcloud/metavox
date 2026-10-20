@@ -19,7 +19,7 @@ use Psr\Log\LoggerInterface;
 class FieldService {
 
     /** Types whose value is a ';#' list of items; the grid's filter has the same set (FilterSortCore.js). */
-    public const LIST_TYPES = ['multiselect', 'multi_select', ...FileReferenceService::FILELINK_TYPES];
+    public const LIST_TYPES = ['multiselect', 'multi_select', ...FileReferenceService::FILELINK_TYPES, ...AccountService::FIELD_TYPES];
 
     /** Rows per upsert or IN list when many values are saved at once. */
     private const SAVE_CHUNK = 500;
@@ -30,6 +30,17 @@ class FieldService {
     /** Whether a field of this type holds a ';#' list. */
     public static function holdsList(string $fieldType): bool {
         return \in_array($fieldType, self::LIST_TYPES, true);
+    }
+
+    /** @return array<string, true> the People fields, by name: their values hold ids */
+    public function accountFieldNames(): array {
+        $names = [];
+        foreach ($this->getAllFields() as $field) {
+            if (AccountService::isAccountField($field)) {
+                $names[(string)$field['field_name']] = true;
+            }
+        }
+        return $names;
     }
 
     /** The field type by field name; null for a field that doesn't exist. */
@@ -1014,7 +1025,7 @@ public function saveGroupfolderValues(int $groupfolderId, array $values): int {
         }
         try {
             $checked = $this->fieldValues->stored($fields[$fieldName], $value);
-            if (in_array($fields[$fieldName]['field_type'] ?? '', FileReferenceService::FILELINK_TYPES, true)) {
+            if (self::checksCurrent($fields[$fieldName])) {
                 $current ??= $this->getGroupfolderMetadataValues($groupfolderId);
             }
             $stored[$fieldName] = $this->storedValue($fields[$fieldName], $checked, $groupfolderId, null, $current[$fieldName] ?? '');
@@ -1189,7 +1200,7 @@ private function checkedValues(int $groupfolderId, array $values, bool $onlyEmpt
     }
     $used = $asStored ? null : $this->usedFieldNames($groupfolderId, false);
     $filled = $onlyEmpty ? $this->filledValues($groupfolderId, array_keys($values)) : [];
-    $links = $asStored ? [] : $this->currentFileLinks($groupfolderId, $values, $fields);
+    $links = $asStored ? [] : $this->currentValuesToCheck($groupfolderId, $values, $fields);
 
     $rows = [];
     $words = [];
@@ -1305,27 +1316,33 @@ private function filledValues(int $groupfolderId, array $fileIds): array {
 
 /**
  * $fileId: the file the value belongs to, which a file link may not point at.
- * $current: its stored value, whose links stay; $asUser false for a copy.
+ * $current: its stored value, whose links and people stay; $asUser false for a copy.
  */
 private function storedValue(array $field, string $value, int $groupfolderId, ?int $fileId = null, string $current = '', bool $asUser = true): string {
-    return in_array($field['field_type'] ?? '', FileReferenceService::FILELINK_TYPES, true)
-        ? $this->fileReferences->normalize($value, $groupfolderId, $fileId, $current, $asUser)
-        : $value;
+    if (in_array($field['field_type'] ?? '', FileReferenceService::FILELINK_TYPES, true)) {
+        return $this->fileReferences->normalize($value, $groupfolderId, $fileId, $current, $asUser);
+    }
+    return $asUser && AccountService::isAccountField($field) ? $this->fieldValues->chosen($field, $value, $current) : $value;
+}
+
+/** Whether saving a value of this field compares it with the stored one: file links and people. */
+private static function checksCurrent(array $field): bool {
+    return in_array($field['field_type'] ?? '', FileReferenceService::FILELINK_TYPES, true) || AccountService::isAccountField($field);
 }
 
 /**
- * The stored values of the file-link fields being saved, per file: one query,
- * none when no file link is saved.
+ * The stored values of the file-link and People fields being saved, per file:
+ * one query, none when no such field is saved.
  *
  * @param array<int, array<string, mixed>> $values file id => [field name => value]
  * @param array<string, array> $fields field name => field
  * @return array<int, array<string, string>>
  */
-private function currentFileLinks(int $groupfolderId, array $values, array $fields): array {
+private function currentValuesToCheck(int $groupfolderId, array $values, array $fields): array {
     $names = [];
     foreach ($values as $fileValues) {
         foreach (array_keys($fileValues) as $fieldName) {
-            if (in_array($fields[$fieldName]['field_type'] ?? '', FileReferenceService::FILELINK_TYPES, true)) {
+            if (self::checksCurrent($fields[$fieldName] ?? [])) {
                 $names[(string)$fieldName] = true;
             }
         }

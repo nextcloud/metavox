@@ -265,7 +265,7 @@ async function runFileLinks(w, results) {
 	await w.restore()
 }
 
-// The user picker follows Nextcloud's share settings (step 14): with "only your
+// The People picker follows Nextcloud's share settings (step 14): with "only your
 // own groups" you find nobody outside them. The setting goes through the web
 // API like the admin page does: Nextcloud caches app settings per web process,
 // so a change through occ is not seen. It is put back afterwards.
@@ -273,7 +273,7 @@ async function runUserSearch(w, results) {
 	const KEY = 'shareapi_restrict_user_enumeration_to_group'
 	const setting = (verb, body) => w.must(w.request(null, verb, `/ocs/v2.php/apps/provisioning_api/api/v1/config/apps/core/${KEY}`, { body, query: { format: 'json' } }), `${verb} ${KEY}`)
 	const find = async (role) => {
-		const res = await w.web(role, 'GET', '/api/users', { query: { search: 'e2e-acc' } })
+		const res = await w.web(role, 'GET', '/api/accounts', { query: { search: 'e2e-acc' } })
 		return new Set((Array.isArray(res.json) ? res.json : []).map((u) => u.id))
 	}
 	let before = null

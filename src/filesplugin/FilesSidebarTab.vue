@@ -75,6 +75,9 @@
 										</span>
 									</li>
 								</ul>
+								<span v-else-if="people(field)" class="account-values">
+									<AccountBubble v-for="person in people(field)" :key="person.id" :account="person" />
+								</span>
 								<template v-else>{{ formatFieldValue(field) }}</template>
 							</dd>
 						</div>
@@ -125,7 +128,12 @@
 								:key="field.id"
 								class="field-display">
 								<dt class="field-display__label">{{ field.field_label }}</dt>
-								<dd class="field-display__value">{{ formatFieldValue(field) }}</dd>
+								<dd class="field-display__value">
+									<span v-if="people(field)" class="account-values">
+										<AccountBubble v-for="person in people(field)" :key="person.id" :account="person" />
+									</span>
+									<template v-else>{{ formatFieldValue(field) }}</template>
+								</dd>
 							</div>
 						</dl>
 					</div>
@@ -177,6 +185,10 @@
 										</span>
 									</li>
 								</ul>
+								<!-- People read as the people, as in the edit dialog. -->
+								<span v-else-if="people(field)" class="account-values">
+									<AccountBubble v-for="person in people(field)" :key="person.id" :account="person" />
+								</span>
 								<template v-else>{{ formatFieldValue(field) }}</template>
 							</dd>
 						</div>
@@ -284,6 +296,8 @@ import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import { generateUrl } from '@nextcloud/router'
 import { showError, showSuccess } from '../utils/toast.js'
 import { formatFieldValue, splitMulti } from '../utils/fieldValue.js'
+import { accountsOf, onAccountNames, rememberAccountNames } from '../utils/accountNames.js'
+import AccountBubble from '../components/fields/AccountBubble.vue'
 import { translate as t } from '@nextcloud/l10n'
 import { errorText, isFieldError } from '../utils/errorText.js'
 import { missingRequired } from '../utils/requiredFields.js'
@@ -314,6 +328,7 @@ export default {
 		NcEmptyContent,
 		NcLoadingIcon,
 		NcNoteCard,
+		AccountBubble,
 		ChevronDownIcon,
 		CreationIcon,
 		PencilIcon,
@@ -359,6 +374,8 @@ export default {
 	data() {
 		return {
 			instanceId: ++instanceCounter,
+			// Bumped when names come in, so people are read again.
+			namesSeen: 0,
 			editDialogOpen: false,
 			loading: true,
 			saving: false,
@@ -566,6 +583,7 @@ export default {
 	},
 
 	mounted() {
+		this.stopNames = onAccountNames(() => { this.namesSeen++ })
 		this.stopListening = onStoreChange((ids) => {
 			const fileId = Number(this.currentFileInfo?.id)
 			if (fileId && ids.includes(fileId)) {
@@ -575,6 +593,7 @@ export default {
 	},
 
 	beforeUnmount() {
+		this.stopNames?.()
 		this.stopListening?.()
 		this.loadController?.abort()
 	},
@@ -651,6 +670,7 @@ export default {
 				this.groupfolderFields = data.teamFolderFields.filter(appliesToFolder)
 				this.itemFields = data.fields.filter((field) => !appliesToFolder(field))
 				const fieldsWithValues = [...this.groupfolderFields, ...this.itemFields]
+				rememberAccountNames(fieldsWithValues.flatMap((field) => field.accounts ?? []))
 
 				// Extract metadata values from ALL fields
 				const metadataMap = {}
@@ -845,10 +865,10 @@ export default {
 				showSuccess(this.t('metavox', 'Metadata saved'))
 				this.$emit('saved', { fileId: this.currentFileInfo.id, metadata: patch })
 
-				// File-link values are normalised + deduped server-side (and get
-				// resolved current names), so reload to reflect the canonical
-				// stored value when a file-link field was saved.
-				if (this.itemFields.some((f) => f.field_type === 'filelink' && f.field_name in patch)) {
+				// File-link values are normalised + deduped server-side, and
+				// file links and accounts get their names there, so reload to
+				// show the stored value by name when one of those was saved.
+				if (this.itemFields.some((f) => ['filelink', 'user'].includes(f.field_type) && f.field_name in patch)) {
 					this.loadMetadata()
 				}
 				return true
@@ -1067,6 +1087,13 @@ export default {
 					// TRANSLATORS Shown instead of a file name when a linked file was deleted or the user cannot see it
 					: this.t('metavox', 'Unavailable file'),
 			}))
+		},
+
+		// Whom a People field holds, by name; null for another field type or no value.
+		people(field) {
+			void this.namesSeen
+			if (field.field_type !== 'user' || !field.value) return null
+			return accountsOf(field.value)
 		},
 
 		formatFieldValue(field) {
@@ -1313,6 +1340,12 @@ export default {
 }
 
 /* Same treatment as a backlink row below: icon, filename, underline on hover. */
+.account-values {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--default-grid-baseline);
+}
+
 .file-link-values {
 	display: flex;
 	flex-direction: column;

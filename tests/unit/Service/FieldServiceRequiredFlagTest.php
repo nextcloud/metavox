@@ -10,6 +10,7 @@ use OCA\MetaVox\Service\MetadataVersions;
 use OCA\MetaVox\Service\PushService;
 use OCA\MetaVox\Service\SearchWordsService;
 use OCA\MetaVox\Service\ViewService;
+use OCA\MetaVox\Service\AccountService;
 use OCA\MetaVox\Validation\FieldValue;
 use OCA\MetaVox\Validation\LinkSettings;
 use OCP\DB\IResult;
@@ -54,7 +55,7 @@ class FieldServiceRequiredFlagTest extends TestCase {
         $service = new FieldService($db, $this->createMock(IGroupManager::class), $this->createMock(IUserManager::class),
             $this->createMock(SearchWordsService::class), $this->createMock(ViewService::class), $this->createMock(PushService::class),
             $cacheFactory, $this->createMock(LoggerInterface::class), $this->createMock(FileReferenceService::class), $this->createMock(MetadataVersions::class),
-            new FieldValue($this->createMock(IUserManager::class), $this->createMock(LinkSettings::class)));
+            new FieldValue($this->createMock(AccountService::class), $this->createMock(LinkSettings::class)));
 
         $this->assertSame([1 => true, 2 => false, 3 => false, 4 => false],
             array_column($service->getAllFields(), 'is_required', 'id'));

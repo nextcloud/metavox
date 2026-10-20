@@ -3,7 +3,7 @@
  *
  * Pure: "today", the viewer and the state of the row come in through ctx,
  * so the same rules give the same answer in a test as in the grid.
- * ctx = { today: 'YYYY-MM-DD', me: uid|null, truncated: bool }
+ * ctx = { today: 'YYYY-MM-DD', me: uid|null, mine: [uid, group:<id>, team:<id>]|undefined, truncated: bool }
  */
 
 import { getCanonicalLocale, translate as t, translatePlural as n } from '@nextcloud/l10n'
@@ -35,7 +35,7 @@ export function parseNumber(value) {
 /** No value: nothing stored, or a list without items. "0" is a value. */
 export function isEmptyValue(value, type) {
 	if (value === undefined || value === null || value === '') return true
-	if (MULTI_TYPES.has(type) || type === 'filelink') return splitMulti(value).length === 0
+	if (MULTI_TYPES.has(type) || type === 'filelink' || type === 'user') return splitMulti(value).length === 0
 	return false
 }
 
@@ -156,9 +156,18 @@ export function evaluate(rule, value, type, ctx = {}) {
 		const wanted = rule.value.map((v) => lower(v.trim()))
 		return rule.op === 'oneOf' ? wanted.some((v) => items.has(v)) : wanted.every((v) => items.has(v))
 	}
-	if (type === 'user' && isMe(rule.value)) {
-		if (!ctx.me) return null
-		return !empty && lower(value) === lower(ctx.me)
+	if (type === 'user') {
+		// One or several people; "you" also counts through your groups and teams.
+		if (isMe(rule.value) && !ctx.me) return null
+		const items = new Set(splitMulti(value).map(lower))
+		const has = (item) => items.has(lower(String(item).trim()))
+		if (isMe(rule.value)) return (ctx.mine ?? [ctx.me]).some(has)
+		switch (rule.op) {
+		case 'is': return has(rule.value)
+		case '!is': return !has(rule.value)
+		case 'oneOf': return rule.value.some(has)
+		default: return null
+		}
 	}
 	switch (rule.op) {
 	case 'is': return !empty && lower(value) === lower(rule.value.trim())

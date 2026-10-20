@@ -1,7 +1,7 @@
 /**
  * A field's options as one list, whatever shape they were stored in: JSON text,
- * text with one option per line, a list of texts, a list of {value, label}, or
- * the {includeTime} of a date field. Reads them as lib/Validation/FieldOptions.php
+ * text with one option per line, a list of texts, a list of {value, label}, the
+ * {includeTime} of a date field or the {multiple, kinds} of a People field. Reads them as lib/Validation/FieldOptions.php
  * does; tests/fixtures/field-options.json holds the cases both must pass.
  */
 
@@ -89,16 +89,39 @@ function labelsOf(options) {
  * @return {boolean}
  */
 export function includesTime(options) {
+	return isOn(decodeObject(options).includeTime)
+}
+
+/** What a People field can hold, in this order. */
+export const ACCOUNT_KINDS = Object.freeze(['user', 'group', 'team'])
+
+/**
+ * What a People field takes: one or several, and of which kinds. A field
+ * from before these options takes one account.
+ *
+ * @param {*} options field_options
+ * @return {{multiple: boolean, kinds: string[]}}
+ */
+export function accountOptions(options) {
+	const decoded = decodeObject(options)
+	const sent = Array.isArray(decoded.kinds) ? decoded.kinds.filter((kind) => typeof kind === 'string') : []
+	const kinds = ACCOUNT_KINDS.filter((kind) => sent.includes(kind))
+	return { multiple: isOn(decoded.multiple), kinds: kinds.length > 0 ? kinds : ['user'] }
+}
+
+/** Options that are an object, such as {includeTime}; anything else reads as {}. */
+function decodeObject(options) {
 	let decoded = options
 	if (typeof options === 'string') {
 		try {
 			decoded = JSON.parse(options)
 		} catch (e) {
-			return false
+			return {}
 		}
 	}
-	if (decoded === null || typeof decoded !== 'object' || Array.isArray(decoded)) return false
-	// As PHP's empty(): 0, '0', '' and false are off.
-	const on = decoded.includeTime
-	return !(on === undefined || on === null || on === false || on === 0 || on === '0' || on === '' || (Array.isArray(on) && on.length === 0))
+	return decoded !== null && typeof decoded === 'object' && !Array.isArray(decoded) ? decoded : {}
 }
+
+// As PHP's empty(): 0, '0', '', false and an empty list or object are off.
+const isOn = (on) => !(on === undefined || on === null || on === false || on === 0 || on === '0' || on === ''
+	|| (typeof on === 'object' && Object.keys(on).length === 0))

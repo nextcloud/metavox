@@ -8,6 +8,7 @@ use OCA\MetaVox\Access\Access;
 use OCA\MetaVox\Access\RequireAccess;
 use OCA\MetaVox\Exception\MetadataAccessException;
 use OCA\MetaVox\Exception\RequestException;
+use OCA\MetaVox\Service\AccountService;
 use OCA\MetaVox\Service\ApiValidationException;
 use OCA\MetaVox\Service\FieldService;
 use OCA\MetaVox\Service\FileReferenceService;
@@ -16,22 +17,21 @@ use OCA\MetaVox\Service\FileAccessService;
 use OCA\MetaVox\Service\PushService;
 use OCA\MetaVox\L10n\Translatable;
 use OCA\MetaVox\Validation\FieldDefinition;
+use OCA\MetaVox\Validation\FieldOptions;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\JSONResponse;
-use OCP\Collaboration\Collaborators\ISearch;
 use OCP\Files\IRootFolder;
 use OCP\IGroupManager;
 use OCP\IL10N;
 use OCP\IRequest;
 use OCP\IUserSession;
-use OCP\Share\IShare;
 use Psr\Log\LoggerInterface;
 
 class FieldController extends BaseController {
 
-    private ISearch $collaboratorSearch;
+    private AccountService $accounts;
     private IGroupManager $groupManager;
     private IRootFolder $rootFolder;
     private LockService $lockService;
@@ -46,7 +46,7 @@ class FieldController extends BaseController {
         IRequest $request,
         FieldService $fieldService,
         IUserSession $userSession,
-        ISearch $collaboratorSearch,
+        AccountService $accounts,
         IGroupManager $groupManager,
         IRootFolder $rootFolder,
         LockService $lockService,
@@ -58,7 +58,7 @@ class FieldController extends BaseController {
     ) {
         parent::__construct($appName, $request, $userSession, $fieldService);
         $this->rootFolder = $rootFolder;
-        $this->collaboratorSearch = $collaboratorSearch;
+        $this->accounts = $accounts;
         $this->groupManager = $groupManager;
         $this->lockService = $lockService;
         $this->pushService = $pushService;
@@ -69,37 +69,18 @@ class FieldController extends BaseController {
     }
 
     /**
-     * Search users for the user picker: ?search=, at most 25 results.
+     * Search for the People picker: ?search=, and ?kinds= of user, group and
+     * team, as the field takes them. Nextcloud's own sharee search finds them,
+     * so the share settings apply: user enumeration, only your own groups,
+     * the teams you can see.
      */
     #[NoAdminRequired]
     #[NoCSRFRequired]
-    #[RequireAccess(Access::LoggedIn, reason: 'user search for the user picker: whom you may find, as when sharing')]
-    public function getUsers(): JSONResponse {
+    #[RequireAccess(Access::LoggedIn, reason: 'search for the People picker: whom you may find, as when sharing')]
+    public function getAccounts(): JSONResponse {
         $user = $this->requireUser();
-        $search = $this->textParam('search') ?? '';
-        $limit = 25;
-
-        // Nextcloud's own sharee search, so the share settings apply: user
-        // enumeration, only your own groups, phone book, full match.
-        [$result] = $this->collaboratorSearch->search($search, [IShare::TYPE_USER], false, $limit, 0);
-
-        // It leaves out the one searching; picking yourself is fine.
-        $found = [];
-        if ($search === '' || str_contains(mb_strtolower($user->getUID() . ' ' . $user->getDisplayName()), mb_strtolower($search))) {
-            $found[$user->getUID()] = $user->getDisplayName();
-        }
-        foreach (array_merge($result['exact']['users'] ?? [], $result['users'] ?? []) as $item) {
-            $uid = (string)($item['value']['shareWith'] ?? '');
-            if ($uid !== '' && !isset($found[$uid])) {
-                $found[$uid] = (string)($item['label'] ?? $uid);
-            }
-        }
-
-        $users = [];
-        foreach (array_slice($found, 0, $limit, true) as $uid => $name) {
-            $users[] = ['id' => (string)$uid, 'displayname' => $name];
-        }
-        return new JSONResponse($users);
+        $kinds = array_values(array_intersect(FieldOptions::KINDS, explode(',', $this->textParam('kinds') ?? 'user')));
+        return new JSONResponse($this->accounts->search($user, $this->textParam('search') ?? '', $kinds));
     }
 
     /**

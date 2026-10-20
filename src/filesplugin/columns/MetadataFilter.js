@@ -21,7 +21,7 @@ import { getListingNodes, isListingLoading, listingGeneration } from './ListingS
 import { queueMetadataLoad } from './MetadataLoader.js'
 import { hasValues } from './MetadataStore.js'
 import { getActiveGroupfolderId, getAvailableFields } from './MetaVoxState.js'
-import { PLAIN_TEXT } from '../../utils/fieldValue.js'
+import { PLAIN_TEXT, formatFieldValue } from '../../utils/fieldValue.js'
 import { updateTableMinWidth } from './ColumnDOM.js'
 import { METAVOX_ICON_SVG } from '../../utils/metavoxIcon.js'
 
@@ -96,7 +96,9 @@ class MetaVoxMetadataFilter extends EventTarget {
 			this._held = true
 			return nodes
 		}
-		return applyFilterSort(nodes, filters, sort, (id) => this._metadataCache?.get(id))
+		// People sort by name, as the column shows them.
+		const by = sort?.fieldType === 'user' ? { ...sort, textOf: (value) => formatFieldValue(value, 'user') } : sort
+		return applyFilterSort(nodes, filters, by, (id) => this._metadataCache?.get(id))
 	}
 
 	reset() {

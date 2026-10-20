@@ -446,6 +446,32 @@ export function injectColumnStyles() {
 			border-radius: 50%;
 			flex-shrink: 0;
 		}
+		.metavox-cell-account-icon {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			background: var(--color-background-darker);
+			color: var(--color-text-maxcontrast);
+		}
+		.metavox-cell-account-icon svg {
+			width: 70%;
+			height: 70%;
+		}
+		.metavox-cell-user-name {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+			min-width: 0;
+		}
+		.metavox-cell-user-more {
+			flex-shrink: 0;
+			padding: 0 6px;
+			border-radius: var(--border-radius-pill, 999px);
+			background: var(--color-background-dark);
+			color: var(--color-text-maxcontrast);
+			font-size: var(--font-size-small, 13px);
+			line-height: 20px;
+		}
 		.metavox-cell-url-text,
 		.metavox-cell-filelink-text {
 			overflow: hidden;
@@ -455,7 +481,8 @@ export function injectColumnStyles() {
 			min-width: 0;
 		}
 		.metavox-cell-filelink-missing,
-		.metavox-filelink-missing {
+		.metavox-filelink-missing,
+		.metavox-cell-user-missing {
 			color: var(--color-text-maxcontrast);
 			font-style: italic;
 		}
@@ -506,7 +533,8 @@ export function injectColumnStyles() {
 		[dir="rtl"] .mv-grid-preview td[data-mv-tone] {
 			box-shadow: inset -3px 0 0 var(--mv-wash);
 		}
-		.files-list td.${MARKER_CLASS}[data-mv-tone] .metavox-cell-filelink-missing {
+		.files-list td.${MARKER_CLASS}[data-mv-tone] .metavox-cell-filelink-missing,
+		.files-list td.${MARKER_CLASS}[data-mv-tone] .metavox-cell-user-missing {
 			color: inherit;
 		}
 		/* The editor's sample: a cell in miniature. */

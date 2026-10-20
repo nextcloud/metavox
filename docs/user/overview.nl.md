@@ -64,7 +64,7 @@ Verschillende velden accepteren verschillende soorten input:
 | Meerkeuze | Meerdere categorieën |
 | Selectievakje | Ja/Nee-vlaggen |
 | URL | Links naar externe bronnen |
-| Gebruiker | Selecteer een Nextcloud-gebruiker |
+| Personen en groepen | Selecteer Nextcloud-accounts, groepen of teams |
 | Bestandslink | Links naar bestanden of mappen in dezelfde Team folder |
 
 Zie [Veldtypen](field-types.md) voor uitgebreide informatie.

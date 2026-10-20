@@ -11,6 +11,9 @@ namespace OCA\MetaVox\Validation;
  */
 final class FieldOptions {
 
+    /** What a People field can hold, in this order. */
+    public const KINDS = ['user', 'group', 'team'];
+
     /**
      * The options of a select or multiselect field, each with the value that is
      * stored and the label that is shown. An item with only a label uses it as
@@ -49,6 +52,19 @@ final class FieldOptions {
     public static function includeTime(mixed $options): bool {
         $decoded = is_string($options) ? json_decode($options, true) : $options;
         return is_array($decoded) && !array_is_list($decoded) && !empty($decoded['includeTime']);
+    }
+
+    /**
+     * What a People field takes: one or several, and of which kinds. A field
+     * from before these options takes one account.
+     *
+     * @return array{multiple: bool, kinds: list<string>}
+     */
+    public static function accounts(mixed $options): array {
+        $decoded = is_string($options) ? json_decode($options, true) : $options;
+        $decoded = is_array($decoded) && !array_is_list($decoded) ? $decoded : [];
+        $kinds = is_array($decoded['kinds'] ?? null) ? array_values(array_intersect(self::KINDS, array_filter($decoded['kinds'], 'is_string'))) : [];
+        return ['multiple' => !empty($decoded['multiple']), 'kinds' => $kinds === [] ? ['user'] : $kinds];
     }
 
     /** @return list<mixed> the options as a list; an object such as {includeTime} has none */

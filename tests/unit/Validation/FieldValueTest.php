@@ -4,23 +4,21 @@ declare(strict_types=1);
 
 namespace OCA\MetaVox\Tests\Validation;
 
+use OCA\MetaVox\Service\AccountService;
 use OCA\MetaVox\Validation\FieldValue;
 use OCA\MetaVox\Validation\InvalidValue;
 use OCA\MetaVox\Validation\LinkSettings;
-use OCP\IUserManager;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class FieldValueTest extends TestCase {
 
     private function values(bool $webOnly = false, array $blocked = [], array $allowed = []): FieldValue {
-        $users = $this->createMock(IUserManager::class);
-        $users->method('userExists')->willReturnCallback(fn (string $uid): bool => $uid === 'anna');
         $links = $this->createMock(LinkSettings::class);
         $links->method('webOnly')->willReturn($webOnly);
         $links->method('blockedDomains')->willReturn($blocked);
         $links->method('allowedDomains')->willReturn($allowed);
-        return new FieldValue($users, $links);
+        return new FieldValue($this->createMock(AccountService::class), $links);
     }
 
     private function linkRefusal(FieldValue $values, string $address): ?string {
@@ -79,6 +77,12 @@ class FieldValueTest extends TestCase {
             'other scheme' => ['url', null, 'tel:+31201234567', 'tel:+31201234567'],
             'account' => ['user', null, 'anna', 'anna'],
             'no account' => ['user', null, '', ''],
+            // Whether they exist and may be chosen is checked on saving (AccountService).
+            'people joined' => ['user', null, 'anna;#group:staff;#team:Ab12', 'anna;#group:staff;#team:Ab12'],
+            'people as a list' => ['user', null, ['anna', 'group:staff'], 'anna;#group:staff'],
+            'people trimmed, deduplicated, empties dropped' => ['user', null, ' anna ;#;#anna;#group:staff', 'anna;#group:staff'],
+            'nobody chosen' => ['user', null, [], ''],
+            'account id that is a number' => ['user', null, '123', '123'],
             'file link' => ['filelink', null, '12:/Docs/a.txt', '12:/Docs/a.txt'],
             'file links as a list' => ['filelink', null, ['12:', '13:'], '12:;#13:'],
             'file link as a number' => ['filelink', null, 12, '12'],
@@ -125,8 +129,12 @@ class FieldValueTest extends TestCase {
             'data link' => ['url', null, 'data:text/html,<b>x</b>', 'This kind of link is not allowed'],
             'link with a line break' => ['url', null, "java\nscript:alert(1)", 'Enter a web address'],
             'link as a list' => ['url', null, ['https://example.com'], 'Enter a web address'],
-            'account that does not exist' => ['user', null, 'nobody', 'Choose an existing account'],
-            'account as a list' => ['user', null, ['anna'], 'Choose an existing account'],
+            'account with a colon' => ['user', null, 'other:anna', 'Choose an existing account'],
+            'group without an id' => ['user', null, 'group:', 'Choose an existing account'],
+            'account as an object' => ['user', null, ['a' => 'anna'], 'Choose an existing account'],
+            'account as a number in a list' => ['user', null, [12], 'Choose an existing account'],
+            'account with a line break' => ['user', null, "an
+na", 'Choose an existing account'],
             'file link as an object' => ['filelink', null, ['a' => '12:'], 'Enter a link to a file'],
             'file link as yes/no' => ['filelink', null, true, 'Enter a link to a file'],
         ];
@@ -220,12 +228,11 @@ class FieldValueTest extends TestCase {
         $this->assertFalse(FieldValue::isRequired(self::field('text')));
     }
 
-    public function testEachAccountIsLookedUpOnce(): void {
-        $users = $this->createMock(IUserManager::class);
-        $users->expects($this->once())->method('userExists')->with('anna')->willReturn(true);
-        $values = new FieldValue($users, $this->createMock(LinkSettings::class));
-        foreach (range(1, 3) as $ignored) {
-            $values->stored(self::field('user'), 'anna');
-        }
+    public function testWhoIsChosenIsLeftToTheAccounts(): void {
+        $accounts = $this->createMock(AccountService::class);
+        $accounts->expects($this->once())->method('chosen')->with(self::field('user'), 'anna;#bob', 'anna')->willReturn('anna;#bob');
+        $values = new FieldValue($accounts, $this->createMock(LinkSettings::class));
+
+        $this->assertSame('anna;#bob', $values->chosen(self::field('user'), 'anna;#bob', 'anna'));
     }
 }

@@ -475,7 +475,7 @@ export const ROUTES = {
 	// --- the rest for everyone ---
 	'presence#leave': { level: 'logged_in', body: (w) => ({ gf_id: w.folderId }) },
 	'aiAutofill#status': { level: 'logged_in' },
-	'field#getUsers': { level: 'logged_in', since: 14, query: () => ({ search: 'e2e-acc' }) },
+	'field#getAccounts': { level: 'logged_in', since: 14, query: () => ({ search: 'e2e-acc' }) },
 
 	// --- Nextcloud admins ---
 	'permission#getGroups': { level: 'nc_admin' },

@@ -2,9 +2,10 @@
  * MetaVox DavMetadata — the nc:metavox WebDAV property the server adds to
  * Files app listings (lib/Dav/MetadataPropertyPlugin.php).
  *
- * Value per node: {"v":1,"g":<team folder>,"e":1,"f":{field:value},"t":[fields]}
+ * Value per node: {"v":1,"g":<team folder>,"e":1,"f":{field:value},"t":[fields],"n":{item:name}}
  *   e  the user may edit the metadata
  *   t  fields whose value in f was cut off (the full value comes from the API)
+ *   n  names of the accounts, groups and teams in People values
  */
 
 export const DAV_PROP = 'nc:metavox'
@@ -34,7 +35,7 @@ export function registerMetaVoxDavProperty() {
 
 /**
  * @param {object} node a Files app node
- * @return {{gf: ?number, canWrite: boolean, values: Object<string, string>, truncated: string[]}|null}
+ * @return {{gf: ?number, canWrite: boolean, values: Object<string, string>, truncated: string[], names: Object<string, string>}|null}
  *   null when the server did not serve the property: unknown, never "empty"
  */
 export function decodeNode(node) {
@@ -66,5 +67,6 @@ export function decodeNode(node) {
 		canWrite: doc.e === 1,
 		values,
 		truncated: Array.isArray(doc.t) ? doc.t.map(String).filter((field) => field in values) : [],
+		names: doc.n && typeof doc.n === 'object' && !Array.isArray(doc.n) ? doc.n : {},
 	}
 }

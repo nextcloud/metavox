@@ -39,7 +39,7 @@ Bestandspad,Bestandsnaam,Status,Afdeling,Herzieningsdatum
 - **Lege velden** verschijnen als lege waarden in de CSV — ze worden niet weggelaten
 - **Bestandslink-velden** tonen de namen van de gekoppelde bestanden, gescheiden door komma's. Een bestand dat niet meer bestaat of waar je geen toegang toe hebt, staat er als `Bestand niet beschikbaar`.
 - **Meerkeuze-velden** houden hun opgeslagen vorm, met de waarden gescheiden door `;#` (bijvoorbeeld `Juridisch;#Financiën`)
-- **Gebruiker-velden** tonen de gebruikers-ID; **Selectievakje-velden** tonen `1` (aangevinkt) of `0` (niet aangevinkt)
+- **Personen-en-groepen-velden** tonen de opgeslagen ids: een account-ID, `group:<id>`, `team:<id>`, meerdere gescheiden door `;#`; **Selectievakje-velden** tonen `1` (aangevinkt) of `0` (niet aangevinkt)
 - **Openen in Excel**: dubbel-klik op het gedownloade `.csv`-bestand. Als speciale tekens niet correct weergegeven worden, gebruik Excel's "Data → Uit tekst/CSV"-import met UTF-8-encoding
 - **Grote exports**: de export werkt prima voor typische selecties. Voor zeer grote datasets (1000+ bestanden), overweeg de [API](../architecture/api-reference.md) te gebruiken voor batch-operaties
 

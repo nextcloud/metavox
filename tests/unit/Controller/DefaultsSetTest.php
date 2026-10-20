@@ -10,13 +10,13 @@ use OCA\MetaVox\Service\DefaultsDiscovery;
 use OCA\MetaVox\Service\DefaultsService;
 use OCA\MetaVox\Service\FieldService;
 use OCA\MetaVox\Service\FileReferenceService;
+use OCA\MetaVox\Service\AccountService;
 use OCA\MetaVox\Validation\FieldValue;
 use OCA\MetaVox\Validation\LinkSettings;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\IJobList;
 use OCP\IRequest;
 use OCP\IUser;
-use OCP\IUserManager;
 use OCP\IUserSession;
 use PHPUnit\Framework\TestCase;
 
@@ -45,7 +45,7 @@ class DefaultsSetTest extends TestCase {
         $links->method('normalize')->willReturnCallback(fn () => $this->normalized);
         return new DefaultsController('metavox', $request, $fields, $session, $defaults, $links,
             $this->createMock(IJobList::class), $this->createMock(DefaultsDiscovery::class), $this->createMock(ITimeFactory::class),
-            new FieldValue($this->createMock(IUserManager::class), $this->createMock(LinkSettings::class)));
+            new FieldValue($this->createMock(AccountService::class), $this->createMock(LinkSettings::class)));
     }
 
     private function refusal(): array {
